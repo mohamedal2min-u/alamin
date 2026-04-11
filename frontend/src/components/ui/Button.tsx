@@ -1,0 +1,61 @@
+'use client'
+
+import { cn } from '@/lib/utils'
+import { type ButtonHTMLAttributes, forwardRef } from 'react'
+import { Spinner } from './Spinner'
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'outline' | 'ghost' | 'danger'
+  size?: 'sm' | 'md' | 'lg'
+  loading?: boolean
+  asChild?: boolean
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = 'primary', size = 'md', loading, disabled, asChild, children, ...props }, ref) => {
+    const base =
+      'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:pointer-events-none disabled:opacity-50'
+
+    const variants = {
+      primary: 'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800',
+      outline: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
+      ghost:   'text-slate-600 hover:bg-slate-100',
+      danger:  'bg-red-600 text-white hover:bg-red-700',
+    }
+
+    const sizes = {
+      sm: 'h-8 px-3 text-sm',
+      md: 'h-10 px-4 text-sm',
+      lg: 'h-12 px-6 text-base',
+    }
+
+    const allClasses = cn(base, variants[variant], sizes[size], className)
+
+    // When asChild, clone the child and apply button classes
+    if (asChild && children && typeof children === 'object' && 'type' in (children as object)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const child = children as React.ReactElement<any>
+      const childProps = child.props as Record<string, unknown>
+      return (
+        <child.type
+          {...childProps}
+          className={cn(allClasses, childProps.className as string | undefined)}
+          ref={ref}
+        />
+      )
+    }
+
+    return (
+      <button
+        ref={ref}
+        disabled={disabled || loading}
+        className={allClasses}
+        {...props}
+      >
+        {loading && <Spinner size="sm" />}
+        {children}
+      </button>
+    )
+  }
+)
+Button.displayName = 'Button'

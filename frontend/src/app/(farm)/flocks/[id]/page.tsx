@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FlockStatusBadge } from '@/components/flocks/FlockStatusBadge'
 import { flocksApi } from '@/lib/api/flocks'
+import { MortalitiesTab } from '@/components/flocks/tabs/MortalitiesTab'
 import { formatDate, formatNumber, cn } from '@/lib/utils'
 import type { Flock } from '@/types/flock'
 
@@ -218,7 +219,11 @@ export default function FlockDetailPage({
 
         {/* Tab content */}
         <div className="mt-0 rounded-b-xl rounded-tr-xl border border-t-0 border-slate-200 bg-white">
-          <TabPlaceholder tab={activeTab} />
+          {activeTab === 'mortalities' ? (
+            <MortalitiesTab flockId={flockId} flockStatus={flock.status} />
+          ) : (
+            <TabPlaceholder tab={activeTab} />
+          )}
         </div>
       </div>
     </div>

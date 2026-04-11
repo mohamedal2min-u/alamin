@@ -16,11 +16,13 @@ interface AuthState {
 
 // ── Cookie helper (SSR-safe) ──────────────────────────────────────────────────
 function setAuthCookie(value: string) {
+  if (typeof document === 'undefined') return
   // Max-age 7 days — middleware reads this for routing
   document.cookie = `auth_session=${value}; path=/; max-age=${7 * 24 * 3600}; SameSite=Lax`
 }
 
 function clearAuthCookie() {
+  if (typeof document === 'undefined') return
   document.cookie = 'auth_session=; path=/; max-age=0'
 }
 

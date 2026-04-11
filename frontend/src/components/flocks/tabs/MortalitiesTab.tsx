@@ -1,7 +1,7 @@
 // frontend/src/components/flocks/tabs/MortalitiesTab.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -55,19 +55,18 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
   })
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
-  const fetchMortalities = () => {
+  const fetchMortalities = useCallback(() => {
     setLoading(true)
     mortalitiesApi
       .list(flockId)
       .then((res) => setMortalities(res.data))
       .catch(() => setFetchError('تعذّر تحميل سجلات النفوق'))
       .finally(() => setLoading(false))
-  }
+  }, [flockId])
 
   useEffect(() => {
     fetchMortalities()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flockId])
+  }, [fetchMortalities])
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const onSubmit = async (data: FormData) => {
@@ -169,8 +168,11 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
               {...register('notes')}
               id="notes"
               rows={2}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
+            {errors.notes && (
+              <p className="text-xs text-red-500">{errors.notes.message}</p>
+            )}
           </div>
 
           {serverError && (
@@ -206,9 +208,9 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-start font-medium text-slate-600">التاريخ</th>
-                <th className="px-4 py-3 text-start font-medium text-slate-600">العدد</th>
-                <th className="px-4 py-3 text-start font-medium text-slate-600">السبب</th>
+                <th scope="col" className="px-4 py-3 text-start font-medium text-slate-600">التاريخ</th>
+                <th scope="col" className="px-4 py-3 text-start font-medium text-slate-600">العدد</th>
+                <th scope="col" className="px-4 py-3 text-start font-medium text-slate-600">السبب</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">

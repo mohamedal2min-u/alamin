@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Flock\FlockController;
+use App\Http\Controllers\Api\Mortality\MortalityController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -38,5 +39,11 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::post('/',        [FlockController::class, 'store']);
         Route::get('/{flock}',  [FlockController::class, 'show']);
         Route::put('/{flock}',  [FlockController::class, 'update']);
+    });
+
+    // ── V1-C: Mortalities ────────────────────────────────────────────────────
+    Route::prefix('flocks/{flock}/mortalities')->group(function (): void {
+        Route::get('/',  [MortalityController::class, 'index']);
+        Route::post('/', [MortalityController::class, 'store']);
     });
 });

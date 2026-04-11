@@ -26,7 +26,7 @@ class MortalityController extends Controller
         try {
             $this->showFlockAction->execute($farmId, $flockId);
         } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 404);
+            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 404);
         }
 
         $mortalities = $this->listAction->execute($flockId);

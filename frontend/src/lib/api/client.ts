@@ -31,7 +31,11 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    if (
+      error.response?.status === 401 &&
+      typeof window !== 'undefined' &&
+      window.location.pathname !== '/login'
+    ) {
       // Clear stored credentials and redirect to login
       localStorage.removeItem('auth_token')
       localStorage.removeItem('current_farm_id')

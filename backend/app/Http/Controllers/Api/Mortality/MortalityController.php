@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\Mortality;
 
 use App\Actions\Flock\ShowFlockAction;
+use App\Actions\Mortality\CreateMortalityAction;
 use App\Actions\Mortality\ListMortalitiesAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Mortality\StoreMortalityRequest;
 use App\Http\Resources\FlockMortalityResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,7 @@ class MortalityController extends Controller
     public function __construct(
         private readonly ShowFlockAction       $showFlockAction,
         private readonly ListMortalitiesAction $listAction,
+        private readonly CreateMortalityAction $createAction,
     ) {}
 
     // ── GET /api/flocks/{flock}/mortalities ───────────────────────────────────
@@ -34,10 +37,27 @@ class MortalityController extends Controller
         return FlockMortalityResource::collection($mortalities);
     }
 
-    // store() added in Task 3
-    // Add a stub so routes don't throw ReflectionException:
-    public function store(Request $request, int $flockId): JsonResponse
+    // ── POST /api/flocks/{flock}/mortalities ──────────────────────────────────
+
+    public function store(StoreMortalityRequest $request, int $flockId): JsonResponse
     {
-        return response()->json(['message' => 'not implemented'], 501);
+        $farmId = $request->attributes->get('farm_id');
+        $userId = $request->user()->id;
+
+        try {
+            $flock    = $this->showFlockAction->execute($farmId, $flockId);
+            $mortality = $this->createAction->execute($flock, $userId, $request->validated());
+        } catch (\Exception $e) {
+            $code = (int) $e->getCode();
+            return response()->json(
+                ['message' => $e->getMessage()],
+                $code >= 400 && $code < 600 ? $code : 422
+            );
+        }
+
+        return response()->json([
+            'message' => 'تم تسجيل النفوق بنجاح',
+            'data'    => new FlockMortalityResource($mortality),
+        ], 201);
     }
 }

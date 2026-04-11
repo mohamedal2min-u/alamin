@@ -1,0 +1,73 @@
+<?php
+
+namespace App\Actions\Flock;
+
+use App\Models\Flock;
+use Illuminate\Support\Facades\DB;
+
+class UpdateFlockAction
+{
+    // الانتقالات المسموح بها بين الحالات
+    private const ALLOWED_TRANSITIONS = [
+        'draft'  => ['active', 'cancelled'],
+        'active' => ['closed', 'cancelled'],
+        // closed و cancelled حالات نهائية
+    ];
+
+    /**
+     * @param  array<string, mixed>  $data
+     *
+     * @throws \Exception إذا كانت الحالة النهائية أو الانتقال غير مسموح
+     */
+    public function execute(Flock $flock, int $userId, array $data): Flock
+    {
+        return DB::transaction(function () use ($flock, $userId, $data): Flock {
+
+            // ── التحقق من الانتقال الإذا تغيّرت الحالة ─────────────────────
+            if (isset($data['status']) && $data['status'] !== $flock->status) {
+                $this->validateTransition($flock->status, $data['status']);
+
+                // إذا أُغلق الفوج: سجّل تاريخ الإغلاق
+                if (in_array($data['status'], ['closed', 'cancelled'])) {
+                    $data['close_date'] = $data['close_date'] ?? now()->toDateString();
+                }
+
+                // إذا عُكس من draft إلى active: تحقق من عدم وجود فوج نشط آخر
+                if ($data['status'] === 'active') {
+                    $hasActive = Flock::where('farm_id', $flock->farm_id)
+                        ->where('status', 'active')
+                        ->where('id', '!=', $flock->id)
+                        ->exists();
+
+                    if ($hasActive) {
+                        throw new \Exception(
+                            'توجد مزرعة بها فوج نشط بالفعل. أغلق الفوج الحالي أولاً.',
+                            422
+                        );
+                    }
+                }
+            }
+
+            // ── الفوج المغلق/الملغى: لا يُعدَّل إلا الملاحظات ──────────────
+            if (in_array($flock->status, ['closed', 'cancelled'])) {
+                $data = array_intersect_key($data, ['notes' => true]);
+            }
+
+            $flock->update(array_merge($data, ['updated_by' => $userId]));
+
+            return $flock->fresh();
+        });
+    }
+
+    private function validateTransition(string $from, string $to): void
+    {
+        $allowed = self::ALLOWED_TRANSITIONS[$from] ?? [];
+
+        if (! in_array($to, $allowed)) {
+            throw new \Exception(
+                "لا يمكن الانتقال من حالة «{$from}» إلى «{$to}»",
+                422
+            );
+        }
+    }
+}

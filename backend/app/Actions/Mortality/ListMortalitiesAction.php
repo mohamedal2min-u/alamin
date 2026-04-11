@@ -12,9 +12,10 @@ class ListMortalitiesAction
      *
      * @return Collection<int, FlockMortality>
      */
-    public function execute(int $flockId): Collection
+    public function execute(int $farmId, int $flockId): Collection
     {
-        return FlockMortality::where('flock_id', $flockId)
+        return FlockMortality::where('farm_id', $farmId)
+            ->where('flock_id', $flockId)
             ->orderBy('entry_date', 'desc')
             ->orderBy('id', 'desc')
             ->get();

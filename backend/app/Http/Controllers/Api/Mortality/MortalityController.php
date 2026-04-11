@@ -32,7 +32,7 @@ class MortalityController extends Controller
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 404);
         }
 
-        $mortalities = $this->listAction->execute($flockId);
+        $mortalities = $this->listAction->execute($farmId, $flockId);
 
         return FlockMortalityResource::collection($mortalities);
     }

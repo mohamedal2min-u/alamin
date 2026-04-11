@@ -15,10 +15,10 @@ class StoreMortalityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'entry_date' => ['required', 'date_format:Y-m-d'],
+            'entry_date' => ['required', 'date', 'date_format:Y-m-d'],
             'quantity'   => ['required', 'integer', 'min:1'],
             'reason'     => ['nullable', 'string', 'max:190'],
-            'notes'      => ['nullable', 'string'],
+            'notes'      => ['nullable', 'string', 'max:5000'],
         ];
     }
 

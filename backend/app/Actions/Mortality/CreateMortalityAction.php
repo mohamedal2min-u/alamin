@@ -15,6 +15,8 @@ class CreateMortalityAction
      */
     public function execute(Flock $flock, int $userId, array $data): FlockMortality
     {
+        // Closed/cancelled flocks get a specific message; other non-active statuses (e.g. draft)
+        // fall through to the second check with a different message.
         if (in_array($flock->status, ['closed', 'cancelled'])) {
             throw new \Exception('لا يمكن تسجيل نفوق على فوج مغلق أو ملغى', 422);
         }

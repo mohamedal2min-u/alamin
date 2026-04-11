@@ -6,6 +6,7 @@ namespace Tests\Feature\Mortality;
 use App\Models\Farm;
 use App\Models\FarmUser;
 use App\Models\Flock;
+use App\Models\FlockMortality;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -94,7 +95,7 @@ class MortalityCreateTest extends TestCase
             ->postJson("/api/flocks/{$flock->id}/mortalities", $this->validPayload())
             ->assertStatus(201);
 
-        $record = \App\Models\FlockMortality::first();
+        $record = FlockMortality::first();
         $this->assertNotNull($record->editable_until);
         $this->assertTrue($record->editable_until->between($before, $after));
     }

@@ -14,8 +14,10 @@ class BuildUserDataAction
 {
     public function execute(User $user): array
     {
-        $teamKey = config('permission.column_names.team_foreign_key') ?: 'farm_id';
-        
+        // ── جلب الأدوار لكل مزرعة في استعلام واحد ────────────────────────────
+        // team_foreign_key = 'farm_id' حسب config/permission.php
+        $teamKey = config('permission.column_names.team_foreign_key', 'team_id');
+
         $rolesMap = DB::table('model_has_roles')
             ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
             ->where('model_has_roles.model_id', $user->id)

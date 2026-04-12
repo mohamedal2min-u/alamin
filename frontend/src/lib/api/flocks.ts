@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { CreateFlockPayload, Flock, FlockListResponse } from '@/types/flock'
+import type { TodaySummary } from '@/types/dashboard'
 
 export const flocksApi = {
   list: () =>
@@ -11,6 +12,9 @@ export const flocksApi = {
   create: (payload: CreateFlockPayload) =>
     apiClient.post<{ data: Flock; message: string }>('/flocks', payload).then((r) => r.data),
 
-  update: (id: number, payload: Partial<CreateFlockPayload>) =>
+  update: (id: number, payload: Partial<CreateFlockPayload> & { status?: string }) =>
     apiClient.put<{ data: Flock; message: string }>(`/flocks/${id}`, payload).then((r) => r.data),
+
+  todaySummary: (id: number) =>
+    apiClient.get<{ data: TodaySummary }>(`/flocks/${id}/today-summary`).then((r) => r.data),
 }

@@ -21,6 +21,7 @@ class FarmUser extends Pivot
         'status',
         'is_primary',
         'joined_at',
+        'salary',
         'notes',
         'created_by',
         'updated_by',
@@ -31,6 +32,7 @@ class FarmUser extends Pivot
         return [
             'is_primary' => 'boolean',
             'joined_at'  => 'datetime',
+            'salary'     => 'decimal:2',
         ];
     }
 

@@ -1,7 +1,11 @@
+// frontend/src/types/farm.ts
+
+import type { FarmRole } from './auth'
+
 export interface Farm {
   id: number
   name: string
   status: 'active' | 'pending_setup' | 'suspended'
-  role: 'owner' | 'manager' | 'viewer'
+  role: FarmRole | null
   is_primary: boolean
 }

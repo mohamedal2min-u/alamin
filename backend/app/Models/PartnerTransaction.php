@@ -24,12 +24,15 @@ class PartnerTransaction extends Model
         'notes',
         'created_by',
         'updated_by',
+        'metadata',
     ];
 
     protected function casts(): array
     {
         return [
             'transaction_date' => 'date',
+            'amount' => 'decimal:2',
+            'metadata' => 'array',
         ];
     }
 

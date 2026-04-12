@@ -40,7 +40,7 @@ return new class extends Migration
             DB::statement("
             ALTER TABLE inventory_transactions
             ADD CONSTRAINT chk_inv_txn_type
-            CHECK (transaction_type IN ('in', 'out', 'adjustment', 'return'))
+            CHECK (transaction_type IN ('purchase', 'consumption', 'adjustment', 'return', 'transfer'))
         ");
         }
 
@@ -56,7 +56,7 @@ return new class extends Migration
             DB::statement("
             ALTER TABLE inventory_transactions
             ADD CONSTRAINT chk_inv_txn_payment_status
-            CHECK (payment_status IS NULL OR payment_status IN ('paid', 'debt'))
+            CHECK (payment_status IS NULL OR payment_status IN ('paid', 'unpaid', 'partial', 'debt'))
         ");
         }
 

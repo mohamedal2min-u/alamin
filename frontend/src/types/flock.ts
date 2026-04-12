@@ -8,6 +8,11 @@ export interface Flock {
   start_date: string           // ISO date: "YYYY-MM-DD"
   end_date: string | null
   initial_count: number
+  total_mortality: number
+  remaining_count: number
+  total_sales: number
+  total_expenses: number
+  net_profit: number
   current_age_days: number | null
   notes: string | null
   created_at: string

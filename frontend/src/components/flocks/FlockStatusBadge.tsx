@@ -13,5 +13,11 @@ const STATUS_MAP: Record<
 
 export function FlockStatusBadge({ status }: { status: FlockStatus }) {
   const { label, variant } = STATUS_MAP[status] ?? { label: status, variant: 'neutral' }
-  return <Badge variant={variant}>{label}</Badge>
+  
+  return (
+    <div className="flex items-center gap-1.5">
+      {status === 'active' && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-status-glow" />}
+      <Badge variant={variant}>{label}</Badge>
+    </div>
+  )
 }

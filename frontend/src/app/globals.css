@@ -17,8 +17,127 @@
   --font-family-sans: 'Cairo', 'Segoe UI', system-ui, sans-serif;
 }
 
-/* Smooth animations for skeleton loading */
+/* ── Design Tokens ─────────────────────────────────────────────── */
+
+:root {
+  /* Radius */
+  --radius-sm: 0.5rem;     /* 8px  — badges, small elements */
+  --radius-md: 0.75rem;    /* 12px — inputs, buttons */
+  --radius-lg: 1rem;       /* 16px — cards, sections */
+  --radius-xl: 1.25rem;    /* 20px — bottom nav, floats */
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  --shadow-raised: 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-float: 0 8px 24px rgba(0,0,0,0.08);
+
+  /* Spacing */
+  --section-gap: 1.5rem;
+  --card-padding: 1.25rem;
+  --header-height: 3.5rem;
+  --bottom-nav-height: 4rem;
+}
+
+/* ── Global Smoothness ─────────────────────────────────────────── */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Force English numerals everywhere */
+body {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Skeleton Pulse ────────────────────────────────────────────── */
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────── */
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Thin subtle scrollbar for content areas */
+.thin-scrollbar::-webkit-scrollbar { width: 4px; }
+.thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* ── Print ─────────────────────────────────────────────────────── */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border: 1px solid #e2e8f0 !important;
+    padding: 8px !important;
+  }
+
+  /* Hide sidebar and navigation elements */
+  aside, nav, button, .modal-close, .tabs-trigger {
+    display: none !important;
+  }
+}
+
+/* ── Custom Animations ─────────────────────────────────────────── */
+
+@keyframes progress-glow {
+  0%, 100% { opacity: 0.3; filter: blur(4px); }
+  50% { opacity: 0.6; filter: blur(8px); }
+}
+.animate-progress-glow {
+  animation: progress-glow 2s infinite ease-in-out;
+}
+
+/* 🟢 Status Glow Animation */
+@keyframes status-glow {
+  0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1.1); opacity: 0.8; box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+.animate-status-glow {
+  animation: status-glow 2s infinite ease-in-out;
+}
+
+/* 🔢 Age Day Dots Styling */
+.age-day-dot {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black transition-all duration-300;
+}
+.age-day-dot-active {
+  @apply bg-emerald-500 text-white shadow-lg shadow-emerald-200 ring-2 ring-emerald-100 scale-125 z-10;
+}
+.age-day-dot-past {
+  @apply bg-slate-100 text-slate-400;
+}
+.age-day-dot-future {
+  @apply border border-slate-100 text-slate-300;
 }

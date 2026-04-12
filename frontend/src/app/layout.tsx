@@ -2,9 +2,12 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'دجاجاتي — إدارة المداجن',
-  description: 'نظام إدارة مداجن الدواجن',
+  title: 'دجاجتي — إدارة المداجن',
+  description: 'نظام تشغيل ومحاسبة وتحليل لمداجن دجاج اللحم',
 }
+
+import { QueryProvider } from '@/components/providers/QueryProvider'
+import { Toaster } from 'sonner'
 
 export default function RootLayout({
   children,
@@ -19,10 +22,17 @@ export default function RootLayout({
         <link
           href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
+          precedence="default"
         />
       </head>
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-        {children}
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-slate-50 text-slate-900 antialiased"
+      >
+        <QueryProvider>
+          {children}
+        </QueryProvider>
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   )

@@ -11,6 +11,7 @@ export function formatDate(dateStr: string): string {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      numberingSystem: 'latn'
     }).format(new Date(dateStr))
   } catch {
     return dateStr
@@ -18,5 +19,5 @@ export function formatDate(dateStr: string): string {
 }
 
 export function formatNumber(n: number): string {
-  return new Intl.NumberFormat('ar-SA').format(n)
+  return new Intl.NumberFormat('en-US').format(n)
 }

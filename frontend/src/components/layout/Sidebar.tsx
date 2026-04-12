@@ -1,59 +1,97 @@
+// frontend/src/components/layout/Sidebar.tsx
 'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard,
-  Bird,
-  Package,
-  ShoppingCart,
-  Receipt,
-  Users,
-  BarChart3,
+  Lock, LayoutDashboard, Bird, Package, ShoppingCart,
+  Receipt, Users, BarChart3, Building2, ClipboardList,
 } from 'lucide-react'
+import { useFarmStore } from '@/stores/farm.store'
+import { ChickenLogo } from './ChickenLogo'
+import { NAV_HREFS_BY_ROLE } from '@/lib/roles'
+import type { FarmRole } from '@/types/auth'
 
-const NAV_ITEMS = [
-  { label: 'لوحة التحكم', href: '/dashboard',  icon: LayoutDashboard },
-  { label: 'الأفواج',     href: '/flocks',      icon: Bird },
-  { label: 'المخزون',     href: '/inventory',   icon: Package },
-  { label: 'المبيعات',    href: '/sales',       icon: ShoppingCart },
-  { label: 'المصروفات',   href: '/expenses',    icon: Receipt },
-  { label: 'الشركاء',     href: '/partners',    icon: Users },
-  { label: 'التقارير',    href: '/reports',     icon: BarChart3 },
+// ── Nav items — merged list, filtered per role via NAV_HREFS_BY_ROLE ──────────
+const ALL_NAV_ITEMS = [
+  // مشتركة
+  { label: 'لوحة التحكم',    href: '/dashboard',                     icon: LayoutDashboard },
+
+  // إدارة النظام — super_admin فقط
+  { label: 'المداجن',         href: '/admin/farms',                   icon: Building2 },
+  { label: 'طلبات التسجيل',  href: '/admin/registration-requests',   icon: ClipboardList },
+
+  // تشغيل المزرعة — farm_admin / worker / partner
+  { label: 'الأفواج',        href: '/flocks',                        icon: Bird },
+  { label: 'المخزون',        href: '/inventory',                     icon: Package },
+  { label: 'المبيعات',       href: '/sales',                         icon: ShoppingCart },
+  { label: 'المصروفات',      href: '/expenses',                      icon: Receipt },
+  { label: 'الشركاء',        href: '/partners',                      icon: Users },
+  { label: 'العمال',         href: '/workers',                       icon: Users },
+  { label: 'التقارير',       href: '/reports',                       icon: BarChart3 },
+
+  // الوردية للعامل فقط
+  { label: 'الوردية',        href: '/worker',                        icon: ClipboardList },
 ]
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname    = usePathname()
+  const currentFarm = useFarmStore((s) => s.currentFarm)
+  const role: FarmRole | null = currentFarm?.role ?? null
+
+  // Filter nav items by role; show all if role not yet loaded
+  const allowedHrefs = role ? NAV_HREFS_BY_ROLE[role] : ALL_NAV_ITEMS.map((i) => i.href)
+  const navItems     = ALL_NAV_ITEMS.filter(({ href }) => allowedHrefs.includes(href))
+  const isPartner    = role === 'partner'
+  const isSuperAdmin = role === 'super_admin'
 
   return (
-    <aside className="flex w-60 flex-col border-l border-slate-200 bg-white">
+    <aside className="flex w-60 flex-col border-l border-slate-200/60 bg-white">
+
       {/* Brand */}
-      <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
-        <span className="text-2xl">🐔</span>
-        <span className="text-lg font-bold text-slate-900">دجاجاتي</span>
+      <div className="flex items-center gap-3 border-b border-slate-200/60 px-5" style={{ height: 'var(--header-height)' }}>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shrink-0">
+          <ChickenLogo className="h-5 w-5" />
+        </div>
+        <span className="text-base font-bold text-slate-900">دجاجتي</span>
       </div>
 
+      {/* Super admin badge */}
+      {isSuperAdmin && (
+        <div className="mx-3 mt-3 flex items-center gap-1.5 rounded-xl bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700 border border-primary-100">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          <span>مدير النظام</span>
+        </div>
+      )}
+
+      {/* Read-only badge — partner only */}
+      {isPartner && (
+        <div className="mx-3 mt-3 flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 border border-amber-100">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          <span>وضع القراءة فقط</span>
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="space-y-1">
-          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-            const isActive =
-              pathname === href || pathname.startsWith(`${href}/`)
+      <nav className="flex-1 overflow-y-auto px-3 py-4 thin-scrollbar">
+        <ul className="space-y-0.5">
+          {navItems.map(({ label, href, icon: Icon }) => {
+            const isActive = pathname === href || pathname.startsWith(`${href}/`)
             return (
               <li key={href}>
                 <Link
                   href={href}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200',
                     isActive
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      ? 'bg-primary-50 text-primary-700 font-semibold'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   )}
                 >
                   <Icon
                     className={cn(
-                      'h-5 w-5',
+                      'h-[18px] w-[18px]',
                       isActive ? 'text-primary-600' : 'text-slate-400'
                     )}
                   />

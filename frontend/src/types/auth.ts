@@ -1,3 +1,7 @@
+// frontend/src/types/auth.ts
+
+export type FarmRole = 'super_admin' | 'farm_admin' | 'worker' | 'partner'
+
 export interface User {
   id: number
   name: string
@@ -12,7 +16,7 @@ export interface UserFarm {
   id: number
   name: string
   status: 'active' | 'pending_setup' | 'suspended'
-  role: 'owner' | 'manager' | 'viewer'
+  role: FarmRole | null
   is_primary: boolean
 }
 

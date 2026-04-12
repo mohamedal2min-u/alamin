@@ -15,6 +15,7 @@ class ShowFlockAction
     {
         $flock = Flock::where('id', $flockId)
             ->where('farm_id', $farmId)
+            ->withSum('mortalities', 'quantity')
             ->first();
 
         if (! $flock) {

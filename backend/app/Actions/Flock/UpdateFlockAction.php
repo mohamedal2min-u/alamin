@@ -46,6 +46,43 @@ class UpdateFlockAction
                         );
                     }
                 }
+
+                // ======= Profit/Loss Distribution on Closure =======
+                if ($data['status'] === 'closed') {
+                    $totalSales = $flock->sales()->sum('net_amount');
+                    $totalExpenses = $flock->expenses()->sum('total_amount');
+                    $netProfit = $totalSales - $totalExpenses;
+                    $transactionType = $netProfit >= 0 ? 'profit' : 'loss';
+                    $amountToDistribute = abs($netProfit);
+
+                    $activeShares = \App\Models\FarmPartnerShare::where('farm_id', $flock->farm_id)
+                        ->where('is_active', true)
+                        ->get();
+
+                    foreach ($activeShares as $share) {
+                        $percent = (float) $share->share_percent;
+                        if ($percent > 0) {
+                            $partnerAmount = $amountToDistribute * ($percent / 100);
+                            \App\Models\PartnerTransaction::create([
+                                'farm_id' => $flock->farm_id,
+                                'partner_id' => $share->partner_id,
+                                'flock_id' => $flock->id,
+                                'transaction_date' => $data['close_date'] ?? now()->toDateString(),
+                                'transaction_type' => $transactionType,
+                                'amount' => $partnerAmount,
+                                'description' => ($transactionType === 'profit' ? 'أرباح' : 'خسائر') . ' الفوج: ' . $flock->name,
+                                'created_by' => $userId,
+                                'metadata' => [
+                                    'applied_share_percent' => $percent,
+                                    'flock_total_net' => $netProfit,
+                                    'flock_total_sales' => $totalSales,
+                                    'flock_total_expenses' => $totalExpenses
+                                ]
+                            ]);
+                        }
+                    }
+                }
+                // ===================================================
             }
 
             // ── الفوج المغلق/الملغى: لا يُعدَّل إلا الملاحظات ──────────────

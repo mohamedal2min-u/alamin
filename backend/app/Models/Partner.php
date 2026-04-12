@@ -23,36 +23,35 @@ class Partner extends Model
         'updated_by',
     ];
 
-    // ─── Relations ────────────────────────────────────────────────────────────
-
+    /**
+     * The farm this partner belongs to.
+     */
     public function farm(): BelongsTo
     {
-        return $this->belongsTo(Farm::class, 'farm_id');
+        return $this->belongsTo(Farm::class);
     }
 
-    /** حساب المستخدم في النظام — قد يكون null */
+    /**
+     * The system user associated with this partner (if any).
+     */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
     }
 
-    public function farmPartnerShares(): HasMany
+    /**
+     * The shares this partner holds in various farms/flocks.
+     */
+    public function shares(): HasMany
     {
-        return $this->hasMany(FarmPartnerShare::class, 'partner_id');
+        return $this->hasMany(FarmPartnerShare::class);
     }
 
-    public function partnerTransactions(): HasMany
+    /**
+     * The financial transactions associated with this partner.
+     */
+    public function transactions(): HasMany
     {
-        return $this->hasMany(PartnerTransaction::class, 'partner_id');
-    }
-
-    public function createdByUser(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function updatedByUser(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->hasMany(PartnerTransaction::class);
     }
 }

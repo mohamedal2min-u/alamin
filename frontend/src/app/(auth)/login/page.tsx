@@ -163,7 +163,7 @@ function LoginPageInner() {
         {/* Logo / Brand */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 shadow-lg">
-            <img src="/logo.png" alt="دجاجتي" className="h-10 w-10 object-contain brightness-0 invert" />
+            <img src="/logo.png" alt="دجاجتي" className="h-14 w-14 object-contain brightness-0 invert" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">دجاجتي</h1>
           <p className="mt-1 text-sm text-slate-500">نظام إدارة المداجن</p>

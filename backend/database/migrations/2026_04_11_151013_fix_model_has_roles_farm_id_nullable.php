@@ -19,7 +19,7 @@ return new class extends Migration
             return;
         }
 
-        DB::statement('ALTER TABLE model_has_roles DROP CONSTRAINT model_has_roles_pkey');
+        DB::statement('ALTER TABLE model_has_roles DROP CONSTRAINT IF EXISTS model_has_roles_pkey');
         DB::statement('ALTER TABLE model_has_roles ALTER COLUMN farm_id DROP NOT NULL');
         DB::statement('ALTER TABLE model_has_roles ADD CONSTRAINT model_has_roles_role_model_type_primary PRIMARY KEY (role_id, model_id, model_type)');
     }

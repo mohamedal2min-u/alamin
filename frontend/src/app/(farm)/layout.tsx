@@ -5,12 +5,10 @@ import { Header } from '@/components/layout/Header'
 import { RoleGuard } from '@/components/layout/RoleGuard'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { MoreMenu } from '@/components/layout/MoreMenu'
-import { ChickenLogo } from '@/components/layout/ChickenLogo'
-import { LiveStatus } from '@/components/layout/LiveStatus'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState} from 'react'
 import { RefreshCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -49,49 +47,51 @@ export default function FarmLayout({ children }: { children: React.ReactNode }) 
 
   // ── Layout B: Regular Users (Mobile-First / Bottom Nav) ──────────────────
   return (
-    <div className="min-h-screen bg-slate-100 pb-20">
-      {/* Mobile Header */}
-      <header
-        className="sticky top-0 z-40 w-full flex items-center justify-between border-b border-emerald-800/80 bg-emerald-950 px-4 backdrop-blur-md"
-        style={{ height: 'var(--header-height)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white shrink-0">
-            <ChickenLogo className="h-5 w-5" />
-          </div>
+    <div className="min-h-screen bg-white pb-[72px]">
+      {/* ─── Clean White Header ─── */}
+      <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-lg border-b border-slate-100">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-5 h-[52px]">
+          {/* Page Title */}
           <div className="flex flex-col min-w-0">
-            <h1 className="text-sm font-bold text-white leading-none truncate">{pageTitle}</h1>
-            {pageSubtitle ? (
-              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-widest mt-0.5 truncate">{pageSubtitle}</span>
-            ) : (
-              <LiveStatus className="h-3.5 scale-75 origin-right -mt-0.5 border-none bg-transparent px-0" />
+            <h1 className="text-[17px] font-extrabold text-slate-900 leading-tight truncate tracking-tight">
+              {pageTitle}
+            </h1>
+            {pageSubtitle && (
+              <span className="text-[11px] font-semibold text-emerald-600 leading-none mt-0.5 truncate">
+                {pageSubtitle}
+              </span>
             )}
           </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleGlobalRefresh}
-            disabled={isRefreshing}
-            className="p-2 rounded-lg bg-emerald-900/50 border border-emerald-800/60 text-emerald-400 active:scale-95 transition-colors duration-200 disabled:opacity-50"
-          >
-            <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-          </button>
-          
-          <div className="text-[10px] font-bold text-emerald-100 bg-emerald-900/40 border border-emerald-800/60 px-3 py-1.5 rounded-xl truncate max-w-[120px] font-mono">
-            {currentFarm?.name}
+
+          {/* Right Actions */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={handleGlobalRefresh}
+              disabled={isRefreshing}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 active:scale-95 active:bg-slate-100 transition-all duration-200 disabled:opacity-40"
+              aria-label="تحديث البيانات"
+            >
+              <RefreshCcw className={cn("h-[18px] w-[18px]", isRefreshing && "animate-spin")} />
+            </button>
+
+            <div className="flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-100/60 px-3 py-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[11px] font-bold text-emerald-700 truncate max-w-[90px]">
+                {currentFarm?.name}
+              </span>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Desktop Containerization */}
-      <div className="mx-auto max-w-2xl bg-white min-h-screen border-x border-slate-200/40" style={{ boxShadow: 'var(--shadow-card)' }}>
-        <main className="p-4">
+      {/* ─── Main Content ─── */}
+      <div className="mx-auto max-w-2xl">
+        <main>
           <RoleGuard>{children}</RoleGuard>
         </main>
       </div>
 
-      {/* Navigation Layer */}
+      {/* ─── Navigation Layer ─── */}
       <BottomNav onMoreClick={() => setIsMoreMenuOpen(true)} />
       <MoreMenu isOpen={isMoreMenuOpen} onClose={() => setIsMoreMenuOpen(false)} />
     </div>

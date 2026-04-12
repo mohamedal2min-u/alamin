@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import { 
   CheckCircle2, AlertCircle, HeartPulse, 
-  Utensils, Pill, Receipt, Zap, Sparkles
+  Utensils, Pill, Receipt
 } from 'lucide-react'
 import { inventoryApi } from '@/lib/api/inventory'
 import { quickEntryApi } from '@/lib/api/quick-entry'
@@ -126,41 +126,27 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
   const activeTabData = TABS.find(t => t.key === activeTab)
 
   return (
-    <div className="relative rounded-3xl bg-slate-50/50 p-5 border border-slate-100 shadow-sm">
-      {/* ── Header ── */}
-      <div className="mb-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shadow-sm">
-            <Zap className="h-4 w-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-800">الإدخال السريع</h3>
-            <p className="text-[10px] font-medium text-slate-400">سجل بياناتك بلمسة واحدة</p>
-          </div>
-        </div>
-        <Sparkles className="h-4 w-4 text-slate-200" />
-      </div>
+    <div className="space-y-4">
+      {/* ── Section Label ── */}
+      <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 px-1">
+        الإدخال السريع
+      </h3>
 
-      {/* ── Buttons Grid ── */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* ── Action Buttons ── */}
+      <div className="grid grid-cols-4 gap-2.5">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => handleCardClick(t.key)}
-            className={cn(
-              "group flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-3.5 transition-all active:scale-95",
-              "shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-emerald-200",
-              t.shadowColor ? `hover:${t.shadowColor}/50` : ""
-            )}
+            className="group flex flex-col items-center justify-center rounded-2xl bg-white border border-slate-100 p-3.5 transition-all duration-200 active:scale-95 shadow-sm"
           >
             <div className={cn(
-              "mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl transition-all group-hover:scale-110", 
-              t.bgColor, t.color,
-              "ring-1 ring-inset ring-white/20"
+              "mb-2 flex h-11 w-11 items-center justify-center rounded-xl", 
+              t.bgColor, t.color
             )}>
               <t.icon className="h-5 w-5" />
             </div>
-            <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900">{t.label}</span>
+            <span className="text-[11px] font-bold text-slate-600">{t.label}</span>
           </button>
         ))}
       </div>

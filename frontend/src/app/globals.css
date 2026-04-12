@@ -34,8 +34,8 @@
   /* Spacing */
   --section-gap: 1.5rem;
   --card-padding: 1.25rem;
-  --header-height: 3.5rem;
-  --bottom-nav-height: 4rem;
+  --header-height: 3.25rem;   /* 52px — clean compact header */
+  --bottom-nav-height: 4rem;  /* 64px — comfortable touch targets */
 }
 
 /* ── Global Smoothness ─────────────────────────────────────────── */

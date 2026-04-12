@@ -63,7 +63,7 @@ export default function WorkerPage() {
   }
 
   const progress = useMemo(() => {
-    if (!summary) return { completed: 0, total: 2 }
+    if (!summary) return { completed: 0, total: 3 }
     const tasks = [
       summary.mortalities.entries.length > 0,
       summary.feed.entries.length > 0,
@@ -76,28 +76,30 @@ export default function WorkerPage() {
   }, [summary])
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 pb-24 pt-4 px-4 sm:px-0" dir="rtl">
+    <div className="space-y-6 px-5 pt-5 pb-8" dir="rtl">
+      {/* Error */}
       {hasError && (
-        <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
-          <AlertCircle className="h-5 w-5" />
-          <p className="text-sm font-bold">تعذّر تحديث البيانات حالياً</p>
+        <div className="flex items-center gap-3 rounded-2xl bg-red-50 p-4 text-red-600">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm font-bold">تعذّر تحديث البيانات</p>
         </div>
       )}
 
+      {/* Loading */}
       {loadingFlocks && flocks.length === 0 && (
-        <div className="space-y-6">
-          <div className="h-28 animate-pulse rounded-[2.5rem] bg-slate-100" />
-          <div className="grid grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => <div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100" />)}
-          </div>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-20 animate-pulse rounded-3xl bg-slate-100" />)}
+        <div className="space-y-5 pt-2">
+          <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="h-2 animate-pulse rounded-full bg-slate-100 w-3/4" />
+          <div className="space-y-3 pt-4">
+            {[1, 2, 3].map(i => <div key={i} className="h-20 animate-pulse rounded-2xl bg-slate-50" />)}
           </div>
         </div>
       )}
 
+      {/* Active Flock */}
       {isActive && activeFlock && (
         <>
+          {/* Flock Info + Progress */}
           <WorkerProgressHeader 
             completed={progress.completed} 
             total={progress.total} 
@@ -110,19 +112,24 @@ export default function WorkerPage() {
             } : undefined}
           />
 
+          {/* Guidelines */}
           <WorkerGuidelinesCard 
             ageDays={activeFlock.current_age_days ?? 0} 
             birdCount={activeFlock.remaining_count} 
           />
 
-          <div className="space-y-2">
-            <h3 className="px-2 text-xs font-black uppercase tracking-[0.2em] text-slate-400">قائمة المهام اليومية</h3>
+          {/* Task Checklist — Main interaction area */}
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 px-1">
+              المهام اليومية
+            </h3>
             <WorkerTaskChecklist 
               summary={summary ?? emptyTodaySummary()} 
               onTaskClick={handleTaskClick} 
             />
           </div>
           
+          {/* Day Summary — only if data exists */}
           {summary && (summary.mortalities.total > 0 || summary.feed.total > 0 || summary.temperatures.entries.length > 0) && (
             <DaySummaryCard 
               summary={summary} 
@@ -140,14 +147,15 @@ export default function WorkerPage() {
         </>
       )}
 
+      {/* Empty State */}
       {!loadingFlocks && !isActive && (
-        <div className="flex flex-col items-center justify-center rounded-[2.5rem] border border-dashed border-slate-200 bg-white py-24 px-6 text-center shadow-sm">
-          <div className="w-20 h-20 rounded-3xl bg-slate-50 flex items-center justify-center mb-6 shadow-inner">
-            <Bird className="h-10 w-10 text-slate-300" />
+        <div className="flex flex-col items-center justify-center rounded-3xl bg-slate-50/50 py-20 px-6 text-center">
+          <div className="w-16 h-16 rounded-3xl bg-white flex items-center justify-center mb-5 shadow-sm border border-slate-100">
+            <Bird className="h-8 w-8 text-slate-300" />
           </div>
-          <h3 className="text-lg font-black text-slate-900 tracking-tight">لا يوجد فوج نشط</h3>
-          <p className="mt-2 text-sm text-slate-500 font-medium max-w-[280px] leading-relaxed">
-            بانتظار تفعيل فوج جديد من قبل الإدارة للبدء في المهام اليومية
+          <h3 className="text-base font-extrabold text-slate-800">لا يوجد فوج نشط</h3>
+          <p className="mt-2 text-sm text-slate-400 font-medium max-w-[260px] leading-relaxed">
+            بانتظار تفعيل فوج جديد من قبل الإدارة
           </p>
         </div>
       )}

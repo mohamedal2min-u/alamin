@@ -36,12 +36,16 @@ class AuthController extends Controller
 
             return response()->json($result, 200);
         } catch (\Exception $e) {
-            $code = (int) $e->getCode();
+            $code = $e->getCode();
+            // Ensure the code is a valid HTTP status code (3 digits between 100-599)
+            $httpCode = (is_int($code) && $code >= 100 && $code < 600) ? $code : 422;
+            
             return response()->json(
                 ['message' => $e->getMessage()],
-                $code >= 400 && $code < 600 ? $code : 422,
+                $httpCode
             );
         }
+
     }
 
     // ── POST /api/auth/logout ─────────────────────────────────────────────────

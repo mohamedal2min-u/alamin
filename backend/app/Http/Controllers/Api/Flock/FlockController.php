@@ -73,7 +73,7 @@ class FlockController extends Controller
 
         try {
             $flock   = $this->showAction->execute($farmId, $flockId);
-            $summary = $this->todaySummaryAction->execute($flock);
+            $summary = $this->todaySummaryAction->execute($flock, $request->query('date'));
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 404);
         }

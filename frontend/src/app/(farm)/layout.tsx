@@ -11,8 +11,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState} from 'react'
 import { RefreshCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePathname } from 'next/navigation'
 
 export default function FarmLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const isWorkerPage = pathname?.endsWith('/worker')
   const currentFarm = useFarmStore((s) => s.currentFarm)
   const { pageTitle, pageSubtitle } = useLayoutStore()
   const queryClient = useQueryClient()
@@ -49,40 +52,42 @@ export default function FarmLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-white pb-[72px]">
       {/* ─── Clean White Header ─── */}
-      <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-lg border-b border-slate-100">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-5 h-[52px]">
-          {/* Page Title */}
-          <div className="flex flex-col min-w-0">
-            <h1 className="text-[17px] font-extrabold text-slate-900 leading-tight truncate tracking-tight">
-              {pageTitle}
-            </h1>
-            {pageSubtitle && (
-              <span className="text-[11px] font-semibold text-emerald-600 leading-none mt-0.5 truncate">
-                {pageSubtitle}
-              </span>
-            )}
-          </div>
+      {!isWorkerPage && (
+        <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-lg border-b border-slate-100">
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-5 h-[52px]">
+            {/* Page Title */}
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-[17px] font-extrabold text-slate-900 leading-tight truncate tracking-tight">
+                {pageTitle}
+              </h1>
+              {pageSubtitle && (
+                <span className="text-[11px] font-semibold text-emerald-600 leading-none mt-0.5 truncate">
+                  {pageSubtitle}
+                </span>
+              )}
+            </div>
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              onClick={handleGlobalRefresh}
-              disabled={isRefreshing}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 active:scale-95 active:bg-slate-100 transition-all duration-200 disabled:opacity-40"
-              aria-label="تحديث البيانات"
-            >
-              <RefreshCcw className={cn("h-[18px] w-[18px]", isRefreshing && "animate-spin")} />
-            </button>
+            {/* Right Actions */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                onClick={handleGlobalRefresh}
+                disabled={isRefreshing}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 active:scale-95 active:bg-slate-100 transition-all duration-200 disabled:opacity-40"
+                aria-label="تحديث البيانات"
+              >
+                <RefreshCcw className={cn("h-[18px] w-[18px]", isRefreshing && "animate-spin")} />
+              </button>
 
-            <div className="flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-100/60 px-3 py-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="text-[11px] font-bold text-emerald-700 truncate max-w-[90px]">
-                {currentFarm?.name}
-              </span>
+              <div className="flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-100/60 px-3 py-1.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="text-[11px] font-bold text-emerald-700 truncate max-w-[90px]">
+                  {currentFarm?.name}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* ─── Main Content ─── */}
       <div className="mx-auto max-w-2xl">

@@ -10,9 +10,9 @@ use App\Models\FlockMortality;
 
 class TodaySummaryAction
 {
-    public function execute(Flock $flock): array
+    public function execute(Flock $flock, ?string $date = null): array
     {
-        $today = now()->toDateString();
+        $today = $date ?: now()->toDateString();
 
         // ── Flock Stats ───────────────────────────────────────────────────────────
         $totalMortalityAcrossTime = FlockMortality::where('flock_id', $flock->id)->sum('quantity');

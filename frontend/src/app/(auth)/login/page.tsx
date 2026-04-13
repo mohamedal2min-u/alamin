@@ -54,11 +54,12 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+      className={cn(
+        'relative flex-1 py-3 text-sm font-medium transition-all duration-300 rounded-xl',
         active
-          ? 'bg-primary-600 text-white shadow-sm'
-          : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-      }`}
+          ? 'bg-primary-600 text-white shadow-md'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+      )}
     >
       {children}
     </button>
@@ -162,11 +163,23 @@ function LoginPageInner() {
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 shadow-lg">
-            <img src="/logo.png" alt="دجاجتي" className="h-14 w-14 object-contain brightness-0 invert" />
+          {/* Logo Section */}
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary-600 shadow-xl border border-primary-700/20">
+            <img
+              src="/logo.png"
+              alt="Dajajati"
+              className="h-12 w-12 object-contain brightness-0 invert"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">دجاجتي</h1>
-          <p className="mt-1 text-sm text-slate-500">نظام إدارة المداجن</p>
+
+          <div className="text-center">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              دجاجاتي
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              نظام إدارة مزارع الدواجن الذكي
+            </p>
+          </div>
         </div>
 
         {/* Card */}

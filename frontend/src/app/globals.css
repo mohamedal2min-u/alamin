@@ -17,9 +17,17 @@
   --font-family-sans: 'Cairo', 'Segoe UI', system-ui, sans-serif;
 }
 
-/* ── Design Tokens ─────────────────────────────────────────────── */
+/* ── Design Tokens & Fallbacks ─────────────────────────────────────── */
 
 :root {
+  /* Manual Fallback Variables (Backup for JIT failures) */
+  --primary-50: #f0fdf4;
+  --primary-100: #dcfce7;
+  --primary-200: #bbf7d0;
+  --primary-500: #22c55e;
+  --primary-600: #16a34a;
+  --primary-700: #15803d;
+
   /* Radius */
   --radius-sm: 0.5rem;     /* 8px  — badges, small elements */
   --radius-md: 0.75rem;    /* 12px — inputs, buttons */
@@ -37,6 +45,13 @@
   --header-height: 3.25rem;   /* 52px — clean compact header */
   --bottom-nav-height: 4rem;  /* 64px — comfortable touch targets */
 }
+
+/* 🟢 Manual Utility Fallback (Diagnosis Fix) */
+.bg-primary-600 { background-color: var(--primary-600) !important; }
+.text-primary-600 { color: var(--primary-600) !important; }
+.text-primary-700 { color: var(--primary-700) !important; }
+.bg-primary-50 { background-color: var(--primary-50) !important; }
+
 
 /* ── Global Smoothness ─────────────────────────────────────────── */
 

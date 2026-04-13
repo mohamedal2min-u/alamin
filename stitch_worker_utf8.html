@@ -1,0 +1,310 @@
+﻿<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&amp;family=Public_Sans:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#ffd9e2",
+                    "on-tertiary": "#ffffff",
+                    "secondary-container": "#f89c00",
+                    "on-secondary-fixed-variant": "#663d00",
+                    "background": "#f9f9f9",
+                    "tertiary-fixed-dim": "#ffb1c7",
+                    "surface": "#f9f9f9",
+                    "inverse-on-surface": "#f1f1f1",
+                    "error-container": "#ffdad6",
+                    "inverse-surface": "#2f3131",
+                    "primary": "#0d631b",
+                    "on-secondary": "#ffffff",
+                    "surface-variant": "#e2e2e2",
+                    "on-primary-fixed-variant": "#005312",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#88d982",
+                    "outline": "#707a6c",
+                    "primary-fixed": "#a3f69c",
+                    "on-error-container": "#93000a",
+                    "surface-container-high": "#e8e8e8",
+                    "on-primary": "#ffffff",
+                    "on-secondary-container": "#623a00",
+                    "surface-container-low": "#f3f3f3",
+                    "on-background": "#1a1c1c",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#eeeeee",
+                    "on-primary-container": "#cbffc2",
+                    "error": "#ba1a1a",
+                    "on-surface-variant": "#40493d",
+                    "on-secondary-fixed": "#2b1700",
+                    "surface-tint": "#1b6d24",
+                    "secondary-fixed": "#ffddba",
+                    "primary-container": "#2e7d32",
+                    "on-tertiary-fixed": "#3f001c",
+                    "tertiary": "#923357",
+                    "primary-fixed-dim": "#88d982",
+                    "outline-variant": "#bfcaba",
+                    "surface-dim": "#dadada",
+                    "secondary-fixed-dim": "#ffb865",
+                    "surface-container-highest": "#e2e2e2",
+                    "on-tertiary-fixed-variant": "#7f2448",
+                    "surface-bright": "#f9f9f9",
+                    "on-primary-fixed": "#002204",
+                    "secondary": "#875200",
+                    "on-tertiary-container": "#ffedf0",
+                    "tertiary-container": "#b14b6f",
+                    "on-surface": "#1a1c1c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Public Sans", "Cairo"],
+                    "body": ["Public Sans", "Cairo"],
+                    "label": ["Public Sans", "Cairo"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Cairo', 'Public Sans', sans-serif; }
+        .data-number { font-family: 'Public Sans', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface pb-24">
+<!-- TopAppBar - Redesigned -->
+<header class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md px-4 h-16 border-b border-outline-variant/30 flex flex-col justify-center">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">inventory_2</span>
+<h1 class="font-black text-sm text-primary tracking-tight">فوج التسمين #204</h1>
+</div>
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[10px] font-bold text-primary">مستقر</span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-1 text-on-surface-variant">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1">
+<span class="text-[9px] opacity-60">البدء:</span>
+<span class="data-number text-[10px] font-bold">2023/10/01</span>
+</div>
+<div class="flex items-center gap-1 border-r border-outline-variant/30 pr-4">
+<span class="text-[9px] opacity-60">الإجمالي:</span>
+<span class="data-number text-[10px] font-bold">20,000</span>
+</div>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-primary/5 rounded-lg">
+<span class="text-[9px] text-primary/70 font-bold">المتبقي:</span>
+<span class="data-number text-[11px] font-black text-primary">18,500</span>
+</div>
+</div>
+</header>
+<main class="mt-20 px-4 space-y-6">
+<!-- Daily Input Section - Bento Grid -->
+<section class="grid grid-cols-2 gap-4">
+<!-- Mortality Card -->
+<div class="bg-surface-container-lowest p-5 rounded-3xl flex flex-col justify-between h-44 shadow-sm">
+<div class="flex justify-between items-start">
+<div class="w-12 h-12 rounded-2xl bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">heart_broken</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">نفوق</span>
+</div>
+<div>
+<div class="data-number text-sm text-on-surface-variant">5 + 6 + 5</div>
+<div class="data-number text-4xl font-black text-error leading-tight">= 16</div>
+</div>
+</div>
+<!-- Feed Card -->
+<div class="bg-surface-container-lowest p-5 rounded-3xl flex flex-col justify-between h-44 shadow-sm">
+<div class="flex justify-between items-start">
+<div class="w-12 h-12 rounded-2xl bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">agriculture</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">علف</span>
+</div>
+<div>
+<div class="data-number text-sm text-on-surface-variant">2 + 3 + 4</div>
+<div class="data-number text-4xl font-black text-secondary leading-tight">= 9</div>
+</div>
+</div>
+<!-- Medicine Card -->
+<div class="bg-surface-container-lowest p-5 rounded-3xl flex flex-col justify-between h-44 shadow-sm">
+<div class="flex justify-between items-start">
+<div class="w-12 h-12 rounded-2xl bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">vaccines</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">دواء</span>
+</div>
+<div>
+<div class="data-number text-sm text-on-surface-variant">1 + 1 + 2</div>
+<div class="data-number text-4xl font-black text-tertiary leading-tight">= 4</div>
+</div>
+</div>
+<!-- Tasks/Other Card -->
+<div class="bg-surface-container-lowest p-5 rounded-3xl flex flex-col justify-between h-44 shadow-sm">
+<div class="flex justify-between items-start">
+<div class="w-12 h-12 rounded-2xl bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">أخرى</span>
+</div>
+<div>
+<div class="data-number text-sm text-on-surface-variant">3 + 2</div>
+<div class="data-number text-4xl font-black text-primary leading-tight">= 5</div>
+</div>
+</div>
+</section>
+<!-- Operational Instructions -->
+<section class="bg-primary-container text-white rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
+<div class="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-16 -translate-y-16"></div>
+<h3 class="text-xl font-black mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">info</span> التعليمات التشغيلية اليوم
+            </h3>
+<div class="grid grid-cols-1 gap-6">
+<!-- Temperature Highlight -->
+<div class="bg-white/10 backdrop-blur-sm rounded-2xl p-4 flex justify-between items-center border border-white/10">
+<div>
+<div class="text-xs opacity-80 font-bold mb-1">الحرارة المطلوبة</div>
+<div class="data-number text-3xl font-black">30 - 33 °C</div>
+</div>
+<span class="material-symbols-outlined text-4xl opacity-40">thermostat</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- Blackout -->
+<div class="bg-on-primary-fixed-variant/20 rounded-2xl p-4">
+<div class="text-[10px] opacity-70 font-bold uppercase tracking-wider mb-2">التعتيم</div>
+<div class="text-sm font-bold">6 ساعات</div>
+<div class="text-[10px] opacity-80">2 × 3 ساعات</div>
+</div>
+<!-- Feed -->
+<div class="bg-on-primary-fixed-variant/20 rounded-2xl p-4">
+<div class="text-[10px] opacity-70 font-bold uppercase tracking-wider mb-2">العلف</div>
+<div class="text-sm font-bold data-number">18 g / طير</div>
+<div class="text-[10px] opacity-80 data-number">180 kg إجمالي</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Task Progress & Alerts -->
+<section class="space-y-4">
+<div class="bg-surface-container-low rounded-3xl p-5 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="relative w-14 h-14">
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-surface-container-highest" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-primary" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-dasharray="150.79" stroke-dashoffset="37.7" stroke-width="4"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center text-[10px] font-black data-number">75%</div>
+</div>
+<div>
+<h4 class="font-bold text-sm">حالة المهام اليومية</h4>
+<p class="text-xs text-on-surface-variant font-medium">تم إنجاز <span class="data-number">12</span> من <span class="data-number">16</span> مهمة</p>
+</div>
+</div>
+<button class="bg-primary text-white p-2 rounded-xl">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+</div>
+<!-- Emergency Alert -->
+<div class="bg-secondary-container text-on-secondary-container rounded-3xl p-5 flex items-center gap-4 shadow-lg border-r-8 border-secondary">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div class="flex-1">
+<h4 class="font-bold text-sm">تنبيه: انخفاض ضغط المياه</h4>
+<p class="text-xs opacity-90">افحص الخزان الرئيسي في العنبر رقم 4 فوراً.</p>
+</div>
+</div>
+</section>
+<!-- Last 7 Days Summary -->
+<section class="bg-surface-container-lowest rounded-3xl p-6 shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-black text-lg">آخر 7 أيام</h3>
+<span class="text-[10px] font-bold text-on-surface-variant bg-surface-container p-1 px-3 rounded-full">ملخص الأداء</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-3 bg-surface-container-low rounded-2xl">
+<div class="flex items-center gap-3">
+<span class="data-number font-black text-on-surface-variant w-8">24</span>
+<span class="text-sm font-bold">اليوم</span>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-1 text-error text-xs font-bold">
+<span class="material-symbols-outlined text-sm">heart_broken</span> <span class="data-number">16</span>
+</div>
+<div class="flex items-center gap-1 text-secondary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">agriculture</span> <span class="data-number">9</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface-container-low rounded-2xl">
+<div class="flex items-center gap-3">
+<span class="data-number font-black text-on-surface-variant w-8">23</span>
+<span class="text-sm font-bold">أمس</span>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-1 text-error text-xs font-bold">
+<span class="material-symbols-outlined text-sm">heart_broken</span> <span class="data-number">12</span>
+</div>
+<div class="flex items-center gap-1 text-secondary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">agriculture</span> <span class="data-number">10</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface-container-low rounded-2xl opacity-60">
+<div class="flex items-center gap-3">
+<span class="data-number font-black text-on-surface-variant w-8">22</span>
+<span class="text-sm font-bold">أول أمس</span>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-1 text-error text-xs font-bold">
+<span class="material-symbols-outlined text-sm">heart_broken</span> <span class="data-number">8</span>
+</div>
+<div class="flex items-center gap-1 text-secondary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">agriculture</span> <span class="data-number">9.5</span>
+</div>
+</div>
+</div>
+<button class="w-full py-3 text-primary font-bold text-xs">عرض السجل الكامل</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-[#f9f9f9]/80 backdrop-blur-md flex justify-around items-center px-4 pb-4 pt-2 border-t border-outline-variant/15 rounded-t-3xl shadow-[0_-4px_24px_rgba(26,28,28,0.06)]">
+<a class="flex flex-col items-center justify-center bg-primary text-white rounded-2xl p-3 scale-90 transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+<span class="font-['Public_Sans'] text-[10px] font-medium mt-1">الرئيسية</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1a1c1c] p-3 scale-90 hover:bg-[#f3f3f3] transition-all" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-['Public_Sans'] text-[10px] font-medium mt-1">السجلات</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1a1c1c] p-3 scale-90 hover:bg-[#f3f3f3] transition-all" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-['Public_Sans'] text-[10px] font-medium mt-1">المهام</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1a1c1c] p-3 scale-90 hover:bg-[#f3f3f3] transition-all" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="font-['Public_Sans'] text-[10px] font-medium mt-1">التنبيهات</span>
+</a>
+</nav>
+</body></html>

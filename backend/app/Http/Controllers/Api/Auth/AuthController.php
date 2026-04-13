@@ -37,9 +37,10 @@ class AuthController extends Controller
             return response()->json($result, 200);
         } catch (\Exception $e) {
             $code = (int) $e->getCode();
+            $statusCode = ($code >= 400 && $code < 600) ? $code : 500;
             return response()->json(
                 ['message' => $e->getMessage()],
-                $code >= 400 && $code < 600 ? $code : 422,
+                $statusCode
             );
         }
     }

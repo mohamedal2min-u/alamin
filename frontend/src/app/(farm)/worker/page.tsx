@@ -11,7 +11,8 @@ import { WorkerProgressHeader } from '@/components/worker/WorkerProgressHeader'
 import { WorkerGuidelinesCard } from '@/components/worker/WorkerGuidelinesCard'
 import { WorkerTaskChecklist } from '@/components/worker/WorkerTaskChecklist'
 import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
-import { DaySummaryCard } from '@/components/dashboard/DaySummaryCard'
+import { SystemAlert } from '@/components/worker/SystemAlert'
+import { Last7DaysSummary } from '@/components/worker/Last7DaysSummary'
 import type { TodaySummary } from '@/types/dashboard'
 
 export default function WorkerPage() {
@@ -22,7 +23,7 @@ export default function WorkerPage() {
   const [entryExtra, setEntryExtra] = useState<any>(null)
 
   useEffect(() => {
-    setPageTitle('تسجيل الوردية')
+    setPageTitle('لوحة العامل')
     setPageSubtitle(currentFarm?.name || null)
   }, [currentFarm, setPageTitle, setPageSubtitle])
 
@@ -41,13 +42,17 @@ export default function WorkerPage() {
   const activeFlock = flocks.find((f: any) => f.status === 'active') ?? null
   const isActive = activeFlock !== null
 
+  const todayDate = new Date().getFullYear() + '-' + 
+                    String(new Date().getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(new Date().getDate()).padStart(2, '0')
+
   const {
     data: summary,
-    isLoading: loadingSummary,
+    isLoading: isSummaryLoading,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['today-summary', activeFlock?.id],
-    queryFn: () => flocksApi.todaySummary(activeFlock!.id).then(res => res.data),
+    queryKey: ['today-summary', activeFlock?.id, todayDate],
+    queryFn: () => flocksApi.todaySummary(activeFlock!.id, todayDate).then(res => res.data),
     enabled: !!activeFlock,
     refetchInterval: 30_000,
   })
@@ -75,9 +80,16 @@ export default function WorkerPage() {
     }
   }, [summary])
 
+  // Stitch Placeholder Data for History
+  const historyData = [
+    { day: 12, mortality: 2, feed: 18, performance: 95 },
+    { day: 11, mortality: 1, feed: 17, performance: 98 },
+    { day: 10, mortality: 5, feed: 17, performance: 88 },
+  ]
+
   return (
     <div className="space-y-6 px-5 pt-5 pb-8" dir="rtl">
-      {/* Error */}
+      {/* ── Error Notification ── */}
       {hasError && (
         <div className="flex items-center gap-3 rounded-2xl bg-red-50 p-4 text-red-600">
           <AlertCircle className="h-5 w-5 shrink-0" />
@@ -85,58 +97,54 @@ export default function WorkerPage() {
         </div>
       )}
 
-      {/* Loading */}
+      {/* ── Loading Skeleton ── */}
       {loadingFlocks && flocks.length === 0 && (
         <div className="space-y-5 pt-2">
-          <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
-          <div className="h-2 animate-pulse rounded-full bg-slate-100 w-3/4" />
+          <div className="h-44 animate-pulse rounded-[2rem] bg-slate-100" />
+          <div className="h-32 animate-pulse rounded-[2rem] bg-slate-50" />
           <div className="space-y-3 pt-4">
             {[1, 2, 3].map(i => <div key={i} className="h-20 animate-pulse rounded-2xl bg-slate-50" />)}
           </div>
         </div>
       )}
 
-      {/* Active Flock */}
+      {/* ── Active Worker View (Stitch Ordered Layout) ── */}
       {isActive && activeFlock && (
-        <>
-          {/* Flock Info + Progress */}
+        <div className="space-y-6">
+          {/* 1. Stat Grid Header (Clickable Entry Points) */}
           <WorkerProgressHeader 
-            completed={progress.completed} 
-            total={progress.total} 
-            flock={activeFlock ? {
+            flock={{
               name: activeFlock.name,
               initial_count: activeFlock.initial_count,
               remaining_count: activeFlock.remaining_count,
               current_age_days: activeFlock.current_age_days ?? 0,
               start_date: activeFlock.start_date,
-            } : undefined}
+            }}
+            summary={summary}
+            isLoading={isSummaryLoading}
+            viewDate={todayDate}
+            onStatClick={handleTaskClick}
           />
 
-          {/* Guidelines */}
+          {/* 2. Operational Guidelines Banner */}
           <WorkerGuidelinesCard 
             ageDays={activeFlock.current_age_days ?? 0} 
             birdCount={activeFlock.remaining_count} 
           />
 
-          {/* Task Checklist — Main interaction area */}
-          <div className="space-y-3">
-            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 px-1">
-              المهام اليومية
-            </h3>
-            <WorkerTaskChecklist 
-              summary={summary ?? emptyTodaySummary()} 
-              onTaskClick={handleTaskClick} 
-            />
-          </div>
+          {/* 3. Task Status Summary Card */}
+          <WorkerTaskChecklist 
+            summary={summary ?? emptyTodaySummary()} 
+            onTaskClick={() => {}} // Could link to a more detailed checklist page later
+          />
           
-          {/* Day Summary — only if data exists */}
-          {summary && (summary.mortalities.total > 0 || summary.feed.total > 0 || summary.temperatures.entries.length > 0) && (
-            <DaySummaryCard 
-              summary={summary} 
-              loading={loadingSummary} 
-            />
-          )}
+          {/* 4. Critical System Alert (Stitch Amber Bar) */}
+          <SystemAlert message="يجب فحص ضغط المياه في العنبر رقم 4 خلال الساعة القادمة" />
 
+          {/* 5. Historical Summary (Last 7 Days) */}
+          <Last7DaysSummary data={historyData} />
+
+          {/* Entry Dialog (Logical layer) */}
           <WorkerEntryDialog 
             flockId={activeFlock.id}
             activeTab={activeEntryTab}
@@ -144,18 +152,18 @@ export default function WorkerPage() {
             onClose={() => setActiveEntryTab(null)}
             onSuccess={handleEntrySuccess}
           />
-        </>
+        </div>
       )}
 
-      {/* Empty State */}
+      {/* ── Empty State ── */}
       {!loadingFlocks && !isActive && (
-        <div className="flex flex-col items-center justify-center rounded-3xl bg-slate-50/50 py-20 px-6 text-center">
+        <div className="flex flex-col items-center justify-center rounded-3xl bg-slate-50/50 py-20 px-6 text-center border-2 border-dashed border-slate-200">
           <div className="w-16 h-16 rounded-3xl bg-white flex items-center justify-center mb-5 shadow-sm border border-slate-100">
             <Bird className="h-8 w-8 text-slate-300" />
           </div>
-          <h3 className="text-base font-extrabold text-slate-800">لا يوجد فوج نشط</h3>
+          <h3 className="text-base font-extrabold text-slate-800">لا يوجد فوج نشط متاح</h3>
           <p className="mt-2 text-sm text-slate-400 font-medium max-w-[260px] leading-relaxed">
-            بانتظار تفعيل فوج جديد من قبل الإدارة
+            عند تفعيل الفوج من قبل الإدارة، ستتمكن من تسجيل البيانات اليومية هنا.
           </p>
         </div>
       )}
@@ -174,3 +182,4 @@ function emptyTodaySummary(): TodaySummary {
     temperatures: { entries: [] },
   }
 }
+

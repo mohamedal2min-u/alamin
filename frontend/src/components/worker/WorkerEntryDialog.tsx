@@ -72,7 +72,11 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
     setError(null)
     setLoading(true)
     try {
-      const date = new Date().toISOString().slice(0, 10)
+      // Get local date string YYYY-MM-DD
+      const now = new Date()
+      const date = now.getFullYear() + '-' + 
+                   String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                   String(now.getDate()).padStart(2, '0')
       if (activeTab === 'mortality') {
         if (!mQty || Number(mQty) < 1) { setError('أدخل كمية صحيحة'); setLoading(false); return }
         await mortalitiesApi.create(flockId, { quantity: Number(mQty), reason: mReason || undefined, entry_date: date })

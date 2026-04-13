@@ -19,10 +19,21 @@ class LoginAction
      */
     public function execute(array $data): array
     {
+        $loginRaw = $data['login'];
+        $loginNormalized = $loginRaw;
+
+        // Normalize Saudi numbers: 05... -> 9665..., +966... -> 966...
+        if (preg_match('/^05[0-9]{8}$/', $loginRaw)) {
+            $loginNormalized = '966' . ltrim($loginRaw, '0');
+        } elseif (preg_match('/^\+966[0-9]{9}$/', $loginRaw)) {
+            $loginNormalized = ltrim($loginRaw, '+');
+        }
+
         // ── البحث عن المستخدم بالبريد الإلكتروني أو الواتساب ─────────────────
-        $user = User::where(function ($query) use ($data) {
-            $query->where('email', $data['login'])
-                  ->orWhere('whatsapp', $data['login']);
+        $user = User::where(function ($query) use ($loginRaw, $loginNormalized) {
+            $query->where('email', $loginRaw)
+                  ->orWhere('whatsapp', $loginRaw)
+                  ->orWhere('whatsapp', $loginNormalized);
         })->first();
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {

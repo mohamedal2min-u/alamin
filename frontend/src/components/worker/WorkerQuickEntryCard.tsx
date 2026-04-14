@@ -26,11 +26,47 @@ import { toast } from 'sonner'
 
 type Tab = 'mortality' | 'feed' | 'medicine' | 'temp'
 
-const TABS: { key: Tab; label: string; icon: any; color: string; gradient: string; lightBg: string; shadow: string }[] = [
-  { key: 'mortality', label: 'نفوق',   icon: Skull, color: 'text-rose-600',    gradient: 'from-rose-500 to-rose-700',    lightBg: 'bg-rose-50',     shadow: 'shadow-rose-100' },
-  { key: 'feed',      label: 'علف',    icon: Wheat,   color: 'text-cyan-600',    gradient: 'from-cyan-500 to-blue-600',    lightBg: 'bg-cyan-50',     shadow: 'shadow-cyan-100' },
-  { key: 'medicine',  label: 'دواء',   icon: Syringe,       color: 'text-emerald-600', gradient: 'from-emerald-500 to-teal-600', lightBg: 'bg-emerald-50',  shadow: 'shadow-emerald-100' },
-  { key: 'temp',      label: 'حرارة',  icon: ThermometerSun, color: 'text-orange-600',  gradient: 'from-orange-500 to-amber-600', lightBg: 'bg-orange-50',   shadow: 'shadow-orange-100' },
+const TABS: { key: Tab; label: string; desc: string; icon: any; color: string; gradient: string; lightBg: string; shadow: string }[] = [
+  { 
+    key: 'mortality', 
+    label: 'نفوق',   
+    desc: 'سجل الخسائر',
+    icon: Skull, 
+    color: 'text-rose-600',    
+    gradient: 'from-rose-500 to-rose-600',    
+    lightBg: 'bg-rose-50/50',
+    shadow: 'shadow-rose-100'
+  },
+  { 
+    key: 'feed',      
+    label: 'علف',    
+    desc: 'توزيع الأعلاف',
+    icon: Wheat,   
+    color: 'text-blue-600',    
+    gradient: 'from-blue-500 to-indigo-500',  
+    lightBg: 'bg-blue-50/50',
+    shadow: 'shadow-blue-100'
+  },
+  { 
+    key: 'medicine',  
+    label: 'دواء',   
+    desc: 'لقاحات وعلاج',
+    icon: Syringe,       
+    color: 'text-emerald-600', 
+    gradient: 'from-emerald-500 to-teal-500', 
+    lightBg: 'bg-emerald-50/50',
+    shadow: 'shadow-emerald-100'
+  },
+  { 
+    key: 'temp',      
+    label: 'حرارة',  
+    desc: 'قياس العنبر',
+    icon: ThermometerSun, 
+    color: 'text-amber-600',   
+    gradient: 'from-amber-500 to-orange-500', 
+    lightBg: 'bg-amber-50/50',
+    shadow: 'shadow-amber-100'
+  },
 ]
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -128,29 +164,29 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
 
 
   return (
-    <div className="relative overflow-hidden rounded-[2.5rem] bg-white p-7 border border-slate-100 shadow-premium">
+    <div className="relative overflow-hidden rounded-3xl bg-slate-50/50 p-5 border border-slate-100 shadow-sm">
       {/* ── Background Decoration ── */}
-      <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-emerald-500/5 blur-[80px]" />
-      <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-cyan-500/5 blur-[80px]" />
+      <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/5 blur-3xl" />
+      <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-amber-500/5 blur-3xl" />
 
       {/* ── Section Label ── */}
-      <div className="relative mb-6 flex items-center justify-between px-1">
+      <div className="relative mb-5 flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-[1.25rem] bg-emerald-600 text-white shadow-emerald-sm">
-            <ClipboardEdit className="h-5 w-5" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shadow-sm">
+            <ClipboardEdit className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-base font-extrabold text-slate-900 tracking-tight">تسجيل البيانات</h3>
-            <p className="text-[11px] font-bold text-slate-400">نظام الإدخال السريع والمطور</p>
+            <h3 className="text-sm font-bold text-slate-800 tracking-tight">التسجيل المباشر</h3>
+            <p className="text-[10px] font-medium text-slate-400">سجل بياناتك بلمسة واحدة</p>
           </div>
         </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-inner">
-          <Sparkles className="h-4 w-4" />
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-200 shadow-sm">
+          <Sparkles className="h-3.5 w-3.5" />
         </div>
       </div>
 
-      {/* ── 4-Card Interaction Grid ── */}
-      <div className="relative grid grid-cols-4 gap-3 mb-6">
+      {/* ── 2x2 Premium Interaction Grid ── */}
+      <div className="relative grid grid-cols-2 gap-4 mb-6">
         {TABS.map((t) => {
           const isActive = activeTab === t.key
           return (
@@ -158,28 +194,42 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
               key={t.key}
               onClick={() => handleCardClick(t.key)}
               className={cn(
-                "group relative flex flex-col items-center justify-center rounded-[1.75rem] border bg-white p-5 transition-all duration-300 active:scale-90",
+                "group relative flex flex-row-reverse items-center gap-3 rounded-3xl border p-3.5 transition-all duration-300 active:scale-[0.97]",
                 isActive 
-                  ? "border-emerald-600 shadow-xl shadow-emerald-100 -translate-y-1" 
-                  : "border-slate-100 shadow-sm hover:border-emerald-200 hover:-translate-y-1 hover:shadow-lg"
+                  ? "bg-white border-white shadow-2xl shadow-emerald-500/20 ring-1 ring-emerald-500/20" 
+                  : "bg-white/40 backdrop-blur-md border-white/60 shadow-sm hover:bg-white hover:border-white hover:shadow-xl hover:shadow-slate-200/50"
               )}
             >
-              {/* Icon Container */}
+              {/* Icon Container (Squircle) */}
               <div className={cn(
-                "mb-3 flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300",
+                "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-500",
                 isActive 
-                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200 scale-110" 
-                  : cn(t.lightBg, t.color, "group-hover:scale-110")
+                  ? cn("bg-gradient-to-br ring-4 ring-white shadow-lg", t.gradient, "text-white") 
+                  : cn(t.lightBg, t.color, "group-hover:scale-110 group-hover:rotate-3 shadow-inner")
               )}>
-                <t.icon className={cn("h-6 w-6", isActive ? "animate-bounce" : "")} />
+                <t.icon className={cn("h-6 w-6", isActive ? "animate-pulse" : "")} />
               </div>
 
-              <span className={cn(
-                "text-[11px] font-extrabold tracking-tight transition-colors",
-                isActive ? "text-emerald-700" : "text-slate-500 group-hover:text-slate-900"
-              )}>
-                {t.label}
-              </span>
+              {/* Text Labels */}
+              <div className="flex flex-col text-right">
+                <span className={cn(
+                  "text-[13px] font-extrabold tracking-tight transition-colors",
+                  isActive ? "text-slate-900" : "text-slate-700 group-hover:text-slate-900"
+                )}>
+                  {t.label}
+                </span>
+                <span className={cn(
+                  "text-[9px] font-bold opacity-60 transition-colors",
+                  isActive ? "text-emerald-600" : "text-slate-400 group-hover:text-slate-500"
+                )}>
+                  {t.desc}
+                </span>
+              </div>
+
+              {/* Active Indicator Blob */}
+              {isActive && (
+                <div className="absolute -left-1 top-1/2 -translate-y-1/2 h-8 w-1 rounded-full bg-emerald-500" />
+              )}
             </button>
           )
         })}

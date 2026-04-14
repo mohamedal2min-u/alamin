@@ -174,26 +174,15 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
           </div>
         )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={loading || success}
-          className={cn(
-            "group relative w-full overflow-hidden rounded-2xl bg-emerald-600 py-4 text-center shadow-emerald transition-all duration-300 hover:bg-emerald-700 active:scale-95 disabled:opacity-50",
-            loading && "cursor-not-allowed"
-          )}
-        >
-          <div className="absolute inset-0 animate-shimmer opacity-0 group-hover:opacity-100" />
-          <span className="relative text-base font-black text-white">
-            {loading ? 'جارٍ الحفظ...' : 'تأكيد وحفظ البيانات'}
-          </span>
+        <button onClick={handleSubmit} disabled={loading} className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-95 disabled:opacity-50">
+          {loading ? 'جارٍ الحفظ...' : 'تأكيد الحفظ'}
         </button>
       </div>
     </Dialog>
   )
 }
 
-const inputClass =
-  'w-full rounded-2xl border border-slate-200 bg-slate-50/30 px-5 py-4 text-sm font-extrabold text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all shadow-inner'
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 focus:border-emerald-500 focus:outline-none'
 
 function FormField({ label, children, required }: any) {
   return (

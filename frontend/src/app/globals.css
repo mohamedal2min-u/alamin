@@ -15,11 +15,6 @@
 
   /* Font family */
   --font-family-sans: 'Cairo', 'Segoe UI', system-ui, sans-serif;
-
-  /* Premium Gradients */
-  --gradient-premium: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  --gradient-emerald: linear-gradient(135deg, #059669 0%, #10b981 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
 }
 
 /* ── Design Tokens & Fallbacks ─────────────────────────────────────── */
@@ -43,8 +38,6 @@
   --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
   --shadow-raised: 0 4px 12px rgba(0,0,0,0.06);
   --shadow-float: 0 8px 24px rgba(0,0,0,0.08);
-  --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 12px -2px rgba(0, 0, 0, 0.02);
-  --shadow-emerald: 0 20px 25px -5px rgba(16, 185, 129, 0.1), 0 8px 10px -6px rgba(16, 185, 129, 0.1);
 
   /* Spacing */
   --section-gap: 1.5rem;
@@ -162,41 +155,4 @@ body {
 }
 .age-day-dot-future {
   @apply border border-slate-100 text-slate-300;
-}
-
-/* 🟢 Premium Glass Utility */
-.premium-glass {
-  background: var(--gradient-glass);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-/* 🟢 Subtle Card Glow */
-.card-glow-emerald {
-  position: relative;
-}
-.card-glow-emerald::after {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), transparent);
-  border-radius: inherit;
-  z-index: -1;
-  transition: opacity 0.3s;
-  opacity: 0;
-}
-.card-glow-emerald:hover::after {
-  opacity: 1;
-}
-
-/* 🟢 Shimmer Effect */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
 }

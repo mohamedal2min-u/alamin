@@ -26,47 +26,11 @@ import { toast } from 'sonner'
 
 type Tab = 'mortality' | 'feed' | 'medicine' | 'temp'
 
-const TABS: { key: Tab; label: string; desc: string; icon: any; color: string; gradient: string; lightBg: string; shadow: string }[] = [
-  { 
-    key: 'mortality', 
-    label: 'نفوق',   
-    desc: 'سجل الخسائر',
-    icon: Skull, 
-    color: 'text-rose-600',    
-    gradient: 'from-rose-500 to-rose-600',    
-    lightBg: 'bg-rose-50/50',
-    shadow: 'shadow-rose-100'
-  },
-  { 
-    key: 'feed',      
-    label: 'علف',    
-    desc: 'توزيع الأعلاف',
-    icon: Wheat,   
-    color: 'text-blue-600',    
-    gradient: 'from-blue-500 to-indigo-500',  
-    lightBg: 'bg-blue-50/50',
-    shadow: 'shadow-blue-100'
-  },
-  { 
-    key: 'medicine',  
-    label: 'دواء',   
-    desc: 'لقاحات وعلاج',
-    icon: Syringe,       
-    color: 'text-emerald-600', 
-    gradient: 'from-emerald-500 to-teal-500', 
-    lightBg: 'bg-emerald-50/50',
-    shadow: 'shadow-emerald-100'
-  },
-  { 
-    key: 'temp',      
-    label: 'حرارة',  
-    desc: 'قياس العنبر',
-    icon: ThermometerSun, 
-    color: 'text-amber-600',   
-    gradient: 'from-amber-500 to-orange-500', 
-    lightBg: 'bg-amber-50/50',
-    shadow: 'shadow-amber-100'
-  },
+const TABS: { key: Tab; label: string; icon: any; color: string; gradient: string; lightBg: string }[] = [
+  { key: 'mortality', label: 'نفوق',   icon: Skull, color: 'text-rose-600',    gradient: 'from-rose-500 to-rose-600',    lightBg: 'bg-rose-50/50' },
+  { key: 'feed',      label: 'علف',    icon: Wheat,   color: 'text-blue-600',    gradient: 'from-blue-500 to-indigo-500',  lightBg: 'bg-blue-50/50' },
+  { key: 'medicine',  label: 'دواء',   icon: Syringe,       color: 'text-emerald-600', gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50/50' },
+  { key: 'temp',      label: 'حرارة',  icon: ThermometerSun, color: 'text-amber-600',   gradient: 'from-amber-500 to-orange-500', lightBg: 'bg-amber-50/50' },
 ]
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -185,8 +149,8 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
         </div>
       </div>
 
-      {/* ── 2x2 Premium Interaction Grid ── */}
-      <div className="relative grid grid-cols-2 gap-4 mb-6">
+      {/* ── 4-Card Interaction Grid ── */}
+      <div className="relative grid grid-cols-4 gap-3 mb-6">
         {TABS.map((t) => {
           const isActive = activeTab === t.key
           return (
@@ -194,42 +158,28 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
               key={t.key}
               onClick={() => handleCardClick(t.key)}
               className={cn(
-                "group relative flex flex-row-reverse items-center gap-3 rounded-3xl border p-3.5 transition-all duration-300 active:scale-[0.97]",
+                "group relative flex flex-col items-center justify-center rounded-2xl border bg-white p-3.5 transition-all duration-300 active:scale-95",
                 isActive 
-                  ? "bg-white border-white shadow-2xl shadow-emerald-500/20 ring-1 ring-emerald-500/20" 
-                  : "bg-white/40 backdrop-blur-md border-white/60 shadow-sm hover:bg-white hover:border-white hover:shadow-xl hover:shadow-slate-200/50"
+                  ? "border-emerald-600 shadow-lg shadow-emerald-100 ring-4 ring-emerald-500/10" 
+                  : "border-slate-100 shadow-sm hover:border-emerald-200 hover:shadow-md hover:shadow-slate-200/50"
               )}
             >
-              {/* Icon Container (Squircle) */}
+              {/* Icon Container */}
               <div className={cn(
-                "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-500",
+                "mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300",
                 isActive 
-                  ? cn("bg-gradient-to-br ring-4 ring-white shadow-lg", t.gradient, "text-white") 
-                  : cn(t.lightBg, t.color, "group-hover:scale-110 group-hover:rotate-3 shadow-inner")
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" 
+                  : cn(t.lightBg, t.color, "group-hover:scale-110")
               )}>
-                <t.icon className={cn("h-6 w-6", isActive ? "animate-pulse" : "")} />
+                <t.icon className={cn("h-5 w-5", isActive ? "animate-pulse" : "")} />
               </div>
 
-              {/* Text Labels */}
-              <div className="flex flex-col text-right">
-                <span className={cn(
-                  "text-[13px] font-extrabold tracking-tight transition-colors",
-                  isActive ? "text-slate-900" : "text-slate-700 group-hover:text-slate-900"
-                )}>
-                  {t.label}
-                </span>
-                <span className={cn(
-                  "text-[9px] font-bold opacity-60 transition-colors",
-                  isActive ? "text-emerald-600" : "text-slate-400 group-hover:text-slate-500"
-                )}>
-                  {t.desc}
-                </span>
-              </div>
-
-              {/* Active Indicator Blob */}
-              {isActive && (
-                <div className="absolute -left-1 top-1/2 -translate-y-1/2 h-8 w-1 rounded-full bg-emerald-500" />
-              )}
+              <span className={cn(
+                "text-[10px] font-bold tracking-tight transition-colors",
+                isActive ? "text-emerald-700" : "text-slate-500 group-hover:text-slate-900"
+              )}>
+                {t.label}
+              </span>
             </button>
           )
         })}

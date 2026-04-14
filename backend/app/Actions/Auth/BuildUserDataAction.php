@@ -43,7 +43,7 @@ class BuildUserDataAction
                     'name'       => $farm->name,
                     'status'     => $farm->status,
                     'role'       => 'super_admin',
-                    'is_primary' => true,
+                    'is_primary' => false,
                 ])->values();
         } else {
             $memberships = $user->farmMemberships()

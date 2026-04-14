@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Flock extends Model
 {
@@ -81,6 +82,11 @@ class Flock extends Model
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class, 'flock_id');
+    }
+
+    public function saleItems(): HasManyThrough
+    {
+        return $this->hasManyThrough(SaleItem::class, Sale::class, 'flock_id', 'sale_id');
     }
 
     // ─── Audit ────────────────────────────────────────────────────────────────

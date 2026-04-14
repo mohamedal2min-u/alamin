@@ -18,6 +18,7 @@ class ListFlocksAction
             ->withSum('mortalities', 'quantity')
             ->withSum('expenses', 'total_amount')
             ->withSum('sales', 'net_amount')
+            ->withSum('saleItems', 'birds_count')
             ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'draft' THEN 1 ELSE 2 END")
             ->orderByDesc('start_date')
             ->get();

@@ -18,6 +18,7 @@ class StoreFeedLogRequest extends FormRequest
         return [
             'item_id'    => ['required', 'integer', "exists:items,id,farm_id,{$farmId},status,active"],
             'quantity'   => ['required', 'numeric', 'min:0.001'],
+            'entry_date' => ['nullable', 'date_format:Y-m-d'],
             'unit_label' => ['nullable', 'string', 'max:50'],
             'notes'      => ['nullable', 'string', 'max:5000'],
         ];

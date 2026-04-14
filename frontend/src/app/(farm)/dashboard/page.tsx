@@ -11,6 +11,7 @@ import { OperationalInfoCard } from '@/components/dashboard/OperationalInfoCard'
 import { QuickEntryCard } from '@/components/dashboard/QuickEntryCard'
 import { DaySummaryCard } from '@/components/dashboard/DaySummaryCard'
 import type { TodaySummary } from '@/types/dashboard'
+import type { Flock } from '@/types/flock'
 
 export default function DashboardPage() {
   const { currentFarm } = useFarmStore()
@@ -28,15 +29,15 @@ export default function DashboardPage() {
     isLoading: loadingFlocks,
     isError: hasError,
     refetch: refetchFlocks,
-  } = useQuery({
+  } = useQuery<Flock[]>({
     queryKey: ['flocks', currentFarm?.id],
-    queryFn: () => flocksApi.list().then(res => res.data),
+    queryFn: () => flocksApi.list().then((res): Flock[] => res.data),
     enabled: !!currentFarm,
     refetchInterval: 30_000,
   })
 
-  const activeFlock = flocks.find((f: any) => f.status === 'active') ?? null
-  const draftFlock = !activeFlock ? (flocks.find((f: any) => f.status === 'draft') ?? null) : null
+  const activeFlock = flocks.find((f) => f.status === 'active') ?? null
+  const draftFlock = !activeFlock ? (flocks.find((f) => f.status === 'draft') ?? null) : null
   const currentFlock = activeFlock ?? draftFlock
   const isActive = currentFlock?.status === 'active'
 

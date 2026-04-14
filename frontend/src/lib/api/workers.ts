@@ -4,8 +4,8 @@ import { apiClient } from './client'
 
 export interface CreateWorkerPayload {
   name: string
-  whatsapp?: string
-  email: string
+  whatsapp: string
+  email?: string
   password: string
   salary?: number
 }

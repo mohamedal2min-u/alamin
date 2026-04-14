@@ -147,12 +147,23 @@ class ReportService
         $totalPaidExpenses = $expensesQuery->sum('paid_amount');
         $totalReceivedSales = $salesQuery->sum('received_amount');
 
-        // Breakdown by category
-        $expensesByCategory = Expense::where('expenses.farm_id', $farmId)
+        // Breakdown by category — same filters as the main query
+        $categoryQuery = Expense::where('expenses.farm_id', $farmId)
             ->join('expense_categories', 'expenses.expense_category_id', '=', 'expense_categories.id')
             ->select('expense_categories.name as category', DB::raw('SUM(total_amount) as amount'))
-            ->groupBy('expense_categories.name')
-            ->get();
+            ->groupBy('expense_categories.name');
+
+        if ($flockId) {
+            $categoryQuery->where('expenses.flock_id', $flockId);
+        }
+        if ($startDate) {
+            $categoryQuery->where('expenses.entry_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $categoryQuery->where('expenses.entry_date', '<=', $endDate);
+        }
+
+        $expensesByCategory = $categoryQuery->get();
 
         return [
             'summary' => [
@@ -223,7 +234,10 @@ class ReportService
     {
         // 1. Partners and their current shares
         $partners = DB::table('partners')
-            ->leftJoin('farm_partner_shares', 'partners.id', '=', 'farm_partner_shares.partner_id')
+            ->leftJoin('farm_partner_shares', function ($join) {
+                $join->on('partners.id', '=', 'farm_partner_shares.partner_id')
+                     ->where('farm_partner_shares.is_active', true);
+            })
             ->where('partners.farm_id', $farmId)
             ->where('partners.status', 'active')
             ->select(

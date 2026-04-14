@@ -370,6 +370,7 @@ class InventoryController extends Controller
             ])
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')
+            ->limit(200)
             ->get();
 
         return response()->json([
@@ -406,8 +407,8 @@ class InventoryController extends Controller
         $userId = $request->user()->id;
 
         $validated = $request->validate([
-            'item_id'           => ['required', 'integer'],
-            'warehouse_id'      => ['required', 'integer'],
+            'item_id'           => ['required', 'integer', "exists:items,id,farm_id,{$farmId},status,active"],
+            'warehouse_id'      => ['required', 'integer', "exists:warehouses,id,farm_id,{$farmId},is_active,1"],
             'transaction_date'  => ['required', 'date_format:Y-m-d'],
             'original_quantity' => ['required', 'numeric', 'min:0.001'],
             'unit_price'        => ['nullable', 'numeric', 'min:0'],

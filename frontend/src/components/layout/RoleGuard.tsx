@@ -11,9 +11,8 @@ import type { FarmRole } from '@/types/auth'
  * Client-side route guard that reads the current farm's role from Zustand and
  * redirects to /unauthorized if the role cannot access the current pathname.
  *
- * Renders children immediately on the first paint (before store hydration)
- * to avoid a flash of the unauthorized page on hard refresh.
- * Once the store is hydrated and the role is known, access is re-evaluated.
+ * Shows a blank screen while the store hydrates to prevent unauthorized content
+ * from flashing before the role is known.
  */
 export function RoleGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -34,8 +33,8 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
     }
   }, [mounted, role, pathname, router])
 
-  // Before mount: render children without restriction (store not yet hydrated)
-  if (!mounted || role === null) return <>{children}</>
+  // Before mount: show nothing until store hydration is complete
+  if (!mounted || role === null) return null
 
   // After mount: suppress content while redirect is in progress
   if (!canAccessRoute(role, pathname)) return null

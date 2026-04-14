@@ -30,7 +30,7 @@ class CreateFlockExpenseAction
             'farm_id'             => $flock->farm_id,
             'flock_id'            => $flock->id,
             'expense_category_id' => $category->id,
-            'entry_date'          => now()->toDateString(),
+            'entry_date'          => $data['entry_date'] ?? now()->toDateString(),
             'expense_type'        => $data['expense_type'],
             'quantity'            => $data['quantity'] ?? null,
             'unit_price'          => $data['unit_price'] ?? null,

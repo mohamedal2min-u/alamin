@@ -38,7 +38,7 @@ Route::prefix('auth')->group(function (): void {
 */
 use App\Http\Controllers\Api\Admin\AdminRegistrationRequestController;
 
-Route::middleware('auth:sanctum')->prefix('admin')->group(function (): void {
+Route::middleware(['auth:sanctum', 'super_admin'])->prefix('admin')->group(function (): void {
     Route::get('farms',               [AdminFarmController::class, 'index']);
     Route::post('farms',              [AdminFarmController::class, 'store']);
     Route::put('farms/{farm}/admin',  [AdminFarmController::class, 'assignAdmin']);
@@ -96,8 +96,8 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::post('flocks/{flock}/expenses',      [FlockExpenseController::class, 'store']);
 
     // ── V1-H: Temperature Logs ────────────────────────────────────────────────
-    Route::get('flocks/{flock}/temperature-logs', [\App\Http\Controllers\FlockTemperatureLogController::class, 'index']);
-    Route::post('flocks/{flock}/temperature-logs', [\App\Http\Controllers\FlockTemperatureLogController::class, 'store']);
+    Route::get('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'index']);
+    Route::post('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'store']);
 
     // ── V1-I: Today Summary ───────────────────────────────────────────────────
     Route::get('flocks/{flock}/today-summary',  [FlockController::class, 'todaySummary']);

@@ -18,7 +18,7 @@ class PartnerTransactionController extends Controller
         $farmId = $request->attributes->get('farm_id');
 
         if ($partner->farm_id != $farmId) {
-            abort(403, 'Unauthorized');
+            abort(403, 'غير مصرح بالوصول إلى هذا المورد');
         }
 
         $transactions = $partner->transactions()
@@ -39,7 +39,7 @@ class PartnerTransactionController extends Controller
         $creatorUserId = $request->user()->id;
 
         if ($partner->farm_id != $farmId) {
-            abort(403, 'Unauthorized');
+            abort(403, 'غير مصرح بالوصول إلى هذا المورد');
         }
 
         $validated = $request->validate([

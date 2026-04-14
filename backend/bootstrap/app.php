@@ -13,8 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'farm.scope'  => \App\Http\Middleware\FarmScopeMiddleware::class,
-            'farm.active' => \App\Http\Middleware\CheckFarmActiveMiddleware::class,
+            'farm.scope'   => \App\Http\Middleware\FarmScopeMiddleware::class,
+            'farm.active'  => \App\Http\Middleware\CheckFarmActiveMiddleware::class,
+            'super_admin'  => \App\Http\Middleware\EnsureSuperAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

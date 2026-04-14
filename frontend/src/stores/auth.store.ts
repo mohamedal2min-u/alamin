@@ -29,7 +29,7 @@ function clearAuthCookie() {
 // ── Store ─────────────────────────────────────────────────────────────────────
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       token: null,
       user: null,
       isAuthenticated: false,
@@ -55,9 +55,7 @@ export const useAuthStore = create<AuthState>()(
           password,
         })
         const { token, user } = response.data
-        localStorage.setItem('auth_token', token)
-        setAuthCookie('1')
-        set({ token, user, isAuthenticated: true })
+        get().setAuth(token, user)
       },
     }),
     {

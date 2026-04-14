@@ -22,6 +22,7 @@ class FlockResource extends JsonResource
         }
 
         $totalMortality = (int) ($this->mortalities_sum_quantity ?? 0);
+        $totalBirdsSold = (int) ($this->sale_items_sum_birds_count ?? 0);
 
         $totalSales    = (float) ($this->sales_sum_net_amount ?? 0);
         $totalExpenses = (float) ($this->expenses_sum_total_amount ?? 0);
@@ -36,7 +37,7 @@ class FlockResource extends JsonResource
             'initial_count'    => $this->initial_count,
             'current_age_days' => $agedays,
             'total_mortality'  => $totalMortality,
-            'remaining_count'  => $this->initial_count - $totalMortality,
+            'remaining_count'  => $this->initial_count - $totalMortality - $totalBirdsSold,
             'total_sales'      => $totalSales,
             'total_expenses'   => $totalExpenses,
             'net_profit'       => $totalSales - $totalExpenses,

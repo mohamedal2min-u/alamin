@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Partner;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PartnerResource;
 use App\Models\Partner;
 use App\Models\FarmPartnerShare;
 use App\Models\User;
@@ -30,7 +31,7 @@ class PartnerController extends Controller
             ->orderBy('name')
             ->get();
 
-        return response()->json($partners);
+        return PartnerResource::collection($partners);
     }
 
     /**
@@ -42,13 +43,16 @@ class PartnerController extends Controller
         $creatorUserId = $request->user()->id;
 
         $validated = $request->validate([
-            'name' => 'required|string|max:150',
-            'email' => 'nullable|email|max:190',
-            'whatsapp' => 'required|string|max:30', // now required for login
-            'password' => 'nullable|string|min:6',
-            'status' => 'nullable|string|in:active,inactive',
-            'notes' => 'nullable|string',
+            'name'          => 'required|string|max:150',
+            'email'         => 'nullable|email|max:190',
+            'whatsapp'      => 'required|string|max:30',
+            'password'      => 'required|string|min:8',
+            'status'        => 'nullable|string|in:active,inactive',
+            'notes'         => 'nullable|string',
             'share_percent' => 'nullable|numeric|min:0|max:100',
+        ], [
+            'password.required' => 'كلمة المرور مطلوبة عند إنشاء حساب شريك جديد',
+            'password.min'      => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
         ]);
 
         $sharePercent = $validated['share_percent'] ?? 0;
@@ -74,11 +78,11 @@ class PartnerController extends Controller
             $user = User::firstWhere('whatsapp', $validated['whatsapp']);
             if (!$user) {
                 $user = clone User::create([
-                    'name' => $validated['name'],
-                    'email' => $validated['email'] ?? null,
+                    'name'     => $validated['name'],
+                    'email'    => $validated['email'] ?? null,
                     'whatsapp' => $validated['whatsapp'],
-                    'password' => Hash::make($validated['password'] ?? '12345678'),
-                    'status' => $validated['status'],
+                    'password' => Hash::make($validated['password']),
+                    'status'   => $validated['status'],
                 ]);
             } else {
                 // Sync status if user already exists
@@ -133,7 +137,8 @@ class PartnerController extends Controller
                 ]);
             }
 
-            return response()->json($partner, 201);
+            $partner->load(['shares' => fn ($q) => $q->where('is_active', true), 'user:id,name,email,whatsapp']);
+            return (new PartnerResource($partner))->response()->setStatusCode(201);
         });
     }
 
@@ -146,14 +151,14 @@ class PartnerController extends Controller
         $creatorUserId = $request->user()->id;
         
         if ($partner->farm_id != $farmId) {
-            abort(403, 'Unauthorized');
+            abort(403, 'غير مصرح بالوصول إلى هذا المورد');
         }
 
         $validated = $request->validate([
             'name' => 'required|string|max:150',
             'email' => 'nullable|email|max:190',
             'whatsapp' => 'required|string|max:30',
-            'password' => 'nullable|string|min:6', // optional update
+            'password' => 'nullable|string|min:8', // optional update
             'status' => 'required|string|in:active,inactive',
             'notes' => 'nullable|string',
             'share_percent' => 'nullable|numeric|min:0|max:100', // allow share updates
@@ -239,7 +244,8 @@ class PartnerController extends Controller
                 'updated_by' => $creatorUserId,
             ]);
 
-            return response()->json($partner);
+            $partner->load(['shares' => fn ($q) => $q->where('is_active', true), 'user:id,name,email,whatsapp']);
+            return new PartnerResource($partner);
         });
     }
 
@@ -252,7 +258,7 @@ class PartnerController extends Controller
         $creatorUserId = $request->user()->id;
 
         if ($partner->farm_id != $farmId) {
-            abort(403, 'Unauthorized');
+            abort(403, 'غير مصرح بالوصول إلى هذا المورد');
         }
 
         return DB::transaction(function () use ($partner, $farmId, $creatorUserId) {

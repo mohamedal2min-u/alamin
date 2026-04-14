@@ -19,11 +19,8 @@ class WorkerController extends Controller
     {
         $farm = $request->attributes->get('farm');
 
-        if (function_exists('setPermissionsTeamId')) {
-            setPermissionsTeamId($farm->id);
-        } else {
-            app(PermissionRegistrar::class)->setPermissionsTeamId($farm->id);
-        }
+        $registrar = app(PermissionRegistrar::class);
+        $registrar->setPermissionsTeamId($farm->id);
 
         $workers = User::role('worker')
             ->join('farm_users', 'users.id', '=', 'farm_users.user_id')
@@ -39,11 +36,7 @@ class WorkerController extends Controller
             )
             ->get();
 
-        if (function_exists('setPermissionsTeamId')) {
-            setPermissionsTeamId(null);
-        } else {
-            app(PermissionRegistrar::class)->setPermissionsTeamId(null);
-        }
+        $registrar->setPermissionsTeamId(null);
 
         return response()->json([
             'data' => $workers
@@ -57,9 +50,9 @@ class WorkerController extends Controller
     {
         $validated = $request->validate([
             'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users,email',
-            'whatsapp' => 'nullable|string|max:255|unique:users,whatsapp',
-            'password' => 'required|string|min:6',
+            'email'    => 'nullable|string|email|max:255|unique:users,email',
+            'whatsapp' => 'required|string|max:255|unique:users,whatsapp',
+            'password' => 'required|string|min:8',
             'salary'   => 'nullable|numeric|min:0',
         ]);
 
@@ -88,19 +81,10 @@ class WorkerController extends Controller
             ]);
 
             // 3. Assign Role via Spatie (Contextualized by team_id = farm->id)
-            if (function_exists('setPermissionsTeamId')) {
-                setPermissionsTeamId($farm->id);
-            } else {
-                app(PermissionRegistrar::class)->setPermissionsTeamId($farm->id);
-            }
-            
+            $registrar = app(PermissionRegistrar::class);
+            $registrar->setPermissionsTeamId($farm->id);
             $user->assignRole('worker');
-            
-            if (function_exists('setPermissionsTeamId')) {
-                setPermissionsTeamId(null);
-            } else {
-                app(PermissionRegistrar::class)->setPermissionsTeamId(null);
-            }
+            $registrar->setPermissionsTeamId(null);
 
             return response()->json([
                 'message' => 'تم إنشاء حساب العامل بنجاح',
@@ -128,19 +112,10 @@ class WorkerController extends Controller
         // Also remove the role for this team context
         $user = User::findOrFail($id);
         
-        if (function_exists('setPermissionsTeamId')) {
-            setPermissionsTeamId($farm->id);
-        } else {
-            app(PermissionRegistrar::class)->setPermissionsTeamId($farm->id);
-        }
-        
+        $registrar = app(PermissionRegistrar::class);
+        $registrar->setPermissionsTeamId($farm->id);
         $user->removeRole('worker');
-        
-        if (function_exists('setPermissionsTeamId')) {
-            setPermissionsTeamId(null);
-        } else {
-            app(PermissionRegistrar::class)->setPermissionsTeamId(null);
-        }
+        $registrar->setPermissionsTeamId(null);
 
         return response()->json([
             'message' => 'تم حذف العامل من المزرعة بنجاح'

@@ -32,8 +32,8 @@ export default function NewWorkerPage() {
     setErrorMsg('')
     setSuccessMsg('')
     
-    if (!formData.name || !formData.email || !formData.password) {
-      setErrorMsg('يرجى تعبئة الحقول الإلزامية (الاسم، البريد الإلكتروني، كلمة المرور).')
+    if (!formData.name || !formData.whatsapp || !formData.password) {
+      setErrorMsg('يرجى تعبئة الحقول الإلزامية (الاسم، رقم الواتساب، كلمة المرور).')
       return
     }
 
@@ -113,7 +113,7 @@ export default function NewWorkerPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label htmlFor="whatsapp" className="text-sm font-bold text-slate-700">رقم الهاتف / واتساب</label>
+                <label htmlFor="whatsapp" className="text-sm font-bold text-slate-700">رقم الهاتف / واتساب <span className="text-rose-500">*</span></label>
                 <Input 
                   id="whatsapp"
                   name="whatsapp" 
@@ -126,15 +126,14 @@ export default function NewWorkerPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-bold text-slate-700">البريد الإلكتروني (لتسجيل الدخول) <span className="text-rose-500">*</span></label>
+                <label htmlFor="email" className="text-sm font-bold text-slate-700">البريد الإلكتروني (اختياري)</label>
                 <Input 
                   id="email"
                   name="email" 
                   type="email"
-                  placeholder="name@example.com" 
+                  placeholder="name@example.com"
                   value={formData.email}
                   onChange={handleChange}
-                  required
                   dir="ltr"
                   className="h-11 text-left"
                 />

@@ -79,6 +79,11 @@ export default function WorkerPage() {
     }
   }, [summary])
 
+  const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining') => {
+    if (type === 'remaining') return
+    handleTaskClick(type)
+  }
+
   return (
     <div className="space-y-6 px-5 pt-5 pb-8" dir="rtl">
       {/* ── Error Notification ── */}

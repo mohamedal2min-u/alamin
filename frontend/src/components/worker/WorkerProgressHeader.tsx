@@ -36,20 +36,22 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onSt
   return (
     <div className="space-y-4">
       {/* ── Stitch Refined Header ── */}
-      <div className="flex flex-col gap-3">
+      <div className="premium-glass rounded-[2rem] p-5 shadow-premium">
         {/* Title Row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-emerald-900">
-             <div className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-emerald-900/10 bg-emerald-50/50">
-              <Home className="h-4 w-4 text-emerald-900" strokeWidth={3} />
+        <div className="flex items-center justify-between pb-4">
+          <div className="flex items-center gap-3">
+             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-emerald-sm">
+              <Home className="h-5 w-5" />
             </div>
-            <h2 className="text-xl font-black tracking-tight">
-              {flock?.name ?? 'فوج التسمين'}
-            </h2>
-          </div>
-          <div className="flex items-center gap-1.5 text-emerald-600">
-            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <span className="text-xs font-black">مستقر</span>
+            <div>
+              <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+                {flock?.name ?? 'فوج التسمين'}
+              </h2>
+              <div className="flex items-center gap-1.5 text-emerald-600">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">الحالة: مستقر</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -57,23 +59,26 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onSt
         <div className="h-px w-full bg-slate-100" />
 
         {/* Meta Grid Row */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-4 text-[11px] font-bold">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">البدء:</span>
-              <span className="text-slate-700 tabular-nums">{arabicDate}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-5 text-[11px] font-bold">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-slate-400">تاريخ البدء</span>
+              <span className="text-slate-900 tabular-nums">{arabicDate}</span>
             </div>
-            <div className="h-3 w-px bg-slate-200" />
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">الإجمالي:</span>
-              <span className="text-slate-700 tabular-nums">{flock?.initial_count?.toLocaleString() ?? '20,000'}</span>
+            <div className="h-6 w-px bg-slate-200" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-slate-400">العدد الأصلي</span>
+              <span className="text-slate-900 tabular-nums">{flock?.initial_count?.toLocaleString() ?? '20,000'}</span>
             </div>
           </div>
 
-          <div className="rounded-full bg-emerald-50/70 px-4 py-1.5 border border-emerald-100/50">
-            <div className="flex items-center gap-2 text-[11px] font-bold">
-              <span className="text-emerald-600/70">المتبقي:</span>
-              <span className="text-emerald-700 text-sm font-black tabular-nums">{flock?.remaining_count?.toLocaleString() ?? '18,500'}</span>
+          <div className="relative overflow-hidden rounded-2xl bg-emerald-600 px-5 py-2 shadow-emerald">
+            <div className="absolute inset-0 animate-shimmer" />
+            <div className="relative flex flex-col items-center">
+              <span className="text-[9px] font-bold uppercase text-emerald-100 tracking-widest">المتبقي حالياً</span>
+              <span className="text-lg font-black text-white tabular-nums tracking-tighter">
+                {flock?.remaining_count?.toLocaleString() ?? '18,500'}
+              </span>
             </div>
           </div>
         </div>
@@ -157,7 +162,7 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
     <button 
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-4 rounded-[2rem] p-5 border text-right transition-all duration-300 active:scale-95 hover:shadow-md",
+        "flex flex-col gap-4 rounded-[2rem] p-5 border text-right transition-all duration-300 active:scale-95 shadow-sm hover:shadow-premium hover:-translate-y-1",
         bgColors[color]
       )}
     >

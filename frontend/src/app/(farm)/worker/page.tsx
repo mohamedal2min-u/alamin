@@ -11,6 +11,7 @@ import { WorkerProgressHeader } from '@/components/worker/WorkerProgressHeader'
 import { WorkerGuidelinesCard } from '@/components/worker/WorkerGuidelinesCard'
 import { WorkerTaskChecklist } from '@/components/worker/WorkerTaskChecklist'
 import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
+import { WorkerQuickEntryCard } from '@/components/worker/WorkerQuickEntryCard'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
@@ -129,7 +130,13 @@ export default function WorkerPage() {
             birdCount={activeFlock.remaining_count} 
           />
 
-          {/* 3. Task Status Summary Card */}
+          {/* 3. Redesigned Quick Entry Cards (2x2) */}
+          <WorkerQuickEntryCard 
+            flockId={activeFlock.id} 
+            onSuccess={handleEntrySuccess} 
+          />
+
+          {/* 4. Task Status Summary Card */}
           <WorkerTaskChecklist 
             summary={summary ?? emptyTodaySummary()} 
             onTaskClick={() => {}} // Could link to a more detailed checklist page later

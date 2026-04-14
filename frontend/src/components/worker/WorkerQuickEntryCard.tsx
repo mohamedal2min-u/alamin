@@ -10,7 +10,16 @@ import { inventoryApi } from '@/lib/api/inventory'
 import { quickEntryApi } from '@/lib/api/quick-entry'
 import { mortalitiesApi } from '@/lib/api/mortalities'
 import { workerApi } from '@/lib/api/worker'
-import { cn, formatNumber } from '@/lib/utils'
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+function formatNumber(num: number) {
+  return new Intl.NumberFormat('en-US').format(num)
+}
 import { Dialog } from '@/components/ui/Dialog'
 import type { InventoryItem } from '@/types/dashboard'
 import { toast } from 'sonner'

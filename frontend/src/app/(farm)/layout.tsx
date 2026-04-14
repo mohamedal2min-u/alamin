@@ -10,7 +10,12 @@ import { useLayoutStore } from '@/stores/layout.store'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState} from 'react'
 import { RefreshCcw } from 'lucide-react'
-import { cn } from '../../lib/utils'
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 import { usePathname } from 'next/navigation'
 
 export default function FarmLayout({ children }: { children: React.ReactNode }) {

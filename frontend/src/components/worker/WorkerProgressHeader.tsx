@@ -1,6 +1,11 @@
 'use client'
 
-import { cn } from '../../lib/utils'
+import { clsx, type ClassValue} from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 import { Bird, Skull, Wheat, Syringe, Home } from 'lucide-react'
 
 interface Props {

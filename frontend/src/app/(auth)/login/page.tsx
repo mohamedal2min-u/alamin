@@ -11,9 +11,15 @@ import { canAccessRoute, getDefaultRoute } from '@/lib/roles'
 import { apiClient } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { cn } from '../../../lib/utils'
 import type { Farm } from '@/types/farm'
 import type { FarmRole } from '@/types/auth'
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+// ── Local Utils (Fallback for build issues) ──────────────────────────────────
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
 // ── Mode ──────────────────────────────────────────────────────────────────────
 type AuthMode = 'login' | 'register'

@@ -126,26 +126,73 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
   }
 
 
+  const themes = {
+    mortality: { 
+      text: 'text-rose-600', 
+      bg: 'bg-rose-600', 
+      border: 'focus:border-rose-500', 
+      ring: 'focus:ring-rose-500/10', 
+      shadow: 'shadow-rose-500/20',
+      activeRing: 'ring-rose-500/10',
+      iconShadow: 'shadow-rose-500/30'
+    },
+    feed: { 
+      text: 'text-amber-600', 
+      bg: 'bg-amber-600', 
+      border: 'focus:border-amber-500', 
+      ring: 'focus:ring-amber-500/10', 
+      shadow: 'shadow-amber-500/20',
+      activeRing: 'ring-amber-500/10',
+      iconShadow: 'shadow-amber-500/30'
+    },
+    medicine: { 
+      text: 'text-emerald-600', 
+      bg: 'bg-emerald-600', 
+      border: 'focus:border-emerald-500', 
+      ring: 'focus:ring-emerald-500/10', 
+      shadow: 'shadow-emerald-500/20',
+      activeRing: 'ring-emerald-500/10',
+      iconShadow: 'shadow-emerald-500/30'
+    },
+    temp: { 
+      text: 'text-indigo-600', 
+      bg: 'bg-indigo-600', 
+      border: 'focus:border-indigo-500', 
+      ring: 'focus:ring-indigo-500/10', 
+      shadow: 'shadow-indigo-500/20',
+      activeRing: 'ring-indigo-500/10',
+      iconShadow: 'shadow-indigo-500/30'
+    },
+  }
+
+  const currentTheme = activeTab ? themes[activeTab] : themes.medicine
+  const dynamicInputClass = cn(
+    'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-900',
+    'transition-all duration-300 placeholder:text-slate-300',
+    'focus:outline-none focus:ring-4 shadow-sm',
+    currentTheme.border,
+    currentTheme.ring
+  )
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-slate-50/50 p-5 border border-slate-100 shadow-sm">
+    <div className="relative overflow-hidden rounded-[2.5rem] bg-white p-6 shadow-xl shadow-slate-200/60 border border-slate-50">
       {/* ── Background Decoration ── */}
-      <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/5 blur-3xl" />
-      <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-amber-500/5 blur-3xl" />
+      <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/5 blur-3xl opacity-50" />
+      <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-amber-500/5 blur-3xl opacity-50" />
 
       {/* ── Section Label ── */}
-      <div className="relative mb-5 flex items-center justify-between px-1">
+      <div className="relative mb-6 flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shadow-sm">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-            <ClipboardEdit className="h-5 w-5" />
+          <div className="flex h-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 px-3 font-bold text-xs gap-2">
+            <ClipboardEdit className="h-4 w-4" />
+            <span>تسجيل جديد</span>
           </div>
           <div>
             <h3 className="text-base font-extrabold text-slate-800">التسجيل السريع</h3>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Quick Operations</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quick Operations</p>
           </div>
         </div>
-        <div className="h-2 w-2 animate-ping rounded-full bg-emerald-500" />
+        <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
       </div>
 
       {/* ── 4-Card Interaction Grid ── */}
@@ -160,7 +207,7 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
               className={cn(
                 "group relative flex flex-col items-center justify-center rounded-2xl border transition-all duration-500 active:scale-90",
                 isActive 
-                  ? cn("border-transparent bg-white shadow-2xl", `ring-4 ring-${theme.color}-500/10`) 
+                  ? cn("border-transparent bg-white shadow-2xl ring-4", theme.activeRing) 
                   : "border-slate-100 bg-white shadow-sm hover:border-slate-200 hover:shadow-md"
               )}
             >
@@ -168,7 +215,7 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
               <div className={cn(
                 "mb-2.5 flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-500",
                 isActive 
-                  ? cn(theme.bg, "text-white shadow-lg", `shadow-${theme.color}-500/30`) 
+                  ? cn(theme.bg, "text-white shadow-lg", theme.iconShadow) 
                   : cn("bg-slate-50 text-slate-400 group-hover:scale-110")
               )}>
                 <t.icon className={cn("h-5 w-5", isActive ? "animate-pulse" : "")} />
@@ -176,7 +223,7 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
 
               <span className={cn(
                 "text-[10px] font-extrabold tracking-tight transition-colors",
-                isActive ? `text-${theme.color}-600` : "text-slate-400 group-hover:text-slate-600"
+                isActive ? theme.text : "text-slate-400 group-hover:text-slate-600"
               )}>
                 {t.label}
               </span>
@@ -288,12 +335,16 @@ function FormField({ label, children, required }: any) {
   )
 }
 
+function NumericInput({ value, onChange, placeholder, min, step, className }: any) {
+  return <input type="number" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} min={min} step={step} className={className} dir="ltr" />
+}
+
+function SelectInput({ value, onChange, options, placeholder, emptyMessage, className }: any) {
+  if (options.length === 0) return <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-4 text-[10px] font-bold text-slate-400 italic text-center uppercase tracking-tight">{emptyMessage}</div>
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={className}>
       <option value="">{placeholder}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
+      {options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   )
 }

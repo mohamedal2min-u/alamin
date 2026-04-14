@@ -111,10 +111,34 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
   }
 
   const themes = {
-    mortality: { color: 'rose',    bg: 'bg-rose-600',    border: 'focus:border-rose-500',    ring: 'focus:ring-rose-500/10' },
-    feed:      { color: 'amber',   bg: 'bg-amber-600',   border: 'focus:border-amber-500',   ring: 'focus:ring-amber-500/10' },
-    medicine:  { color: 'emerald', bg: 'bg-emerald-600', border: 'focus:border-emerald-500', ring: 'focus:ring-emerald-500/10' },
-    temp:      { color: 'indigo',  bg: 'bg-indigo-600',  border: 'focus:border-indigo-500',  ring: 'focus:ring-indigo-500/10' },
+    mortality: { 
+      text: 'text-rose-600', 
+      bg: 'bg-rose-600', 
+      border: 'focus:border-rose-500', 
+      ring: 'focus:ring-rose-500/10',
+      shadow: 'shadow-rose-500/20'
+    },
+    feed: { 
+      text: 'text-amber-600', 
+      bg: 'bg-amber-600', 
+      border: 'focus:border-amber-500', 
+      ring: 'focus:ring-amber-500/10',
+      shadow: 'shadow-amber-500/20'
+    },
+    medicine: { 
+      text: 'text-emerald-600', 
+      bg: 'bg-emerald-600', 
+      border: 'focus:border-emerald-500', 
+      ring: 'focus:ring-emerald-500/10',
+      shadow: 'shadow-emerald-500/20'
+    },
+    temp: { 
+      text: 'text-indigo-600', 
+      bg: 'bg-indigo-600', 
+      border: 'focus:border-indigo-500', 
+      ring: 'focus:ring-indigo-500/10',
+      shadow: 'shadow-indigo-500/20'
+    },
   }
 
   const currentTheme = activeTab ? themes[activeTab] : themes.medicine
@@ -177,7 +201,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
                     className={cn(
                       "py-3 rounded-xl text-xs font-bold border transition-all duration-300", 
                       tempTime === t.id 
-                        ? cn(currentTheme.bg, "border-transparent text-white shadow-lg shadow-indigo-100") 
+                        ? cn(currentTheme.bg, "border-transparent text-white shadow-lg", currentTheme.shadow) 
                         : "bg-white border-slate-100 text-slate-400 hover:border-slate-300"
                     )}
                   >
@@ -203,9 +227,9 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
           onClick={handleSubmit} 
           disabled={loading} 
           className={cn(
-            "w-full rounded-2xl py-4 text-sm font-bold text-white transition-all duration-300 active:scale-[0.98] disabled:opacity-50",
+            "w-full rounded-2xl py-4 text-sm font-bold text-white transition-all duration-300 active:scale-[0.98] disabled:opacity-50 shadow-xl",
             currentTheme.bg,
-            `shadow-xl shadow-${currentTheme.color}-500/20`
+            currentTheme.shadow
           )}
         >
           {loading ? 'جارٍ الحفظ...' : 'تأكيد الحفظ'}

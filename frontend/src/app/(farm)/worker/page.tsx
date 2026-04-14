@@ -10,6 +10,7 @@ import { useLayoutStore } from '@/stores/layout.store'
 import { WorkerProgressHeader } from '@/components/worker/WorkerProgressHeader'
 import { WorkerGuidelinesCard } from '@/components/worker/WorkerGuidelinesCard'
 import { WorkerTaskChecklist } from '@/components/worker/WorkerTaskChecklist'
+import { WorkerQuickEntryCard } from '@/components/worker/WorkerQuickEntryCard'
 import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
@@ -121,6 +122,12 @@ export default function WorkerPage() {
             isLoading={isSummaryLoading}
             viewDate={todayDate}
             onStatClick={handleStatClick}
+          />
+
+          {/* 1.5 Quick Entry Interaction Cards (Vibrant Theme) */}
+          <WorkerQuickEntryCard 
+            flockId={activeFlock.id} 
+            onSuccess={handleEntrySuccess} 
           />
 
           {/* 2. Operational Guidelines Banner */}

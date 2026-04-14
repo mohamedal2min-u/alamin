@@ -135,55 +135,88 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
 }) {
   if (isLoading) {
     return (
-      <div className="h-[120px] animate-pulse rounded-[2rem] bg-slate-50 border border-slate-100" />
+      <div className="h-[140px] animate-pulse rounded-[2.5rem] bg-slate-50 border border-slate-100" />
     )
   }
 
-  const bgColors = {
-    red:   'bg-red-50/30 border-red-100/50',
-    amber: 'bg-amber-50/30 border-amber-100/50',
-    pink:  'bg-pink-50/30 border-pink-100/50',
-    green: 'bg-emerald-50/30 border-emerald-100/50',
+  const themes = {
+    red: {
+      bg: 'bg-white',
+      border: 'border-rose-100',
+      shadow: 'shadow-xl shadow-rose-500/10',
+      iconBg: 'bg-rose-50 text-rose-600',
+      text: 'text-rose-600',
+      glow: 'hover:shadow-rose-500/20 hover:border-rose-200'
+    },
+    amber: {
+      bg: 'bg-white',
+      border: 'border-amber-100',
+      shadow: 'shadow-xl shadow-amber-500/10',
+      iconBg: 'bg-amber-50 text-amber-600',
+      text: 'text-amber-600',
+      glow: 'hover:shadow-amber-500/20 hover:border-amber-200'
+    },
+    pink: {
+      bg: 'bg-white',
+      border: 'border-pink-100',
+      shadow: 'shadow-xl shadow-pink-500/10',
+      iconBg: 'bg-pink-50 text-pink-600',
+      text: 'text-pink-600',
+      glow: 'hover:shadow-pink-500/20 hover:border-pink-200'
+    },
+    green: {
+      bg: 'bg-white',
+      border: 'border-emerald-100',
+      shadow: 'shadow-xl shadow-emerald-500/10',
+      iconBg: 'bg-emerald-50 text-emerald-600',
+      text: 'text-emerald-700',
+      glow: 'hover:shadow-emerald-500/20 hover:border-emerald-200'
+    }
   }
 
-  const iconColors = {
-    red:   'bg-white text-red-600 shadow-sm border-red-50',
-    amber: 'bg-white text-amber-600 shadow-sm border-amber-50',
-    pink:  'bg-white text-pink-600 shadow-sm border-pink-50',
-    green: 'bg-white text-emerald-600 shadow-sm border-emerald-50',
-  }
+  const theme = themes[color]
 
   return (
     <button 
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-4 rounded-[2rem] p-5 border text-right transition-all duration-300 active:scale-95 hover:shadow-md",
-        bgColors[color]
+        "group relative flex flex-col gap-5 rounded-[2.5rem] p-6 border text-right transition-all duration-500 active:scale-95",
+        theme.bg,
+        theme.border,
+        theme.shadow,
+        theme.glow
       )}
     >
       <div className="flex items-start justify-between">
-         <span className="text-[11px] font-bold text-slate-400">
+         <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">
           {label}
         </span>
-        <div className={cn("flex h-10 w-10 items-center justify-center rounded-2xl border", iconColors[color])}>
+        <div className={cn(
+          "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3", 
+          theme.iconBg
+        )}>
           {icon}
         </div>
       </div>
       
-      <div className="flex flex-col">
-        <span className="text-[12px] font-bold text-slate-400 tabular-nums">
+      <div className="flex flex-col gap-1">
+        <span className="text-[13px] font-bold text-slate-400 tabular-nums">
           {equation}
         </span>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-black text-slate-900 tabular-nums tracking-tighter">
+          <span className={cn("text-4xl font-black tabular-nums tracking-tighter", theme.text)}>
             {value}
           </span>
-          {unit && <span className="text-xs font-bold text-slate-400">{unit}</span>}
-          <span className="text-xl font-black text-slate-300 leading-none">
+          {unit && <span className="text-sm font-bold text-slate-400">{unit}</span>}
+          <div className="flex-1" />
+          <span className="text-2xl font-black text-slate-200 leading-none mb-1">
             =
           </span>
         </div>
       </div>
+
+      {/* Subtle Glow Overlay */}
+      <div className="absolute inset-x-0 bottom-0 h-1 rounded-full bg-gradient-to-r from-transparent via-current to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-20" />
     </button>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { cn } from '../../lib/utils'
 import { Bird, Skull, Wheat, Syringe, Home } from 'lucide-react'
 
 interface Props {

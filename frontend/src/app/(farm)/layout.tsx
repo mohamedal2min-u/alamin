@@ -10,7 +10,7 @@ import { useLayoutStore } from '@/stores/layout.store'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState} from 'react'
 import { RefreshCcw } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '../../lib/utils'
 import { usePathname } from 'next/navigation'
 
 export default function FarmLayout({ children }: { children: React.ReactNode }) {

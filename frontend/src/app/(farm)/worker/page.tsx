@@ -11,16 +11,15 @@ import { WorkerProgressHeader } from '@/components/worker/WorkerProgressHeader'
 import { WorkerGuidelinesCard } from '@/components/worker/WorkerGuidelinesCard'
 import { WorkerTaskChecklist } from '@/components/worker/WorkerTaskChecklist'
 import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
-import { SystemAlert } from '@/components/worker/SystemAlert'
-import { Last7DaysSummary } from '@/components/worker/Last7DaysSummary'
 import type { TodaySummary } from '@/types/dashboard'
+import type { Flock } from '@/types/flock'
 
 export default function WorkerPage() {
   const { currentFarm } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
-  
+
   const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | null>(null)
-  const [entryExtra, setEntryExtra] = useState<any>(null)
+  const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
 
   useEffect(() => {
     setPageTitle('لوحة العامل')
@@ -32,14 +31,14 @@ export default function WorkerPage() {
     isLoading: loadingFlocks,
     isError: hasError,
     refetch: refetchFlocks,
-  } = useQuery({
+  } = useQuery<Flock[]>({
     queryKey: ['flocks', currentFarm?.id],
-    queryFn: () => flocksApi.list().then(res => res.data),
+    queryFn: () => flocksApi.list().then((res): Flock[] => res.data),
     enabled: !!currentFarm,
     refetchInterval: 30_000,
   })
 
-  const activeFlock = flocks.find((f: any) => f.status === 'active') ?? null
+  const activeFlock = flocks.find((f) => f.status === 'active') ?? null
   const isActive = activeFlock !== null
 
   const todayDate = new Date().getFullYear() + '-' + 
@@ -62,8 +61,8 @@ export default function WorkerPage() {
     refetchFlocks()
   }
 
-  const handleTaskClick = (type: any, extra?: any) => {
-    setEntryExtra(extra)
+  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine', extra?: Record<string, unknown>) => {
+    setEntryExtra(extra ?? null)
     setActiveEntryTab(type)
   }
 
@@ -79,13 +78,6 @@ export default function WorkerPage() {
       total: tasks.length
     }
   }, [summary])
-
-  // Stitch Placeholder Data for History
-  const historyData = [
-    { day: 12, mortality: 2, feed: 18, performance: 95 },
-    { day: 11, mortality: 1, feed: 17, performance: 98 },
-    { day: 10, mortality: 5, feed: 17, performance: 88 },
-  ]
 
   return (
     <div className="space-y-6 px-5 pt-5 pb-8" dir="rtl">
@@ -138,12 +130,6 @@ export default function WorkerPage() {
             onTaskClick={() => {}} // Could link to a more detailed checklist page later
           />
           
-          {/* 4. Critical System Alert (Stitch Amber Bar) */}
-          <SystemAlert message="يجب فحص ضغط المياه في العنبر رقم 4 خلال الساعة القادمة" />
-
-          {/* 5. Historical Summary (Last 7 Days) */}
-          <Last7DaysSummary data={historyData} />
-
           {/* Entry Dialog (Logical layer) */}
           <WorkerEntryDialog 
             flockId={activeFlock.id}

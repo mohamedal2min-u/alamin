@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   AlertCircle, Skull, 
   Wheat, Syringe, ThermometerSun
@@ -19,12 +19,12 @@ type Tab = 'mortality' | 'feed' | 'medicine' | 'temp'
 interface Props {
   flockId: number
   activeTab: Tab | null
-  initialExtra?: any
+  initialExtra?: Record<string, unknown> | null
   onClose: () => void
   onSuccess?: () => void
 }
 
-const TABS: Record<Tab, { label: string; icon: any }> = {
+const TABS: Record<Tab, { label: string; icon: React.ElementType }> = {
   mortality: { label: 'نفوق',   icon: Skull },
   feed:      { label: 'علف',    icon: Wheat },
   medicine:  { label: 'دواء',   icon: Syringe },

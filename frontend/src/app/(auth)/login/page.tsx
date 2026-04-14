@@ -11,6 +11,7 @@ import { canAccessRoute, getDefaultRoute } from '@/lib/roles'
 import { apiClient } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { cn } from '../../../lib/utils'
 import type { Farm } from '@/types/farm'
 import type { FarmRole } from '@/types/auth'
 

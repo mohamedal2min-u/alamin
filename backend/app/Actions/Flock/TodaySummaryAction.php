@@ -16,8 +16,10 @@ class TodaySummaryAction
 
         // ── Flock Stats ───────────────────────────────────────────────────────────
         $totalMortalityAcrossTime = FlockMortality::where('flock_id', $flock->id)->sum('quantity');
-        $remainingCount = $flock->initial_count - $totalMortalityAcrossTime;
-        $currentAgeDays = now()->diffInDays($flock->start_date);
+        $totalBirdsSold = \App\Models\SaleItem::where('flock_id', $flock->id)->sum('birds_count');
+        $remainingCount = $flock->initial_count - $totalMortalityAcrossTime - (int) $totalBirdsSold;
+        $currentAgeDays = \Carbon\Carbon::parse($flock->start_date)->startOfDay()
+            ->diffInDays(\Carbon\Carbon::today()->startOfDay()) + 1;
 
         $flockInfo = [
             'name'             => $flock->name,
@@ -42,19 +44,17 @@ class TodaySummaryAction
         // Fetch ALL medicines, including what might be water
         $allMedicines = FlockMedicine::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)
-            ->with(['item:id,name,content_unit', 'worker:id,name'])
+            ->with(['item:id,name,content_unit,item_type_id', 'item.itemType:id,code', 'worker:id,name'])
             ->get(['item_id', 'quantity', 'unit_label', 'worker_id', 'created_at']);
 
-        // Split medicines into "Water" and "Actual Medicines"
-        $waterEntries = $allMedicines->filter(function ($m) {
-            $name = $m->item?->name ?? '';
-            return str_contains($name, 'ماء') || str_contains(strtolower($name), 'water');
-        });
+        // Split medicines into "Water" and "Actual Medicines" — use itemType.code
+        $waterEntries = $allMedicines->filter(
+            fn ($m) => $m->item?->itemType?->code === 'water'
+        );
 
-        $medicineEntries = $allMedicines->reject(function ($m) {
-            $name = $m->item?->name ?? '';
-            return str_contains($name, 'ماء') || str_contains(strtolower($name), 'water');
-        });
+        $medicineEntries = $allMedicines->reject(
+            fn ($m) => $m->item?->itemType?->code === 'water'
+        );
 
         $expenses = Expense::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)

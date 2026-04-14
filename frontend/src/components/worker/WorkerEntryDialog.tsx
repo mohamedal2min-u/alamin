@@ -61,7 +61,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
   useEffect(() => {
     if (activeTab === 'feed') inventoryApi.items('feed').then((res) => setFeedItems(res.data))
     if (activeTab === 'medicine') inventoryApi.items('medicine').then((res) => setMedItems(res.data))
-    if (activeTab === 'temp' && initialExtra?.time) setTempTime(initialExtra.time)
+    if (activeTab === 'temp' && initialExtra?.time) setTempTime(initialExtra.time as 'morning' | 'afternoon' | 'evening')
   }, [activeTab, initialExtra])
 
   const resetFields = () => {

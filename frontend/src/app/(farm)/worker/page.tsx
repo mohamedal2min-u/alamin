@@ -120,7 +120,7 @@ export default function WorkerPage() {
             summary={summary}
             isLoading={isSummaryLoading}
             viewDate={todayDate}
-            onStatClick={handleTaskClick}
+            onStatClick={handleStatClick}
           />
 
           {/* 2. Operational Guidelines Banner */}

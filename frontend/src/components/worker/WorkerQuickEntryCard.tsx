@@ -137,56 +137,57 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
       <div className="relative mb-5 flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shadow-sm">
-            <ClipboardEdit className="h-4 w-4" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+            <ClipboardEdit className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-800 tracking-tight">التسجيل المباشر</h3>
-            <p className="text-[10px] font-medium text-slate-400">سجل بياناتك بلمسة واحدة</p>
+            <h3 className="text-base font-extrabold text-slate-800">التسجيل السريع</h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Quick Operations</p>
           </div>
         </div>
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-200 shadow-sm">
-          <Sparkles className="h-3.5 w-3.5" />
-        </div>
+        <div className="h-2 w-2 animate-ping rounded-full bg-emerald-500" />
       </div>
 
       {/* ── 4-Card Interaction Grid ── */}
       <div className="relative grid grid-cols-4 gap-3 mb-6">
         {TABS.map((t) => {
           const isActive = activeTab === t.key
+          const theme = themes[t.key as Tab]
           return (
             <button
               key={t.key}
               onClick={() => handleCardClick(t.key)}
               className={cn(
-                "group relative flex flex-col items-center justify-center rounded-2xl border bg-white p-3.5 transition-all duration-300 active:scale-95",
+                "group relative flex flex-col items-center justify-center rounded-2xl border transition-all duration-500 active:scale-90",
                 isActive 
-                  ? "border-emerald-600 shadow-lg shadow-emerald-100 ring-4 ring-emerald-500/10" 
-                  : "border-slate-100 shadow-sm hover:border-emerald-200 hover:shadow-md hover:shadow-slate-200/50"
+                  ? cn("border-transparent bg-white shadow-2xl", `ring-4 ring-${theme.color}-500/10`) 
+                  : "border-slate-100 bg-white shadow-sm hover:border-slate-200 hover:shadow-md"
               )}
             >
               {/* Icon Container */}
               <div className={cn(
-                "mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300",
+                "mb-2.5 flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-500",
                 isActive 
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" 
-                  : cn(t.lightBg, t.color, "group-hover:scale-110")
+                  ? cn(theme.bg, "text-white shadow-lg", `shadow-${theme.color}-500/30`) 
+                  : cn("bg-slate-50 text-slate-400 group-hover:scale-110")
               )}>
                 <t.icon className={cn("h-5 w-5", isActive ? "animate-pulse" : "")} />
               </div>
 
               <span className={cn(
-                "text-[10px] font-bold tracking-tight transition-colors",
-                isActive ? "text-emerald-700" : "text-slate-500 group-hover:text-slate-900"
+                "text-[10px] font-extrabold tracking-tight transition-colors",
+                isActive ? `text-${theme.color}-600` : "text-slate-400 group-hover:text-slate-600"
               )}>
                 {t.label}
               </span>
+              
+              {isActive && (
+                <div className={cn("absolute -bottom-1 h-1.5 w-6 rounded-full", theme.bg)} />
+              )}
             </button>
           )
         })}
       </div>
-
-      {/* ── End Day Button ── */}
-
 
       {/* ── Modal Entry Form ── */}
       <Dialog 
@@ -194,170 +195,99 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
         onClose={() => setActiveTab(null)}
         title={activeTab ? `تسجيل ${TABS.find(t => t.key === activeTab)?.label} جديد` : ''}
       >
-        <div className="space-y-5">
-          <div className="space-y-5">
-            {/* ── Mortality ── */}
-            {activeTab === 'mortality' && (
-              <div className="space-y-4">
-                <FormField label="عدد الطيور النافقة" required>
-                  <NumericInput value={mQty} onChange={setMQty} placeholder="0" min={1} />
-                </FormField>
-                <FormField label="سبب أو ملاحظات">
-                  <input
-                    type="text"
-                    value={mReason}
-                    onChange={(e) => setMReason(e.target.value)}
-                    placeholder="مثال: إجهاد حراري..."
-                    className={inputClass}
-                  />
-                </FormField>
-              </div>
-            )}
-
-            {/* ── Feed ── */}
-            {activeTab === 'feed' && (
-              <div className="space-y-4">
-                <FormField label="نوع العلف" required>
-                  <SelectInput
-                    value={feedItemId}
-                    onChange={setFeedItemId}
-                    options={feedItems.map((i) => ({ value: String(i.id), label: i.name }))}
-                    placeholder="اختر النوع من المخزن"
-                    emptyMessage="لا يوجد مخزون علف"
-                  />
-                </FormField>
-                <FormField label="الكمية (بالكيلو/كيس)" required>
-                  <NumericInput value={feedQty} onChange={setFeedQty} placeholder="0.00" min={0.001} step={0.5} />
-                </FormField>
-              </div>
-            )}
-
-            {/* ── Medicine ── */}
-            {activeTab === 'medicine' && (
-              <div className="space-y-4">
-                <FormField label="الدواء المختص" required>
-                  <SelectInput
-                    value={medItemId}
-                    onChange={setMedItemId}
-                    options={medItems.map((i) => ({ value: String(i.id), label: i.name }))}
-                    placeholder="اختر الصنف"
-                    emptyMessage="لا يوجد مخزون أدوية"
-                  />
-                </FormField>
-                <FormField label="الكمية المستخدمة" required>
-                  <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} step={0.1} />
-                </FormField>
-              </div>
-            )}
-
-            {/* ── Temperature ── */}
-            {activeTab === 'temp' && (
-              <div className="space-y-4">
-                <FormField label="وقت القراءة" required>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'morning', label: 'صباحاً' },
-                      { id: 'afternoon', label: 'ظهراً' },
-                      { id: 'evening', label: 'مساءً' },
-                    ].map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setTempTime(t.id as any)}
-                        className={cn(
-                          "py-2 rounded-lg text-xs font-bold transition-all border",
-                          tempTime === t.id 
-                            ? "bg-amber-600 border-amber-600 text-white" 
-                            : "bg-white border-slate-200 text-slate-600 hover:border-amber-300"
-                        )}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </FormField>
-                <FormField label="درجة الحرارة (°C)" required>
-                  <NumericInput value={tempVal} onChange={setTempVal} placeholder="0.0" step={0.1} />
-                </FormField>
-              </div>
-            )}
-
-            {/* Feedback Messages */}
-            <div className="min-h-[40px]">
-              {error && (
-                <div className="flex items-center gap-2 rounded-xl border border-rose-100 bg-rose-50 p-3 text-rose-700 animate-in fade-in slide-in-from-top-1">
-                  <AlertCircle className="h-4 w-4" />
-                  <p className="text-[11px] font-bold">{error}</p>
-                </div>
-              )}
+        <div className="space-y-6 pt-2">
+          {activeTab === 'mortality' && (
+            <div className="space-y-5">
+              <FormField label="عدد الطيور النافقة" required>
+                <NumericInput value={mQty} onChange={setMQty} placeholder="0" min={1} className={dynamicInputClass} />
+              </FormField>
+              <FormField label="سبب أو ملاحظات">
+                <input type="text" value={mReason} onChange={(e) => setMReason(e.target.value)} placeholder="مثال: إجهاد حراري..." className={dynamicInputClass} />
+              </FormField>
             </div>
+          )}
 
-            {/* Submit Button */}
-            <button
-              onClick={handleSubmit}
-              disabled={loading || success}
-              className={cn(
-                "group relative w-full overflow-hidden rounded-xl bg-emerald-600 py-3.5 text-center shadow-lg shadow-emerald-200 transition-all duration-200 hover:bg-emerald-700 active:scale-95 disabled:opacity-50",
-                loading && "cursor-not-allowed"
-              )}
-            >
-              <span className="text-sm font-bold text-white">
-                {loading ? 'جارٍ الحفظ...' : 'تأكيد الحفظ'}
-              </span>
-            </button>
-          </div>
+          {activeTab === 'feed' && (
+            <div className="space-y-5">
+              <FormField label="نوع العلف" required>
+                <SelectInput value={feedItemId} onChange={setFeedItemId} options={feedItems.map((i) => ({ value: String(i.id), label: i.name }))} placeholder="اختر النوع من المخزن" emptyMessage="لا يوجد مخزون علف" className={dynamicInputClass} />
+              </FormField>
+              <FormField label="الكمية (بالكيلو/كيس)" required>
+                <NumericInput value={feedQty} onChange={setFeedQty} placeholder="0.00" min={0.001} step={0.5} className={dynamicInputClass} />
+              </FormField>
+            </div>
+          )}
+
+          {activeTab === 'medicine' && (
+            <div className="space-y-5">
+              <FormField label="الدواء المختص" required>
+                <SelectInput value={medItemId} onChange={setMedItemId} options={medItems.map((i) => ({ value: String(i.id), label: i.name }))} placeholder="اختر الصنف" emptyMessage="لا يوجد مخزون أدوية" className={dynamicInputClass} />
+              </FormField>
+              <FormField label="الكمية المستخدمة" required>
+                <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} step={0.1} className={dynamicInputClass} />
+              </FormField>
+            </div>
+          )}
+
+          {activeTab === 'temp' && (
+            <div className="space-y-5">
+              <FormField label="وقت القراءة" required>
+                <div className="grid grid-cols-3 gap-2">
+                  {[{ id: 'morning', label: 'صباحاً' }, { id: 'afternoon', label: 'ظهراً' }, { id: 'evening', label: 'مساءً' }].map((t) => (
+                    <button 
+                      key={t.id} 
+                      onClick={() => setTempTime(t.id as any)} 
+                      className={cn(
+                        "py-3 rounded-xl text-xs font-bold border transition-all duration-300", 
+                        tempTime === t.id 
+                          ? cn(currentTheme.bg, "border-transparent text-white shadow-lg", currentTheme.shadow) 
+                          : "bg-white border-slate-100 text-slate-400 hover:border-slate-300"
+                      )}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </FormField>
+              <FormField label="درجة الحرارة (°C)" required>
+                <NumericInput value={tempVal} onChange={setTempVal} placeholder="0.0" step={0.1} className={dynamicInputClass} />
+              </FormField>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50/50 p-4 text-rose-700 animate-in fade-in slide-in-from-top-1 text-[11px] font-bold shadow-inner">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
+
+          <button 
+            onClick={handleSubmit} 
+            disabled={loading} 
+            className={cn(
+              "w-full rounded-2xl py-4 text-sm font-bold text-white transition-all duration-500 active:scale-[0.98] disabled:opacity-50",
+              currentTheme.bg,
+              `shadow-xl ${currentTheme.shadow}`
+            )}
+          >
+            {loading ? 'جارٍ الحفظ...' : 'تأكيد الحفظ'}
+          </button>
         </div>
       </Dialog>
     </div>
   )
 }
 
-const inputClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 placeholder-slate-300 focus:border-emerald-500 focus:bg-white focus:outline-none transition-all shadow-sm'
-
-function FormField({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
+function FormField({ label, children, required }: any) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
-        {label}
-        {required && <span className="text-rose-400">*</span>}
-      </label>
+    <div className="flex flex-col gap-2">
+      <label className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider px-1">{label} {required && <span className="text-rose-400">*</span>}</label>
       {children}
     </div>
   )
 }
 
-function NumericInput({ value, onChange, placeholder, min, step }: {
-  value: string; onChange: (v: string) => void; placeholder: string; min?: number; step?: number
-}) {
-  return (
-    <input
-      type="number"
-      inputMode="decimal"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      min={min}
-      step={step}
-      className={inputClass}
-      dir="ltr"
-    />
-  )
-}
-
-function SelectInput({ value, onChange, options, placeholder, emptyMessage }: {
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-  placeholder: string
-  emptyMessage: string
-}) {
-  if (options.length === 0) {
-    return (
-      <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-bold text-slate-400 italic">
-        {emptyMessage}
-      </div>
-    )
-  }
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
       <option value="">{placeholder}</option>

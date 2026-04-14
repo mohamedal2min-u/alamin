@@ -86,7 +86,7 @@ export default function WorkerPage() {
   }
 
   return (
-    <div className="space-y-6 px-5 pt-5 pb-8" dir="rtl">
+    <div className="space-y-6 px-2 sm:px-5 pt-5 pb-8" dir="rtl">
       {/* ── Error Notification ── */}
       {hasError && (
         <div className="flex items-center gap-3 rounded-2xl bg-red-50 p-4 text-red-600">

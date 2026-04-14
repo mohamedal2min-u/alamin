@@ -80,13 +80,13 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onSt
       </div>
 
       {/* ── KPI Entry Grid ── */}
-      <div className="grid grid-cols-2 gap-4 pt-2">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 pt-2">
         <StatBox
           label="نفوق"
           equation={getEq(summary?.mortalities?.entries)}
           value={summary?.mortalities?.total ?? 0}
           color="red"
-          icon={<Skull className="h-4 w-4" />}
+          icon={<Skull className="h-6 w-6" />}
           isLoading={isLoading}
           onClick={() => onStatClick('mortality')}
         />
@@ -95,7 +95,7 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onSt
           equation={getEq(summary?.feed?.entries)}
           value={summary?.feed?.total ?? 0}
           color="amber"
-          icon={<Wheat className="h-4 w-4" />}
+          icon={<Wheat className="h-6 w-6" />}
           isLoading={isLoading}
           onClick={() => onStatClick('feed')}
         />
@@ -103,8 +103,8 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onSt
           label="دواء"
           equation={getEq(summary?.medicines?.entries)}
           value={summary?.medicines?.total ?? 0}
-          color="pink"
-          icon={<Syringe className="h-4 w-4" />}
+          color="indigo"
+          icon={<Syringe className="h-6 w-6" />}
           isLoading={isLoading}
           onClick={() => onStatClick('medicine')}
         />
@@ -114,7 +114,7 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onSt
           value={summary?.temperatures?.entries?.[0]?.temperature ?? 0}
           unit="°C"
           color="green"
-          icon={<Bird className="h-4 w-4" />}
+          icon={<Bird className="h-6 w-6" />}
           isLoading={isLoading}
           onClick={() => onStatClick('remaining')}
         />
@@ -128,49 +128,49 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
   equation: string, 
   value: number, 
   unit?: string,
-  color: 'red' | 'amber' | 'pink' | 'green', 
+  color: 'red' | 'amber' | 'indigo' | 'green', 
   icon: React.ReactNode, 
   isLoading?: boolean,
   onClick: () => void 
 }) {
   if (isLoading) {
     return (
-      <div className="h-[140px] animate-pulse rounded-[2.5rem] bg-slate-50 border border-slate-100" />
+      <div className="h-[140px] animate-pulse rounded-[2rem] sm:rounded-[2.5rem] bg-slate-50 border border-slate-100" />
     )
   }
 
   const themes = {
     red: {
-      bg: 'bg-white',
-      border: 'border-rose-100',
-      shadow: 'shadow-xl shadow-rose-500/10',
-      iconBg: 'bg-rose-50 text-rose-600',
+      bg: 'bg-gradient-to-br from-rose-100/50 to-white',
+      border: 'border-rose-200/60',
+      shadow: 'shadow-lg shadow-rose-500/10',
+      iconBg: 'bg-rose-100 text-rose-600',
       text: 'text-rose-600',
-      glow: 'hover:shadow-rose-500/20 hover:border-rose-200'
+      glow: 'hover:shadow-rose-500/20 hover:border-rose-300'
     },
     amber: {
-      bg: 'bg-white',
-      border: 'border-amber-100',
-      shadow: 'shadow-xl shadow-amber-500/10',
-      iconBg: 'bg-amber-50 text-amber-600',
+      bg: 'bg-gradient-to-br from-amber-100/50 to-white',
+      border: 'border-amber-200/60',
+      shadow: 'shadow-lg shadow-amber-500/10',
+      iconBg: 'bg-amber-100 text-amber-600',
       text: 'text-amber-600',
-      glow: 'hover:shadow-amber-500/20 hover:border-amber-200'
+      glow: 'hover:shadow-amber-500/20 hover:border-amber-300'
     },
-    pink: {
-      bg: 'bg-white',
-      border: 'border-pink-100',
-      shadow: 'shadow-xl shadow-pink-500/10',
-      iconBg: 'bg-pink-50 text-pink-600',
-      text: 'text-pink-600',
-      glow: 'hover:shadow-pink-500/20 hover:border-pink-200'
+    indigo: {
+      bg: 'bg-gradient-to-br from-indigo-100/50 to-white',
+      border: 'border-indigo-200/60',
+      shadow: 'shadow-lg shadow-indigo-500/10',
+      iconBg: 'bg-indigo-100 text-indigo-600',
+      text: 'text-indigo-600',
+      glow: 'hover:shadow-indigo-500/20 hover:border-indigo-300'
     },
     green: {
-      bg: 'bg-white',
-      border: 'border-emerald-100',
-      shadow: 'shadow-xl shadow-emerald-500/10',
-      iconBg: 'bg-emerald-50 text-emerald-600',
+      bg: 'bg-gradient-to-br from-emerald-100/50 to-white',
+      border: 'border-emerald-200/60',
+      shadow: 'shadow-lg shadow-emerald-500/10',
+      iconBg: 'bg-emerald-100 text-emerald-600',
       text: 'text-emerald-700',
-      glow: 'hover:shadow-emerald-500/20 hover:border-emerald-200'
+      glow: 'hover:shadow-emerald-500/20 hover:border-emerald-300'
     }
   }
 
@@ -180,7 +180,7 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
     <button 
       onClick={onClick}
       className={cn(
-        "group relative flex flex-col gap-5 rounded-[2.5rem] p-6 border text-right transition-all duration-500 active:scale-95",
+        "group relative flex flex-col gap-5 rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-6 border text-right transition-all duration-500 active:scale-95",
         theme.bg,
         theme.border,
         theme.shadow,
@@ -188,29 +188,25 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
       )}
     >
       <div className="flex items-start justify-between">
-         <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">
-          {label}
-        </span>
         <div className={cn(
           "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3", 
           theme.iconBg
         )}>
           {icon}
         </div>
+        <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">
+          {label}
+        </span>
       </div>
       
-      <div className="flex flex-col gap-1">
+      <div className="flex items-baseline justify-between w-full mt-2">
         <span className="text-[13px] font-bold text-slate-400 tabular-nums">
           {equation}
         </span>
         <div className="flex items-baseline gap-2">
-          <span className={cn("text-4xl font-black tabular-nums tracking-tighter", theme.text)}>
-            {value}
-          </span>
           {unit && <span className="text-sm font-bold text-slate-400">{unit}</span>}
-          <div className="flex-1" />
-          <span className="text-2xl font-black text-slate-200 leading-none mb-1">
-            =
+          <span className={cn("text-4xl font-black tabular-nums tracking-tighter transition-all duration-500", theme.text)}>
+            {value}
           </span>
         </div>
       </div>

@@ -85,7 +85,7 @@ export default function WorkerPage() {
     refetchHistory()
   }
 
-  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine', extra?: Record<string, unknown>) => {
+  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp', extra?: Record<string, unknown>) => {
     setEntryExtra(extra ?? null)
     setActiveEntryTab(type)
   }

@@ -11,7 +11,7 @@ interface Props {
     name: string
     initial_count: number
     remaining_count: number
-    current_age_days: number
+    current_age_days: number | null
     start_date: string
     status?: any
     total_mortality?: number

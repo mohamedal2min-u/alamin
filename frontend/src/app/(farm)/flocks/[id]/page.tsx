@@ -2,12 +2,18 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, AlertCircle, Bird, Calendar, Hash, Clock } from 'lucide-react'
+import { ArrowRight, AlertCircle, Bird, Calendar, Hash, Clock, Lock } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FlockStatusBadge } from '@/components/flocks/FlockStatusBadge'
 import { flocksApi } from '@/lib/api/flocks'
 import { MortalitiesTab } from '@/components/flocks/tabs/MortalitiesTab'
+import { SalesTab } from '@/components/flocks/tabs/SalesTab'
+import { FeedTab } from '@/components/flocks/tabs/FeedTab'
+import { MedicineTab } from '@/components/flocks/tabs/MedicineTab'
+import { WaterTab } from '@/components/flocks/tabs/WaterTab'
+import { NotesTab } from '@/components/flocks/tabs/NotesTab'
+import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import { formatDate, formatNumber, cn } from '@/lib/utils'
 import type { Flock } from '@/types/flock'
 
@@ -48,7 +54,7 @@ function FlockDetailsSkeleton() {
   )
 }
 
-// ── Tab placeholder panel ─────────────────────────────────────────────────────
+// ── Tab placeholder panel (only for tabs not yet implemented) ─────────────────
 function TabPlaceholder({ tab }: { tab: TabKey }) {
   const labels: Record<TabKey, string> = {
     mortalities: 'سجلات النفوق',
@@ -62,7 +68,7 @@ function TabPlaceholder({ tab }: { tab: TabKey }) {
     <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400">
       <Bird className="mb-3 h-10 w-10 opacity-30" />
       <p className="text-base font-medium text-slate-600">{labels[tab]}</p>
-      <p className="mt-1 text-sm">قيد الإنشاء — سيُضاف قريباً</p>
+      <p className="mt-1 text-sm">سيُضاف قريباً</p>
     </div>
   )
 }
@@ -80,6 +86,7 @@ export default function FlockDetailPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabKey>('mortalities')
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -132,7 +139,18 @@ export default function FlockDetailPage({
             {flock.current_age_days !== null && ` · العمر: ${flock.current_age_days} يوم`}
           </p>
         </div>
-        <FlockStatusBadge status={flock.status} />
+        <div className="flex items-center gap-3">
+          <FlockStatusBadge status={flock.status} />
+          {flock.status === 'active' && (
+            <button
+              onClick={() => setCloseDialogOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
+            >
+              <Lock className="h-3.5 w-3.5" />
+              إغلاق الفوج
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -195,6 +213,19 @@ export default function FlockDetailPage({
         </div>
       )}
 
+      {/* Close flock dialog */}
+      {closeDialogOpen && (
+        <CloseFlockDialog
+          flock={flock}
+          isOpen={closeDialogOpen}
+          onClose={() => setCloseDialogOpen(false)}
+          onSuccess={(updated) => {
+            setFlock(updated)
+            setCloseDialogOpen(false)
+          }}
+        />
+      )}
+
       {/* Tabs */}
       <div>
         {/* Tab bar */}
@@ -221,6 +252,16 @@ export default function FlockDetailPage({
         <div className="mt-0 rounded-b-xl rounded-tr-xl border border-t-0 border-slate-200 bg-white">
           {activeTab === 'mortalities' ? (
             <MortalitiesTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'sales' ? (
+            <SalesTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'feed' ? (
+            <FeedTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'medicine' ? (
+            <MedicineTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'water' ? (
+            <WaterTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'notes' ? (
+            <NotesTab flockId={flockId} flockStatus={flock.status} />
           ) : (
             <TabPlaceholder tab={activeTab} />
           )}

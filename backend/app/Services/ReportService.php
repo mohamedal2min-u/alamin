@@ -283,8 +283,9 @@ class ReportService
         $expensesByWorker = DB::table('expenses')
             ->where('farm_id', $farmId)
             ->whereIn('worker_id', $workers->pluck('id'))
+            ->selectRaw('worker_id, SUM(total_amount) as total_amount')
             ->groupBy('worker_id')
-            ->pluck(DB::raw('SUM(total_amount)'), 'worker_id');
+            ->pluck('total_amount', 'worker_id');
 
         $workerStats = $workers->map(fn ($worker) => [
             'id'             => $worker->id,

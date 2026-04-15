@@ -23,7 +23,25 @@ class FlockController extends Controller
         private readonly ShowFlockAction    $showAction,
         private readonly UpdateFlockAction  $updateAction,
         private readonly TodaySummaryAction $todaySummaryAction,
+        private readonly \App\Actions\Flock\HistoryAction $historyAction,
     ) {}
+
+    // ── GET /api/flocks/{flock}/history ──────────────────────────────────────
+
+    public function history(Request $request, int $flockId): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+
+        try {
+            $flock   = $this->showAction->execute($farmId, $flockId);
+            $history = $this->historyAction->execute($flock);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 404);
+        }
+
+        return response()->json(['data' => $history]);
+    }
+
 
     // ── GET /api/flocks ───────────────────────────────────────────────────────
 

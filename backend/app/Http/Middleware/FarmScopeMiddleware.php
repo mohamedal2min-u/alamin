@@ -30,15 +30,18 @@ class FarmScopeMiddleware
         $farmId = (int) $farmId;
         $user   = $request->user();
 
+        // ── تحميل المزرعة مرة واحدة ويُمرَّر عبر attributes للـ middleware التالي ──
+        $farm = Farm::find($farmId);
+
+        if (! $farm) {
+            return response()->json(['message' => 'المزرعة غير موجودة'], 404);
+        }
+
         // ── super_admin: دور عالمي (farm_id = null في model_has_roles) ────────
         // نتحقق منه قبل ضبط team context لأن hasRole يبحث ضمن الـ team الحالي
         $isSuperAdmin = $user->hasRole('super_admin');
 
-        if ($isSuperAdmin) {
-            if (! Farm::where('id', $farmId)->exists()) {
-                return response()->json(['message' => 'المزرعة غير موجودة'], 404);
-            }
-        } else {
+        if (! $isSuperAdmin) {
             // بقية الأدوار: يجب أن يكون المستخدم عضواً نشطاً في المزرعة
             $isMember = FarmUser::where('farm_id', $farmId)
                 ->where('user_id', $user->id)
@@ -55,8 +58,9 @@ class FarmScopeMiddleware
         // ── ضبط Spatie Teams context ──────────────────────────────────────────
         setPermissionsTeamId($farmId);
 
-        // ── تخزين farm_id في attributes لاستخدامه في Middleware/Controllers ──
+        // ── تخزين farm_id والـ Farm model في attributes لتجنب إعادة الاستعلام ──
         $request->attributes->set('farm_id', $farmId);
+        $request->attributes->set('farm', $farm);
 
         return $next($request);
     }

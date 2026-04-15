@@ -15,6 +15,7 @@ import type { Farm } from '@/types/farm'
 import type { FarmRole } from '@/types/auth'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { ShieldCheck, Sparkles, Server, Brain, Cpu } from 'lucide-react'
 
 // ── Local Utils (Fallback for build issues) ──────────────────────────────────
 function cn(...inputs: ClassValue[]) {
@@ -26,7 +27,7 @@ type AuthMode = 'login' | 'register'
 
 // ── Zod Schemas ───────────────────────────────────────────────────────────────
 const loginSchema = z.object({
-  login: z.string().min(1, 'البريد الإلكتروني أو رقم الواتساب مطلوب'),
+  login: z.string().min(1, 'رقم الواتساب أو البريد الإلكتروني مطلوب'),
   password: z.string().min(1, 'كلمة المرور مطلوبة'),
 })
 type LoginForm = z.infer<typeof loginSchema>
@@ -64,8 +65,8 @@ function TabButton({
       className={cn(
         'relative flex-1 py-3 text-sm font-medium transition-all duration-300 rounded-xl',
         active
-          ? 'bg-primary-600 text-white shadow-md'
-          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          ? 'bg-emerald-600 text-white shadow-md'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50'
       )}
     >
       {children}
@@ -166,59 +167,64 @@ function LoginPageInner() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-slate-100 p-4">
-      <div className="w-full max-w-md">
-        {/* Logo / Brand */}
-        <div className="mb-8 text-center">
-          {/* Logo Section */}
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary-600 shadow-xl border border-primary-700/20">
-            <img
-              src="/logo.png"
-              alt="Dajajati"
-              className="h-12 w-12 object-contain brightness-0 invert"
-            />
-          </div>
+    <div className="flex min-h-[100dvh] items-center justify-center bg-white px-5 py-8" dir="rtl">
+      <div className="w-full max-w-sm">
+        {/* ── Card ──────────────────────────────────────────────── */}
+        <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
+          {/* ── Brand Section (Now inside card) ─────────────────── */}
+          <div className="flex flex-col items-center mb-5">
+            {/* Logo */}
+            <div className="mb-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-xl shadow-emerald-200/50 transform transition-transform hover:scale-105 active:scale-95">
+                <img
+                  src="/logo.png"
+                  alt="الياسين"
+                  className="h-12 w-12 object-contain brightness-0 invert"
+                />
+              </div>
+            </div>
 
-          <div className="text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              دجاجاتي
+            {/* Brand Name */}
+            <h1 className="text-[1.75rem] font-bold tracking-tight text-emerald-950 mb-1 leading-none text-center">
+              الياسين
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              نظام إدارة مزارع الدواجن الذكي
-            </p>
-          </div>
-        </div>
 
-        {/* Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          {/* Tabs Switcher */}
-          <div className="mb-6 flex gap-1 rounded-xl bg-slate-100 p-1">
-            <TabButton
-              active={mode === 'login'}
-              onClick={() => switchMode('login')}
-            >
+            {/* Subtitle with pulsing dot */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50/50 border border-emerald-100/50 rounded-full">
+              <span className="relative flex h-2 w-2 justify-center items-center">
+                <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-600" />
+              </span>
+              <span className="text-[10px] font-bold text-emerald-700 tracking-wide text-center">
+                نظام إدارة مزارع الدواجن الذكي
+              </span>
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100/60 mb-5" />
+
+          {/* Tabs */}
+          <div className="mb-4 flex gap-1 rounded-2xl bg-slate-100/80 p-1">
+            <TabButton active={mode === 'login'} onClick={() => switchMode('login')}>
               تسجيل الدخول
             </TabButton>
-            <TabButton
-              active={mode === 'register'}
-              onClick={() => switchMode('register')}
-            >
+            <TabButton active={mode === 'register'} onClick={() => switchMode('register')}>
               حساب جديد
             </TabButton>
           </div>
 
-          {/* ── Login View ─────────────────────────────────────────────── */}
+          {/* ── Login ──────────────────────────────────────────── */}
           {mode === 'login' && (
             <form
               onSubmit={loginForm.handleSubmit(onLogin)}
-              className="space-y-4"
+              className="space-y-3.5"
               noValidate
             >
               <Input
                 {...loginForm.register('login')}
                 id="login"
-                label="البريد الإلكتروني أو الواتساب"
-                placeholder="أدخل البريد الإلكتروني أو رقم الواتساب"
+                label="رقم الواتساب أو البريد الإلكتروني"
+                placeholder="أدخل رقم الواتساب أو البريد الإلكتروني"
                 type="text"
                 autoComplete="username"
                 error={loginForm.formState.errors.login?.message}
@@ -237,14 +243,14 @@ function LoginPageInner() {
               />
 
               {serverError && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-600 border border-red-100">
                   {serverError}
                 </div>
               )}
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full !rounded-xl !h-11 !text-sm !font-bold touch-manipulation"
                 size="lg"
                 loading={loginForm.formState.isSubmitting}
               >
@@ -253,11 +259,11 @@ function LoginPageInner() {
             </form>
           )}
 
-          {/* ── Register View ──────────────────────────────────────────── */}
+          {/* ── Register ───────────────────────────────────────── */}
           {mode === 'register' && !registerSuccess && (
             <form
               onSubmit={registerForm.handleSubmit(onRegister)}
-              className="space-y-4"
+              className="space-y-3"
               noValidate
             >
               <Input
@@ -337,35 +343,35 @@ function LoginPageInner() {
               />
 
               {serverError && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-600 border border-red-100">
                   {serverError}
                 </div>
               )}
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full !rounded-xl !h-11 !text-sm !font-bold touch-manipulation"
                 size="lg"
                 loading={registerForm.formState.isSubmitting}
               >
                 إرسال طلب الاشتراك
               </Button>
 
-              <p className="text-center text-xs text-slate-400">
+              <p className="text-center text-[10px] text-slate-400 leading-relaxed">
                 سيتم مراجعة طلبك من الإدارة والتواصل معك عبر الواتساب
               </p>
             </form>
           )}
 
-          {/* ── Register Success State ─────────────────────────────────── */}
+          {/* ── Register Success ────────────────────────────── */}
           {mode === 'register' && registerSuccess && (
-            <div className="py-6 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 border border-emerald-100">
                 <svg
-                  className="h-7 w-7 text-green-600"
+                  className="h-7 w-7 text-emerald-600"
                   fill="none"
                   viewBox="0 0 24 24"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   stroke="currentColor"
                 >
                   <path
@@ -375,26 +381,57 @@ function LoginPageInner() {
                   />
                 </svg>
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-slate-800">
+              <h3 className="mb-2 text-base font-bold text-slate-800">
                 تم إرسال طلبك بنجاح
               </h3>
-              <p className="mb-6 text-sm text-slate-500">
+              <p className="mb-6 text-xs text-slate-500 leading-relaxed">
                 ستتم مراجعة طلبك من الإدارة والتواصل معك قريباً عبر الواتساب
               </p>
               <Button
                 variant="outline"
                 onClick={() => switchMode('login')}
-                className="w-full"
+                className="w-full !rounded-xl"
               >
                 العودة لتسجيل الدخول
               </Button>
             </div>
           )}
+
+          {/* ── Trust Badges ───────────────────────────────────── */}
+          <div className="mt-5 pt-4 border-t border-slate-100/60 flex items-center justify-between px-2">
+            <div className="flex flex-col items-center gap-2 flex-1 relative">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-100/50 shadow-sm shadow-emerald-100/20">
+                <ShieldCheck className="h-[20px] w-[20px]" strokeWidth={2} />
+              </div>
+              <span className="text-[9px] font-bold text-slate-500">حماية فائقة</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 flex-1 relative">
+              {/* Subtle divider */}
+              <div className="absolute top-3 -right-2 h-5 w-px bg-slate-200/60" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-100/50 shadow-sm shadow-emerald-100/20">
+                <Cpu className="h-[20px] w-[20px]" strokeWidth={2} />
+              </div>
+              <span className="text-[9px] font-bold text-slate-500">تحليل ذكي</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 flex-1 relative">
+              {/* Subtle divider */}
+              <div className="absolute top-3 -right-2 h-5 w-px bg-slate-200/60" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-100/50 shadow-sm shadow-emerald-100/20">
+                <Server className="h-[20px] w-[20px]" strokeWidth={2} />
+              </div>
+              <span className="text-[9px] font-bold text-slate-500">مزامنة سحابية</span>
+            </div>
+          </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
-          © {new Date().getFullYear()} دجاجتي — جميع الحقوق محفوظة
-        </p>
+        {/* ── Footer ─────────────────────────────────────────── */}
+        <div className="mt-5 flex justify-center">
+          <p className="text-[10px] font-medium text-slate-400">
+            © {new Date().getFullYear()} نظام الياسين — جميع الحقوق محفوظة
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -403,8 +440,8 @@ function LoginPageInner() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-slate-100">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
+      <div className="flex min-h-[100dvh] items-center justify-center bg-white">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
       </div>
     }>
       <LoginPageInner />

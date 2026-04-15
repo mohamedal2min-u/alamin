@@ -1,5 +1,35 @@
 # سجل التغييرات (Change Log)
 
+## [2026-04-15] - تكملة تبويبات تفاصيل الفوج: المياه والملاحظات
+
+### الإضافات
+
+#### Backend (API)
+- **FlockWaterLog Module**: Action (List + Create) + Resource + Controller + FormRequest + Routes
+  - `GET  /api/flocks/{flock}/water-logs` — قائمة سجلات المياه
+  - `POST /api/flocks/{flock}/water-logs` — تسجيل استهلاك مياه
+  - الكمية اختيارية (يمكن تسجيل يوم بدون كمية)
+  - التحقق: الفوج يجب أن يكون نشطاً
+- **FlockNote Module**: Action (List + Create) + Resource + Controller + FormRequest + Routes
+  - `GET  /api/flocks/{flock}/notes` — قائمة ملاحظات الفوج
+  - `POST /api/flocks/{flock}/notes` — إضافة ملاحظة جديدة
+  - أنواع الملاحظات: general, instruction, operational, alert
+  - التحقق: الفوج يجب أن يكون نشطاً، نص الملاحظة مطلوب
+- **Factories**: FlockWaterLogFactory + FlockNoteFactory
+- **Tests**: 19 اختباراً جديداً (WaterLogCreateTest + WaterLogListTest + FlockNoteCreateTest + FlockNoteListTest)
+
+#### Frontend
+- **Types**: `waterLog.ts` + `flockNote.ts`
+- **API clients**: `waterLogs.ts` + `flockNotes.ts`
+- **WaterTab component**: تبويب المياه الكامل (inline form, quantity optional, unit_label)
+- **NotesTab component**: تبويب الملاحظات الكامل (inline form, note_type selector, textarea)
+- **Wire-up**: ربط التبويبين في صفحة تفاصيل الفوج `/flocks/[id]` — لم يتبق أي `TabPlaceholder`
+
+### النتائج
+- Backend: 184 اختبار ✅ (0 فشل، 0 خطأ)
+- Frontend: `npx tsc --noEmit` → 0 أخطاء ✅
+
+
 ## [2026-04-12] - التحسينات البصرية الموحدة (UI/UX Refinement)
 
 ### التحسينات العامة

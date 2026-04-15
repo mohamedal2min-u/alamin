@@ -41,7 +41,7 @@ export function MortalitySheet({
       await mortalitiesApi.create(flockId, {
         entry_date: new Date().toISOString().split('T')[0],
         quantity: qtyNum,
-        reason: 'تسجيل الوردية - دجاجتي',
+        reason: 'تسجيل الوردية - الياسين',
       })
       onSaved(qtyNum)
       setQuantity('')

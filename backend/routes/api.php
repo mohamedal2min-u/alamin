@@ -87,10 +87,16 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::get('/expenses', [ExpenseController::class, 'index']);
 
     // ── V1-E: Feed Logs ───────────────────────────────────────────────────────
-    Route::post('flocks/{flock}/feed-logs',     [FeedLogController::class, 'store']);
+    Route::prefix('flocks/{flock}/feed-logs')->group(function (): void {
+        Route::get('/',  [FeedLogController::class, 'index']);
+        Route::post('/', [FeedLogController::class, 'store']);
+    });
 
     // ── V1-F: Medicine Logs ───────────────────────────────────────────────────
-    Route::post('flocks/{flock}/medicine-logs', [MedicineLogController::class, 'store']);
+    Route::prefix('flocks/{flock}/medicine-logs')->group(function (): void {
+        Route::get('/',  [MedicineLogController::class, 'index']);
+        Route::post('/', [MedicineLogController::class, 'store']);
+    });
 
     // ── V1-G: Flock Expenses ──────────────────────────────────────────────────
     Route::post('flocks/{flock}/expenses',      [FlockExpenseController::class, 'store']);
@@ -101,6 +107,8 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
 
     // ── V1-I: Today Summary ───────────────────────────────────────────────────
     Route::get('flocks/{flock}/today-summary',  [FlockController::class, 'todaySummary']);
+    Route::get('flocks/{flock}/history',        [FlockController::class, 'history']);
+
 
     // ── V1-I: Reports ────────────────────────────────────────────────────────
     Route::prefix('reports')->group(function (): void {
@@ -122,4 +130,23 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::get('workers', [\App\Http\Controllers\Api\Worker\WorkerController::class, 'index']);
     Route::post('workers', [\App\Http\Controllers\Api\Worker\WorkerController::class, 'store']);
     Route::delete('workers/{id}', [\App\Http\Controllers\Api\Worker\WorkerController::class, 'destroy']);
+
+    // ── V1-M: Water Logs ─────────────────────────────────────────────────────
+    Route::prefix('flocks/{flock}/water-logs')->group(function (): void {
+        Route::get('/',  [\App\Http\Controllers\Api\WaterLog\WaterLogController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Api\WaterLog\WaterLogController::class, 'store']);
+    });
+
+    // ── V1-N: Flock Notes ─────────────────────────────────────────────────────
+    Route::prefix('flocks/{flock}/notes')->group(function (): void {
+        Route::get('/',  [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'store']);
+    });
+
+    // ── V1-L: Sales ───────────────────────────────────────────────────────────
+    Route::get('flocks/{flock}/sales',  [\App\Http\Controllers\Api\Sale\SaleController::class, 'index']);
+    Route::post('flocks/{flock}/sales', [\App\Http\Controllers\Api\Sale\SaleController::class, 'store']);
+    Route::get('sales',                 [\App\Http\Controllers\Api\Sale\SaleController::class, 'indexAll']);
+    Route::get('sales/{sale}',          [\App\Http\Controllers\Api\Sale\SaleController::class, 'show']);
+    Route::patch('sales/{sale}/payment',[\App\Http\Controllers\Api\Sale\SaleController::class, 'updatePayment']);
 });

@@ -12,9 +12,13 @@ export const flocksApi = {
   create: (payload: CreateFlockPayload) =>
     apiClient.post<{ data: Flock; message: string }>('/flocks', payload).then((r) => r.data),
 
-  update: (id: number, payload: Partial<CreateFlockPayload> & { status?: string }) =>
+  update: (id: number, payload: Partial<CreateFlockPayload> & { status?: string; close_date?: string }) =>
     apiClient.put<{ data: Flock; message: string }>(`/flocks/${id}`, payload).then((r) => r.data),
 
   todaySummary: (id: number, date?: string) =>
     apiClient.get<{ data: TodaySummary }>(`/flocks/${id}/today-summary${date ? `?date=${date}` : ''}`).then((r) => r.data),
+
+  getHistory: (id: number) =>
+    apiClient.get<{ data: any[] }>(`/flocks/${id}/history`).then((r) => r.data),
 }
+

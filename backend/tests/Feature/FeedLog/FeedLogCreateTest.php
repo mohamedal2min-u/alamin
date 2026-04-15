@@ -60,7 +60,12 @@ class FeedLogCreateTest extends TestCase
         $farm      = Farm::factory()->create();
         $user      = $this->actingAsMember($farm);
         $flock     = Flock::factory()->active()->create(['farm_id' => $farm->id]);
-        $item      = $this->makeFeedItem($farm);
+        // unit_value = 1 حتى يكون realQty = quantity (بدون ضرب بوحدة التحويل)
+        $feedType  = ItemType::factory()->feed()->create();
+        $item      = Item::factory()->forFarm($farm)->create([
+            'item_type_id' => $feedType->id,
+            'unit_value'   => 1,
+        ]);
         $warehouse = Warehouse::factory()->forFarm($farm)->create();
         WarehouseItem::factory()->create([
             'farm_id'          => $farm->id,

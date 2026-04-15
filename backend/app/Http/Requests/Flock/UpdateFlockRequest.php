@@ -20,6 +20,7 @@ class UpdateFlockRequest extends FormRequest
             'initial_count' => ['sometimes', 'integer', 'min:1'],
             'notes'         => ['nullable', 'string', 'max:5000'],
             'status'        => ['sometimes', Rule::in(['draft', 'active', 'closed', 'cancelled'])],
+            'close_date'    => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
         ];
     }
 
@@ -33,6 +34,8 @@ class UpdateFlockRequest extends FormRequest
             'initial_count.integer'  => 'العدد الأولي يجب أن يكون رقماً صحيحاً',
             'initial_count.min'      => 'العدد الأولي يجب أن يكون أكبر من الصفر',
             'status.in'              => 'الحالة يجب أن تكون: draft أو active أو closed أو cancelled',
+            'close_date.date_format' => 'صيغة تاريخ الإغلاق يجب أن تكون YYYY-MM-DD',
+            'close_date.before_or_equal' => 'تاريخ الإغلاق لا يمكن أن يكون في المستقبل',
         ];
     }
 }

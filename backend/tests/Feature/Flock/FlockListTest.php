@@ -115,7 +115,8 @@ class FlockListTest extends TestCase
             ->getJson('/api/flocks')
             ->assertStatus(200);
 
-        $this->assertEquals(10, $response->json('data.0.current_age_days'));
+        // الـ resource يحسب العمر كـ diffInDays + 1 (يوم البدء = اليوم الأول)
+        $this->assertEquals(11, $response->json('data.0.current_age_days'));
     }
 
     public function test_closed_flock_has_null_age_days(): void

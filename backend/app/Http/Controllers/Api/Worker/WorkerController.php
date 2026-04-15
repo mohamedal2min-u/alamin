@@ -13,30 +13,41 @@ use Spatie\Permission\PermissionRegistrar;
 class WorkerController extends Controller
 {
     /**
+     * تشغيل callback ضمن سياق team محدد ثم إعادة ضبط الـ context.
+     */
+    private function withTeamScope(int $farmId, callable $callback): mixed
+    {
+        $registrar = app(PermissionRegistrar::class);
+        $registrar->setPermissionsTeamId($farmId);
+        try {
+            return $callback();
+        } finally {
+            $registrar->setPermissionsTeamId(null);
+        }
+    }
+
+    /**
      * List all workers in the current farm.
      */
     public function index(Request $request)
     {
         $farm = $request->attributes->get('farm');
 
-        $registrar = app(PermissionRegistrar::class);
-        $registrar->setPermissionsTeamId($farm->id);
-
-        $workers = User::role('worker')
-            ->join('farm_users', 'users.id', '=', 'farm_users.user_id')
-            ->where('farm_users.farm_id', $farm->id)
-            ->select(
-                'users.id',
-                'users.name',
-                'users.email',
-                'users.whatsapp',
-                'farm_users.salary',
-                'farm_users.joined_at',
-                'farm_users.status'
-            )
-            ->get();
-
-        $registrar->setPermissionsTeamId(null);
+        $workers = $this->withTeamScope($farm->id, fn () =>
+            User::role('worker')
+                ->join('farm_users', 'users.id', '=', 'farm_users.user_id')
+                ->where('farm_users.farm_id', $farm->id)
+                ->select(
+                    'users.id',
+                    'users.name',
+                    'users.email',
+                    'users.whatsapp',
+                    'farm_users.salary',
+                    'farm_users.joined_at',
+                    'farm_users.status'
+                )
+                ->get()
+        );
 
         return response()->json([
             'data' => $workers
@@ -81,10 +92,7 @@ class WorkerController extends Controller
             ]);
 
             // 3. Assign Role via Spatie (Contextualized by team_id = farm->id)
-            $registrar = app(PermissionRegistrar::class);
-            $registrar->setPermissionsTeamId($farm->id);
-            $user->assignRole('worker');
-            $registrar->setPermissionsTeamId(null);
+            $this->withTeamScope($farm->id, fn () => $user->assignRole('worker'));
 
             return response()->json([
                 'message' => 'تم إنشاء حساب العامل بنجاح',
@@ -111,11 +119,7 @@ class WorkerController extends Controller
 
         // Also remove the role for this team context
         $user = User::findOrFail($id);
-        
-        $registrar = app(PermissionRegistrar::class);
-        $registrar->setPermissionsTeamId($farm->id);
-        $user->removeRole('worker');
-        $registrar->setPermissionsTeamId(null);
+        $this->withTeamScope($farm->id, fn () => $user->removeRole('worker'));
 
         return response()->json([
             'message' => 'تم حذف العامل من المزرعة بنجاح'

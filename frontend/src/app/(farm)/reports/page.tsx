@@ -137,7 +137,7 @@ export default function ReportsPage() {
 
       {/* Print Specific Footer */}
       <div className="hidden print:block mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400">
-        تم استخراج هذا التقرير آلياً من نظام «دجاجتي» بتاريخ {new Date().toLocaleDateString('ar-EG')}
+        تم استخراج هذا التقرير آلياً من نظام «الياسين» بتاريخ {new Date().toLocaleDateString('ar-EG')}
       </div>
     </div>
   )

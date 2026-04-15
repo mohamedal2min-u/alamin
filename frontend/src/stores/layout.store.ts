@@ -9,9 +9,9 @@ interface LayoutState {
 }
 
 export const useLayoutStore = create<LayoutState>((set) => ({
-  pageTitle: 'دجاجاتي',
+  pageTitle: 'الياسين',
   pageSubtitle: null,
   setPageTitle: (title) => set({ pageTitle: title }),
   setPageSubtitle: (subtitle) => set({ pageSubtitle: subtitle }),
-  resetHeader: () => set({ pageTitle: 'دجاجاتي', pageSubtitle: null }),
+  resetHeader: () => set({ pageTitle: 'الياسين', pageSubtitle: null }),
 }))

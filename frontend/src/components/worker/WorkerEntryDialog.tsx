@@ -143,8 +143,8 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
 
   const currentTheme = activeTab ? themes[activeTab] : themes.medicine
   const dynamicInputClass = cn(
-    'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-900',
-    'transition-all duration-300 placeholder:text-slate-300',
+    'w-full rounded-[1.25rem] border border-emerald-100 bg-white px-4 py-3.5 text-sm font-bold text-emerald-950',
+    'transition-all duration-300 placeholder:text-emerald-300',
     'focus:outline-none focus:ring-4 shadow-sm',
     currentTheme.border,
     currentTheme.ring
@@ -199,10 +199,10 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
                     key={t.id} 
                     onClick={() => setTempTime(t.id as any)} 
                     className={cn(
-                      "py-3 rounded-xl text-xs font-bold border transition-all duration-300", 
+                      "py-3 rounded-[1.25rem] text-xs font-bold border transition-all duration-300", 
                       tempTime === t.id 
                         ? cn(currentTheme.bg, "border-transparent text-white shadow-lg", currentTheme.shadow) 
-                        : "bg-white border-slate-100 text-slate-400 hover:border-slate-300"
+                        : "bg-white border-emerald-50 text-emerald-600/70 hover:border-emerald-100"
                     )}
                   >
                     {t.label}
@@ -217,7 +217,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
         )}
 
         {error && (
-          <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50/50 p-4 text-rose-700 animate-in fade-in slide-in-from-top-1 text-[11px] font-bold shadow-inner">
+          <div className="flex items-center gap-2 rounded-[1.25rem] border border-rose-100 bg-rose-50/50 p-4 text-rose-700 animate-in fade-in slide-in-from-top-1 text-[11px] font-bold shadow-inner">
             <AlertCircle className="h-4 w-4" />
             {error}
           </div>
@@ -227,7 +227,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
           onClick={handleSubmit} 
           disabled={loading} 
           className={cn(
-            "w-full rounded-2xl py-4 text-sm font-bold text-white transition-all duration-300 active:scale-[0.98] disabled:opacity-50 shadow-xl",
+            "w-full rounded-[1.25rem] py-4 text-sm font-bold text-white transition-all duration-300 active:scale-[0.98] disabled:opacity-50 shadow-xl",
             currentTheme.bg,
             currentTheme.shadow
           )}
@@ -242,7 +242,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
 function FormField({ label, children, required }: any) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider px-1">{label} {required && <span className="text-rose-400">*</span>}</label>
+      <label className="text-[11px] font-extrabold text-emerald-700/70 uppercase tracking-wider px-1">{label} {required && <span className="text-rose-400">*</span>}</label>
       {children}
     </div>
   )
@@ -253,7 +253,7 @@ function NumericInput({ value, onChange, placeholder, min, step, className }: an
 }
 
 function SelectInput({ value, onChange, options, placeholder, emptyMessage, className }: any) {
-  if (options.length === 0) return <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-4 text-[10px] font-bold text-slate-400 italic text-center uppercase tracking-tight">{emptyMessage}</div>
+  if (options.length === 0) return <div className="rounded-[1.25rem] border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-4 text-[10px] font-bold text-emerald-500 italic text-center uppercase tracking-tight">{emptyMessage}</div>
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={className}>
       <option value="">{placeholder}</option>

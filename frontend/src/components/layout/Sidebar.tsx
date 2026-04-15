@@ -50,11 +50,11 @@ export function Sidebar() {
     <aside className="flex w-60 flex-col border-l border-slate-200/60 bg-white">
 
       {/* Brand */}
-      <div className="flex items-center gap-3 border-b border-slate-200/60 px-5" style={{ height: 'var(--header-height)' }}>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shrink-0">
-          <ChickenLogo className="h-5 w-5" />
+      <div className="flex items-center gap-2.5 border-b border-slate-200/60 px-5" style={{ height: 'var(--header-height)' }}>
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shrink-0 shadow-sm">
+          <ChickenLogo className="h-4.5 w-4.5 brightness-0 invert" />
         </div>
-        <span className="text-base font-bold text-slate-900">دجاجتي</span>
+        <span className="text-lg font-black tracking-tighter text-emerald-950 leading-none">الياسين</span>
       </div>
 
       {/* Super admin badge */}

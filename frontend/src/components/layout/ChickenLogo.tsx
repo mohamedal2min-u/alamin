@@ -4,7 +4,7 @@ export function ChickenLogo({ className }: { className?: string }) {
   return (
     <img 
       src="/logo.png" 
-      alt="دجاجاتي"
+      alt="الياسين"
       className={cn("h-8 w-8 object-contain", className)}
     />
   )

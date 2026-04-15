@@ -30,29 +30,31 @@ class CreateFeedLogAction
                 ->lockForUpdate()
                 ->first();
 
-            if (! $warehouseItem) {
-                throw new \Exception('هذا الصنف غير متوفر في مخزون المزرعة', 422);
+            // ── الـ warehouse اختياري: إذا لم يوجد نسجل بدون حركة مخزون ────
+            $txnId = null;
+
+            if ($warehouseItem) {
+                if ($warehouseItem->current_quantity < $realQty) {
+                    throw new \Exception('المخزون غير كافٍ لسحب هذه الكمية', 422);
+                }
+
+                $txn = InventoryTransaction::create([
+                    'farm_id'           => $flock->farm_id,
+                    'warehouse_id'      => $warehouseItem->warehouse_id,
+                    'item_id'           => $data['item_id'],
+                    'flock_id'          => $flock->id,
+                    'transaction_date'  => now()->toDateString(),
+                    'transaction_type'  => 'consumption',
+                    'direction'         => 'out',
+                    'source_module'     => 'flock_feed',
+                    'computed_quantity' => $realQty,
+                    'created_by'        => $userId,
+                    'updated_by'        => $userId,
+                ]);
+
+                $warehouseItem->decrement('current_quantity', $realQty);
+                $txnId = $txn->id;
             }
-
-            if ($warehouseItem->current_quantity < $realQty) {
-                throw new \Exception('المخزون غير كافٍ لسحب هذه الكمية', 422);
-            }
-
-            $txn = InventoryTransaction::create([
-                'farm_id'           => $flock->farm_id,
-                'warehouse_id'      => $warehouseItem->warehouse_id,
-                'item_id'           => $data['item_id'],
-                'flock_id'          => $flock->id,
-                'transaction_date'  => now()->toDateString(),
-                'transaction_type'  => 'consumption',
-                'direction'         => 'out',
-                'source_module'     => 'flock_feed',
-                'computed_quantity' => $realQty,
-                'created_by'        => $userId,
-                'updated_by'        => $userId,
-            ]);
-
-            $warehouseItem->decrement('current_quantity', $realQty);
 
             return FlockFeedLog::create([
                 'farm_id'                  => $flock->farm_id,
@@ -63,7 +65,7 @@ class CreateFeedLogAction
                 'unit_label'               => $data['unit_label'] ?? $item->input_unit,
                 'notes'                    => $data['notes'] ?? null,
                 'worker_id'                => $userId,
-                'inventory_transaction_id' => $txn->id,
+                'inventory_transaction_id' => $txnId,
                 'editable_until'           => now()->addMinutes(15),
                 'created_by'               => $userId,
                 'updated_by'               => $userId,

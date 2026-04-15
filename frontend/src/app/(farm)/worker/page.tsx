@@ -19,7 +19,7 @@ export default function WorkerPage() {
   const { currentFarm } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
 
-  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | null>(null)
+  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | null>(null)
   const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
 
   useEffect(() => {

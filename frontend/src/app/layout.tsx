@@ -6,6 +6,15 @@ export const metadata: Metadata = {
   description: 'نظام تشغيل ومحاسبة وتحليل لمداجن دجاج اللحم',
 }
 
+import type { Viewport } from 'next'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeApplier } from '@/components/layout/ThemeApplier'
 import { ToasterWithTheme } from '@/components/layout/ToasterWithTheme'

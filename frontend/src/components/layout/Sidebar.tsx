@@ -47,14 +47,14 @@ export function Sidebar() {
   const isSuperAdmin = role === 'super_admin'
 
   return (
-    <aside className="flex w-60 flex-col border-l border-slate-200/60 bg-white">
+    <aside className="flex w-60 flex-col border-l border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-800">
 
       {/* Brand */}
-      <div className="flex items-center gap-2.5 border-b border-slate-200/60 px-5" style={{ height: 'var(--header-height)' }}>
+      <div className="flex items-center gap-2.5 border-b border-slate-200/60 dark:border-slate-700/60 px-5" style={{ height: 'var(--header-height)' }}>
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shrink-0 shadow-sm">
           <ChickenLogo className="h-4.5 w-4.5 brightness-0 invert" />
         </div>
-        <span className="text-lg font-black tracking-tighter text-emerald-950 leading-none">الياسين</span>
+        <span className="text-lg font-black tracking-tighter text-emerald-950 dark:text-emerald-100 leading-none">الياسين</span>
       </div>
 
       {/* Super admin badge */}
@@ -86,7 +86,7 @@ export function Sidebar() {
                     'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200',
                     isActive
                       ? 'bg-primary-50 text-primary-700 font-semibold'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
                   )}
                 >
                   <Icon

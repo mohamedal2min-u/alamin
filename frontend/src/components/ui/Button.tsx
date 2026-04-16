@@ -18,8 +18,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variants = {
       primary: 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 shadow-sm border border-emerald-700',
-      outline: 'border border-slate-400 bg-white text-slate-700 hover:bg-slate-50',
-      ghost:   'text-slate-600 hover:bg-slate-100',
+      outline: 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700',
+      ghost:   'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
       danger:  'bg-red-600 text-white hover:bg-red-700',
     }
 

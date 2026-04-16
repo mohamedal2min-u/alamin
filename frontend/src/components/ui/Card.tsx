@@ -8,7 +8,7 @@ interface CardProps {
 export function Card({ className, children }: CardProps) {
   return (
     <div className={cn(
-      'rounded-2xl border border-slate-200/60 bg-white',
+      'rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-800',
       className
     )} style={{ boxShadow: 'var(--shadow-card)' }}>
       {children}
@@ -18,7 +18,7 @@ export function Card({ className, children }: CardProps) {
 
 export function CardHeader({ className, children }: CardProps) {
   return (
-    <div className={cn('border-b border-slate-100 px-5 py-4', className)}>
+    <div className={cn('border-b border-slate-100 dark:border-slate-700 px-5 py-4', className)}>
       {children}
     </div>
   )

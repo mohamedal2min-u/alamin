@@ -6,10 +6,11 @@ import { useQuery } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
-import { FlockSummaryCard } from '@/components/dashboard/FlockSummaryCard'
-import { OperationalInfoCard } from '@/components/dashboard/OperationalInfoCard'
-import { QuickEntryCard } from '@/components/dashboard/QuickEntryCard'
-import { DaySummaryCard } from '@/components/dashboard/DaySummaryCard'
+import { WorkerProgressHeader } from '@/components/worker/WorkerProgressHeader'
+import { WorkerGuidelinesCard } from '@/components/worker/WorkerGuidelinesCard'
+import { WorkerTaskChecklist } from '@/components/worker/WorkerTaskChecklist'
+import { WorkerHistoryList } from '@/components/worker/WorkerHistoryList'
+import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
@@ -19,8 +20,11 @@ export default function DashboardPage() {
   const [activating, setActivating] = useState(false)
   const [activateError, setActivateError] = useState<string | null>(null)
 
+  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | null>(null)
+  const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
+
   useEffect(() => {
-    setPageTitle('لوحة التحكم')
+    setPageTitle('الرئيسية')
     setPageSubtitle(currentFarm?.name || null)
   }, [currentFarm, setPageTitle, setPageSubtitle])
 
@@ -34,6 +38,7 @@ export default function DashboardPage() {
     queryFn: () => flocksApi.list().then((res): Flock[] => res.data),
     enabled: !!currentFarm,
     refetchInterval: 30_000,
+    staleTime: 5000,
   })
 
   const activeFlock = flocks.find((f) => f.status === 'active') ?? null
@@ -41,20 +46,40 @@ export default function DashboardPage() {
   const currentFlock = activeFlock ?? draftFlock
   const isActive = currentFlock?.status === 'active'
 
+  const now = new Date()
+  const todayDate = now.getFullYear() + '-' +
+                    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(now.getDate()).padStart(2, '0')
+
   const {
     data: summary,
     isLoading: loadingSummary,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['today-summary', activeFlock?.id],
-    queryFn: () => flocksApi.todaySummary(activeFlock!.id).then(res => res.data),
+    queryKey: ['today-summary', activeFlock?.id, todayDate],
+    queryFn: () => flocksApi.todaySummary(activeFlock!.id, todayDate).then(res => res.data),
     enabled: !!activeFlock,
     refetchInterval: 30_000,
+    staleTime: 5000,
+  })
+
+  const {
+    data: history,
+    isLoading: loadingHistory,
+    isRefetching: refetchingHistory,
+    refetch: refetchHistory,
+  } = useQuery({
+    queryKey: ['flock-history', activeFlock?.id],
+    queryFn: () => flocksApi.getHistory(activeFlock!.id),
+    enabled: !!activeFlock,
+    refetchInterval: 10_000,
+    staleTime: 5000,
   })
 
   const handleEntrySuccess = () => {
     refetchSummary()
     refetchFlocks()
+    refetchHistory()
   }
 
   const handleActivate = async () => {
@@ -71,27 +96,49 @@ export default function DashboardPage() {
     }
   }
 
-  const mortalityRate = currentFlock && currentFlock.initial_count > 0
-    ? ((currentFlock.total_mortality / currentFlock.initial_count) * 100).toFixed(1)
-    : '0.0'
+  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense', extra?: Record<string, unknown>) => {
+    setEntryExtra(extra ?? null)
+    setActiveEntryTab(type)
+  }
+
+  const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining' | 'expense') => {
+    if (type === 'remaining') {
+      handleTaskClick('temp')
+      return
+    }
+    handleTaskClick(type as any)
+  }
 
   return (
-    <div className="space-y-5 px-5 pt-5 pb-8" dir="rtl">
+    <div className="space-y-4 px-3 pt-3 pb-8" dir="rtl">
       
       {/* Error */}
       {hasError && (
-        <div className="flex items-center gap-3 rounded-2xl bg-red-50 p-4 text-red-600">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p className="text-sm font-bold">تعذّر تحديث البيانات</p>
+        <div className="flex items-center gap-3 rounded-xl bg-red-50 p-4 text-red-600">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <p className="text-xs font-bold">تعذّر تحديث البيانات</p>
         </div>
       )}
 
       {/* Loading */}
       {loadingFlocks && flocks.length === 0 && (
-        <div className="space-y-4 pt-2">
-          <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
-          <div className="h-20 animate-pulse rounded-2xl bg-slate-50" />
-          <div className="h-40 animate-pulse rounded-2xl bg-slate-50" />
+        <div className="space-y-4 pt-1">
+          <div className="rounded-2xl bg-white border border-slate-100 p-4 animate-pulse space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-slate-100" />
+              <div className="space-y-1.5 flex-1">
+                <div className="h-3.5 w-20 bg-slate-100 rounded" />
+                <div className="h-2.5 w-14 bg-slate-100 rounded" />
+              </div>
+              <div className="h-5 w-12 bg-slate-100 rounded-full" />
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-slate-50 rounded-xl" />)}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl bg-slate-50 animate-pulse" />)}
+          </div>
         </div>
       )}
 
@@ -103,9 +150,6 @@ export default function DashboardPage() {
       {/* Main Content */}
       {!loadingFlocks && currentFlock ? (
         <>
-          {/* Flock Summary */}
-          <FlockSummaryCard currentFlock={currentFlock} mortalityRate={mortalityRate} />
-
           {/* Draft Activation */}
           {draftFlock && (
             <div className="rounded-2xl bg-amber-50/80 border border-amber-100 p-5">
@@ -122,7 +166,7 @@ export default function DashboardPage() {
                   <button 
                     onClick={handleActivate} 
                     disabled={activating} 
-                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white active:scale-[0.98] disabled:opacity-50 transition-all"
+                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white active:scale-[0.98] disabled:opacity-50 transition-all shadow-sm shadow-amber-200"
                   >
                     {activating ? 'جارٍ التفعيل...' : 'تفعيل الفوج'}
                   </button>
@@ -133,15 +177,45 @@ export default function DashboardPage() {
 
           {/* Active Flock Tools */}
           {isActive && (
-            <div className="space-y-5">
-              {/* Quick Entry — Primary Action Area */}
-              <QuickEntryCard flockId={currentFlock.id} onSuccess={handleEntrySuccess} />
+            <div className="space-y-4">
+              {/* Stat Grid Header */}
+              <WorkerProgressHeader 
+                flock={currentFlock}
+                summary={summary}
+                isLoading={loadingSummary}
+                viewDate={todayDate}
+                role="manager"
+                onStatClick={handleStatClick}
+              />
 
-              {/* Operational Info */}
-              <OperationalInfoCard ageDays={currentFlock.current_age_days} birdCount={currentFlock.remaining_count} />
+              {/* Guidelines */}
+              <WorkerGuidelinesCard 
+                ageDays={currentFlock.current_age_days ?? 0} 
+                birdCount={currentFlock.remaining_count} 
+              />
 
-              {/* Day Summary */}
-              <DaySummaryCard summary={summary ?? emptyTodaySummary()} loading={loadingSummary} />
+              {/* Task Status */}
+              <WorkerTaskChecklist 
+                summary={summary ?? emptyTodaySummary()} 
+                onTaskClick={(type) => handleTaskClick(type as any)}
+              />
+
+              {/* History */}
+              <WorkerHistoryList 
+                history={history?.data ?? []} 
+                isLoading={loadingHistory}
+                isRefreshing={refetchingHistory}
+                role="manager"
+              />
+              
+              {/* Entry Dialog */}
+              <WorkerEntryDialog 
+                flockId={currentFlock.id}
+                activeTab={activeEntryTab}
+                initialExtra={entryExtra}
+                onClose={() => setActiveEntryTab(null)}
+                onSuccess={handleEntrySuccess}
+              />
             </div>
           )}
         </>
@@ -156,12 +230,12 @@ export default function DashboardPage() {
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl bg-slate-50/50 py-16 px-4 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-4 shadow-sm border border-slate-100">
-        <img src="/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
+    <div className="flex flex-col items-center justify-center rounded-[2rem] bg-slate-50/50 py-16 px-4 text-center border border-dashed border-slate-200">
+      <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mb-5 shadow-sm border border-slate-100">
+        <Bird className="h-8 w-8 text-slate-400" />
       </div>
-      <h3 className="text-sm font-extrabold text-slate-800">{title}</h3>
-      <p className="mt-1.5 text-xs text-slate-400 font-medium max-w-[220px] leading-relaxed">{subtitle}</p>
+      <h3 className="text-sm font-black text-slate-800">{title}</h3>
+      <p className="mt-1.5 text-xs text-slate-500 font-medium max-w-[220px] leading-relaxed">{subtitle}</p>
     </div>
   )
 }

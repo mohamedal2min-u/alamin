@@ -28,6 +28,7 @@ Route::prefix('auth')->group(function (): void {
         Route::get('me',        [AuthController::class, 'me']);
         Route::put('me',        [AuthController::class, 'updateProfile']);
         Route::put('password',  [AuthController::class, 'changePassword']);
+        Route::post('avatar',   [AuthController::class, 'uploadAvatar']);
     });
 });
 

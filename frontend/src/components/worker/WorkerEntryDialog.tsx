@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { 
   AlertCircle, Skull, 
-  Wheat, Syringe, ThermometerSun
+  Wheat, Syringe, ThermometerSun, Receipt
 } from 'lucide-react'
 import { inventoryApi } from '@/lib/api/inventory'
 import { quickEntryApi } from '@/lib/api/quick-entry'
@@ -19,7 +19,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import type { InventoryItem } from '@/types/dashboard'
 import { toast } from 'sonner'
 
-type Tab = 'mortality' | 'feed' | 'medicine' | 'temp'
+type Tab = 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense'
 
 interface Props {
   flockId: number
@@ -34,6 +34,7 @@ const TABS: Record<Tab, { label: string; icon: React.ElementType }> = {
   feed:      { label: 'علف',    icon: Wheat },
   medicine:  { label: 'دواء',   icon: Syringe },
   temp:      { label: 'حرارة',  icon: ThermometerSun },
+  expense:   { label: 'مصروف', icon: Receipt },
 }
 
 export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, onSuccess }: Props) {
@@ -58,6 +59,17 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
   const [tempTime, setTempTime]   = useState<'morning' | 'afternoon' | 'evening'>('morning')
   const [tempVal, setTempVal]     = useState('')
 
+  // Expense
+  const [expType, setExpType]     = useState('water')
+  const [expQty, setExpQty]       = useState('')
+  const [expPrice, setExpPrice]   = useState('')
+  const [expDescription, setExpDescription] = useState('')
+  const [expNotes, setExpNotes]   = useState('')
+
+  const calculatedTotal = (activeTab === 'expense') 
+    ? (Number(expQty) * Number(expPrice)) 
+    : 0
+
   useEffect(() => {
     if (activeTab === 'feed') inventoryApi.items('feed').then((res) => setFeedItems(res.data))
     if (activeTab === 'medicine') inventoryApi.items('medicine').then((res) => setMedItems(res.data))
@@ -69,6 +81,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
     setFeedItemId(''); setFeedQty('')
     setMedItemId(''); setMedQty('')
     setTempVal('')
+    setExpType('water'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes('')
     setError(null)
   }
 
@@ -96,6 +109,13 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
       } else if (activeTab === 'temp') {
         if (!tempVal || isNaN(Number(tempVal))) { setError('أدخل قيمة حرارة صحيحة'); setLoading(false); return }
         await workerApi.logTemperature(flockId, { log_date: date, time_of_day: tempTime, temperature: Number(tempVal) })
+      } else if (activeTab === 'expense') {
+        const total = calculatedTotal
+        if (total <= 0 && expType !== 'water') { setError('أدخل مبلغاً صحيحاً'); setLoading(false); return }
+        await quickEntryApi.logExpense(flockId, { 
+          expense_type: expType, total_amount: total || Number(expPrice), quantity: Number(expQty) || undefined,
+          unit_price: Number(expPrice) || undefined, description: expDescription || undefined, notes: expNotes || undefined, entry_date: date 
+        })
       }
 
       resetFields()
@@ -138,6 +158,13 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
       border: 'focus:border-indigo-500', 
       ring: 'focus:ring-indigo-500/10',
       shadow: 'shadow-indigo-500/20'
+    },
+    expense: { 
+      text: 'text-amber-600', 
+      bg: 'bg-amber-600', 
+      border: 'focus:border-amber-500', 
+      ring: 'focus:ring-amber-500/10',
+      shadow: 'shadow-amber-500/20'
     },
   }
 
@@ -213,6 +240,32 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
             <FormField label="درجة الحرارة (°C)" required>
               <NumericInput value={tempVal} onChange={setTempVal} placeholder="0.0" step={0.1} className={dynamicInputClass} />
             </FormField>
+          </div>
+        )}
+
+        {activeTab === 'expense' && (
+          <div className="space-y-5">
+            <FormField label="التصنيف" required>
+              <SelectInput value={expType} onChange={setExpType} options={[
+                { value: 'water', label: 'مياه' },
+                { value: 'bedding', label: 'فرشة (نشارة)' },
+                { value: 'vaccine', label: 'تحصينات/لقاحات' },
+                { value: 'other', label: 'أخرى' },
+              ]} placeholder="اختر التصنيف..." emptyMessage="" className={dynamicInputClass} />
+            </FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label={expType === 'water' ? 'العدد (اختياري)' : 'الكمية (اختياري)'}>
+                <NumericInput value={expQty} onChange={setExpQty} placeholder="0" className={dynamicInputClass} />
+              </FormField>
+              <FormField label="إجمالي المبلغ" required>
+                <NumericInput value={expPrice} onChange={setExpPrice} placeholder="0.00" className={dynamicInputClass} />
+              </FormField>
+            </div>
+            {expType === 'other' && (
+              <FormField label="وصف المصروف" required>
+                <input type="text" value={expDescription} onChange={(e) => setExpDescription(e.target.value)} placeholder="اكتب وصفاً..." className={dynamicInputClass} />
+              </FormField>
+            )}
           </div>
         )}
 

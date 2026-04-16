@@ -15,6 +15,7 @@ use App\Http\Requests\Auth\SubmitRegistrationRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -88,6 +89,36 @@ class AuthController extends Controller
         );
 
         return response()->json(['message' => 'تم تغيير كلمة المرور بنجاح'], 200);
+    }
+
+    // ── POST /api/auth/avatar ─────────────────────────────────────────────────
+
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+        ], [
+            'avatar.required' => 'الصورة مطلوبة',
+            'avatar.image'    => 'يجب أن يكون الملف صورة',
+            'avatar.mimes'    => 'صيغ الصور المقبولة: jpeg, jpg, png, webp',
+            'avatar.max'      => 'حجم الصورة يجب ألا يتجاوز 2MB',
+        ]);
+
+        $user = $request->user();
+
+        // حذف الصورة القديمة إن وجدت
+        if ($user->avatar_path && Storage::disk('public')->exists($user->avatar_path)) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar_path' => $path]);
+
+        return response()->json([
+            'message'     => 'تم تحديث الصورة الشخصية بنجاح',
+            'avatar_path' => $path,
+            'avatar_url'  => url(Storage::url($path)),
+        ], 200);
     }
 
     // ── POST /api/auth/register-request ──────────────────────────────────────

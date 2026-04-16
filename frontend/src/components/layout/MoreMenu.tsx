@@ -2,7 +2,7 @@
 'use client'
 
 import {
-  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, ChevronLeft
+  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, ChevronLeft, Settings
 } from 'lucide-react'
 import Link from 'next/link'
 import { FarmSelector } from './FarmSelector'
@@ -57,35 +57,46 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       
       {/* Sheet */}
       <div 
-        className="relative w-full max-w-2xl rounded-t-3xl bg-white animate-in slide-in-from-bottom duration-300"
+        className="relative w-full max-w-2xl rounded-t-3xl bg-white dark:bg-slate-800 animate-in slide-in-from-bottom duration-300"
         style={{ boxShadow: '0 -4px 30px rgba(0,0,0,0.1)' }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full bg-slate-200" />
+          <div className="h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-600" />
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pb-4 pt-2">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 text-sm font-bold">
-              {user?.name?.charAt(0) || '?'}
+          <Link
+            href="/settings"
+            onClick={onClose}
+            className="flex items-center gap-3 group"
+          >
+            <div className="h-10 w-10 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center text-emerald-700 text-sm font-bold shrink-0">
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                user?.name?.charAt(0) || '?'
+              )}
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">{user?.name}</p>
-              <p className="text-[11px] text-slate-400 font-medium">مرحباً بك</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-700 transition-colors">{user?.name}</p>
+              <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                <Settings className="h-3 w-3" />
+                إعدادات الحساب
+              </p>
             </div>
-          </div>
-          <button 
+          </Link>
+          <button
             onClick={onClose}
-            className="h-9 w-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 active:scale-95 transition-transform"
+            className="h-9 w-9 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-400 active:scale-95 transition-transform"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Farm Selector Section */}
-        <div className="mx-5 mb-4 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100/80">
+        <div className="mx-5 mb-4 p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-700/50 border border-slate-100/80 dark:border-slate-600/50">
           <p className="text-[10px] font-bold text-slate-400 mb-2 px-0.5 uppercase tracking-wider">المزرعة الحالية</p>
           <FarmSelector />
         </div>
@@ -97,7 +108,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 active:scale-[0.98] active:bg-slate-50 hover:bg-slate-50 group"
+              className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 active:scale-[0.98] active:bg-slate-50 dark:active:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 group"
             >
               <div className={cn(
                 "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
@@ -105,8 +116,8 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
               )}>
                 <item.icon className={cn("h-5 w-5", item.color)} />
               </div>
-              <span className="text-sm font-bold text-slate-700 flex-1">{item.label}</span>
-              <ChevronLeft className="h-4 w-4 text-slate-300 group-hover:text-slate-400 transition-colors" />
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex-1">{item.label}</span>
+              <ChevronLeft className="h-4 w-4 text-slate-300 dark:text-slate-500 group-hover:text-slate-400 dark:group-hover:text-slate-400 transition-colors" />
             </Link>
           ))}
         </div>

@@ -35,6 +35,9 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
 
   if (pathname === '/unauthorized') return true
 
+  // إعدادات الحساب متاحة لجميع الأدوار
+  if (pathname === '/settings') return true
+
   if (role === 'super_admin') {
     if (pathname === '/dashboard') return true
     if (pathname.startsWith('/admin/')) return true

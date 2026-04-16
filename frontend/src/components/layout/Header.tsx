@@ -3,6 +3,7 @@
 import { FarmSelector } from './FarmSelector'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { LogOut, User, RefreshCcw } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
 import { ChickenLogo } from './ChickenLogo'
@@ -88,14 +89,22 @@ export function Header() {
 
         {/* User menu */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 rounded-xl bg-emerald-900/40 border border-emerald-800/60 pl-3 pr-1 py-1 transition-colors duration-200 hover:bg-emerald-900/60">
-            <div className="h-7 w-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-900 font-bold text-xs shrink-0">
-              {user?.name?.charAt(0) || <User className="h-4 w-4" />}
+          <Link
+            href="/settings"
+            className="flex items-center gap-2 rounded-xl bg-emerald-900/40 border border-emerald-800/60 pl-3 pr-1 py-1 transition-colors duration-200 hover:bg-emerald-900/60"
+            title="إعدادات الحساب"
+          >
+            <div className="h-7 w-7 rounded-lg overflow-hidden bg-emerald-100 flex items-center justify-center text-emerald-900 font-bold text-xs shrink-0">
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                user?.name?.charAt(0) || <User className="h-4 w-4" />
+              )}
             </div>
             <span className="hidden md:block max-w-[100px] truncate text-xs font-semibold text-emerald-50 leading-none">
               {user?.name}
             </span>
-          </div>
+          </Link>
           
           <button
             onClick={handleLogout}

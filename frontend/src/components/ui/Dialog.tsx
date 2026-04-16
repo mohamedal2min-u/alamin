@@ -39,24 +39,24 @@ export function Dialog({ isOpen, onClose, title, children, className }: DialogPr
       />
       
       {/* Dialog Content */}
-      <div 
+      <div
         className={cn(
-          "relative w-full max-w-lg overflow-hidden rounded-2xl bg-white transition-all duration-200 animate-in fade-in zoom-in-95",
+          "relative w-full max-w-lg overflow-hidden rounded-2xl bg-white dark:bg-slate-800 transition-all duration-200 animate-in fade-in zoom-in-95",
           className
         )}
         style={{ boxShadow: 'var(--shadow-float)' }}
       >
         {/* Header */}
         {(title || typeof onClose === 'function') && (
-          <div className="relative flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div className="relative flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-6 py-4">
             {title && (
-              <h2 className="text-lg font-bold tracking-tight text-slate-900">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
                 {title}
               </h2>
             )}
             <button
               onClick={onClose}
-              className="group rounded-xl bg-slate-50 p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 active:scale-95"
+              className="group rounded-xl bg-slate-50 dark:bg-slate-700 p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-slate-100 active:scale-95"
             >
               <X className="h-4 w-4" />
             </button>

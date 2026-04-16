@@ -51,26 +51,26 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg">
-            <ShieldCheck className="h-2.5 w-2.5 text-emerald-600" />
-            <span className="text-[8px] font-black text-slate-500">Ross 2023</span>
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            <span className="text-[10px] font-black text-slate-500">Ross 2023</span>
           </div>
-          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg text-[10px] font-black border border-emerald-100">
+          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[11px] font-black border border-emerald-100 shadow-sm">
             <span>اليوم</span>
             <span className="tabular-nums">{ageDays}</span>
           </div>
         </div>
       </div>
 
-      {/* Cards Row - Horizontal Scroll */}
-      <div className="flex gap-2.5 overflow-x-auto px-0.5 pb-2 no-scrollbar snap-x">
+      {/* Cards Row - Grid Layout */}
+      <div className="grid grid-cols-3 gap-2 px-0.5 pb-2">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
             <div
               key={card.title}
               className={cn(
-                "relative min-w-[140px] flex-1 shrink-0 snap-center rounded-2xl p-4 text-white overflow-hidden bg-gradient-to-br",
+                "relative min-w-0 flex-1 rounded-2xl p-3 text-white overflow-hidden bg-gradient-to-br",
                 card.gradient
               )}
             >
@@ -79,19 +79,19 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
                 <Icon size={60} strokeWidth={1.5} />
               </div>
 
-              <div className="relative z-10 flex flex-col gap-4">
+              <div className="relative z-10 flex flex-col gap-2.5">
                 <div className="space-y-1">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-[0.5rem] bg-white/20">
-                    <Icon className="h-4 w-4" />
+                  <div className="flex h-7 w-7 items-center justify-center rounded-[0.5rem] bg-white/20">
+                    <Icon className="h-3.5 w-3.5" />
                   </div>
-                  <p className="text-[9px] font-black uppercase tracking-tight opacity-70">{card.title}</p>
+                  <p className="text-[11px] font-black uppercase tracking-tight text-white/90">{card.title}</p>
               </div>
               <div className="space-y-0.5">
                 <div className="flex items-baseline gap-1">
                   <h4 className="text-2xl font-black tabular-nums tracking-tighter">{card.value}</h4>
-                  <span className="text-[10px] font-bold opacity-80">{card.unit}</span>
+                  <span className="text-[11px] font-bold text-white/90">{card.unit}</span>
                 </div>
-                <p className="text-[8px] font-bold opacity-70 truncate">{card.sub}</p>
+                <p className="text-[10px] font-bold text-white/80 truncate leading-tight">{card.sub}</p>
               </div>
             </div>
             </div>

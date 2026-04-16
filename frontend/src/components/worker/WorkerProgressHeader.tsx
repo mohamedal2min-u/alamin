@@ -1,9 +1,12 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { Skull, Wheat, Syringe, ThermometerSun, Calendar } from 'lucide-react'
+import { Skull, Wheat, Syringe, ThermometerSun, Calendar, Receipt, UserCircle } from 'lucide-react'
 import { FlockStatusBadge } from '@/components/flocks/FlockStatusBadge'
 import { formatDate, formatNumber } from '@/lib/utils'
+import { profileApi } from '@/lib/api/profile'
+import { useAuthStore } from '@/stores/auth.store'
+import { useState } from 'react'
 
 interface Props {
   flock?: {
@@ -19,10 +22,32 @@ interface Props {
   summary?: any
   isLoading?: boolean
   viewDate?: string
-  onStatClick: (type: 'mortality' | 'feed' | 'medicine' | 'remaining') => void
+  role?: 'worker' | 'manager'
+  onStatClick: (type: 'mortality' | 'feed' | 'medicine' | 'remaining' | 'expense') => void
 }
 
-export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onStatClick }: Props) {
+export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role = 'worker', onStatClick }: Props) {
+  const { user, setUser } = useAuthStore()
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    setIsUploading(true)
+    try {
+      const res = await profileApi.uploadAvatar(file)
+      setUser({ ...user, avatar_url: res.avatar_url })
+    } catch (error) {
+      console.error('Failed to upload avatar', error)
+      alert('حدث خطأ أثناء رفع الصورة')
+    } finally {
+      setIsUploading(false)
+      // reset input
+      e.target.value = ''
+    }
+  }
+
   const getEq = (entries: any[]) => entries?.length > 0 ? entries.map(e => e.quantity).join(' + ') : '—'
 
   const mortalityRate = flock 
@@ -33,36 +58,6 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onSt
 
   return (
     <div className="space-y-3">
-      {/* ── Flock Identity Card ── */}
-      <div className="rounded-2xl bg-white border border-emerald-100 overflow-hidden shadow-sm">
-        {/* Top: Logo + Name + Status */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-emerald-50/50">
-          <div className="flex items-center gap-3 text-right min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.85rem] bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-md">
-              <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain brightness-0 invert" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base font-black text-emerald-950 leading-tight truncate">
-                {flock?.name ?? 'فوج التسمين'}
-              </h2>
-              <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600/70 mt-0.5">
-                <Calendar className="h-3 w-3" />
-                <span>{flock ? formatDate(flock.start_date) : '...'}</span>
-              </div>
-            </div>
-          </div>
-          <FlockStatusBadge status={flock?.status ?? 'active'} />
-        </div>
-
-        {/* Metrics: 4 columns */}
-        <div className="grid grid-cols-4 divide-x divide-x-reverse divide-emerald-50/50">
-          <MetricItem label="العمر" value={flock?.current_age_days ?? '—'} sub="يوم" color="text-emerald-950" />
-          <MetricItem label="المتبقي" value={formatNumber(flock?.remaining_count ?? 0)} sub="طير" color="text-emerald-600" />
-          <MetricItem label="الأولي" value={formatNumber(flock?.initial_count ?? 0)} color="text-slate-600" />
-          <MetricItem label="النفوق" value={formatNumber(flock?.total_mortality ?? 0)} sub={`${mortalityRate}%`} color="text-rose-600" />
-        </div>
-      </div>
-
       {/* ── Quick Action Stat Grid ── */}
       <div className="grid grid-cols-2 gap-2.5">
         <StatBox
@@ -92,16 +87,28 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, onSt
           isLoading={isLoading}
           onClick={() => onStatClick('medicine')}
         />
-        <StatBox
-          label="حرارة / مياه"
-          equation={`${flock?.current_age_days ?? 0} يوم`}
-          value={summary?.temperatures?.entries?.[0]?.temperature ?? 0}
-          unit="°C"
-          color="green"
-          icon={<ThermometerSun className="h-5 w-5" />}
-          isLoading={isLoading}
-          onClick={() => onStatClick('remaining')}
-        />
+        {role === 'worker' ? (
+          <StatBox
+            label="حرارة / مياه"
+            equation={`${flock?.current_age_days ?? 0} يوم`}
+            value={summary?.temperatures?.entries?.[0]?.temperature ?? 0}
+            unit="°C"
+            color="green"
+            icon={<ThermometerSun className="h-5 w-5" />}
+            isLoading={isLoading}
+            onClick={() => onStatClick('remaining')}
+          />
+        ) : (
+          <StatBox
+            label="المصروفات اليومية"
+            equation={`${summary?.expenses?.entries?.length ?? 0} حركة`}
+            value={summary?.expenses?.total ?? 0}
+            color="orange"
+            icon={<Receipt className="h-5 w-5" />}
+            isLoading={isLoading}
+            onClick={() => onStatClick('expense')}
+          />
+        )}
       </div>
     </div>
   )
@@ -122,7 +129,7 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
   equation: string 
   value: number
   unit?: string
-  color: 'red' | 'amber' | 'indigo' | 'green'
+  color: 'red' | 'amber' | 'indigo' | 'green' | 'orange'
   icon: React.ReactNode 
   isLoading?: boolean
   onClick: () => void 
@@ -151,6 +158,12 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
       border: 'border-emerald-200/50',
       iconBg: 'bg-emerald-100 text-emerald-500',
       text: 'text-emerald-700',
+    },
+    orange: {
+      bg: 'bg-gradient-to-br from-orange-50 to-white',
+      border: 'border-orange-200/50',
+      iconBg: 'bg-orange-100 text-orange-500',
+      text: 'text-orange-600',
     }
   }
 

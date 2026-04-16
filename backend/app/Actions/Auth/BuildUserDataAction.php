@@ -5,6 +5,7 @@ namespace App\Actions\Auth;
 use App\Models\Farm;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * يبني مصفوفة بيانات المستخدم الكاملة بما فيها مزارعه وأدواره.
@@ -60,12 +61,17 @@ class BuildUserDataAction
             ])->values();
         }
 
+        $avatarUrl = $user->avatar_path
+            ? url(Storage::url($user->avatar_path))
+            : null;
+
         return [
             'id'          => $user->id,
             'name'        => $user->name,
             'email'       => $user->email,
             'whatsapp'    => $user->whatsapp,
             'avatar_path' => $user->avatar_path,
+            'avatar_url'  => $avatarUrl,
             'status'      => $user->status,
             'farms'       => $farms,
         ];

@@ -32,7 +32,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-slate-100"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-100 dark:border-slate-700/60"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}
     >
       <div className="mx-auto flex max-w-2xl items-center justify-around px-4 h-[64px]">

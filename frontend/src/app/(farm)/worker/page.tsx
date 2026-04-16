@@ -129,8 +129,8 @@ export default function WorkerPage() {
             {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl bg-slate-50 animate-pulse" />)}
           </div>
 
-          <div className="flex gap-2.5 overflow-hidden">
-            {[1, 2, 3].map(i => <div key={i} className="min-w-[140px] h-28 rounded-2xl bg-slate-50 animate-pulse" />)}
+          <div className="grid grid-cols-3 gap-2">
+            {[1, 2, 3].map(i => <div key={i} className="h-28 rounded-2xl bg-slate-50 animate-pulse" />)}
           </div>
         </div>
       )}

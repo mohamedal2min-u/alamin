@@ -7,7 +7,8 @@ export const metadata: Metadata = {
 }
 
 import { QueryProvider } from '@/components/providers/QueryProvider'
-import { Toaster } from 'sonner'
+import { ThemeApplier } from '@/components/layout/ThemeApplier'
+import { ToasterWithTheme } from '@/components/layout/ToasterWithTheme'
 
 export default function RootLayout({
   children,
@@ -27,12 +28,13 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className="min-h-screen bg-slate-50 text-slate-900 antialiased"
+        className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 antialiased"
       >
         <QueryProvider>
+          <ThemeApplier />
           {children}
+          <ToasterWithTheme />
         </QueryProvider>
-        <Toaster richColors position="top-center" />
       </body>
     </html>
   )

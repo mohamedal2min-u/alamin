@@ -7,6 +7,8 @@ export interface User {
   name: string
   email: string | null
   whatsapp: string | null
+  avatar_path: string | null
+  avatar_url: string | null
   status: 'active' | 'inactive' | 'suspended'
   last_login_at: string | null
   farms: UserFarm[]

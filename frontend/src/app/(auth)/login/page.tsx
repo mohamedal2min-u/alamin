@@ -66,7 +66,7 @@ function TabButton({
         'relative flex-1 py-3 text-sm font-medium transition-all duration-300 rounded-xl',
         active
           ? 'bg-emerald-600 text-white shadow-md'
-          : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50'
+          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-emerald-50 dark:hover:bg-slate-700'
       )}
     >
       {children}
@@ -167,10 +167,10 @@ function LoginPageInner() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-white px-5 py-8" dir="rtl">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-white dark:bg-slate-900 px-5 py-8" dir="rtl">
       <div className="w-full max-w-sm">
         {/* ── Card ──────────────────────────────────────────────── */}
-        <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
+        <div className="rounded-[1.75rem] border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800 p-5 shadow-sm shadow-slate-200/40">
           {/* ── Brand Section (Now inside card) ─────────────────── */}
           <div className="flex flex-col items-center mb-5">
             {/* Logo */}
@@ -185,7 +185,7 @@ function LoginPageInner() {
             </div>
 
             {/* Brand Name */}
-            <h1 className="text-[1.75rem] font-bold tracking-tight text-emerald-950 mb-1 leading-none text-center">
+            <h1 className="text-[1.75rem] font-bold tracking-tight text-emerald-950 dark:text-emerald-100 mb-1 leading-none text-center">
               الياسين
             </h1>
 
@@ -201,10 +201,10 @@ function LoginPageInner() {
             </div>
           </div>
 
-          <div className="h-px bg-slate-100/60 mb-5" />
+          <div className="h-px bg-slate-100/60 dark:bg-slate-700/60 mb-5" />
 
           {/* Tabs */}
-          <div className="mb-4 flex gap-1 rounded-2xl bg-slate-100/80 p-1">
+          <div className="mb-4 flex gap-1 rounded-2xl bg-slate-100/80 dark:bg-slate-700/50 p-1">
             <TabButton active={mode === 'login'} onClick={() => switchMode('login')}>
               تسجيل الدخول
             </TabButton>
@@ -381,7 +381,7 @@ function LoginPageInner() {
                   />
                 </svg>
               </div>
-              <h3 className="mb-2 text-base font-bold text-slate-800">
+              <h3 className="mb-2 text-base font-bold text-slate-800 dark:text-slate-200">
                 تم إرسال طلبك بنجاح
               </h3>
               <p className="mb-6 text-xs text-slate-500 leading-relaxed">
@@ -398,7 +398,7 @@ function LoginPageInner() {
           )}
 
           {/* ── Trust Badges ───────────────────────────────────── */}
-          <div className="mt-5 pt-4 border-t border-slate-100/60 flex items-center justify-between px-2">
+          <div className="mt-5 pt-4 border-t border-slate-100/60 dark:border-slate-700/60 flex items-center justify-between px-2">
             <div className="flex flex-col items-center gap-2 flex-1 relative">
               <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-100/50 shadow-sm shadow-emerald-100/20">
                 <ShieldCheck className="h-[20px] w-[20px]" strokeWidth={2} />

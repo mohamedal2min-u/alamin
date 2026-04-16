@@ -13,7 +13,6 @@ interface HistoryDay {
     mortality: number
     feed: number
     medicine_count: number
-    medicine_count: number
     completion_rate: number
     expense_count?: number
   }

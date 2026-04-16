@@ -39,6 +39,29 @@ class AdminFarmController extends Controller
         return response()->json(['data' => $farms], 200);
     }
 
+    // ── GET /api/admin/farms/{farm} ───────────────────────────────────────────
+
+    public function show(Request $request, Farm $farm): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $farm->load(['adminUser:id,name,email']);
+
+        return response()->json([
+            'data' => [
+                'id'         => $farm->id,
+                'name'       => $farm->name,
+                'location'   => $farm->location,
+                'status'     => $farm->status,
+                'started_at' => $farm->started_at?->toDateString(),
+                'created_at' => $farm->created_at?->toISOString(),
+                'admin'      => $farm->adminUser
+                    ? ['id' => $farm->adminUser->id, 'name' => $farm->adminUser->name, 'email' => $farm->adminUser->email]
+                    : null,
+            ]
+        ], 200);
+    }
+
     // ── POST /api/admin/farms ─────────────────────────────────────────────────
 
     public function store(Request $request): JsonResponse

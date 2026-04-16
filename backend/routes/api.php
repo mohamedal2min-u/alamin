@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\Admin\AdminRegistrationRequestController;
 
 Route::middleware(['auth:sanctum', 'super_admin'])->prefix('admin')->group(function (): void {
     Route::get('farms',               [AdminFarmController::class, 'index']);
+    Route::get('farms/{farm}',        [AdminFarmController::class, 'show']);
     Route::post('farms',              [AdminFarmController::class, 'store']);
     Route::delete('farms/{farm}',     [AdminFarmController::class, 'destroy']);
     Route::put('farms/{farm}/admin',  [AdminFarmController::class, 'assignAdmin']);

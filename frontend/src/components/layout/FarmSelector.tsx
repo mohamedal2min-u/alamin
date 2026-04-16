@@ -25,6 +25,14 @@ export function FarmSelector() {
 
   if (!currentFarm) return null
 
+  if (availableFarms.length <= 1) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+        <span className="max-w-[140px] truncate">{currentFarm.name}</span>
+      </div>
+    )
+  }
+
   return (
     <div className="relative">
       <button

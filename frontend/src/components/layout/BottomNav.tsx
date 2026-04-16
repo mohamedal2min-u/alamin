@@ -13,6 +13,8 @@ import { NAV_HREFS_BY_ROLE } from '@/lib/roles'
 
 import { useAuthStore } from '@/stores/auth.store'
 
+import { useScrollDirection } from '@/hooks/useScrollDirection'
+
 interface BottomNavProps {
   onMoreClick: () => void
 }
@@ -21,11 +23,15 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
   const pathname = usePathname()
   const role = useCurrentRole()
   const { user } = useAuthStore()
+  const { scrollDirection, isAtTop } = useScrollDirection()
 
   if (!role || role === 'super_admin') return null
 
   const allowedHrefs = NAV_HREFS_BY_ROLE[role]
   
+  // Logic: Hide on scroll UP as requested, show on scroll DOWN or at TOP
+  const shouldHide = scrollDirection === 'up' && !isAtTop
+
   const regularItems = [
     { label: 'الوردية',  href: '/worker',    icon: ClipboardList },
     { label: 'الأفواج',  href: '/flocks',    icon: Bird },
@@ -75,11 +81,15 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
   )
 
   const isHomeActive = pathname === '/dashboard'
-  const avatarUrl = user?.profile_picture_url || '/default-avatar.jpg'
+  const avatarUrl = user?.avatar_url || '/default-avatar.jpg'
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.4)]"
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out",
+        shouldHide ? "translate-y-full opacity-0" : "translate-y-0 opacity-100",
+        "bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.4)]"
+      )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}
     >
       <div className="mx-auto flex max-w-2xl items-center justify-around px-2 sm:px-4 h-[78px]">
@@ -88,7 +98,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
           <Link
             href="/dashboard"
             className={cn(
-              "flex h-[60px] w-[60px] items-center justify-center rounded-full border-4 shadow-xl transition-all active:scale-90",
+              "flex h-[60px] w-[60px] items-center justify-center rounded-full border-4 shadow-xl transition-all active:scale-95",
               isHomeActive 
                 ? "border-emerald-500 bg-white dark:bg-slate-800 scale-110 -translate-y-1" 
                 : "border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700"

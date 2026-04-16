@@ -12,10 +12,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import type { Flock } from '@/types/flock'
 
+import { useScrollDirection } from '@/hooks/useScrollDirection'
+
 export function FlockGlobalHeader() {
   const { user, setUser } = useAuthStore()
   const { currentFarm } = useFarmStore()
   const queryClient = useQueryClient()
+  const { scrollDirection, isAtTop } = useScrollDirection()
   
   const [isUploading, setIsUploading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -30,6 +33,7 @@ export function FlockGlobalHeader() {
 
   // Determine active flock
   const activeFlock = flocks.find(f => f.status === 'active') ?? null
+  
   let roleLabel = 'المربي'
   if (currentFarm?.role === 'super_admin' || currentFarm?.role === 'farm_admin') {
     roleLabel = 'مدير المدجنة'
@@ -68,14 +72,23 @@ export function FlockGlobalHeader() {
         ? ((activeFlock.total_mortality ?? 0) / activeFlock.initial_count * 100).toFixed(1)
         : '0.0')
     : '0.0'
+  
+  const shouldHide = scrollDirection === 'down' && !isAtTop
 
   if (!currentFarm) return null
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md p-2 border-b border-transparent dark:border-slate-800" dir="rtl">
-      <div className="rounded-2xl bg-white border border-emerald-100 overflow-hidden shadow-sm mx-auto max-w-2xl">
+    <header 
+      className={cn(
+        "sticky top-0 z-40 w-full transition-all duration-500 ease-in-out pb-2 px-2",
+        shouldHide ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100",
+        "bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md pt-2 border-b border-transparent dark:border-slate-800"
+      )} 
+      dir="rtl"
+    >
+      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-emerald-100 dark:border-emerald-900/30 overflow-hidden shadow-sm mx-auto max-w-2xl">
         {/* Top: User (Right) + Flock Name (Center) + Status (Left) */}
-        <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-emerald-50/50">
+        <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-emerald-50/50 dark:border-emerald-900/20">
           
           {/* User Profile (Right visually in RTL) */}
           <div className="w-[35%] flex justify-start">
@@ -84,7 +97,7 @@ export function FlockGlobalHeader() {
                 onClick={() => document.getElementById('global-avatar-upload')?.click()}
                 disabled={isUploading}
                 className={cn(
-                  "h-8 w-8 shrink-0 rounded-[8px] bg-emerald-50 border border-emerald-100/50 flex flex-col items-center justify-center overflow-hidden transition-all hover:opacity-80 active:scale-95",
+                  "h-8 w-8 shrink-0 rounded-[8px] bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100/50 dark:border-emerald-900/30 flex flex-col items-center justify-center overflow-hidden transition-all hover:opacity-80 active:scale-95",
                   isUploading && "animate-pulse opacity-50 cursor-wait"
                 )}
                 title="تغيير الصورة الشخصية"
@@ -96,10 +109,10 @@ export function FlockGlobalHeader() {
                 />
               </button>
               <div className="flex flex-col justify-center">
-                <span className="text-[11px] font-black text-slate-800 leading-none truncate max-w-[80px]">
+                <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none truncate max-w-[80px]">
                   {user?.name || 'مستخدم'}
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 mt-[2px] leading-none">
+                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 mt-[2px] leading-none">
                   {roleLabel}
                 </span>
               </div>
@@ -116,11 +129,11 @@ export function FlockGlobalHeader() {
 
           {/* Flock Info (Center) */}
           <div className="w-[30%] flex flex-col items-center justify-center text-center">
-            <h2 className="text-[12px] font-black text-emerald-950 leading-none truncate mb-0.5">
+            <h2 className="text-[12px] font-black text-emerald-950 dark:text-emerald-50 leading-none truncate mb-0.5">
               {activeFlock?.name ?? (isLoading ? 'تحميل...' : 'لا فوج')}
             </h2>
             {activeFlock && (
-              <div className="flex items-center justify-center gap-1 text-[9px] font-bold text-emerald-600/80 leading-none">
+              <div className="flex items-center justify-center gap-1 text-[9px] font-bold text-emerald-600/80 dark:text-emerald-400/80 leading-none">
                 <Calendar className="h-2.5 w-2.5" />
                 <span>{formatDate(activeFlock.start_date)}</span>
               </div>
@@ -132,7 +145,7 @@ export function FlockGlobalHeader() {
              <button
                 onClick={handleGlobalRefresh}
                 disabled={isRefreshing}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-400 active:scale-95 transition-all disabled:opacity-40"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-500 active:scale-95 transition-all disabled:opacity-40"
               >
                 <RefreshCcw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
             </button>
@@ -143,15 +156,15 @@ export function FlockGlobalHeader() {
 
         {/* Metrics: 4 columns */}
         {activeFlock ? (
-          <div className="grid grid-cols-4 divide-x divide-x-reverse divide-emerald-50/50">
-            <MetricItem label="الأولي" value={formatNumber(activeFlock.initial_count ?? 0)} color="text-slate-600" />
-            <MetricItem label="النفوق" value={formatNumber(activeFlock.total_mortality ?? 0)} sub={`${mortalityRate}%`} color="text-rose-600" />
-            <MetricItem label="المتبقي" value={formatNumber(activeFlock.remaining_count ?? 0)} sub="طير" color="text-emerald-600" />
-            <MetricItem label="العمر" value={activeFlock.current_age_days ?? '—'} sub="يوم" color="text-emerald-950" />
+          <div className="grid grid-cols-4 divide-x divide-x-reverse divide-emerald-50/50 dark:divide-emerald-900/20">
+            <MetricItem label="الأولي" value={formatNumber(activeFlock.initial_count ?? 0)} color="text-slate-600 dark:text-slate-300" />
+            <MetricItem label="النفوق" value={formatNumber(activeFlock.total_mortality ?? 0)} sub={`${mortalityRate}%`} color="text-rose-600 dark:text-rose-400" />
+            <MetricItem label="المتبقي" value={formatNumber(activeFlock.remaining_count ?? 0)} sub="طير" color="text-emerald-600 dark:text-emerald-400" />
+            <MetricItem label="العمر" value={activeFlock.current_age_days ?? '—'} sub="يوم" color="text-emerald-950 dark:text-emerald-50" />
           </div>
         ) : (
           !isLoading && (
-            <div className="py-2 px-3 text-center text-[10px] font-semibold text-slate-400 bg-slate-50/50">
+            <div className="py-2 px-3 text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-700/30">
               يرجى إنشاء وتفعيل فوج للبدء بتسجيل البيانات
             </div>
           )

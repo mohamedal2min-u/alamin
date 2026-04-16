@@ -51,14 +51,14 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     <div className="fixed inset-0 z-[100] flex items-end justify-center">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in duration-200" 
+        className="fixed inset-0 bg-black/50 backdrop-blur-[4px] animate-in fade-in duration-300" 
         onClick={onClose} 
       />
       
       {/* Sheet */}
       <div 
-        className="relative w-full max-w-2xl rounded-t-3xl bg-white dark:bg-slate-800 animate-in slide-in-from-bottom duration-300"
-        style={{ boxShadow: '0 -4px 30px rgba(0,0,0,0.1)' }}
+        className="relative w-full max-w-2xl rounded-t-[32px] bg-white dark:bg-slate-900 animate-in slide-in-from-bottom duration-300 border-t border-slate-100 dark:border-slate-800"
+        style={{ boxShadow: '0 -10px 40px rgba(0,0,0,0.15)' }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">

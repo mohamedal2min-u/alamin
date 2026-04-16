@@ -39,34 +39,26 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
         key={item.href}
         href={item.href}
         className={cn(
-          'relative flex flex-col items-center justify-center gap-1 min-w-[64px] py-2 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-90',
-          isActive ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'
+          'relative flex flex-col items-center justify-center gap-1 min-w-[56px] py-1.5 transition-all duration-200 active:scale-95',
+          isActive ? 'text-emerald-600' : 'text-slate-400'
         )}
       >
-        <div className={cn(
-          "relative flex items-center justify-center p-2 rounded-2xl transition-all duration-500",
-          isActive && "bg-emerald-50 dark:bg-emerald-500/10 shadow-sm"
-        )}>
-          <item.icon 
-            className={cn(
-              'h-5 w-5 transition-transform duration-500', 
-              isActive && 'scale-110 rotate-[5deg]'
-            )} 
-            strokeWidth={isActive ? 2.5 : 2}
-          />
-          {isActive && (
-            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-          )}
-        </div>
+        <item.icon 
+          className={cn(
+            'h-6 w-6 transition-all duration-300', 
+            isActive && 'scale-110'
+          )} 
+          strokeWidth={isActive ? 2.5 : 1.8}
+        />
         <span className={cn(
-          'text-[10px] font-bold tracking-tight transition-all duration-300',
-          isActive ? 'text-emerald-600 dark:text-emerald-400 scale-105' : 'opacity-80'
+          'text-[10px] font-bold leading-none transition-colors duration-200',
+          isActive ? 'text-emerald-700' : 'text-slate-400'
         )}>
           {item.label}
         </span>
+        {isActive && (
+          <span className="absolute -top-0.5 h-[3px] w-6 rounded-full bg-emerald-500 transition-all duration-300" />
+        )}
       </Link>
     )
   }
@@ -75,12 +67,10 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     <button
       key="more-button"
       onClick={onMoreClick}
-      className="flex flex-col items-center justify-center gap-1 min-w-[64px] py-2 text-slate-400 dark:text-slate-500 transition-all duration-300 active:scale-90"
+      className="flex flex-col items-center justify-center gap-1 min-w-[56px] py-1.5 text-slate-400 transition-all duration-200 active:scale-95"
     >
-      <div className="p-2 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-        <MoreHorizontal className="h-5 w-5" strokeWidth={2} />
-      </div>
-      <span className="text-[10px] font-bold opacity-80">المزيد</span>
+      <MoreHorizontal className="h-6 w-6" strokeWidth={1.8} />
+      <span className="text-[10px] font-bold leading-none">المزيد</span>
     </button>
   )
 
@@ -89,55 +79,42 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-[env(safe-area-inset-bottom,12px)] pt-2"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.4)]"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}
     >
-      <div className="mx-auto max-w-lg mb-2">
-        <div className="relative flex items-center justify-around h-[72px] rounded-[32px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/40 dark:border-slate-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] px-2">
-          
-          {/* Home Avatar Button (First Position) */}
-          <div className="flex flex-col items-center justify-center p-1">
-            <Link
-              href="/dashboard"
-              className={cn(
-                "relative group flex h-[58px] w-[58px] items-center justify-center rounded-full transition-all duration-500 active:scale-90",
-                isHomeActive 
-                  ? "ring-4 ring-emerald-500/30 scale-110 -translate-y-2" 
-                  : "ring-2 ring-white dark:ring-slate-800 hover:ring-emerald-200"
-              )}
-            >
-              <div className={cn(
-                "h-full w-full rounded-full overflow-hidden border-2 shadow-inner transition-colors duration-500",
-                isHomeActive ? "border-emerald-500" : "border-white dark:border-slate-800"
-              )}>
-                <img 
-                  src={avatarUrl} 
-                  alt="الرئيسية" 
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              
-              {/* Home Glow Effect */}
-              {isHomeActive && (
-                <div className="absolute inset-0 rounded-full bg-emerald-400/20 blur-xl animate-pulse -z-10" />
-              )}
-            </Link>
-            <span className={cn(
-              "text-[9px] font-black mt-1 transition-all duration-300 uppercase tracking-widest",
-              isHomeActive ? "text-emerald-700 dark:text-emerald-300 translate-y-[-4px]" : "text-slate-400 opacity-60"
-            )}>
-              {isHomeActive ? '● الرئيسية' : 'الرئيسية'}
-            </span>
-          </div>
-
-          {/* Divider */}
-          <div className="h-8 w-[1px] bg-slate-100 dark:bg-slate-800 mx-1 opacity-50" />
-
-          {/* Regular Navigation Items */}
-          {regularItems.map(renderItem)}
-
-          {/* More Button */}
-          {renderMoreButton()}
+      <div className="mx-auto flex max-w-2xl items-center justify-around px-2 sm:px-4 h-[78px]">
+        {/* Home Avatar Button (First Position) */}
+        <div className="flex flex-col items-center justify-center">
+          <Link
+            href="/dashboard"
+            className={cn(
+              "flex h-[60px] w-[60px] items-center justify-center rounded-full border-4 shadow-xl transition-all active:scale-90",
+              isHomeActive 
+                ? "border-emerald-500 bg-white dark:bg-slate-800 scale-110 -translate-y-1" 
+                : "border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700"
+            )}
+          >
+            <div className="h-full w-full rounded-full overflow-hidden">
+              <img 
+                src={avatarUrl} 
+                alt="الرئيسية" 
+                className="h-full w-full object-cover"
+              />
+            </div>
+          </Link>
+          <span className={cn(
+            "text-[10px] font-black mt-1 transition-colors",
+            isHomeActive ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400"
+          )}>
+            الرئيسية
+          </span>
         </div>
+
+        {/* Regular Navigation Items */}
+        {regularItems.map(renderItem)}
+
+        {/* More Button */}
+        {renderMoreButton()}
       </div>
     </nav>
   )

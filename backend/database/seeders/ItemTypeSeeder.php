@@ -15,6 +15,8 @@ class ItemTypeSeeder extends Seeder
         $types = [
             ['code' => 'feed',     'name' => 'علف'],
             ['code' => 'medicine', 'name' => 'دواء'],
+            ['code' => 'charcoal', 'name' => 'فحم'],
+            ['code' => 'water',    'name' => 'ماء'],
             ['code' => 'other',    'name' => 'أخرى'],
         ];
 

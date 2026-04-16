@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Bird, Package, ClipboardList,
   MoreHorizontal
 } from 'lucide-react'
-import { useCurrentRole } from '@/lib/roles'
+import { useCurrentRole, getDefaultRoute } from '@/lib/roles'
 import { NAV_HREFS_BY_ROLE } from '@/lib/roles'
 
 import { useAuthStore } from '@/stores/auth.store'

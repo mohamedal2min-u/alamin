@@ -4,6 +4,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'الياسين — إدارة المداجن',
   description: 'نظام تشغيل ومحاسبة وتحليل لمداجن دجاج اللحم',
+  manifest: '/manifest.json',
 }
 
 import type { Viewport } from 'next'

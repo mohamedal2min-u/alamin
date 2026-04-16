@@ -54,6 +54,8 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
   const [feedItems, setFeedItems]   = useState<InventoryItem[]>([])
   const [feedItemId, setFeedItemId] = useState('')
   const [feedQty, setFeedQty]       = useState('')
+  const [feedBags, setFeedBags]     = useState('')
+  const [feedExtraKg, setFeedExtraKg] = useState('')
 
   // Medicine
   const [medItems, setMedItems]   = useState<InventoryItem[]>([])
@@ -71,7 +73,7 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
 
   const resetFields = () => {
     setMQty(''); setMReason('')
-    setFeedItemId(''); setFeedQty('')
+    setFeedItemId(''); setFeedQty(''); setFeedBags(''); setFeedExtraKg('')
     setMedItemId(''); setMedQty('')
     setTempVal('')
     setError(null)
@@ -98,8 +100,13 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
         await mortalitiesApi.create(flockId, { quantity: Number(mQty), reason: mReason || undefined, entry_date: date })
       } else if (activeTab === 'feed') {
         if (!feedItemId) { setError('اختر صنف العلف'); setLoading(false); return }
-        if (!feedQty || Number(feedQty) <= 0) { setError('أدخل كمية صحيحة'); setLoading(false); return }
-        await quickEntryApi.logFeed(flockId, { item_id: Number(feedItemId), quantity: Number(feedQty), entry_date: date })
+        const item = feedItems.find(i => String(i.id) === feedItemId)
+        let finalQty = Number(feedQty)
+        if (item && item.unit_value > 1) {
+          finalQty = Number(feedBags) + (Number(feedExtraKg) / item.unit_value)
+        }
+        if (!finalQty || finalQty <= 0) { setError('أدخل كمية صحيحة'); setLoading(false); return }
+        await quickEntryApi.logFeed(flockId, { item_id: Number(feedItemId), quantity: finalQty, entry_date: date })
       } else if (activeTab === 'medicine') {
         if (!medItemId) { setError('اختر صنف الدواء'); setLoading(false); return }
         if (!medQty || Number(medQty) <= 0) { setError('أدخل كمية صحيحة'); setLoading(false); return }
@@ -257,11 +264,37 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
           {activeTab === 'feed' && (
             <div className="space-y-5">
               <FormField label="نوع العلف" required>
-                <SelectInput value={feedItemId} onChange={setFeedItemId} options={feedItems.map((i) => ({ value: String(i.id), label: i.name }))} placeholder="اختر النوع من المخزن" emptyMessage="لا يوجد مخزون علف" className={dynamicInputClass} />
+                <SelectInput value={feedItemId} onChange={(val: string) => { setFeedItemId(val); setFeedBags(''); setFeedExtraKg(''); setFeedQty(''); }} options={feedItems.map((i) => ({ value: String(i.id), label: i.name }))} placeholder="اختر النوع من المخزن" emptyMessage="لا يوجد مخزون علف" className={dynamicInputClass} />
               </FormField>
-              <FormField label="الكمية (بالكيلو/كيس)" required>
-                <NumericInput value={feedQty} onChange={setFeedQty} placeholder="0.00" min={0.001} step={0.5} className={dynamicInputClass} />
-              </FormField>
+              
+              {(() => {
+                const item = feedItems.find(i => String(i.id) === feedItemId)
+                if (item && item.unit_value > 1) {
+                  return (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField label={`عدد الأكياس (${item.input_unit})`} required>
+                          <NumericInput value={feedBags} onChange={setFeedBags} placeholder="0" min={0} className={dynamicInputClass} />
+                        </FormField>
+                        <FormField label="وزن إضافي (كيلو)">
+                          <NumericInput value={feedExtraKg} onChange={setFeedExtraKg} placeholder="0.00" min={0} step={0.01} className={dynamicInputClass} />
+                        </FormField>
+                      </div>
+                      {(Number(feedBags) > 0 || Number(feedExtraKg) > 0) && (
+                        <div className="flex items-center gap-2 rounded-2xl bg-emerald-50/50 px-4 py-3 text-[11px] font-bold text-emerald-700 border border-emerald-100/50">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          الإجمالي: {(Number(feedBags) * item.unit_value + Number(feedExtraKg)).toFixed(2)} كجم
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+                return (
+                  <FormField label="الكمية (بالكيلو)" required>
+                    <NumericInput value={feedQty} onChange={setFeedQty} placeholder="0.00" min={0.001} step={0.5} className={dynamicInputClass} />
+                  </FormField>
+                )
+              })()}
             </div>
           )}
 

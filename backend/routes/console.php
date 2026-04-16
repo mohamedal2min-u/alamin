@@ -1,4 +1,5 @@
-use Illuminate\Foundation\Inspiring;
+<?php
+
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Models\Flock;

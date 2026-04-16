@@ -94,16 +94,18 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
       className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-100 dark:border-slate-700/60"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}
     >
-      <div className="mx-auto flex max-w-2xl items-center justify-around px-2 sm:px-4 h-[64px]">
+      <div className="mx-auto flex max-w-2xl items-center justify-between h-[64px] relative px-2">
         {/* Left items */}
-        {leftButtons}
+        <div className="flex flex-1 items-center justify-evenly pr-6 sm:pr-8">
+          {leftButtons}
+        </div>
 
         {/* Center Avatar (Home Button) */}
-        <div className="relative -top-5 flex justify-center">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center">
           <Link
             href="/dashboard"
             className={cn(
-              "flex h-14 w-14 items-center justify-center rounded-full border-4 shadow-lg transition-transform active:scale-95",
+              "flex h-16 w-16 items-center justify-center rounded-full border-4 shadow-lg transition-transform active:scale-95",
               isHomeActive 
                 ? "border-emerald-500 bg-white dark:bg-slate-800" 
                 : "border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700 hover:border-emerald-200"
@@ -121,7 +123,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
             )}
           </Link>
           <span className={cn(
-            "absolute -bottom-5 text-[10px] font-bold whitespace-nowrap",
+            "mt-1 text-[10px] font-bold whitespace-nowrap",
             isHomeActive ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400"
           )}>
             الرئيسية
@@ -129,7 +131,9 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
         </div>
 
         {/* Right items */}
-        {rightButtons}
+        <div className="flex flex-1 items-center justify-evenly pl-6 sm:pl-8">
+          {rightButtons}
+        </div>
       </div>
     </nav>
   )

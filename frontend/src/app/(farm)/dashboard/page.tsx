@@ -106,6 +106,10 @@ export default function DashboardPage() {
       handleTaskClick('temp')
       return
     }
+    if (type === 'expense') {
+      handleTaskClick('expense')
+      return
+    }
     handleTaskClick(type as any)
   }
 

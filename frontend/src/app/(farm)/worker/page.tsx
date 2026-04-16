@@ -19,7 +19,7 @@ export default function WorkerPage() {
   const { currentFarm } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
 
-  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | null>(null)
+  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | null>(null)
   const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
 
   useEffect(() => {
@@ -85,14 +85,18 @@ export default function WorkerPage() {
     refetchHistory()
   }
 
-  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp', extra?: Record<string, unknown>) => {
+  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense', extra?: Record<string, unknown>) => {
     setEntryExtra(extra ?? null)
     setActiveEntryTab(type)
   }
 
-  const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining') => {
+  const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining' | 'expense') => {
     if (type === 'remaining') {
       handleTaskClick('temp')
+      return
+    }
+    if (type === 'expense') {
+      handleTaskClick('expense')
       return
     }
     handleTaskClick(type)

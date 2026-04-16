@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { AlertCircle, Bird } from 'lucide-react'
+import { AlertCircle, Bird, Calendar } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
@@ -21,6 +21,15 @@ export default function WorkerPage() {
 
   const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | null>(null)
   const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
+
+  const getTodayISO = () => {
+    const now = new Date()
+    return now.getFullYear() + '-' +
+           String(now.getMonth() + 1).padStart(2, '0') + '-' +
+           String(now.getDate()).padStart(2, '0')
+  }
+
+  const [viewDate, setViewDate] = useState(getTodayISO())
 
   useEffect(() => {
     setPageTitle('لوحة العامل')
@@ -44,20 +53,13 @@ export default function WorkerPage() {
   const activeFlock = flocks.find((f) => f.status === 'active') ?? null
   const isActive = activeFlock !== null
 
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const now = new Date()
-    return now.getFullYear() + '-' +
-           String(now.getMonth() + 1).padStart(2, '0') + '-' +
-           String(now.getDate()).padStart(2, '0')
-  })
-
   const {
     data: summary,
     isLoading: isSummaryLoading,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['today-summary', activeFlock?.id, selectedDate],
-    queryFn: () => flocksApi.todaySummary(activeFlock!.id, selectedDate).then(res => res.data),
+    queryKey: ['today-summary', activeFlock?.id, viewDate],
+    queryFn: () => flocksApi.todaySummary(activeFlock!.id, viewDate).then(res => res.data),
     enabled: !!activeFlock,
     refetchInterval: 10_000,
     staleTime: 5000,
@@ -144,13 +146,39 @@ export default function WorkerPage() {
       {/* Active View */}
       {isActive && activeFlock && (
         <div className="space-y-4">
+          {/* Date Selector */}
+          <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 mb-0.5">عرض بيانات يوم</p>
+                <input 
+                  type="date" 
+                  value={viewDate}
+                  max={getTodayISO()}
+                  onChange={(e) => setViewDate(e.target.value)}
+                  className="bg-transparent text-sm font-black text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
+                />
+              </div>
+            </div>
+            {viewDate !== getTodayISO() && (
+              <button 
+                onClick={() => setViewDate(getTodayISO())}
+                className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
+              >
+                العودة لليوم
+              </button>
+            )}
+          </div>
+
           {/* 1. Stat Grid Header */}
           <WorkerProgressHeader 
             flock={activeFlock}
             summary={summary}
             isLoading={isSummaryLoading}
-            viewDate={selectedDate}
-            onDateChange={setSelectedDate}
+            viewDate={viewDate}
             onStatClick={handleStatClick}
           />
 
@@ -163,7 +191,7 @@ export default function WorkerPage() {
           {/* 3. Task Status */}
           <WorkerTaskChecklist 
             summary={summary ?? emptyTodaySummary()} 
-            onTaskClick={handleTaskClick}
+            onTaskClick={() => {}}
           />
 
           {/* 4. History */}
@@ -178,7 +206,7 @@ export default function WorkerPage() {
             flockId={activeFlock.id}
             activeTab={activeEntryTab}
             initialExtra={entryExtra}
-            entryDate={selectedDate}
+            entryDate={viewDate}
             onClose={() => setActiveEntryTab(null)}
             onSuccess={handleEntrySuccess}
           />

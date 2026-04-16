@@ -23,11 +23,10 @@ interface Props {
   isLoading?: boolean
   viewDate?: string
   role?: 'worker' | 'manager'
-  onDateChange?: (date: string) => void
   onStatClick: (type: 'mortality' | 'feed' | 'medicine' | 'remaining' | 'expense') => void
 }
 
-export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role = 'worker', onDateChange, onStatClick }: Props) {
+export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role = 'worker', onStatClick }: Props) {
   const { user, setUser } = useAuthStore()
   const [isUploading, setIsUploading] = useState(false)
 
@@ -57,50 +56,8 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role
         : '0.0')
     : '0.0'
 
-  const today = new Date().toISOString().split('T')[0]
-  const isNotToday = viewDate && viewDate !== today
-
   return (
     <div className="space-y-3">
-      {/* ── Date Selection Header ── */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2.5">
-          <div className="relative">
-            <input 
-              type="date" 
-              value={viewDate}
-              onChange={(e) => onDateChange?.(e.target.value)}
-              className="absolute inset-0 opacity-0 cursor-pointer z-10"
-            />
-            <div className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-300",
-              isNotToday 
-                ? "bg-amber-50 border-amber-200 text-amber-500 shadow-sm" 
-                : "bg-emerald-50 border-emerald-100 text-emerald-500"
-            )}>
-              <Calendar className="h-4.5 w-4.5" />
-            </div>
-          </div>
-          <div className="flex flex-col -space-y-0.5">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-tight">سجل التاريخ</span>
-            <span className={cn(
-              "text-sm font-black tracking-tight",
-              isNotToday ? "text-amber-600" : "text-emerald-950"
-            )}>
-              {isNotToday ? viewDate : 'اليوم (الآن)'}
-            </span>
-          </div>
-        </div>
-
-        {isNotToday && (
-          <button 
-            onClick={() => onDateChange?.(today)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black active:scale-95 transition-all"
-          >
-            العودة لليوم
-          </button>
-        )}
-      </div>
       {/* ── Quick Action Stat Grid ── */}
       <div className="grid grid-cols-2 gap-2.5">
         <StatBox

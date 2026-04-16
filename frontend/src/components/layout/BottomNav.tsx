@@ -62,9 +62,6 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
         )}>
           {item.label}
         </span>
-        {isActive && (
-          <span className="absolute -top-0.5 h-[3px] w-6 rounded-full bg-emerald-500 transition-all duration-300" />
-        )}
       </Link>
     )
   }

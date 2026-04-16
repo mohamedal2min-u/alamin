@@ -26,14 +26,12 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
 
   const allowedHrefs = NAV_HREFS_BY_ROLE[role]
   
-  // We remove Dashboard from regular items because it will be the center avatar button
   const regularItems = [
     { label: 'الوردية',  href: '/worker',    icon: ClipboardList },
     { label: 'الأفواج',  href: '/flocks',    icon: Bird },
     { label: 'المخزون',  href: '/inventory', icon: Package },
   ].filter(item => allowedHrefs.includes(item.href))
 
-  // Render a standard nav link
   const renderItem = (item: { label: string, href: string, icon: any }) => {
     const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
     return (
@@ -58,7 +56,6 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
         )}>
           {item.label}
         </span>
-        {/* Active Indicator Dot */}
         {isActive && (
           <span className="absolute -top-0.5 h-[3px] w-6 rounded-full bg-emerald-500 transition-all duration-300" />
         )}
@@ -66,7 +63,6 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     )
   }
 
-  // The "More" button
   const renderMoreButton = () => (
     <button
       key="more-button"
@@ -78,14 +74,6 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     </button>
   )
 
-  // Combine regular items and More button
-  const allButtons = [...regularItems.map(renderItem), renderMoreButton()]
-  
-  // Split them to insert the center button
-  const midIndex = Math.floor(allButtons.length / 2)
-  const leftButtons = allButtons.slice(0, midIndex)
-  const rightButtons = allButtons.slice(midIndex)
-
   const isHomeActive = pathname === '/dashboard'
   const avatarUrl = user?.profile_picture_url || '/default-avatar.jpg'
 
@@ -94,21 +82,16 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
       className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-100 dark:border-slate-700/60"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}
     >
-      <div className="mx-auto flex max-w-2xl items-center justify-between h-[64px] relative px-2">
-        {/* Left items */}
-        <div className="flex flex-1 items-center justify-evenly pr-6 sm:pr-8">
-          {leftButtons}
-        </div>
-
-        {/* Center Avatar (Home Button) */}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center">
+      <div className="mx-auto flex max-w-2xl items-center justify-around px-2 sm:px-4 h-[78px]">
+        {/* Home Avatar Button (First Position) */}
+        <div className="flex flex-col items-center justify-center">
           <Link
             href="/dashboard"
             className={cn(
-              "flex h-16 w-16 items-center justify-center rounded-full border-4 shadow-lg transition-transform active:scale-95",
+              "flex h-[60px] w-[60px] items-center justify-center rounded-full border-4 shadow-xl transition-all active:scale-90",
               isHomeActive 
-                ? "border-emerald-500 bg-white dark:bg-slate-800" 
-                : "border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700 hover:border-emerald-200"
+                ? "border-emerald-500 bg-white dark:bg-slate-800 scale-110 -translate-y-1" 
+                : "border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700"
             )}
           >
             <div className="h-full w-full rounded-full overflow-hidden">
@@ -118,22 +101,20 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
                 className="h-full w-full object-cover"
               />
             </div>
-            {isHomeActive && (
-              <span className="absolute -bottom-1 h-[4px] w-8 rounded-full bg-emerald-500 transition-all duration-300" />
-            )}
           </Link>
           <span className={cn(
-            "mt-1 text-[10px] font-bold whitespace-nowrap",
+            "text-[10px] font-black mt-1 transition-colors",
             isHomeActive ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400"
           )}>
             الرئيسية
           </span>
         </div>
 
-        {/* Right items */}
-        <div className="flex flex-1 items-center justify-evenly pl-6 sm:pl-8">
-          {rightButtons}
-        </div>
+        {/* Regular Navigation Items */}
+        {regularItems.map(renderItem)}
+
+        {/* More Button */}
+        {renderMoreButton()}
       </div>
     </nav>
   )

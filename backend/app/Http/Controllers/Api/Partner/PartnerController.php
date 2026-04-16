@@ -62,7 +62,8 @@ class PartnerController extends Controller
             $validated['status'] = $sharePercent <= 0 ? 'inactive' : 'active';
 
             // 1. Ensure admin partner exists and has enough share
-            $adminPartner = $this->ensureAdminPartnerExists($farmId);
+            $partnerService = app(\App\Services\Partner\PartnerService::class);
+            $adminPartner   = $partnerService->ensureManagerPartnerExists($farmId);
             $adminShareRecord = $adminPartner->shares()->where('is_active', true)->first();
             $adminShare = $adminShareRecord ? $adminShareRecord->share_percent : 0;
 
@@ -135,6 +136,9 @@ class PartnerController extends Controller
                     'effective_from' => now(),
                     'created_by' => $creatorUserId,
                 ]);
+
+                // Sync admin share
+                $partnerService->syncManagerShare($farmId);
             }
 
             $partner->load(['shares' => fn ($q) => $q->where('is_active', true), 'user:id,name,email,whatsapp']);
@@ -198,7 +202,8 @@ class PartnerController extends Controller
                     if (\App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->exists()) {
                         abort(422, 'لا يمكن تعديل هيكل الملكية (تعديل الحصص) أثناء وجود فوج نشط.');
                     }
-                    $adminPartner = $this->ensureAdminPartnerExists($farmId);
+                    $partnerService = app(\App\Services\Partner\PartnerService::class);
+                    $adminPartner   = $partnerService->ensureManagerPartnerExists($farmId);
                     
                     // Don't modify if this IS the admin
                     if ($adminPartner->id !== $partner->id) {
@@ -230,6 +235,9 @@ class PartnerController extends Controller
                                 'created_by' => $creatorUserId,
                             ]);
                         }
+                        
+                        // Sync admin share
+                        $partnerService->syncManagerShare($farmId);
                     }
                 }
             }
@@ -303,61 +311,10 @@ class PartnerController extends Controller
 
     /**
      * Ensure the farm admin has a partner record with the base share.
+     * (Deprecated: Use PartnerService instead)
      */
     private function ensureAdminPartnerExists($farmId)
     {
-        $farm = Farm::findOrFail($farmId);
-        $adminUserId = $farm->admin_user_id;
-
-        if (!$adminUserId) {
-            abort(422, "المزرعة لا تملك مديراً حالياً.");
-        }
-
-        $adminUser = User::find($adminUserId);
-
-        $adminPartner = Partner::firstOrCreate(
-            ['farm_id' => $farmId, 'user_id' => $adminUserId],
-            [
-                'name' => $adminUser->name ?? 'مدير المزرعة',
-                'email' => $adminUser->email,
-                'whatsapp' => $adminUser->whatsapp ?? 'system-generated',
-                'status' => 'active',
-                'notes' => 'الشريك التلقائي لمعرف مدير المزرعة',
-            ]
-        );
-
-        // Calculate missing share logic (Ensure total is 100%)
-        // Get sum of all active shares EXCEPT admin's
-        $otherSharesSum = FarmPartnerShare::where('farm_id', $farmId)
-            ->where('is_active', true)
-            ->where('partner_id', '!=', $adminPartner->id)
-            ->sum('share_percent');
-
-        $expectedAdminShare = 100 - floatval($otherSharesSum);
-        if ($expectedAdminShare < 0) {
-            $expectedAdminShare = 0; // fallback but theoretically invalid
-        }
-
-        $adminShareRecord = FarmPartnerShare::firstWhere([
-            'partner_id' => $adminPartner->id,
-            'farm_id' => $farmId,
-            'is_active' => true,
-        ]);
-
-        if (!$adminShareRecord) {
-            $adminPartner->shares()->create([
-                'farm_id' => $farmId,
-                'share_percent' => $expectedAdminShare,
-                'is_active' => true,
-                'effective_from' => now(),
-            ]);
-        } else if ($adminShareRecord->share_percent != $expectedAdminShare && $expectedAdminShare >= 0) {
-            // Self-correct Admin Share if it drifted
-            $adminShareRecord->update([
-                'share_percent' => $expectedAdminShare
-            ]);
-        }
-
-        return $adminPartner;
+        return app(\App\Services\Partner\PartnerService::class)->ensureManagerPartnerExists($farmId);
     }
 }

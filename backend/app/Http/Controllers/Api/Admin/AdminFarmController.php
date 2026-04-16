@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Farm;
 use App\Models\FarmUser;
 use App\Models\User;
+use App\Services\Partner\PartnerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -138,6 +139,9 @@ class AdminFarmController extends Controller
             'updated_by'    => $request->user()->id,
         ]);
 
+        // ── Ensure Admin Partner & 100% Share ───────────────────────────────
+        app(PartnerService::class)->ensureManagerPartnerExists($farm->id);
+
         // إعادة ضبط الـ team context
         $registrar->setPermissionsTeamId(null);
 
@@ -208,6 +212,9 @@ class AdminFarmController extends Controller
             'admin_user_id' => $manager->id,
             'updated_by'    => $request->user()->id,
         ]);
+
+        // ── Ensure Admin Partner & 100% Share ───────────────────────────────
+        app(PartnerService::class)->ensureManagerPartnerExists($farm->id);
 
         return response()->json([
             'message' => 'تم إنشاء حساب المدير بنجاح',

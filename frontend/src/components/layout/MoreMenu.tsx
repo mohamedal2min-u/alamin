@@ -73,11 +73,11 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
             className="flex items-center gap-3 group"
           >
             <div className="h-10 w-10 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center text-emerald-700 text-sm font-bold shrink-0">
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                user?.name?.charAt(0) || '?'
-              )}
+              <img 
+                src={user?.avatar_url || '/default-avatar.jpg'} 
+                alt="" 
+                className="h-full w-full object-cover" 
+              />
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-700 transition-colors">{user?.name}</p>

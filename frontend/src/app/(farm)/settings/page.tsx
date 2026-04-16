@@ -159,19 +159,11 @@ export default function SettingsPage() {
         <div className="flex flex-col items-center mb-6">
           <div className="relative group">
             <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-white dark:border-slate-700 shadow-lg">
-              {currentAvatar ? (
-                <img
-                  src={currentAvatar}
-                  alt="صورة الحساب"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="h-full w-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
-                  <span className="text-3xl font-black text-emerald-700 dark:text-emerald-300">
-                    {user?.name ? getInitials(user.name) : <User className="h-8 w-8" />}
-                  </span>
-                </div>
-              )}
+              <img
+                src={currentAvatar || '/default-avatar.jpg'}
+                alt="صورة الحساب"
+                className="h-full w-full object-cover"
+              />
             </div>
 
             {/* Upload overlay */}

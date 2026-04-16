@@ -89,11 +89,11 @@ export function FlockGlobalHeader() {
                 )}
                 title="تغيير الصورة الشخصية"
               >
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="Profile" className="h-full w-full object-cover" />
-                ) : (
-                  <UserCircle className="h-4 w-4 text-emerald-600/70" />
-                )}
+                <img 
+                  src={user?.avatar_url || '/default-avatar.jpg'} 
+                  alt="Profile" 
+                  className="h-full w-full object-cover" 
+                />
               </button>
               <div className="flex flex-col justify-center">
                 <span className="text-[11px] font-black text-slate-800 leading-none truncate max-w-[80px]">

@@ -95,11 +95,11 @@ export function Header() {
             title="إعدادات الحساب"
           >
             <div className="h-7 w-7 rounded-lg overflow-hidden bg-emerald-100 flex items-center justify-center text-emerald-900 font-bold text-xs shrink-0">
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                user?.name?.charAt(0) || <User className="h-4 w-4" />
-              )}
+              <img 
+                src={user?.avatar_url || '/default-avatar.jpg'} 
+                alt="" 
+                className="h-full w-full object-cover" 
+              />
             </div>
             <span className="hidden md:block max-w-[100px] truncate text-xs font-semibold text-emerald-50 leading-none">
               {user?.name}

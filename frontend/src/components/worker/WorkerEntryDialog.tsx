@@ -38,7 +38,7 @@ const TABS: Record<Tab, { label: string; icon: React.ElementType }> = {
   expense:   { label: 'مصروف', icon: Receipt },
 }
 
-export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, onSuccess }: Props) {
+export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate, onClose, onSuccess }: Props) {
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
 

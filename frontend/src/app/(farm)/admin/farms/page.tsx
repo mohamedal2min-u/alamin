@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState, useCallback, Fragment } from 'react'
 import Link from 'next/link'
-import { Building2, Plus, AlertCircle, Users, UserCog, Check, X } from 'lucide-react'
+import { Building2, Plus, AlertCircle, Users, UserCog, Check, X, Trash2, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Dialog } from '@/components/ui/Dialog'
+import { Input } from '@/components/ui/Input'
 import { adminApi, type AdminFarm, type AdminUser } from '@/lib/api/admin'
 import { formatDate } from '@/lib/utils'
 
@@ -30,6 +32,15 @@ export default function AdminFarmsPage() {
   const [selectedUserId, setSelectedUserId]     = useState<string>('')
   const [assignLoading, setAssignLoading]       = useState(false)
   const [assignError, setAssignError]           = useState<string | null>(null)
+
+  // create-user state
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
+  const [newUser, setNewUser] = useState({ name: '', whatsapp: '', email: '', password: '' })
+  const [createLoading, setCreateLoading] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  // delete state
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const fetchData = useCallback(() => {
     setLoading(true)
@@ -78,6 +89,39 @@ export default function AdminFarmsPage() {
     }
   }
 
+  const handleDeleteFarm = async (farmId: number, farmName: string) => {
+    if (!window.confirm(`هل أنت متأكد من حذف المزرعة "${farmName}"؟ سيتم حذف جميع البيانات المرتبطة بها نهائياً.`)) {
+      return
+    }
+
+    setDeletingId(farmId)
+    try {
+      await adminApi.deleteFarm(farmId)
+      setFarms(prev => prev.filter(f => f.id !== farmId))
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'فشل حذف المزرعة')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreateLoading(true)
+    setCreateError(null)
+    try {
+      await adminApi.createUser(newUser)
+      alert('تم إنشاء المستخدم بنجاح')
+      setIsCreateUserOpen(false)
+      setNewUser({ name: '', whatsapp: '', email: '', password: '' })
+      fetchData() // Refresh user list
+    } catch (err: any) {
+      setCreateError(err.response?.data?.message || 'فشل إنشاء المستخدم')
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -86,12 +130,18 @@ export default function AdminFarmsPage() {
           <h1 className="text-2xl font-bold text-slate-900">إدارة المداجن</h1>
           <p className="mt-0.5 text-sm text-slate-500">جميع المزارع المسجّلة في النظام</p>
         </div>
-        <Button asChild>
-          <Link href="/admin/farms/new">
-            <Plus className="h-4 w-4" />
-            مزرعة جديدة
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsCreateUserOpen(true)}>
+            <UserPlus className="h-4 w-4" />
+            مدير جديد
+          </Button>
+          <Button asChild>
+            <Link href="/admin/farms/new">
+              <Plus className="h-4 w-4" />
+              مزرعة جديدة
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Loading */}
@@ -168,13 +218,23 @@ export default function AdminFarmsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3">
-                      <button
-                        onClick={() => openAssign(farm.id, farm.admin)}
-                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-violet-300 hover:text-violet-700"
-                      >
-                        <UserCog className="h-3.5 w-3.5" />
-                        {farm.admin ? 'تغيير المدير' : 'تعيين مدير'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openAssign(farm.id, farm.admin)}
+                          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-violet-300 hover:text-violet-700"
+                        >
+                          <UserCog className="h-3.5 w-3.5" />
+                          {farm.admin ? 'تغيير المدير' : 'تعيين مدير'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFarm(farm.id, farm.name)}
+                          disabled={deletingId === farm.id}
+                          className="flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50/30 px-2 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 hover:border-red-200 disabled:opacity-50"
+                          title="حذف المزرعة"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
 
@@ -230,6 +290,68 @@ export default function AdminFarmsPage() {
           </table>
         </div>
       )}
+
+      {/* Create Manager Dialog */}
+      <Dialog 
+        isOpen={isCreateUserOpen} 
+        onClose={() => setIsCreateUserOpen(false)}
+        title="إضافة مدير جديد"
+      >
+        <form onSubmit={handleCreateUser} className="space-y-4 pt-4" dir="rtl">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500">الاسم الكامل</label>
+            <Input 
+              required
+              placeholder="مثال: محمد أحمد"
+              value={newUser.name}
+              onChange={e => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500">رقم الواتساب</label>
+            <Input 
+              required
+              placeholder="مثال: 96650x..."
+              value={newUser.whatsapp}
+              onChange={e => setNewUser(prev => ({ ...prev, whatsapp: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500">البريد الإلكتروني (اختياري)</label>
+            <Input 
+              type="email"
+              placeholder="example@mail.com"
+              value={newUser.email}
+              onChange={e => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500">كلمة المرور</label>
+            <Input 
+              required
+              type="password"
+              placeholder="••••••••"
+              value={newUser.password}
+              onChange={e => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+            />
+          </div>
+
+          {createError && (
+            <p className="text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 italic">
+              {createError}
+            </p>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" className="flex-1" loading={createLoading}>
+              إضافة المدير
+            </Button>
+            <Button variant="outline" type="button" onClick={() => setIsCreateUserOpen(false)}>
+              إلغاء
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   )
 }

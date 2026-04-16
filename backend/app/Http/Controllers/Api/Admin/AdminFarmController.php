@@ -162,6 +162,54 @@ class AdminFarmController extends Controller
         return response()->json(['data' => $users], 200);
     }
 
+    // ── POST /api/admin/users ──────────────────────────────────────────────────
+    // إنشاء مستخدم جديد يدوياً (مدير مزرعة)
+    public function storeUser(Request $request): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $data = $request->validate([
+            'name'     => 'required|string|max:190',
+            'email'    => 'nullable|email|unique:users,email',
+            'whatsapp' => 'required|string|unique:users,whatsapp',
+            'password' => 'required|string|min:6',
+        ], [
+            'name.required'     => 'الاسم مطلوب',
+            'whatsapp.required' => 'رقم الواتساب مطلوب',
+            'whatsapp.unique'   => 'رقم الواتساب مسجل مسبقاً',
+            'email.unique'      => 'البريد الإلكتروني مسجل مسبقاً',
+            'password.min'      => 'كلمة المرور يجب أن لا تقل عن 6 أحرف',
+        ]);
+
+        $user = User::create([
+            'name'       => $data['name'],
+            'email'      => $data['email'] ?? null,
+            'whatsapp'   => $data['whatsapp'],
+            'password'   => bcrypt($data['password']),
+            'status'     => 'active',
+            'created_by' => $request->user()->id,
+            'updated_by' => $request->user()->id,
+        ]);
+
+        return response()->json([
+            'message' => 'تم إنشاء المستخدم بنجاح',
+            'data'    => $user
+        ], 201);
+    }
+
+    // ── DELETE /api/admin/farms/{farm} ────────────────────────────────────────
+    public function destroy(Request $request, Farm $farm): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $farmName = $farm->name;
+        $farm->delete(); // Cascade handles children
+
+        return response()->json([
+            'message' => "تم حذف المزرعة \"$farmName\" بنجاح"
+        ], 200);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function authorizeSuperAdmin(Request $request): void

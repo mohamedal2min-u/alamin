@@ -26,6 +26,13 @@ export interface CreateFarmPayload {
   started_at?: string
 }
 
+export interface CreateUserPayload {
+  name: string
+  whatsapp: string
+  email?: string
+  password?: string
+}
+
 export const adminApi = {
   listFarms: () =>
     apiClient.get<{ data: AdminFarm[] }>('/admin/farms').then((r) => r.data),
@@ -45,4 +52,12 @@ export const adminApi = {
 
   listUsers: () =>
     apiClient.get<{ data: AdminUser[] }>('/admin/users').then((r) => r.data),
+
+  createUser: (payload: CreateUserPayload) =>
+    apiClient
+      .post<{ data: AdminUser; message: string }>('/admin/users', payload)
+      .then((r) => r.data),
+
+  deleteFarm: (farmId: number) =>
+    apiClient.delete<{ message: string }>(`/admin/farms/${farmId}`).then((r) => r.data),
 }

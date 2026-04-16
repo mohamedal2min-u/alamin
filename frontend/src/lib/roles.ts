@@ -71,6 +71,7 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
 export function getDefaultRoute(role: FarmRole | null): string {
   if (role === 'super_admin') return '/admin/farms'
   if (role === 'worker') return '/worker'
+  if (role === 'farm_admin') return '/dashboard'
   return '/flocks'
 }
 

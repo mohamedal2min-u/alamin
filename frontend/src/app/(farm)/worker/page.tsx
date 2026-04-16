@@ -44,18 +44,20 @@ export default function WorkerPage() {
   const activeFlock = flocks.find((f) => f.status === 'active') ?? null
   const isActive = activeFlock !== null
 
-  const now = new Date()
-  const todayDate = now.getFullYear() + '-' +
-                    String(now.getMonth() + 1).padStart(2, '0') + '-' +
-                    String(now.getDate()).padStart(2, '0')
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date()
+    return now.getFullYear() + '-' +
+           String(now.getMonth() + 1).padStart(2, '0') + '-' +
+           String(now.getDate()).padStart(2, '0')
+  })
 
   const {
     data: summary,
     isLoading: isSummaryLoading,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['today-summary', activeFlock?.id, todayDate],
-    queryFn: () => flocksApi.todaySummary(activeFlock!.id, todayDate).then(res => res.data),
+    queryKey: ['today-summary', activeFlock?.id, selectedDate],
+    queryFn: () => flocksApi.todaySummary(activeFlock!.id, selectedDate).then(res => res.data),
     enabled: !!activeFlock,
     refetchInterval: 10_000,
     staleTime: 5000,
@@ -147,7 +149,8 @@ export default function WorkerPage() {
             flock={activeFlock}
             summary={summary}
             isLoading={isSummaryLoading}
-            viewDate={todayDate}
+            viewDate={selectedDate}
+            onDateChange={setSelectedDate}
             onStatClick={handleStatClick}
           />
 
@@ -160,7 +163,7 @@ export default function WorkerPage() {
           {/* 3. Task Status */}
           <WorkerTaskChecklist 
             summary={summary ?? emptyTodaySummary()} 
-            onTaskClick={() => {}}
+            onTaskClick={handleTaskClick}
           />
 
           {/* 4. History */}
@@ -175,6 +178,7 @@ export default function WorkerPage() {
             flockId={activeFlock.id}
             activeTab={activeEntryTab}
             initialExtra={entryExtra}
+            entryDate={selectedDate}
             onClose={() => setActiveEntryTab(null)}
             onSuccess={handleEntrySuccess}
           />

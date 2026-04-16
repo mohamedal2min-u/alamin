@@ -25,6 +25,7 @@ interface Props {
   flockId: number
   activeTab: Tab | null
   initialExtra?: Record<string, unknown> | null
+  entryDate?: string
   onClose: () => void
   onSuccess?: () => void
 }
@@ -37,7 +38,7 @@ const TABS: Record<Tab, { label: string; icon: React.ElementType }> = {
   expense:   { label: 'مصروف', icon: Receipt },
 }
 
-export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, onSuccess }: Props) {
+export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate, onClose, onSuccess }: Props) {
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
 
@@ -90,11 +91,8 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, onClose, o
     setError(null)
     setLoading(true)
     try {
-      // Get local date string YYYY-MM-DD
-      const now = new Date()
-      const date = now.getFullYear() + '-' + 
-                   String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                   String(now.getDate()).padStart(2, '0')
+      // Use provided entryDate or fallback to today
+      const date = entryDate || new Date().toISOString().split('T')[0]
       if (activeTab === 'mortality') {
         if (!mQty || Number(mQty) < 1) { setError('أدخل كمية صحيحة'); setLoading(false); return }
         await mortalitiesApi.create(flockId, { quantity: Number(mQty), reason: mReason || undefined, entry_date: date })

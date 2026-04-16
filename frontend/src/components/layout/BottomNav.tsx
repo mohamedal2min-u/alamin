@@ -80,7 +80,8 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     </button>
   )
 
-  const isHomeActive = pathname === '/dashboard'
+  const homeHref = getDefaultRoute(role)
+  const isHomeActive = pathname === homeHref
   const avatarUrl = user?.avatar_url || '/default-avatar.jpg'
 
   return (
@@ -93,10 +94,10 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}
     >
       <div className="mx-auto flex max-w-2xl items-center justify-around px-2 sm:px-4 h-[78px]">
-        {/* Home Avatar Button (First Position) */}
+        {/* Home Avatar Button (First Position) - Dynamic Role-based Href */}
         <div className="flex flex-col items-center justify-center">
           <Link
-            href="/dashboard"
+            href={homeHref}
             className={cn(
               "flex h-[60px] w-[60px] items-center justify-center rounded-full border-4 shadow-xl transition-all active:scale-95",
               isHomeActive 

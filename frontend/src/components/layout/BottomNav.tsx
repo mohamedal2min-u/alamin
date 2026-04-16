@@ -28,6 +28,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
   if (!role || role === 'super_admin') return null
 
   const allowedHrefs = NAV_HREFS_BY_ROLE[role]
+  const homeHref = getDefaultRoute(role)
   
   // Logic: Hide on scroll UP as requested, show on scroll DOWN or at TOP
   const shouldHide = scrollDirection === 'up' && !isAtTop
@@ -36,7 +37,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     { label: 'الوردية',  href: '/worker',    icon: ClipboardList },
     { label: 'الأفواج',  href: '/flocks',    icon: Bird },
     { label: 'المخزون',  href: '/inventory', icon: Package },
-  ].filter(item => allowedHrefs.includes(item.href))
+  ].filter(item => allowedHrefs.includes(item.href) && item.href !== homeHref)
 
   const renderItem = (item: { label: string, href: string, icon: any }) => {
     const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -62,6 +63,9 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
         )}>
           {item.label}
         </span>
+        {isActive && (
+          <span className="absolute -top-0.5 h-[3px] w-6 rounded-full bg-emerald-500 transition-all duration-300" />
+        )}
       </Link>
     )
   }
@@ -77,7 +81,6 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     </button>
   )
 
-  const homeHref = getDefaultRoute(role)
   const isHomeActive = pathname === homeHref
   const avatarUrl = user?.avatar_url || '/default-avatar.jpg'
 

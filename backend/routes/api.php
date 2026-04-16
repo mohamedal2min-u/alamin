@@ -40,13 +40,12 @@ Route::prefix('auth')->group(function (): void {
 use App\Http\Controllers\Api\Admin\AdminRegistrationRequestController;
 
 Route::middleware(['auth:sanctum', 'super_admin'])->prefix('admin')->group(function (): void {
-    Route::get('farms',               [AdminFarmController::class, 'index']);
-    Route::get('farms/{farm}',        [AdminFarmController::class, 'show']);
-    Route::post('farms',              [AdminFarmController::class, 'store']);
-    Route::delete('farms/{farm}',     [AdminFarmController::class, 'destroy']);
-    Route::put('farms/{farm}/admin',  [AdminFarmController::class, 'assignAdmin']);
-    Route::get('users',               [AdminFarmController::class, 'users']);
-    Route::post('users',              [AdminFarmController::class, 'storeUser']);
+    Route::get('farms',                    [AdminFarmController::class, 'index']);
+    Route::post('farms',                   [AdminFarmController::class, 'store']);
+    Route::put('farms/{farm}/admin',       [AdminFarmController::class, 'assignAdmin']);
+    Route::post('farms/{farm}/manager',    [AdminFarmController::class, 'createManager']);
+    Route::delete('farms/{farm}',          [AdminFarmController::class, 'destroy']);
+    Route::get('users',                    [AdminFarmController::class, 'users']);
     Route::get('registration-requests',         [AdminRegistrationRequestController::class, 'index']);
     Route::post('registration-requests/{registrationRequest}/approve', [AdminRegistrationRequestController::class, 'approve']);
     Route::post('registration-requests/{registrationRequest}/reject',  [AdminRegistrationRequestController::class, 'reject']);

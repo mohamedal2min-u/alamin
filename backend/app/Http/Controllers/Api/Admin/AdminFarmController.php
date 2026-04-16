@@ -8,6 +8,8 @@ use App\Models\FarmUser;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;
 
 class AdminFarmController extends Controller
@@ -37,29 +39,6 @@ class AdminFarmController extends Controller
             ]);
 
         return response()->json(['data' => $farms], 200);
-    }
-
-    // ── GET /api/admin/farms/{farm} ───────────────────────────────────────────
-
-    public function show(Request $request, Farm $farm): JsonResponse
-    {
-        $this->authorizeSuperAdmin($request);
-
-        $farm->load(['adminUser:id,name,email']);
-
-        return response()->json([
-            'data' => [
-                'id'         => $farm->id,
-                'name'       => $farm->name,
-                'location'   => $farm->location,
-                'status'     => $farm->status,
-                'started_at' => $farm->started_at?->toDateString(),
-                'created_at' => $farm->created_at?->toISOString(),
-                'admin'      => $farm->adminUser
-                    ? ['id' => $farm->adminUser->id, 'name' => $farm->adminUser->name, 'email' => $farm->adminUser->email]
-                    : null,
-            ]
-        ], 200);
     }
 
     // ── POST /api/admin/farms ─────────────────────────────────────────────────
@@ -171,6 +150,125 @@ class AdminFarmController extends Controller
         ], 200);
     }
 
+    // ── POST /api/admin/farms/{farm}/manager ─────────────────────────────────
+
+    public function createManager(Request $request, Farm $farm): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $data = $request->validate([
+            'name'     => 'required|string|max:150',
+            'whatsapp' => 'required|string|max:30|unique:users,whatsapp',
+            'email'    => 'nullable|email|max:190|unique:users,email',
+            'password' => 'required|string|min:8',
+        ], [
+            'name.required'      => 'الاسم مطلوب',
+            'whatsapp.required'  => 'رقم الواتساب مطلوب',
+            'whatsapp.unique'    => 'هذا الرقم مسجّل مسبقاً',
+            'email.email'        => 'صيغة البريد الإلكتروني غير صحيحة',
+            'email.unique'       => 'هذا البريد مسجّل مسبقاً',
+            'password.min'       => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+        ]);
+
+        /** @var PermissionRegistrar $registrar */
+        $registrar = app(PermissionRegistrar::class);
+
+        // إنشاء المستخدم الجديد
+        $manager = User::create([
+            'name'     => $data['name'],
+            'whatsapp' => $data['whatsapp'],
+            'email'    => $data['email'] ?? null,
+            'password' => Hash::make($data['password']),
+            'status'   => 'active',
+        ]);
+
+        // إضافته كعضو في المزرعة
+        FarmUser::firstOrCreate(
+            ['farm_id' => $farm->id, 'user_id' => $manager->id],
+            [
+                'status'     => 'active',
+                'is_primary' => true,
+                'joined_at'  => now(),
+                'created_by' => $request->user()->id,
+                'updated_by' => $request->user()->id,
+            ]
+        );
+
+        FarmUser::where('farm_id', $farm->id)
+            ->where('user_id', $manager->id)
+            ->update(['status' => 'active', 'is_primary' => true, 'updated_by' => $request->user()->id]);
+
+        // تعيين دور farm_admin
+        $registrar->setPermissionsTeamId($farm->id);
+        $manager->assignRole('farm_admin');
+        $registrar->setPermissionsTeamId(null);
+
+        // تحديث admin_user_id
+        $farm->update([
+            'admin_user_id' => $manager->id,
+            'updated_by'    => $request->user()->id,
+        ]);
+
+        return response()->json([
+            'message' => 'تم إنشاء حساب المدير بنجاح',
+            'data'    => [
+                'farm_id' => $farm->id,
+                'admin'   => ['id' => $manager->id, 'name' => $manager->name],
+            ],
+        ], 201);
+    }
+
+    // ── DELETE /api/admin/farms/{farm} ────────────────────────────────────────
+
+    public function destroy(Request $request, Farm $farm): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $farmId = $farm->id;
+
+        DB::transaction(function () use ($farmId) {
+            // ── 1. Flock-level operational logs ──────────────────────────────
+            DB::table('flock_mortalities')->where('farm_id', $farmId)->delete();
+            DB::table('flock_feed_logs')->where('farm_id', $farmId)->delete();
+            DB::table('flock_medicines')->where('farm_id', $farmId)->delete();
+            DB::table('flock_water_logs')->where('farm_id', $farmId)->delete();
+            DB::table('flock_notes')->where('farm_id', $farmId)->delete();
+            DB::table('flock_temperature_logs')->where('farm_id', $farmId)->delete();
+
+            // ── 2. Expenses & financial records ──────────────────────────────
+            DB::table('expenses')->where('farm_id', $farmId)->delete();
+
+            // ── 3. Sales ──────────────────────────────────────────────────────
+            DB::table('sale_items')->where('farm_id', $farmId)->delete();
+            DB::table('sales')->where('farm_id', $farmId)->delete();
+
+            // ── 4. Inventory ──────────────────────────────────────────────────
+            DB::table('inventory_transactions')->where('farm_id', $farmId)->delete();
+            DB::table('warehouse_items')->where('farm_id', $farmId)->delete();
+            DB::table('warehouses')->where('farm_id', $farmId)->delete();
+            DB::table('items')->where('farm_id', $farmId)->delete();
+
+            // ── 5. Flocks (after all flock-dependent records gone) ────────────
+            DB::table('flocks')->where('farm_id', $farmId)->delete();
+
+            // ── 6. Partners & shares ──────────────────────────────────────────
+            DB::table('partner_transactions')->where('farm_id', $farmId)->delete();
+            DB::table('farm_partner_shares')->where('farm_id', $farmId)->delete();
+            DB::table('partners')->where('farm_id', $farmId)->delete();
+
+            // ── 7. Spatie roles for this farm ─────────────────────────────────
+            DB::table('model_has_roles')->where('farm_id', $farmId)->delete();
+
+            // ── 8. Farm memberships (cascade is set but be explicit) ──────────
+            DB::table('farm_users')->where('farm_id', $farmId)->delete();
+
+            // ── 9. Farm itself ────────────────────────────────────────────────
+            DB::table('farms')->where('id', $farmId)->delete();
+        });
+
+        return response()->json(['message' => 'تم حذف المزرعة وجميع بياناتها بنجاح'], 200);
+    }
+
     // ── GET /api/admin/users ──────────────────────────────────────────────────
 
     public function users(Request $request): JsonResponse
@@ -183,54 +281,6 @@ class AdminFarmController extends Controller
             ->get();
 
         return response()->json(['data' => $users], 200);
-    }
-
-    // ── POST /api/admin/users ──────────────────────────────────────────────────
-    // إنشاء مستخدم جديد يدوياً (مدير مزرعة)
-    public function storeUser(Request $request): JsonResponse
-    {
-        $this->authorizeSuperAdmin($request);
-
-        $data = $request->validate([
-            'name'     => 'required|string|max:190',
-            'email'    => 'nullable|email|unique:users,email',
-            'whatsapp' => 'required|string|unique:users,whatsapp',
-            'password' => 'required|string|min:6',
-        ], [
-            'name.required'     => 'الاسم مطلوب',
-            'whatsapp.required' => 'رقم الواتساب مطلوب',
-            'whatsapp.unique'   => 'رقم الواتساب مسجل مسبقاً',
-            'email.unique'      => 'البريد الإلكتروني مسجل مسبقاً',
-            'password.min'      => 'كلمة المرور يجب أن لا تقل عن 6 أحرف',
-        ]);
-
-        $user = User::create([
-            'name'       => $data['name'],
-            'email'      => $data['email'] ?? null,
-            'whatsapp'   => $data['whatsapp'],
-            'password'   => bcrypt($data['password']),
-            'status'     => 'active',
-            'created_by' => $request->user()->id,
-            'updated_by' => $request->user()->id,
-        ]);
-
-        return response()->json([
-            'message' => 'تم إنشاء المستخدم بنجاح',
-            'data'    => $user
-        ], 201);
-    }
-
-    // ── DELETE /api/admin/farms/{farm} ────────────────────────────────────────
-    public function destroy(Request $request, Farm $farm): JsonResponse
-    {
-        $this->authorizeSuperAdmin($request);
-
-        $farmName = $farm->name;
-        $farm->delete(); // Cascade handles children
-
-        return response()->json([
-            'message' => "تم حذف المزرعة \"$farmName\" بنجاح"
-        ], 200);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

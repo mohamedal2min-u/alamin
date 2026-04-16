@@ -37,6 +37,8 @@ export function FeedTab({ flockId, flockStatus }: Props) {
   const [fetchError, setFetchError]   = useState<string | null>(null)
   const [showForm, setShowForm]       = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [bags, setBags]               = useState(0)
+  const [extraKg, setExtraKg]         = useState(0)
 
   const canAdd = flockStatus === 'active'
 
@@ -65,14 +67,21 @@ export function FeedTab({ flockId, flockStatus }: Props) {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       item_id:    undefined as unknown as number,
+      quantity:   0,
       entry_date: new Date().toISOString().split('T')[0],
     },
   })
+
+  const selectedItemId = watch('item_id')
+  const selectedItem = items.find(i => i.id === selectedItemId)
+  const isUnitBased = selectedItem && selectedItem.unit_value > 1
 
   const handleCancel = () => {
     reset({ item_id: undefined as unknown as number, entry_date: new Date().toISOString().split('T')[0] })
@@ -164,7 +173,14 @@ export function FeedTab({ flockId, flockStatus }: Props) {
                 صنف العلف <span className="text-red-500">*</span>
               </label>
               <select
-                {...register('item_id', { valueAsNumber: true })}
+                {...register('item_id', { 
+                  valueAsNumber: true,
+                  onChange: () => {
+                    // Reset quantity fields when item changes to avoid confusion
+                    setBags(0)
+                    setExtraKg(0)
+                  }
+                })}
                 id="feed_item_id"
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
               >
@@ -180,19 +196,69 @@ export function FeedTab({ flockId, flockStatus }: Props) {
               )}
             </div>
 
-            {/* Quantity */}
-            <Input
-              {...register('quantity', { valueAsNumber: true })}
-              id="feed_quantity"
-              label="الكمية"
-              type="number"
-              step="0.01"
-              min={0.001}
-              placeholder="مثال: 50"
-              error={errors.quantity?.message}
-              required
-            />
+            {/* Quantity Inputs */}
+            {isUnitBased ? (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-slate-700">
+                    عدد الأكياس <span className="text-xs text-slate-400">({selectedItem?.input_unit})</span>
+                  </label>
+                  <Input
+                    type="number"
+                    value={bags || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0
+                      setBags(val)
+                      const total = val + (extraKg / (selectedItem?.unit_value || 1))
+                      setValue('quantity', total, { shouldValidate: true })
+                    }}
+                    placeholder="0"
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-slate-700">
+                    وزن إضافي <span className="text-xs text-slate-400">(كيلو)</span>
+                  </label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={extraKg || ''}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0
+                      setExtraKg(val)
+                      const total = bags + (val / (selectedItem?.unit_value || 1))
+                      setValue('quantity', total, { shouldValidate: true })
+                    }}
+                    placeholder="0.00"
+                    className="h-10"
+                  />
+                </div>
+              </div>
+            ) : (
+              <Input
+                {...register('quantity', { valueAsNumber: true })}
+                id="feed_quantity"
+                label={`الكمية (${selectedItem?.input_unit || 'بالكيلو'})`}
+                type="number"
+                step="0.01"
+                min={0.001}
+                placeholder="مثال: 50"
+                error={errors.quantity?.message}
+                required
+              />
+            )}
           </div>
+
+          {/* Total Preview (Only if bags used) */}
+          {isUnitBased && (bags > 0 || extraKg > 0) && (
+            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 border border-emerald-100">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>
+                الإجمالي المستهلك: {formatNumber(bags * (selectedItem?.unit_value || 1) + extraKg)} كجم
+              </span>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* Entry date */}

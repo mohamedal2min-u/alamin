@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Resources\Json\ResourceCollection;
 use Spatie\Permission\PermissionRegistrar;
 
 class PartnerController extends Controller
@@ -20,9 +22,12 @@ class PartnerController extends Controller
     /**
      * Display a listing of partners for the current farm.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $farmId = $request->attributes->get('farm_id');
+
+        // Ensure the manager always exists as a partner with 100% (minus others' shares)
+        app(\App\Services\Partner\PartnerService::class)->ensureManagerPartnerExists($farmId);
 
         $partners = Partner::where('farm_id', $farmId)
             ->with(['shares' => function($query) {

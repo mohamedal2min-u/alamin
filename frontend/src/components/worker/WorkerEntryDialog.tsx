@@ -63,11 +63,12 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
   const [tempVal, setTempVal]     = useState('')
 
   // Expense
-  const [expType, setExpType]     = useState('water')
+  const [expType, setExpType]     = useState('bedding')
   const [expQty, setExpQty]       = useState('')
   const [expPrice, setExpPrice]   = useState('')
   const [expDescription, setExpDescription] = useState('')
   const [expNotes, setExpNotes]   = useState('')
+  const [expUnitHint, setExpUnitHint] = useState('كيس')
 
   const calculatedTotal = (activeTab === 'expense') 
     ? (Number(expQty) * Number(expPrice)) 
@@ -84,7 +85,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
     setFeedItemId(''); setFeedQty(''); setFeedBags(''); setFeedExtraKg('')
     setMedItemId(''); setMedQty('')
     setTempVal('')
-    setExpType('water'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes('')
+    setExpType('bedding'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes(''); setExpUnitHint('كيس')
     setError(null)
   }
 
@@ -122,11 +123,19 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
         if (!tempVal || isNaN(Number(tempVal))) { setError('أدخل قيمة حرارة صحيحة'); setLoading(false); return }
         await workerApi.logTemperature(flockId, { log_date: date, time_of_day: tempTime, temperature: Number(tempVal) })
       } else if (activeTab === 'expense') {
-        const total = calculatedTotal
-        if (total <= 0 && expType !== 'water') { setError('أدخل مبلغاً صحيحاً'); setLoading(false); return }
+        if (!expQty || Number(expQty) <= 0) { setError('العدد مطلوب'); setLoading(false); return }
+        if (expType === 'other' && !expDescription.trim()) { setError('وصف المصروف مطلوب'); setLoading(false); return }
+        const qty = Number(expQty)
+        const price = Number(expPrice)
+        const hasPrice = !isNaN(price) && price > 0
         await quickEntryApi.logExpense(flockId, { 
-          expense_type: expType, total_amount: total || Number(expPrice), quantity: Number(expQty) || undefined,
-          unit_price: Number(expPrice) || undefined, description: expDescription || undefined, notes: expNotes || undefined, entry_date: date 
+          expense_type: expType,
+          quantity: qty,
+          unit_price: hasPrice ? price : undefined,
+          total_amount: hasPrice ? qty * price : 0,
+          description: expDescription || undefined,
+          notes: expNotes || undefined,
+          entry_date: date,
         })
       }
 
@@ -283,27 +292,70 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
 
         {activeTab === 'expense' && (
           <div className="space-y-5">
-            <FormField label="التصنيف" required>
-              <SelectInput value={expType} onChange={setExpType} options={[
-                { value: 'water', label: 'مياه' },
-                { value: 'bedding', label: 'فرشة (نشارة)' },
-                { value: 'vaccine', label: 'تحصينات/لقاحات' },
-                { value: 'other', label: 'أخرى' },
-              ]} placeholder="اختر التصنيف..." emptyMessage="" className={dynamicInputClass} />
+            {/* Quick-Entry Preset Buttons */}
+            <FormField label="نوع المصروف" required>
+              <select
+                value={expType}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setExpType(val);
+                  const preset = [
+                    { code: 'bedding',      unitHint: 'كيس' },
+                    { code: 'farm_wash',    unitHint: 'مرة' },
+                    { code: 'disinfectant', unitHint: 'قطعة' },
+                    { code: 'other',        unitHint: 'وحدة' },
+                  ].find(p => p.code === val);
+                  if (preset) setExpUnitHint(preset.unitHint);
+                }}
+                className={dynamicInputClass}
+              >
+                <option value="bedding">نشارة</option>
+                <option value="farm_wash">غسيل مدجنة</option>
+                <option value="disinfectant">معقم</option>
+                <option value="other">مصروف مخصص</option>
+              </select>
             </FormField>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label={expType === 'water' ? 'العدد (اختياري)' : 'الكمية (اختياري)'}>
-                <NumericInput value={expQty} onChange={setExpQty} placeholder="0" className={dynamicInputClass} />
-              </FormField>
-              <FormField label="إجمالي المبلغ" required>
-                <NumericInput value={expPrice} onChange={setExpPrice} placeholder="0.00" className={dynamicInputClass} />
-              </FormField>
-            </div>
+
+            {/* Custom description (only for 'other') */}
             {expType === 'other' && (
               <FormField label="وصف المصروف" required>
-                <input type="text" value={expDescription} onChange={(e) => setExpDescription(e.target.value)} placeholder="اكتب وصفاً..." className={dynamicInputClass} />
+                <input type="text" value={expDescription} onChange={(e) => setExpDescription(e.target.value)} placeholder="مثال: إصلاح سقف..." className={dynamicInputClass} />
               </FormField>
             )}
+
+            {/* Quantity + Unit Price */}
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label={`العدد (${expUnitHint})`} required>
+                <NumericInput value={expQty} onChange={setExpQty} placeholder="0" min={1} step={1} className={dynamicInputClass} />
+              </FormField>
+              <FormField label="سعر الوحدة ($)">
+                <NumericInput value={expPrice} onChange={setExpPrice} placeholder="0.00" min={0} step={0.01} className={dynamicInputClass} />
+              </FormField>
+            </div>
+
+            <p className="text-[10px] font-bold text-red-600 px-1 -mt-2">
+              إذا تم ترك السعر فارغاً، سوف يتم إضافة المصروف إلى الذمم والمراجعة
+            </p>
+
+            {/* Calculated total or debt warning */}
+            {(Number(expQty) > 0) && (
+              <div className={cn(
+                'flex items-center gap-3 rounded-[1.25rem] px-4 py-3 text-[11px] font-bold border',
+                Number(expPrice) > 0
+                  ? 'bg-emerald-50/50 border-emerald-100/50 text-emerald-700'
+                  : 'bg-amber-50/50 border-amber-100/50 text-amber-700',
+              )}>
+                <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', Number(expPrice) > 0 ? 'bg-emerald-500' : 'bg-amber-500')} />
+                {Number(expPrice) > 0
+                  ? `الإجمالي: ${(Number(expQty) * Number(expPrice)).toFixed(2)} $`
+                  : 'بدون سعر — سيتم التسجيل كـ ذمم ومراجعته لاحقاً'}
+              </div>
+            )}
+
+            {/* Notes */}
+            <FormField label="ملاحظات">
+              <input type="text" value={expNotes} onChange={(e) => setExpNotes(e.target.value)} placeholder="اختياري..." className={dynamicInputClass} />
+            </FormField>
           </div>
         )}
 

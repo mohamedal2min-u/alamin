@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pill, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Plus, Pill, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { medicineLogsApi } from '@/lib/api/medicineLogs'
 import { inventoryApi } from '@/lib/api/inventory'
 import { Button } from '@/components/ui/Button'
@@ -31,34 +32,25 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function MedicineTab({ flockId, flockStatus }: Props) {
-  const [logs, setLogs]               = useState<MedicineLog[]>([])
-  const [items, setItems]             = useState<InventoryItem[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [fetchError, setFetchError]   = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [showForm, setShowForm]       = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
   const canAdd = flockStatus === 'active'
 
-  // ── Fetch logs ───────────────────────────────────────────────────────────
-  const fetchLogs = useCallback(() => {
-    setLoading(true)
-    medicineLogsApi
-      .list(flockId)
-      .then((res) => setLogs(res.data))
-      .catch(() => setFetchError('تعذّر تحميل سجلات الدواء'))
-      .finally(() => setLoading(false))
-  }, [flockId])
+  const { data: logs = [], isLoading, isError } = useQuery<MedicineLog[]>({
+    queryKey: ['medicine-logs', flockId],
+    queryFn: () => medicineLogsApi.list(flockId).then(res => res.data),
+    staleTime: 30_000,
+    gcTime: 10 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchLogs()
-  }, [fetchLogs])
-
-  // ── Fetch medicine items when form opens (lazy) ───────────────────────────
-  useEffect(() => {
-    if (!showForm || items.length > 0) return
-    inventoryApi.items('medicine').then((res) => setItems(res.data))
-  }, [showForm, items.length])
+  const { data: items = [] } = useQuery<InventoryItem[]>({
+    queryKey: ['inventory-items', 'medicine'],
+    queryFn: () => inventoryApi.items('medicine').then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  })
 
   // ── Form ─────────────────────────────────────────────────────────────────
   const {
@@ -82,21 +74,19 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
 
   const onSubmit = async (data: FormData) => {
     setServerError(null)
-    const selectedItem = items.find((i) => i.id === data.item_id)
+    const item = items.find((i) => i.id === data.item_id)
     try {
-      const res = await medicineLogsApi.create(flockId, {
+      await medicineLogsApi.create(flockId, {
         item_id:    data.item_id,
         quantity:   data.quantity,
         entry_date: data.entry_date,
-        unit_label: selectedItem?.input_unit,
+        unit_label: item?.input_unit,
         notes:      data.notes || undefined,
       })
-      setLogs((prev) => [res.data, ...prev])
       handleCancel()
+      queryClient.invalidateQueries({ queryKey: ['medicine-logs', flockId] })
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string; errors?: Record<string, string[]> } }
-      }
+      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
       const first = axiosErr?.response?.data?.errors
         ? Object.values(axiosErr.response.data.errors)[0]?.[0]
         : null
@@ -105,21 +95,18 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-slate-400">
-        <span className="text-sm">جارٍ التحميل...</span>
-      </div>
-    )
-  }
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-20 text-slate-400">
+      <span className="text-sm">جارٍ التحميل...</span>
+    </div>
+  )
 
-  if (fetchError) {
-    return (
-      <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {fetchError}
-      </div>
-    )
-  }
+  if (isError) return (
+    <div className="m-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <p className="text-sm">تعذّر تحميل سجلات الدواء</p>
+    </div>
+  )
 
   return (
     <div className="p-4 space-y-4">

@@ -10,9 +10,11 @@ class ExpenseCategorySeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            ['code' => 'water',   'name' => 'مياه'],
-            ['code' => 'bedding', 'name' => 'فرشة'],
-            ['code' => 'other',   'name' => 'أخرى'],
+            ['code' => 'water',        'name' => 'مياه'],
+            ['code' => 'bedding',      'name' => 'نشارة'],
+            ['code' => 'farm_wash',    'name' => 'غسيل مدجنة'],
+            ['code' => 'disinfectant', 'name' => 'معقم'],
+            ['code' => 'other',        'name' => 'أخرى'],
         ];
 
         foreach ($categories as $cat) {

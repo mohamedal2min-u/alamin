@@ -41,10 +41,23 @@ class CreateShipmentAction
                 ['current_quantity' => 0, 'status' => 'active']
             );
 
+            // حساب متوسط التكلفة المرجحة بوحدة الأساس (كجم، مل، إلخ)
+            // average_cost = تكلفة لكل وحدة أساس، حتى تتطابق مع current_quantity
+            $unitValue = max((float) $item->unit_value, 0.000001);
+            $newCostPerBase = isset($data['unit_price'])
+                ? (float) $data['unit_price'] / $unitValue
+                : null;
+
+            $oldQty     = (float) $warehouseItem->current_quantity;
+            $oldAvg     = (float) ($warehouseItem->average_cost ?? 0);
+            $newAvgCost = $newCostPerBase !== null
+                ? (($oldQty * $oldAvg) + ($computedQty * $newCostPerBase)) / ($oldQty + $computedQty)
+                : $oldAvg;
+
             $warehouseItem->increment('current_quantity', $computedQty);
             $warehouseItem->update([
                 'last_in_at'   => now(),
-                'average_cost' => $data['unit_price'] ?? $warehouseItem->average_cost,
+                'average_cost' => $newAvgCost ?: $warehouseItem->average_cost,
             ]);
 
             return InventoryTransaction::create([

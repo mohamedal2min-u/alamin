@@ -15,7 +15,7 @@ class FlockWaterLogFactory extends Factory
             'flock_id'       => Flock::factory(),
             'entry_date'     => now()->toDateString(),
             'quantity'       => $this->faker->randomFloat(2, 10, 500),
-            'unit_label'     => 'لتر',
+            'unit_label'     => 'صهريج',
             'notes'          => null,
             'worker_id'      => null,
             'editable_until' => now()->addMinutes(15),

@@ -22,8 +22,10 @@ class CreateFlockAction
                 'name'          => $data['name'],
                 'status'        => 'draft',
                 'start_date'    => $data['start_date'],
-                'initial_count' => $data['initial_count'],
-                'notes'         => $data['notes'] ?? null,
+                'initial_count'    => $data['initial_count'],
+                'chick_unit_price' => $data['chick_unit_price'] ?? null,
+                'total_chick_cost' => (isset($data['chick_unit_price']) && $data['initial_count'] !== null) ? ($data['chick_unit_price'] * $data['initial_count']) : null,
+                'notes'            => $data['notes'] ?? null,
                 'created_by'    => $userId,
                 'updated_by'    => $userId,
             ]);

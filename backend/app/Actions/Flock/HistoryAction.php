@@ -104,7 +104,7 @@ class HistoryAction
             $dayWater->each(fn($w) => $timeline->push([
                 'type' => 'medicine', // Water is often grouped with medicine/additives in summary
                 'title' => 'تسجيل استهلاك مياه',
-                'detail' => "الكمية: {$w->quantity} لتر",
+                'detail' => "الكمية: {$w->quantity} " . ($w->unit_label ?: 'صهريج'),
                 'time' => $w->created_at?->format('H:i') ?? '--:--',
                 'worker' => $w->worker?->name ?? 'غير معروف'
             ]));

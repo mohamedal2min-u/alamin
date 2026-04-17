@@ -26,6 +26,12 @@ const createFlockSchema = z.object({
     .number({ invalid_type_error: 'يجب إدخال رقم صحيح' })
     .int('يجب أن يكون عدداً صحيحاً')
     .positive('العدد الأولي يجب أن يكون أكبر من الصفر'),
+  chick_unit_price: z
+    .number({ invalid_type_error: 'يجب إدخال رقم' })
+    .min(0, 'سعر الصوص لا يمكن أن يكون أقل من الصفر')
+    .optional()
+    .or(z.literal(''))
+    .or(z.null()),
   notes: z.string().max(1000, 'الملاحظات طويلة جداً').optional().or(z.literal('')),
 })
 type CreateFlockForm = z.infer<typeof createFlockSchema>
@@ -38,13 +44,20 @@ export default function CreateFlockPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateFlockForm>({
     resolver: zodResolver(createFlockSchema),
     defaultValues: {
       start_date: new Date().toISOString().split('T')[0],
+      initial_count: 0,
+      chick_unit_price: '',
     },
   })
+
+  const initialCount = watch('initial_count')
+  const unitPrice = watch('chick_unit_price')
+  const totalInvestment = (Number(initialCount) || 0) * (Number(unitPrice) || 0)
 
   const onSubmit = async (data: CreateFlockForm) => {
     setServerError(null)
@@ -53,6 +66,7 @@ export default function CreateFlockPage() {
         name: data.name,
         start_date: data.start_date,
         initial_count: data.initial_count,
+        chick_unit_price: data.chick_unit_price ? Number(data.chick_unit_price) : null,
         notes: data.notes || undefined,
       })
       router.push(`/flocks/${result.data.id}`)
@@ -107,16 +121,40 @@ export default function CreateFlockPage() {
               required
             />
 
-            <Input
-              {...register('initial_count', { valueAsNumber: true })}
-              id="initial_count"
-              label="العدد الأولي (عدد الكتاكيت)"
-              type="number"
-              min={1}
-              placeholder="مثال: 5000"
-              error={errors.initial_count?.message}
-              required
-            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                {...register('initial_count', { valueAsNumber: true })}
+                id="initial_count"
+                label="العدد الأولي (عدد الكتاكيت)"
+                type="number"
+                min={1}
+                placeholder="مثال: 5000"
+                error={errors.initial_count?.message}
+                required
+              />
+
+              <Input
+                {...register('chick_unit_price', { valueAsNumber: true })}
+                id="chick_unit_price"
+                label="سعر الصوص الواحد ($)"
+                type="number"
+                step="0.01"
+                min={0}
+                placeholder="مثال: 0.50"
+                error={errors.chick_unit_price?.message}
+              />
+            </div>
+
+            {totalInvestment > 0 && (
+              <div className="rounded-xl bg-primary-50/50 border border-primary-100 p-4 dark:bg-primary-900/10 dark:border-primary-800/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">إجمالي تكلفة الشراء التقديرية:</span>
+                  <span className="text-lg font-black text-primary-700 dark:text-primary-400">
+                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalInvestment)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Notes textarea (not in Input component) */}
             <div className="flex flex-col gap-1.5">

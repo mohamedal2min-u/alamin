@@ -503,7 +503,7 @@ ALTER TABLE inventory_transactions ADD CONSTRAINT chk_inv_txn_type
 ALTER TABLE inventory_transactions ADD CONSTRAINT chk_inv_txn_direction
     CHECK (direction IN ('in', 'out'));
 ALTER TABLE inventory_transactions ADD CONSTRAINT chk_inv_txn_payment_status
-    CHECK (payment_status IS NULL OR payment_status IN ('paid', 'debt'));
+    CHECK (payment_status IS NULL OR payment_status IN ('paid', 'unpaid', 'partial'));
 ALTER TABLE inventory_transactions ADD CONSTRAINT chk_inv_txn_quantity
     CHECK (computed_quantity > 0);
 ```
@@ -629,6 +629,9 @@ ALTER TABLE flock_medicines ADD CONSTRAINT chk_medicine_log_quantity
 | entry_date | `$table->date('entry_date')` | date | NOT NULL |
 | quantity | `$table->decimal('quantity', 14, 3)->nullable()` | numeric(14,3) | NULL |
 | unit_label | `$table->string('unit_label', 50)->nullable()` | varchar(50) | NULL |
+| total_amount | `$table->decimal('total_amount', 12, 2)->nullable()` | numeric(12,2) | NULL |
+| paid_amount | `$table->decimal('total_amount', 12, 2)->nullable()` | numeric(12,2) | NULL |
+| payment_status | `$table->string('payment_status', 20)->nullable()` | varchar(20) | NULL |
 | notes | `$table->text('notes')->nullable()` | text | NULL |
 | worker_id | `$table->foreignId('worker_id')->nullable()->constrained('users')->nullOnDelete()` | bigint | NULL, FK |
 | editable_until | `$table->timestampTz('editable_until')->nullable()` | timestamptz | NULL |
@@ -644,6 +647,12 @@ ALTER TABLE flock_medicines ADD CONSTRAINT chk_medicine_log_quantity
 | worker_id | users.id | SET NULL |
 | created_by | users.id | SET NULL |
 | updated_by | users.id | SET NULL |
+
+**CHECK Constraints**:
+```sql
+ALTER TABLE flock_water_logs ADD CONSTRAINT flock_water_logs_payment_status_check
+    CHECK (payment_status IN ('paid', 'partial', 'unpaid') OR payment_status IS NULL);
+```
 
 ---
 
@@ -754,7 +763,7 @@ ALTER TABLE expenses ADD CONSTRAINT chk_expenses_paid_amount
 ALTER TABLE expenses ADD CONSTRAINT chk_expenses_remaining_amount
     CHECK (remaining_amount >= 0);
 ALTER TABLE expenses ADD CONSTRAINT chk_expenses_payment_status
-    CHECK (payment_status IN ('paid', 'partial', 'debt'));
+    CHECK (payment_status IN ('paid', 'partial', 'unpaid'));
 ```
 
 ---
@@ -794,7 +803,7 @@ ALTER TABLE expenses ADD CONSTRAINT chk_expenses_payment_status
 **CHECK Constraints**:
 ```sql
 ALTER TABLE sales ADD CONSTRAINT chk_sales_payment_status
-    CHECK (payment_status IN ('paid', 'partial', 'debt'));
+    CHECK (payment_status IN ('paid', 'partial', 'unpaid'));
 ALTER TABLE sales ADD CONSTRAINT chk_sales_net_amount
     CHECK (net_amount >= 0);
 ALTER TABLE sales ADD CONSTRAINT chk_sales_gross_amount

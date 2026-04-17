@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Flock;
 use App\Models\Expense;
+use App\Models\InventoryTransaction;
 use App\Models\Sale;
 use App\Models\WarehouseItem;
 use App\Models\FlockMortality;
@@ -21,8 +22,9 @@ class ReportService
         $activeFlock = Flock::where('farm_id', $farmId)->where('status', 'active')->first();
         
         $totalSales = Sale::where('farm_id', $farmId)->sum('net_amount');
-        $totalExpenses = Expense::where('farm_id', $farmId)->sum('total_amount');
-        
+        $totalExpenses = Expense::where('farm_id', $farmId)->sum('total_amount')
+            + $this->inventoryConsumptionCost($farmId);
+
         $inventoryValue = WarehouseItem::where('farm_id', $farmId)
             ->selectRaw('SUM(current_quantity * COALESCE(average_cost, 0)) as total_value')
             ->value('total_value') ?? 0;
@@ -47,11 +49,32 @@ class ReportService
         $flock = Flock::with(['mortalities', 'feedLogs'])->where('farm_id', $farmId)->findOrFail($flockId);
         
         $mortalityCount = $flock->mortalities()->sum('quantity');
-        $totalFeed = $flock->feedLogs()->sum('quantity');
-        
-        // Calculate costs from expenses table for this specific flock
+
+        // Feed from inventory transactions (most accurate source)
+        $feedTxnData = DB::table('inventory_transactions')
+            ->where('flock_id', $flockId)
+            ->where('farm_id', $farmId)
+            ->where('direction', 'out')
+            ->where('transaction_type', 'consumption')
+            ->where('source_module', 'flock_feed')
+            ->selectRaw('SUM(original_quantity) as bags, SUM(computed_quantity) as kg_total')
+            ->first();
+
+        $totalFeedBags = (float) ($feedTxnData->bags ?? 0);
+        $totalFeed     = (float) ($feedTxnData->kg_total ?? 0);
+
+        // Feed cost = sum of total_amount from consumption transactions
+        $feedCost = (float) DB::table('inventory_transactions')
+            ->where('flock_id', $flockId)
+            ->where('farm_id', $farmId)
+            ->where('direction', 'out')
+            ->where('transaction_type', 'consumption')
+            ->where('source_module', 'flock_feed')
+            ->sum('total_amount');
+
         $totalSales = $flock->sales()->sum('net_amount');
-        $totalExpenses = $flock->expenses()->sum('total_amount');
+        $totalExpenses = $flock->expenses()->sum('total_amount')
+            + $this->inventoryConsumptionCost($farmId, $flockId);
         
         // Sales statistics from sale_items
         $salesDetails = DB::table('sale_items')
@@ -101,6 +124,8 @@ class ReportService
                 'mortality_rate' => (float) $mortalityRate,
                 'remaining_birds' => (int) ($flock->initial_count - $mortalityCount - $birdsSold),
                 'total_feed_kg' => (float) $totalFeed,
+                'total_feed_bags' => (float) $totalFeedBags,
+                'feed_cost' => $feedCost,
                 'total_medicine_cost' => (float) $medicineExpenses,
             ],
             'sales_analytics' => [
@@ -141,9 +166,10 @@ class ReportService
             $salesQuery->where('sale_date', '<=', $endDate);
         }
 
-        $totalExpenses = $expensesQuery->sum('total_amount');
+        $totalExpenses = $expensesQuery->sum('total_amount')
+            + $this->inventoryConsumptionCost($farmId, $flockId, $startDate, $endDate);
         $totalSales = $salesQuery->sum('net_amount');
-        
+
         $totalPaidExpenses = $expensesQuery->sum('paid_amount');
         $totalReceivedSales = $salesQuery->sum('received_amount');
 
@@ -299,6 +325,30 @@ class ReportService
             'workers' => $workerStats,
             'currency' => 'USD'
         ];
+    }
+
+    /**
+     * Sum the monetary cost of all consumption transactions (feed + medicine).
+     * These are inventory outflows that represent a real cost but are not in the expenses table.
+     */
+    private function inventoryConsumptionCost(int $farmId, $flockId = null, $startDate = null, $endDate = null): float
+    {
+        $q = InventoryTransaction::where('farm_id', $farmId)
+            ->where('direction', 'out')
+            ->where('transaction_type', 'consumption')
+            ->whereNotNull('total_amount');
+
+        if ($flockId) {
+            $q->where('flock_id', $flockId);
+        }
+        if ($startDate) {
+            $q->where('transaction_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $q->where('transaction_date', '<=', $endDate);
+        }
+
+        return (float) $q->sum('total_amount');
     }
 
     /**

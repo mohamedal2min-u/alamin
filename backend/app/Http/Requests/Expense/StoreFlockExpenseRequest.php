@@ -11,10 +11,10 @@ class StoreFlockExpenseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'expense_type' => ['required', 'string', 'in:water,bedding,other'],
-            'quantity'     => ['nullable', 'numeric', 'min:0'],
+            'expense_type' => ['required', 'string', 'in:water,bedding,farm_wash,disinfectant,other'],
+            'quantity'     => ['required', 'numeric', 'min:0.001'],
             'unit_price'   => ['nullable', 'numeric', 'min:0'],
-            'total_amount' => ['required', 'numeric', 'min:0'],
+            'total_amount' => ['nullable', 'numeric', 'min:0'],
             'entry_date'   => ['nullable', 'date_format:Y-m-d'],
             'description'  => ['nullable', 'string', 'max:255'],
             'notes'        => ['nullable', 'string', 'max:5000'],
@@ -25,9 +25,9 @@ class StoreFlockExpenseRequest extends FormRequest
     {
         return [
             'expense_type.required' => 'نوع المصروف مطلوب',
-            'expense_type.in'       => 'نوع المصروف يجب أن يكون: مياه أو فرشة أو أخرى',
-            'total_amount.required' => 'المبلغ الإجمالي مطلوب',
-            'total_amount.min'      => 'المبلغ يجب أن يكون أكبر من أو يساوي صفر',
+            'expense_type.in'       => 'نوع المصروف غير صالح',
+            'quantity.required'     => 'العدد مطلوب',
+            'quantity.min'          => 'العدد يجب أن يكون أكبر من صفر',
         ];
     }
 }

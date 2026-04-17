@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Plus, ShoppingCart } from 'lucide-react'
+import { useState } from 'react'
+import { Plus, ShoppingCart, AlertCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { salesApi } from '@/lib/api/sales'
 import { Button } from '@/components/ui/Button'
 import { PaymentStatusBadge } from '@/components/sales/PaymentStatusBadge'
@@ -17,51 +18,41 @@ interface Props {
 }
 
 export function SalesTab({ flockId, flockStatus }: Props) {
-  const [sales, setSales]           = useState<Sale[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const [showCreate, setShowCreate] = useState(false)
+  const queryClient = useQueryClient()
+  const [showCreate, setShowCreate]   = useState(false)
   const [paymentSale, setPaymentSale] = useState<Sale | null>(null)
 
   const canAdd = flockStatus === 'active'
 
-  const fetchSales = useCallback(() => {
-    setLoading(true)
-    salesApi
-      .listByFlock(flockId)
-      .then((res) => setSales(res.data))
-      .catch(() => setFetchError('تعذّر تحميل سجلات المبيعات'))
-      .finally(() => setLoading(false))
-  }, [flockId])
+  const { data: sales = [], isLoading, isError } = useQuery<Sale[]>({
+    queryKey: ['sales', flockId],
+    queryFn: () => salesApi.listByFlock(flockId).then(res => res.data),
+    staleTime: 30_000,
+    gcTime: 10 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchSales()
-  }, [fetchSales])
-
-  const handleCreated = (sale: Sale) => {
-    setSales((prev) => [sale, ...prev])
+  const handleCreated = () => {
+    setShowCreate(false)
+    queryClient.invalidateQueries({ queryKey: ['sales', flockId] })
   }
 
-  const handlePaymentUpdated = (updated: Sale) => {
-    setSales((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+  const handlePaymentUpdated = () => {
     setPaymentSale(null)
+    queryClient.invalidateQueries({ queryKey: ['sales', flockId] })
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-slate-400">
-        <span className="text-sm">جارٍ التحميل...</span>
-      </div>
-    )
-  }
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-20 text-slate-400">
+      <span className="text-sm">جارٍ التحميل...</span>
+    </div>
+  )
 
-  if (fetchError) {
-    return (
-      <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {fetchError}
-      </div>
-    )
-  }
+  if (isError) return (
+    <div className="m-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <p className="text-sm">تعذّر تحميل سجلات المبيعات</p>
+    </div>
+  )
 
   return (
     <div className="p-4 space-y-4">

@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, StickyNote } from 'lucide-react'
+import { Plus, StickyNote, AlertCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { flockNotesApi } from '@/lib/api/flockNotes'
 import { Button } from '@/components/ui/Button'
 import { formatDate, cn } from '@/lib/utils'
@@ -13,10 +14,10 @@ import type { FlockStatus } from '@/types/flock'
 
 // ── Note type labels & colours ────────────────────────────────────────────────
 const NOTE_TYPES: { value: NoteType; label: string; className: string }[] = [
-  { value: 'general',     label: 'عامة',        className: 'bg-slate-100 text-slate-700' },
-  { value: 'instruction', label: 'تعليمات',     className: 'bg-blue-100 text-blue-700' },
-  { value: 'operational', label: 'تشغيلية',     className: 'bg-emerald-100 text-emerald-700' },
-  { value: 'alert',       label: 'تنبيه',        className: 'bg-red-100 text-red-700' },
+  { value: 'general',     label: 'عامة',    className: 'bg-slate-100 text-slate-700' },
+  { value: 'instruction', label: 'تعليمات', className: 'bg-blue-100 text-blue-700' },
+  { value: 'operational', label: 'تشغيلية', className: 'bg-emerald-100 text-emerald-700' },
+  { value: 'alert',       label: 'تنبيه',   className: 'bg-red-100 text-red-700' },
 ]
 
 function getNoteTypeInfo(type: NoteType) {
@@ -39,27 +40,18 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function NotesTab({ flockId, flockStatus }: Props) {
-  const [notes, setNotes]             = useState<FlockNote[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [fetchError, setFetchError]   = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [showForm, setShowForm]       = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
   const canAdd = flockStatus === 'active'
 
-  // ── Fetch notes ──────────────────────────────────────────────────────────
-  const fetchNotes = useCallback(() => {
-    setLoading(true)
-    flockNotesApi
-      .list(flockId)
-      .then((res) => setNotes(res.data))
-      .catch(() => setFetchError('تعذّر تحميل الملاحظات'))
-      .finally(() => setLoading(false))
-  }, [flockId])
-
-  useEffect(() => {
-    fetchNotes()
-  }, [fetchNotes])
+  const { data: notes = [], isLoading, isError } = useQuery<FlockNote[]>({
+    queryKey: ['flock-notes', flockId],
+    queryFn: () => flockNotesApi.list(flockId).then(res => res.data),
+    staleTime: 30_000,
+    gcTime: 10 * 60 * 1000,
+  })
 
   // ── Form ─────────────────────────────────────────────────────────────────
   const {
@@ -84,17 +76,15 @@ export function NotesTab({ flockId, flockStatus }: Props) {
   const onSubmit = async (data: FormData) => {
     setServerError(null)
     try {
-      const res = await flockNotesApi.create(flockId, {
+      await flockNotesApi.create(flockId, {
         note_text:  data.note_text,
         note_type:  data.note_type,
         entry_date: data.entry_date || undefined,
       })
-      setNotes((prev) => [res.data, ...prev])
       handleCancel()
+      queryClient.invalidateQueries({ queryKey: ['flock-notes', flockId] })
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string; errors?: Record<string, string[]> } }
-      }
+      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
       const first = axiosErr?.response?.data?.errors
         ? Object.values(axiosErr.response.data.errors)[0]?.[0]
         : null
@@ -103,21 +93,18 @@ export function NotesTab({ flockId, flockStatus }: Props) {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-slate-400">
-        <span className="text-sm">جارٍ التحميل...</span>
-      </div>
-    )
-  }
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-20 text-slate-400">
+      <span className="text-sm">جارٍ التحميل...</span>
+    </div>
+  )
 
-  if (fetchError) {
-    return (
-      <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {fetchError}
-      </div>
-    )
-  }
+  if (isError) return (
+    <div className="m-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <p className="text-sm">تعذّر تحميل الملاحظات</p>
+    </div>
+  )
 
   return (
     <div className="p-4 space-y-4">

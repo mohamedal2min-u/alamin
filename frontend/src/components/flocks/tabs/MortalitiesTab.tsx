@@ -1,19 +1,19 @@
 // frontend/src/components/flocks/tabs/MortalitiesTab.tsx
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AlertCircle, Plus } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { mortalitiesApi } from '@/lib/api/mortalities'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { formatDate } from '@/lib/utils'
+import { useState } from 'react'
 import type { FlockStatus } from '@/types/flock'
 import type { Mortality } from '@/types/mortality'
 
-// ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
   entry_date: z
     .string()
@@ -28,47 +28,29 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-// ── Props ─────────────────────────────────────────────────────────────────────
 interface MortalitiesTabProps {
   flockId: number
   flockStatus: FlockStatus
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
 export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
-  const [mortalities, setMortalities] = useState<Mortality[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [fetchError, setFetchError]   = useState<string | null>(null)
-  const [serverError, setServerError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [showForm, setShowForm]       = useState(false)
-
+  const [serverError, setServerError] = useState<string | null>(null)
   const canAdd = flockStatus === 'active'
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>({
+  const { data: mortalities = [], isLoading, isError } = useQuery<Mortality[]>({
+    queryKey: ['mortalities', flockId],
+    queryFn: () => mortalitiesApi.list(flockId).then(res => res.data),
+    staleTime: 30_000,
+    gcTime: 10 * 60 * 1000,
+  })
+
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { entry_date: new Date().toISOString().split('T')[0] },
   })
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
-  const fetchMortalities = useCallback(() => {
-    setLoading(true)
-    mortalitiesApi
-      .list(flockId)
-      .then((res) => setMortalities(res.data))
-      .catch(() => setFetchError('تعذّر تحميل سجلات النفوق'))
-      .finally(() => setLoading(false))
-  }, [flockId])
-
-  useEffect(() => {
-    fetchMortalities()
-  }, [fetchMortalities])
-
-  // ── Submit ────────────────────────────────────────────────────────────────
   const onSubmit = async (data: FormData) => {
     setServerError(null)
     try {
@@ -80,11 +62,9 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
       })
       reset({ entry_date: new Date().toISOString().split('T')[0] })
       setShowForm(false)
-      fetchMortalities()
+      queryClient.invalidateQueries({ queryKey: ['mortalities', flockId] })
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string; errors?: Record<string, string[]> } }
-      }
+      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
       const first = axiosErr?.response?.data?.errors
         ? Object.values(axiosErr.response.data.errors)[0]?.[0]
         : null
@@ -92,27 +72,21 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-slate-400">
-        <span className="text-sm">جارٍ التحميل...</span>
-      </div>
-    )
-  }
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-20 text-slate-400">
+      <span className="text-sm">جارٍ التحميل...</span>
+    </div>
+  )
 
-  if (fetchError) {
-    return (
-      <div className="m-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-        <AlertCircle className="h-5 w-5 shrink-0" />
-        <p className="text-sm">{fetchError}</p>
-      </div>
-    )
-  }
+  if (isError) return (
+    <div className="m-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <p className="text-sm">تعذّر تحميل سجلات النفوق</p>
+    </div>
+  )
 
   return (
     <div className="p-4 space-y-4">
-      {/* Add button */}
       {canAdd && !showForm && (
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setShowForm(true)}>
@@ -122,86 +96,31 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
         </div>
       )}
 
-      {/* Inline form */}
       {canAdd && showForm && (
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3"
-          noValidate
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3" noValidate>
           <h3 className="text-sm font-semibold text-slate-700">تسجيل نفوق جديد</h3>
-
           <div className="grid grid-cols-2 gap-3">
-            <Input
-              {...register('entry_date')}
-              id="entry_date"
-              label="التاريخ"
-              type="date"
-              error={errors.entry_date?.message}
-              required
-            />
-            <Input
-              {...register('quantity', { valueAsNumber: true })}
-              id="quantity"
-              label="العدد"
-              type="number"
-              min={1}
-              placeholder="مثال: 5"
-              error={errors.quantity?.message}
-              required
-            />
+            <Input {...register('entry_date')} id="entry_date" label="التاريخ" type="date" error={errors.entry_date?.message} required />
+            <Input {...register('quantity', { valueAsNumber: true })} id="quantity" label="العدد" type="number" min={1} placeholder="مثال: 5" error={errors.quantity?.message} required />
           </div>
-
-          <Input
-            {...register('reason')}
-            id="reason"
-            label="السبب"
-            placeholder="مثال: مرض تنفسي"
-            error={errors.reason?.message}
-          />
-
+          <Input {...register('reason')} id="reason" label="السبب" placeholder="مثال: مرض تنفسي" error={errors.reason?.message} />
           <div className="flex flex-col gap-1">
-            <label htmlFor="notes" className="text-sm font-medium text-slate-700">
-              ملاحظات <span className="text-xs text-slate-400">(اختياري)</span>
-            </label>
-            <textarea
-              {...register('notes')}
-              id="notes"
-              rows={2}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-            />
-            {errors.notes && (
-              <p className="text-xs text-red-500">{errors.notes.message}</p>
-            )}
+            <label htmlFor="notes" className="text-sm font-medium text-slate-700">ملاحظات <span className="text-xs text-slate-400">(اختياري)</span></label>
+            <textarea {...register('notes')} id="notes" rows={2} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20" />
+            {errors.notes && <p className="text-xs text-red-500">{errors.notes.message}</p>}
           </div>
-
-          {serverError && (
-            <p className="text-sm text-red-600">{serverError}</p>
-          )}
-
+          {serverError && <p className="text-sm text-red-600">{serverError}</p>}
           <div className="flex gap-2 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => { setShowForm(false); setServerError(null) }}
-            >
-              إلغاء
-            </Button>
-            <Button type="submit" size="sm" loading={isSubmitting}>
-              حفظ
-            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); setServerError(null) }}>إلغاء</Button>
+            <Button type="submit" size="sm" loading={isSubmitting}>حفظ</Button>
           </div>
         </form>
       )}
 
-      {/* List */}
       {mortalities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-slate-400">
           <p className="text-base font-medium text-slate-600">لا توجد سجلات نفوق</p>
-          {canAdd && (
-            <p className="mt-1 text-sm">اضغط «تسجيل نفوق» لإضافة أول سجل</p>
-          )}
+          {canAdd && <p className="mt-1 text-sm">اضغط «تسجيل نفوق» لإضافة أول سجل</p>}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200">

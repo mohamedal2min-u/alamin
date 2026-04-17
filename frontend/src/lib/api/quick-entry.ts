@@ -14,10 +14,10 @@ export interface MedicineLogPayload {
 
 export interface ExpensePayload {
   expense_type: string
-  total_amount: number
-  entry_date: string
-  quantity?: number
+  quantity: number
   unit_price?: number
+  total_amount?: number
+  entry_date: string
   description?: string
   notes?: string
 }

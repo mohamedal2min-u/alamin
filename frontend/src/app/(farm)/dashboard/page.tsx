@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AlertCircle, Zap, Bird, Calendar } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
@@ -15,7 +15,7 @@ import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
 export default function DashboardPage() {
-  const { currentFarm } = useFarmStore()
+  const { currentFarm, activeFlock: cachedFlock, setActiveFlock } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
   const [activating, setActivating] = useState(false)
   const [activateError, setActivateError] = useState<string | null>(null)
@@ -37,6 +37,9 @@ export default function DashboardPage() {
     setPageSubtitle(currentFarm?.name || null)
   }, [currentFarm, setPageTitle, setPageSubtitle])
 
+  // ── استخدم cachedFlock فوراً للقضاء على waterfall ───────────────────────────
+  const isCacheValid = cachedFlock?.farm_id === currentFarm?.id
+
   const {
     data: flocks = [],
     isLoading: loadingFlocks,
@@ -46,25 +49,39 @@ export default function DashboardPage() {
     queryKey: ['flocks', currentFarm?.id],
     queryFn: () => flocksApi.list().then((res): Flock[] => res.data),
     enabled: !!currentFarm,
-    refetchInterval: 30_000,
-    staleTime: 5000,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
   })
 
   const activeFlock = flocks.find((f) => f.status === 'active') ?? null
   const draftFlock = !activeFlock ? (flocks.find((f) => f.status === 'draft') ?? null) : null
+
+  // عرض البيانات المؤقتة من الـ cache أثناء تحميل الـ flocks
   const currentFlock = activeFlock ?? draftFlock
+    ?? (isCacheValid && loadingFlocks ? cachedFlock : null)
   const isActive = currentFlock?.status === 'active'
+
+  // حفظ الفوج النشط في الـ store لتسريع التحميل في المرة القادمة
+  useEffect(() => {
+    if (activeFlock) setActiveFlock(activeFlock)
+    else if (!loadingFlocks && flocks.length > 0) setActiveFlock(null)
+  }, [activeFlock, loadingFlocks])
+
+  // activeFlockId متاح فوراً من الـ cache عند أول تحميل
+  const activeFlockId = activeFlock?.id
+    ?? (isCacheValid && cachedFlock?.status === 'active' ? cachedFlock.id : undefined)
 
   const {
     data: summary,
     isLoading: loadingSummary,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['today-summary', activeFlock?.id, viewDate],
-    queryFn: () => flocksApi.todaySummary(activeFlock!.id, viewDate).then(res => res.data),
-    enabled: !!activeFlock,
-    refetchInterval: 30_000,
-    staleTime: 5000,
+    queryKey: ['today-summary', activeFlockId, viewDate],
+    queryFn: () => flocksApi.todaySummary(activeFlockId!, viewDate).then(res => res.data),
+    enabled: !!activeFlockId,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 
   const {
@@ -73,11 +90,12 @@ export default function DashboardPage() {
     isRefetching: refetchingHistory,
     refetch: refetchHistory,
   } = useQuery({
-    queryKey: ['flock-history', activeFlock?.id],
-    queryFn: () => flocksApi.getHistory(activeFlock!.id),
-    enabled: !!activeFlock,
-    refetchInterval: 10_000,
-    staleTime: 5000,
+    queryKey: ['flock-history', activeFlockId],
+    queryFn: () => flocksApi.getHistory(activeFlockId!),
+    enabled: !!activeFlockId,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 
   const handleEntrySuccess = () => {

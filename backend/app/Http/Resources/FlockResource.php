@@ -35,6 +35,8 @@ class FlockResource extends JsonResource
             'start_date'       => $this->start_date->toDateString(),
             'end_date'         => $this->close_date?->toDateString(),
             'initial_count'    => $this->initial_count,
+            'chick_unit_price' => (float) $this->chick_unit_price,
+            'total_chick_cost' => (float) $this->total_chick_cost,
             'current_age_days' => $agedays,
             'total_mortality'  => $totalMortality,
             'remaining_count'  => $this->initial_count - $totalMortality - $totalBirdsSold,

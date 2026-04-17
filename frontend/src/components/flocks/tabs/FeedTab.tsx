@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Package, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Plus, Package, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { feedLogsApi } from '@/lib/api/feedLogs'
 import { inventoryApi } from '@/lib/api/inventory'
 import { Button } from '@/components/ui/Button'
@@ -31,10 +32,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function FeedTab({ flockId, flockStatus }: Props) {
-  const [logs, setLogs]               = useState<FeedLog[]>([])
-  const [items, setItems]             = useState<InventoryItem[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [fetchError, setFetchError]   = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [showForm, setShowForm]       = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [bags, setBags]               = useState(0)
@@ -42,25 +40,19 @@ export function FeedTab({ flockId, flockStatus }: Props) {
 
   const canAdd = flockStatus === 'active'
 
-  // ── Fetch logs ───────────────────────────────────────────────────────────
-  const fetchLogs = useCallback(() => {
-    setLoading(true)
-    feedLogsApi
-      .list(flockId)
-      .then((res) => setLogs(res.data))
-      .catch(() => setFetchError('تعذّر تحميل سجلات العلف'))
-      .finally(() => setLoading(false))
-  }, [flockId])
+  const { data: logs = [], isLoading, isError } = useQuery<FeedLog[]>({
+    queryKey: ['feed-logs', flockId],
+    queryFn: () => feedLogsApi.list(flockId).then(res => res.data),
+    staleTime: 30_000,
+    gcTime: 10 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchLogs()
-  }, [fetchLogs])
-
-  // ── Fetch feed items when form opens ─────────────────────────────────────
-  useEffect(() => {
-    if (!showForm || items.length > 0) return
-    inventoryApi.items('feed').then((res) => setItems(res.data))
-  }, [showForm, items.length])
+  const { data: items = [] } = useQuery<InventoryItem[]>({
+    queryKey: ['inventory-items', 'feed'],
+    queryFn: () => inventoryApi.items('feed').then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  })
 
   // ── Form ─────────────────────────────────────────────────────────────────
   const {
@@ -86,26 +78,26 @@ export function FeedTab({ flockId, flockStatus }: Props) {
   const handleCancel = () => {
     reset({ item_id: undefined as unknown as number, entry_date: new Date().toISOString().split('T')[0] })
     setServerError(null)
+    setBags(0)
+    setExtraKg(0)
     setShowForm(false)
   }
 
   const onSubmit = async (data: FormData) => {
     setServerError(null)
-    const selectedItem = items.find((i) => i.id === data.item_id)
+    const item = items.find((i) => i.id === data.item_id)
     try {
-      const res = await feedLogsApi.create(flockId, {
+      await feedLogsApi.create(flockId, {
         item_id:    data.item_id,
         quantity:   data.quantity,
         entry_date: data.entry_date,
-        unit_label: selectedItem?.input_unit,
+        unit_label: item?.input_unit,
         notes:      data.notes || undefined,
       })
-      setLogs((prev) => [res.data, ...prev])
       handleCancel()
+      queryClient.invalidateQueries({ queryKey: ['feed-logs', flockId] })
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string; errors?: Record<string, string[]> } }
-      }
+      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
       const first = axiosErr?.response?.data?.errors
         ? Object.values(axiosErr.response.data.errors)[0]?.[0]
         : null
@@ -114,21 +106,18 @@ export function FeedTab({ flockId, flockStatus }: Props) {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-slate-400">
-        <span className="text-sm">جارٍ التحميل...</span>
-      </div>
-    )
-  }
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-20 text-slate-400">
+      <span className="text-sm">جارٍ التحميل...</span>
+    </div>
+  )
 
-  if (fetchError) {
-    return (
-      <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {fetchError}
-      </div>
-    )
-  }
+  if (isError) return (
+    <div className="m-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <p className="text-sm">تعذّر تحميل سجلات العلف</p>
+    </div>
+  )
 
   return (
     <div className="p-4 space-y-4">
@@ -173,13 +162,9 @@ export function FeedTab({ flockId, flockStatus }: Props) {
                 صنف العلف <span className="text-red-500">*</span>
               </label>
               <select
-                {...register('item_id', { 
+                {...register('item_id', {
                   valueAsNumber: true,
-                  onChange: () => {
-                    // Reset quantity fields when item changes to avoid confusion
-                    setBags(0)
-                    setExtraKg(0)
-                  }
+                  onChange: () => { setBags(0); setExtraKg(0) }
                 })}
                 id="feed_item_id"
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"

@@ -37,6 +37,9 @@ class CreateMedicineLogAction
                     throw new \Exception('المخزون غير كافٍ لسحب هذه الكمية', 422);
                 }
 
+                $avgCost         = (float) ($warehouseItem->average_cost ?? 0);
+                $consumptionCost = $avgCost * $realQty;
+
                 $txn = InventoryTransaction::create([
                     'farm_id'           => $flock->farm_id,
                     'warehouse_id'      => $warehouseItem->warehouse_id,
@@ -47,6 +50,8 @@ class CreateMedicineLogAction
                     'direction'         => 'out',
                     'source_module'     => 'flock_medicine',
                     'computed_quantity' => $realQty,
+                    'unit_price'        => $avgCost > 0 ? $avgCost : null,
+                    'total_amount'      => $consumptionCost > 0 ? $consumptionCost : null,
                     'created_by'        => $userId,
                     'updated_by'        => $userId,
                 ]);

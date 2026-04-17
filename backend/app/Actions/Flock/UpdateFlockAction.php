@@ -22,6 +22,13 @@ class UpdateFlockAction
     public function execute(Flock $flock, int $userId, array $data): Flock
     {
         return DB::transaction(function () use ($flock, $userId, $data): Flock {
+            // Recalculate total chick cost if price or count is changed
+            $initialCount = $data['initial_count'] ?? $flock->initial_count;
+            $unitPrice    = array_key_exists('chick_unit_price', $data) ? $data['chick_unit_price'] : $flock->chick_unit_price;
+            
+            if (isset($data['chick_unit_price']) || isset($data['initial_count'])) {
+                $data['total_chick_cost'] = ($unitPrice !== null && $initialCount !== null) ? ($unitPrice * $initialCount) : null;
+            }
 
             // ── التحقق من الانتقال الإذا تغيّرت الحالة ─────────────────────
             if (isset($data['status']) && $data['status'] !== $flock->status) {

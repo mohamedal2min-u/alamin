@@ -260,6 +260,9 @@
 | entry_date | date | not null |
 | quantity | numeric(14,3) | null |
 | unit_label | varchar(50) | null |
+| total_amount | numeric(12,2) | null |
+| paid_amount | numeric(12,2) | null |
+| payment_status | varchar(20) | null |
 | notes | text | null |
 | worker_id | bigint | null, FK -> users.id |
 | editable_until | timestamp | null |
@@ -267,6 +270,14 @@
 | updated_by | bigint | null, FK -> users.id |
 | created_at | timestamp | not null |
 | updated_at | timestamp | not null |
+
+### payment_status
+- paid
+- partial
+- unpaid
+
+### قيود
+- check (`payment_status IN ('paid', 'partial', 'unpaid') OR payment_status IS NULL`)
 
 ---
 

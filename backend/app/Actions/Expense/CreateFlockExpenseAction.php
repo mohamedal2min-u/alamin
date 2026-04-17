@@ -26,18 +26,33 @@ class CreateFlockExpenseAction
             throw new \Exception('تصنيف المصروف غير موجود في النظام', 422);
         }
 
+        $quantity  = (float) ($data['quantity'] ?? 1);
+        $unitPrice = isset($data['unit_price']) ? (float) $data['unit_price'] : null;
+
+        // Calculate total: if unit_price is given, total = qty × price; otherwise use provided total or 0
+        if ($unitPrice !== null && $unitPrice > 0) {
+            $totalAmount = $quantity * $unitPrice;
+        } else {
+            $totalAmount = isset($data['total_amount']) ? (float) $data['total_amount'] : 0;
+        }
+
+        // Auto-detect payment status based on whether a price was actually given
+        $hasPrice = $totalAmount > 0;
+        $paidAmount    = $hasPrice ? $totalAmount : 0;
+        $paymentStatus = $hasPrice ? 'paid' : 'unpaid';
+
         return Expense::create([
             'farm_id'             => $flock->farm_id,
             'flock_id'            => $flock->id,
             'expense_category_id' => $category->id,
             'entry_date'          => $data['entry_date'] ?? now()->toDateString(),
             'expense_type'        => $data['expense_type'],
-            'quantity'            => $data['quantity'] ?? null,
-            'unit_price'          => $data['unit_price'] ?? null,
-            'total_amount'        => $data['total_amount'],
-            'paid_amount'         => $data['total_amount'],
-            'remaining_amount'    => 0,
-            'payment_status'      => 'paid',
+            'quantity'            => $quantity,
+            'unit_price'          => $unitPrice,
+            'total_amount'        => $totalAmount,
+            'paid_amount'         => $paidAmount,
+            'remaining_amount'    => max(0, $totalAmount - $paidAmount),
+            'payment_status'      => $paymentStatus,
             'description'         => $data['description'] ?? null,
             'notes'               => $data['notes'] ?? null,
             'worker_id'           => $userId,

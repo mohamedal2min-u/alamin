@@ -1,9 +1,9 @@
 // frontend/src/app/(farm)/worker/page.tsx
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertCircle, Bird, Calendar } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
@@ -16,7 +16,7 @@ import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
 export default function WorkerPage() {
-  const { currentFarm } = useFarmStore()
+  const { currentFarm, activeFlock: cachedFlock, setActiveFlock } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
 
   const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | null>(null)
@@ -45,26 +45,34 @@ export default function WorkerPage() {
     queryKey: ['flocks', currentFarm?.id],
     queryFn: () => flocksApi.list().then((res): Flock[] => res.data),
     enabled: !!currentFarm,
-    refetchInterval: 30_000,
-    staleTime: 5000, 
+    staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
   })
 
   const activeFlock = flocks.find((f) => f.status === 'active') ?? null
   const isActive = activeFlock !== null
 
+  // Persist active flock so summary query can start on next load without waterfall
+  useEffect(() => {
+    if (activeFlock) setActiveFlock(activeFlock)
+    else if (!loadingFlocks && flocks.length > 0) setActiveFlock(null)
+  }, [activeFlock, loadingFlocks])
+
+  // Use cached flock ID for immediate parallel fetch — updated once live data arrives
+  const activeFlockId = activeFlock?.id ?? (cachedFlock?.farm_id === currentFarm?.id ? cachedFlock?.id : undefined)
+
   const {
     data: summary,
     isLoading: isSummaryLoading,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['today-summary', activeFlock?.id, viewDate],
-    queryFn: () => flocksApi.todaySummary(activeFlock!.id, viewDate).then(res => res.data),
-    enabled: !!activeFlock,
-    refetchInterval: 10_000,
-    staleTime: 5000,
+    queryKey: ['today-summary', activeFlockId, viewDate],
+    queryFn: () => flocksApi.todaySummary(activeFlockId!, viewDate).then(res => res.data),
+    enabled: !!activeFlockId,
+    staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   })
 
   const {
@@ -76,10 +84,10 @@ export default function WorkerPage() {
     queryKey: ['flock-history', activeFlock?.id],
     queryFn: () => flocksApi.getHistory(activeFlock!.id),
     enabled: !!activeFlock,
-    refetchInterval: 10_000,
-    staleTime: 5000,
+    staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   })
 
 

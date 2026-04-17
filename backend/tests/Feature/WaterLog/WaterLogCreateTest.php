@@ -29,23 +29,29 @@ class WaterLogCreateTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->withHeaders(['X-Farm-Id' => $farm->id])
             ->postJson("/api/flocks/{$flock->id}/water-logs", [
-                'quantity'   => 250.5,
-                'unit_label' => 'لتر',
-                'notes'      => 'استهلاك طبيعي',
+                'quantity'     => 2.5,
+                'unit_label'   => 'صهريج',
+                'total_amount' => 50,
+                'paid_amount'  => 50,
+                'notes'        => 'صهاريج مياه للشرب',
             ])
             ->assertStatus(201)
             ->assertJsonPath('message', 'تم تسجيل المياه بنجاح')
             ->assertJsonStructure([
                 'data' => [
-                    'id', 'flock_id', 'entry_date', 'quantity',
-                    'unit_label', 'notes', 'created_at',
+                    'id', 'flock_id', 'entry_date', 'quantity', 'unit_label',
+                    'total_amount', 'paid_amount', 'payment_status', 'notes', 'created_at',
                 ],
             ]);
 
         $this->assertDatabaseHas('flock_water_logs', [
-            'flock_id'   => $flock->id,
-            'quantity'   => 250.5,
-            'created_by' => $user->id,
+            'flock_id'       => $flock->id,
+            'quantity'       => 2.5,
+            'unit_label'     => 'صهريج',
+            'total_amount'   => 50,
+            'paid_amount'    => 50,
+            'payment_status' => 'paid',
+            'created_by'     => $user->id,
         ]);
     }
 

@@ -1,43 +1,51 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { partnersApi, Partner } from '@/lib/api/partners'
+import { flocksApi } from '@/lib/api/flocks'
+import type { Flock } from '@/types/flock'
+import { useFarmStore } from '@/stores/farm.store'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { PartnerModal } from '@/components/partners/PartnerModal'
 import { PartnerLedgerModal } from '@/components/partners/PartnerLedgerModal'
-import { 
-  Users, UserPlus, Phone, Mail, Edit2, Search, 
-  Percent, Wallet, Printer, TrendingUp, Shield, Eye
+import {
+  Users, UserPlus, Phone, Mail, Edit2, Search,
+  Wallet, Printer, TrendingUp, Shield
 } from 'lucide-react'
 
 export default function PartnersPage() {
   const queryClient = useQueryClient()
+  const { currentFarm } = useFarmStore()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLedgerOpen, setIsLedgerOpen] = useState(false)
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
   const { data: partners, isLoading } = useQuery({
-    queryKey: ['partners'],
+    queryKey: ['partners', currentFarm?.id],
     queryFn: () => partnersApi.getAll(),
-    staleTime: 30_000,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 
-  const { data: flocksData } = useQuery({
-    queryKey: ['flocks'],
-    queryFn: () => import('@/lib/api/flocks').then(m => m.flocksApi.list()),
-    staleTime: 30_000,
+  // Reuses the same cache entry as dashboard/worker/FlockGlobalHeader
+  const { data: flocksList = [] } = useQuery<Flock[]>({
+    queryKey: ['flocks', currentFarm?.id],
+    queryFn: () => flocksApi.list().then(res => res.data),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled: !!currentFarm,
   })
 
-  const hasActiveFlock = flocksData?.data?.some(f => f.status === 'active') || false
 
   const createMutation = useMutation({
     mutationFn: (data: any) => partnersApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['partners'] })
+      queryClient.invalidateQueries({ queryKey: ['partners', currentFarm?.id] })
       setIsModalOpen(false)
     }
   })
@@ -45,7 +53,7 @@ export default function PartnersPage() {
   const updateMutation = useMutation({
     mutationFn: (data: any) => partnersApi.update(selectedPartner!.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['partners'] })
+      queryClient.invalidateQueries({ queryKey: ['partners', currentFarm?.id] })
       setIsModalOpen(false)
     }
   })
@@ -68,18 +76,35 @@ export default function PartnersPage() {
     setIsLedgerOpen(true)
   }
 
-  const filteredPartners = partners?.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.whatsapp?.includes(searchQuery)
-  )
+  const filteredPartners = React.useMemo(() => {
+    if (!partners) return []
+    return partners.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.whatsapp?.includes(searchQuery)
+    )
+  }, [partners, searchQuery])
 
   // Stats
-  const totalPartners = partners?.length || 0
-  const activePartners = partners?.filter(p => p.status === 'active').length || 0
-  const totalSharesAllocated = partners?.reduce((sum, p) => {
-    const share = p.shares?.[0]?.share_percent || 0
-    return sum + share
-  }, 0) || 0
+  const { totalPartners, activePartners, totalSharesAllocated } = React.useMemo(() => {
+    if (!partners) return { totalPartners: 0, activePartners: 0, totalSharesAllocated: 0 }
+    
+    const total = partners.length
+    const active = partners.filter(p => p.status === 'active').length
+    const sharesSum = partners.reduce((sum, p) => {
+      const share = p.shares?.[0]?.share_percent || 0
+      return sum + share
+    }, 0)
+    
+    return {
+      totalPartners: total,
+      activePartners: active,
+      totalSharesAllocated: sharesSum
+    }
+  }, [partners])
+
+  const hasActiveFlock = React.useMemo(() => 
+    flocksList.some(f => f.status === 'active'),
+  [flocksList])
 
   return (
     <div className="space-y-5 pb-24 sm:pb-8" dir="rtl">
@@ -125,7 +150,19 @@ export default function PartnersPage() {
       {/* ─── Partners Table ─── */}
       <Card className="border-slate-200/60 overflow-hidden bg-white rounded-2xl">
         {isLoading ? (
-          <div className="h-64 flex items-center justify-center"><Spinner /></div>
+          <div className="divide-y divide-slate-50">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 w-28 bg-slate-100 rounded" />
+                  <div className="h-2.5 w-20 bg-slate-50 rounded" />
+                </div>
+                <div className="h-7 w-14 bg-slate-100 rounded-lg" />
+                <div className="h-7 w-16 bg-slate-100 rounded-lg" />
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-right">

@@ -80,7 +80,7 @@ export function DaySummaryCard({ summary, loading }: Props) {
         <SummaryKpi 
           label="الماء" 
           value={waterTotal > 0 ? formatNumber(waterTotal) : '—'} 
-          unit={waterTotal > 0 ? (summary.water?.entries?.[0]?.unit_label || 'لتر') : ''}
+          unit={waterTotal > 0 ? (summary.water?.entries?.[0]?.unit_label || 'صهريج') : ''}
           icon={<Droplets className="w-4 h-4" />}
           color="text-blue-500" 
           bgColor="bg-blue-50/30"

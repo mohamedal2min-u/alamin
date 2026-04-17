@@ -86,8 +86,10 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::post('/transactions', [InventoryController::class, 'addShipment']);
     });
 
-    // ── Expenses list ─────────────────────────────────────────────────────────
-    Route::get('/expenses', [ExpenseController::class, 'index']);
+    // ── Expenses ──────────────────────────────────────────────────────────────
+    Route::get('/expenses',            [ExpenseController::class, 'index']);
+    Route::post('/expenses',           [ExpenseController::class, 'store']);
+    Route::get('/expense-categories',  [ExpenseController::class, 'categories']);
 
     // ── V1-E: Feed Logs ───────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/feed-logs')->group(function (): void {

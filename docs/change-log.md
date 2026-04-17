@@ -1,5 +1,59 @@
 # سجل التغييرات (Change Log)
 
+## [2026-04-17] - تحسينات الأداء الشاملة (Performance Optimization)
+
+### المشاكل المُعالجة
+- **Worker Dashboard**: polling كل 10 ثوانٍ على قراتين = 18 طلب/دقيقة/مستخدم — حُذف polling بالكامل
+- **`/flocks/[id]`**: كان يستخدم `useEffect + state` (لا cache، يُعيد الجلب في كل زيارة) — تم التحويل إلى `useQuery`
+- **`/workers`**: نفس المشكلة — تم التحويل إلى `useQuery`
+- **`/sales`**: نفس المشكلة — تم التحويل إلى `useQuery`
+
+### التغييرات
+#### Worker Dashboard (`worker/page.tsx`)
+- حُذف `refetchInterval` من جميع القراءات الثلاث (كان 10s/10s/30s)
+- رُفع `staleTime` إلى 60s على الجميع
+- أُضيف `placeholderData: keepPreviousData` لـ history
+
+#### Flock Details (`flocks/[id]/page.tsx`)
+- تحويل من `useEffect + setState` إلى `useQuery(['flock', flockId])`
+- staleTime: 60s — البيانات مُخزّنة بعد أول زيارة
+- `queryClient.setQueryData` بدلاً من `setFlock` في onSuccess callbacks
+
+#### Workers Page (`workers/page.tsx`)
+- تحويل إلى `useQuery(['workers', currentFarm?.id])`
+- حذف optimistic state بعد delete، استبداله بـ `queryClient.setQueryData`
+
+#### Sales Page (`sales/page.tsx`)
+- تحويل إلى `useQuery(['sales', currentFarm?.id])`
+- `queryClient.setQueryData` بعد تحديث الدفع بدلاً من setSales
+
+### النتائج
+- Frontend: `npx tsc --noEmit` → 0 أخطاء ✅
+- طلبات الشبكة: تقلّصت من ~18 طلب/دقيقة إلى 0 polling (تحديث فقط عند العودة للتبويب)
+
+
+## [2026-04-17] - إصلاح تبويب المياه + إضافة إنشاء المصاريف
+
+### الإصلاحات
+- **Bug Fix**: تبويب "المياه" في صفحة تفاصيل الفوج كان يعرض `ExpensesTab` بدلاً من `WaterTab` — تم الإصلاح بفصل التبويبين
+- أُضيف تبويب "المياه" (`WaterTab`) كتبويب مستقل في صفحة الفوج
+- تبويب "المصروفات" أصبح له مفتاح `expenses` بدلاً من `water`
+
+### الإضافات
+
+#### Backend (API)
+- `GET  /api/expense-categories` — قائمة تصنيفات المصاريف (النظامية + خاصة المزرعة)
+- `POST /api/expenses` — إنشاء مصروف مستقل (بدون ربط إلزامي بفوج)
+  - يدعم: `expense_category_id`, `entry_date`, `total_amount`, `payment_status`, `flock_id` (اختياري)
+
+#### Frontend
+- صفحة المصاريف `/expenses`: أُضيف زر "إضافة مصروف" + نموذج inline لإنشاء مصروف جديد مع اختيار التصنيف وحالة الدفع
+- API client `expenses.ts`: أُضيفت `expensesApi.create()` و `expensesApi.categories()`
+
+### النتائج
+- Backend: 184 اختبار ✅
+- Frontend: `npx tsc --noEmit` → 0 أخطاء ✅
+
 ## [2026-04-15] - تكملة تبويبات تفاصيل الفوج: المياه والملاحظات
 
 ### الإضافات

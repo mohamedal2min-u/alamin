@@ -19,6 +19,8 @@ class Flock extends Model
         'start_date',
         'close_date',
         'initial_count',
+        'chick_unit_price',
+        'total_chick_cost',
         'current_age_days',
         'notes',
         'created_by',
@@ -30,6 +32,8 @@ class Flock extends Model
         return [
             'start_date' => 'date',
             'close_date' => 'date',
+            'chick_unit_price' => 'decimal:2',
+            'total_chick_cost' => 'decimal:2',
         ];
     }
 

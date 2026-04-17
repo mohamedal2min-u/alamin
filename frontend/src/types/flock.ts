@@ -8,6 +8,8 @@ export interface Flock {
   start_date: string           // ISO date: "YYYY-MM-DD"
   end_date: string | null
   initial_count: number
+  chick_unit_price: number | null
+  total_chick_cost: number | null
   total_mortality: number
   remaining_count: number
   total_sales: number
@@ -23,6 +25,7 @@ export interface CreateFlockPayload {
   name: string
   start_date: string
   initial_count: number
+  chick_unit_price?: number | null
   notes?: string
 }
 

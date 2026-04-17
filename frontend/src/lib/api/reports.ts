@@ -26,6 +26,8 @@ export interface FlockReport {
     mortality_rate: number
     remaining_birds: number
     total_feed_kg: number
+    total_feed_bags: number
+    feed_cost: number
     total_medicine_cost: number
   }
   sales_analytics: {

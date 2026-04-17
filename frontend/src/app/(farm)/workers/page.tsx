@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Plus, Users, Phone, Mail, DollarSign, Calendar, Trash2, Loader2, UserPlus } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { workersApi } from '@/lib/api/workers'
+import { useFarmStore } from '@/stores/farm.store'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -20,26 +22,19 @@ interface Worker {
 }
 
 export default function WorkersPage() {
-  const [workers, setWorkers] = useState<Worker[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { currentFarm } = useFarmStore()
+  const queryClient = useQueryClient()
   const [isDeleting, setIsDeleting] = useState<number | null>(null)
 
-  const fetchWorkers = async () => {
-    try {
-      setIsLoading(true)
-      const response = await workersApi.list()
-      setWorkers(response.data.data)
-    } catch (error) {
-      console.error('Failed to fetch workers:', error)
-      toast.error('فشل في جلب قائمة العمال')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const { data, isLoading } = useQuery({
+    queryKey: ['workers', currentFarm?.id],
+    queryFn: () => workersApi.list().then((r) => r.data.data as Worker[]),
+    enabled: !!currentFarm,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchWorkers()
-  }, [])
+  const workers = data ?? []
 
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`هل أنت متأكد من حذف العامل "${name}" من المزرعة؟`)) return
@@ -48,9 +43,10 @@ export default function WorkersPage() {
       setIsDeleting(id)
       await workersApi.delete(id)
       toast.success('تم حذف العامل بنجاح')
-      setWorkers(prev => prev.filter(w => w.id !== id))
-    } catch (error) {
-      console.error('Failed to delete worker:', error)
+      queryClient.setQueryData(['workers', currentFarm?.id], (old: Worker[] | undefined) =>
+        old ? old.filter((w) => w.id !== id) : []
+      )
+    } catch {
       toast.error('فشل في حذف العامل')
     } finally {
       setIsDeleting(null)

@@ -18,17 +18,35 @@ class CreateWaterLogAction
         }
 
         return DB::transaction(function () use ($flock, $userId, $data): FlockWaterLog {
+            $totalAmount = isset($data['total_amount']) ? (float) $data['total_amount'] : null;
+            $paidAmount = isset($data['paid_amount']) ? (float) $data['paid_amount'] : null;
+            $paymentStatus = $data['payment_status'] ?? null;
+
+            if ($totalAmount !== null) {
+                $paidAmount = $paidAmount ?? 0;
+                if ($paidAmount <= 0) {
+                    $paymentStatus = 'unpaid';
+                } elseif ($paidAmount >= $totalAmount) {
+                    $paymentStatus = 'paid';
+                } else {
+                    $paymentStatus = 'partial';
+                }
+            }
+
             return FlockWaterLog::create([
-                'farm_id'       => $flock->farm_id,
-                'flock_id'      => $flock->id,
-                'entry_date'    => $data['entry_date'] ?? now()->toDateString(),
-                'quantity'      => $data['quantity'] ?? null,
-                'unit_label'    => $data['unit_label'] ?? null,
-                'notes'         => $data['notes'] ?? null,
-                'worker_id'     => $userId,
+                'farm_id'        => $flock->farm_id,
+                'flock_id'       => $flock->id,
+                'entry_date'     => $data['entry_date'] ?? now()->toDateString(),
+                'quantity'       => $data['quantity'] ?? null,
+                'unit_label'     => $data['unit_label'] ?? null,
+                'total_amount'   => $totalAmount,
+                'paid_amount'    => $paidAmount,
+                'payment_status' => $paymentStatus,
+                'notes'          => $data['notes'] ?? null,
+                'worker_id'      => $userId,
                 'editable_until' => now()->addMinutes(15),
-                'created_by'    => $userId,
-                'updated_by'    => $userId,
+                'created_by'     => $userId,
+                'updated_by'     => $userId,
             ]);
         });
     }

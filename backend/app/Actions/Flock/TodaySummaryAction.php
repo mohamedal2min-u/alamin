@@ -7,6 +7,7 @@ use App\Models\Flock;
 use App\Models\FlockFeedLog;
 use App\Models\FlockMedicine;
 use App\Models\FlockMortality;
+use App\Models\FlockWaterLog;
 
 class TodaySummaryAction
 {
@@ -56,6 +57,11 @@ class TodaySummaryAction
             fn ($m) => $m->item?->itemType?->code === 'water'
         );
 
+        $waterLogs = FlockWaterLog::where('flock_id', $flock->id)
+            ->whereDate('entry_date', $today)
+            ->with('worker:id,name')
+            ->get(['quantity', 'unit_label', 'worker_id', 'created_at']);
+
         $expenses = Expense::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)
             ->with('worker:id,name')
@@ -99,13 +105,13 @@ class TodaySummaryAction
                 'total' => (float) $medicineEntries->sum('quantity'),
             ],
             'water' => [
-                'entries' => $waterEntries->map(fn ($m) => [
-                    'quantity'    => (float) $m->quantity,
-                    'unit_label'  => $m->unit_label ?? 'لتر',
-                    'worker_name' => $m->worker?->name ?? 'غير معروف',
-                    'time'        => $m->created_at?->format('H:i'),
+                'entries' => $waterLogs->map(fn ($w) => [
+                    'quantity'    => (float) $w->quantity,
+                    'unit_label'  => $w->unit_label ?? 'صهريج',
+                    'worker_name' => $w->worker?->name ?? 'غير معروف',
+                    'time'        => $w->created_at?->format('H:i'),
                 ])->values()->toArray(),
-                'total' => (float) $waterEntries->sum('quantity'),
+                'total' => (float) $waterLogs->sum('quantity'),
             ],
             'expenses' => [
                 'entries' => $expenses->map(fn ($e) => [

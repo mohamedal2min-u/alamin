@@ -121,10 +121,7 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
                 </div>
             </div>
 
-            <div className="mt-4 flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-100">
-                <Utensils className="w-3.5 h-3.5 text-amber-600" />
-                <span className="text-[10px] text-amber-800">استهلاك العلف: <strong>{data.performance.total_feed_kg.toLocaleString()} كغ</strong></span>
-            </div>
+            <FeedConsumptionBadge kg={data.performance.total_feed_kg} bags={data.performance.total_feed_bags} />
         </Card>
 
         {/* Financials Column */}
@@ -137,19 +134,25 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
             <div className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">إجمالي المبيعات</span>
-                    <span className="font-bold text-emerald-600">{data.financial.total_sales.toLocaleString()} $</span>
+                    <span className="font-bold text-emerald-600">$ {data.financial.total_sales.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500">مشتريات الأدوية</span>
-                    <span className="font-bold text-slate-700">{data.performance.total_medicine_cost.toLocaleString()} $</span>
+                    <span className="text-slate-500">تكلفة العلف</span>
+                    <span className="font-bold text-amber-700">$ {data.performance.feed_cost.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">تكلفة الدواء</span>
+                    <span className="font-bold text-slate-700">$ {data.performance.total_medicine_cost.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs border-b border-dashed pb-2">
-                    <span className="text-slate-500">باقي المصروفات</span>
-                    <span className="font-bold text-slate-700">{(data.financial.total_expenses - data.performance.total_medicine_cost).toLocaleString()} $</span>
+                    <span className="text-slate-500">مصاريف أخرى</span>
+                    <span className="font-bold text-slate-700">
+                      $ {Math.max(0, data.financial.total_expenses - data.performance.feed_cost - data.performance.total_medicine_cost).toLocaleString()}
+                    </span>
                 </div>
                 <div className="flex justify-between items-center py-2">
                     <span className="text-xs font-bold text-slate-900">إجمالي المصروفات</span>
-                    <span className="text-sm font-black text-rose-600">{data.financial.total_expenses.toLocaleString()} $</span>
+                    <span className="text-sm font-black text-rose-600">$ {data.financial.total_expenses.toLocaleString()}</span>
                 </div>
             </div>
 
@@ -175,6 +178,25 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
         <p className="text-[10px] text-blue-800 leading-relaxed font-medium">
             يتم حساب "العدد المتبقي" بطرح (النفوق + المباع) من العدد الداخل الأول. متوسط الوزن يحسب بقسمة إجمالي الوزن المباع على عدد الطيور المباعة فقط. كافة المبالغ المالية معروضة بالدولار الأمريكي (USD).
         </p>
+      </div>
+    </div>
+  )
+}
+
+function FeedConsumptionBadge({ kg, bags }: { kg: number; bags: number }) {
+  const weightLabel = kg >= 1000
+    ? `${(kg / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} طن`
+    : `${kg.toLocaleString()} كغ`
+
+  return (
+    <div className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+      <Utensils className="w-4 h-4 text-amber-600 shrink-0" />
+      <div className="flex flex-col leading-tight">
+        <span className="text-[10px] font-bold text-amber-800">استهلاك العلف</span>
+        {bags > 0 && (
+          <span className="text-xs font-black text-amber-900">{bags.toLocaleString()} كيس</span>
+        )}
+        <span className="text-[10px] text-amber-700">{weightLabel}</span>
       </div>
     </div>
   )

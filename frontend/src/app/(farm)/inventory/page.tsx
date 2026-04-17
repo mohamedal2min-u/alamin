@@ -403,7 +403,7 @@ function AddItemForm({
                 <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
               </Field>
 
-              <Field label="وحدة المحتوى" required hint="مثال: كيلو، لتر">
+              <Field label="وحدة المحتوى" required hint="مثال: كيلو، صهريج">
                 <input value={form.content_unit} onChange={set('content_unit')} placeholder="مثل: كيلو" className={inputCls} />
               </Field>
             </div>

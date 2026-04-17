@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Droplets } from 'lucide-react'
+import { Plus, Droplets, AlertCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { waterLogsApi } from '@/lib/api/waterLogs'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -19,10 +20,28 @@ const schema = z.object({
     z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'الكمية يجب أن تكون أكبر من صفر').optional()
   ),
   unit_label: z.string().max(50).optional().or(z.literal('')),
+  total_amount: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : Number(v)),
+    z.number().min(0, 'عذراً لا يمكن ان يكون سالباً').optional()
+  ),
+  paid_amount: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : Number(v)),
+    z.number().min(0, 'عذراً لا يمكن ان يكون سالباً').optional()
+  ),
+  payment_status: z.enum(['paid', 'partial', 'unpaid']).default('paid'),
   entry_date: z.string().min(1, 'تاريخ الإدخال مطلوب').regex(/^\d{4}-\d{2}-\d{2}$/, 'صيغة التاريخ غير صحيحة'),
   notes:      z.string().max(5000).optional().or(z.literal('')),
-})
+}).refine(
+  (data) => {
+    if (data.total_amount && data.paid_amount) {
+      return data.paid_amount <= data.total_amount
+    }
+    return true
+  },
+  { message: 'المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي', path: ['paid_amount'] }
+)
 type FormData = z.infer<typeof schema>
+
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface Props {
@@ -32,27 +51,18 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function WaterTab({ flockId, flockStatus }: Props) {
-  const [logs, setLogs]               = useState<WaterLog[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [fetchError, setFetchError]   = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [showForm, setShowForm]       = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
   const canAdd = flockStatus === 'active'
 
-  // ── Fetch logs ───────────────────────────────────────────────────────────
-  const fetchLogs = useCallback(() => {
-    setLoading(true)
-    waterLogsApi
-      .list(flockId)
-      .then((res) => setLogs(res.data))
-      .catch(() => setFetchError('تعذّر تحميل سجلات المياه'))
-      .finally(() => setLoading(false))
-  }, [flockId])
-
-  useEffect(() => {
-    fetchLogs()
-  }, [fetchLogs])
+  const { data: logs = [], isLoading, isError } = useQuery<WaterLog[]>({
+    queryKey: ['water-logs', flockId],
+    queryFn: () => waterLogsApi.list(flockId).then(res => res.data),
+    staleTime: 30_000,
+    gcTime: 10 * 60 * 1000,
+  })
 
   // ── Form ─────────────────────────────────────────────────────────────────
   const {
@@ -64,12 +74,13 @@ export function WaterTab({ flockId, flockStatus }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       entry_date: new Date().toISOString().split('T')[0],
-      unit_label: 'لتر',
+      unit_label: 'صهريج',
+      payment_status: 'paid',
     },
   })
 
   const handleCancel = () => {
-    reset({ entry_date: new Date().toISOString().split('T')[0], unit_label: 'لتر' })
+    reset({ entry_date: new Date().toISOString().split('T')[0], unit_label: 'صهريج', payment_status: 'paid' })
     setServerError(null)
     setShowForm(false)
   }
@@ -77,18 +88,19 @@ export function WaterTab({ flockId, flockStatus }: Props) {
   const onSubmit = async (data: FormData) => {
     setServerError(null)
     try {
-      const res = await waterLogsApi.create(flockId, {
-        quantity:   data.quantity,
-        entry_date: data.entry_date,
-        unit_label: data.unit_label || undefined,
-        notes:      data.notes || undefined,
+      await waterLogsApi.create(flockId, {
+        quantity:       data.quantity,
+        entry_date:     data.entry_date,
+        unit_label:     data.unit_label || undefined,
+        total_amount:   data.total_amount,
+        paid_amount:    data.paid_amount,
+        payment_status: data.payment_status,
+        notes:          data.notes || undefined,
       })
-      setLogs((prev) => [res.data, ...prev])
       handleCancel()
+      queryClient.invalidateQueries({ queryKey: ['water-logs', flockId] })
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string; errors?: Record<string, string[]> } }
-      }
+      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
       const first = axiosErr?.response?.data?.errors
         ? Object.values(axiosErr.response.data.errors)[0]?.[0]
         : null
@@ -97,21 +109,18 @@ export function WaterTab({ flockId, flockStatus }: Props) {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-slate-400">
-        <span className="text-sm">جارٍ التحميل...</span>
-      </div>
-    )
-  }
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-20 text-slate-400">
+      <span className="text-sm">جارٍ التحميل...</span>
+    </div>
+  )
 
-  if (fetchError) {
-    return (
-      <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {fetchError}
-      </div>
-    )
-  }
+  if (isError) return (
+    <div className="m-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <p className="text-sm">تعذّر تحميل سجلات المياه</p>
+    </div>
+  )
 
   return (
     <div className="p-4 space-y-4">
@@ -140,11 +149,11 @@ export function WaterTab({ flockId, flockStatus }: Props) {
             <Input
               {...register('quantity')}
               id="water_quantity"
-              label="الكمية"
+              label="عدد الصهاريج"
               type="number"
-              step="0.01"
-              min={0.001}
-              placeholder="مثال: 250"
+              step="0.5"
+              min={0.5}
+              placeholder="مثال: 1"
               error={errors.quantity?.message}
             />
 
@@ -154,9 +163,45 @@ export function WaterTab({ flockId, flockStatus }: Props) {
               id="water_unit_label"
               label="الوحدة"
               type="text"
-              placeholder="مثال: لتر"
+              readOnly
+              className="bg-slate-50 cursor-not-allowed"
+              placeholder="مثال: صهريج"
               error={errors.unit_label?.message}
             />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Input
+              {...register('total_amount')}
+              id="water_total"
+              label="السعر الإجمالي ($)"
+              type="number"
+              step="0.01"
+              min={0}
+              placeholder="0.00"
+              error={errors.total_amount?.message}
+            />
+            <Input
+              {...register('paid_amount')}
+              id="water_paid"
+              label="المبلغ المدفوع ($)"
+              type="number"
+              step="0.01"
+              min={0}
+              placeholder="0.00"
+              error={errors.paid_amount?.message}
+            />
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">حالة الدفع</label>
+              <select
+                {...register('payment_status')}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              >
+                <option value="paid">مدفوع بالكامل</option>
+                <option value="partial">مدفوع جزئياً</option>
+                <option value="unpaid">غير مدفوع (دين)</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -224,12 +269,20 @@ export function WaterTab({ flockId, flockStatus }: Props) {
 
 // ── WaterLogRow ───────────────────────────────────────────────────────────────
 function WaterLogRow({ log }: { log: WaterLog }) {
-  const displayUnit = log.unit_label ?? 'لتر'
+  const displayUnit = log.unit_label ?? 'صهريج'
+
+  const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
+    paid:    { label: 'مدفوع',     color: 'bg-green-100 text-green-700' },
+    partial: { label: 'جزئي',      color: 'bg-amber-100 text-amber-700' },
+    unpaid:  { label: 'دين',       color: 'bg-red-100 text-red-700' },
+  }
+
+  const statusObj = log.payment_status ? PAYMENT_STATUS_LABEL[log.payment_status] : null
 
   return (
     <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3" style={{ boxShadow: 'var(--shadow-card)' }}>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mb-1.5">
           <span className="text-sm font-semibold text-slate-900">
             {log.quantity !== null
               ? `${formatNumber(log.quantity)} ${displayUnit}`
@@ -237,6 +290,18 @@ function WaterLogRow({ log }: { log: WaterLog }) {
           </span>
           <span className="text-xs text-slate-400">{formatDate(log.entry_date)}</span>
         </div>
+        
+        {log.total_amount !== null && (
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-sm font-bold text-slate-700">{formatNumber(log.total_amount)} USD</span>
+            {statusObj && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusObj.color}`}>
+                {statusObj.label}
+              </span>
+            )}
+          </div>
+        )}
+
         {log.notes && (
           <p className="mt-0.5 text-xs text-slate-500 truncate">{log.notes}</p>
         )}
@@ -245,3 +310,4 @@ function WaterLogRow({ log }: { log: WaterLog }) {
     </div>
   )
 }
+

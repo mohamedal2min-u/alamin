@@ -23,9 +23,10 @@ const TABS: { key: Tab; label: string; icon: any; color: string; bgColor: string
 ]
 
 const EXPENSE_TYPES = [
-  { value: 'water',   label: 'مياه' },
-  { value: 'bedding', label: 'فرشة (نشارة)' },
-  { value: 'other',   label: 'أخرى' },
+  { value: 'bedding',      label: 'نشارة',       unitHint: 'كيس' },
+  { value: 'farm_wash',    label: 'غسيل مدجنة',  unitHint: 'مرة' },
+  { value: 'disinfectant', label: 'معقم',         unitHint: 'قطعة' },
+  { value: 'other',        label: 'مخصص',       unitHint: 'وحدة' },
 ]
 
 interface Props {
@@ -56,11 +57,12 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
   const [medQty, setMedQty]       = useState('')
 
   // Expense
-  const [expType, setExpType]     = useState('water')
+  const [expType, setExpType]     = useState('bedding')
   const [expQty, setExpQty]       = useState('')
   const [expPrice, setExpPrice]   = useState('')
   const [expDescription, setExpDescription] = useState('')
   const [expNotes, setExpNotes]   = useState('')
+  const [expUnitHint, setExpUnitHint] = useState('كيس')
 
   const calculatedTotal = (activeTab === 'expense') 
     ? (Number(expQty) * Number(expPrice)) 
@@ -75,7 +77,7 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
     setMQty(''); setMReason('')
     setFeedItemId(''); setFeedQty(''); setFeedBags(''); setFeedExtraKg('')
     setMedItemId(''); setMedQty('')
-    setExpType('water'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes('')
+    setExpType('bedding'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes(''); setExpUnitHint('كيس')
     setError(null)
   }
 
@@ -108,11 +110,19 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
         if (!medQty || Number(medQty) <= 0) { setError('أدخل كمية صحيحة'); setLoading(false); return }
         await quickEntryApi.logMedicine(flockId, { item_id: Number(medItemId), quantity: Number(medQty), entry_date: date })
       } else {
-        const total = calculatedTotal
-        if (total <= 0 && expType !== 'water') { setError('أدخل مبلغاً صحيحاً'); setLoading(false); return }
+        if (!expQty || Number(expQty) <= 0) { setError('العدد مطلوب'); setLoading(false); return }
+        if (expType === 'other' && !expDescription.trim()) { setError('وصف المصروف مطلوب'); setLoading(false); return }
+        const qty = Number(expQty)
+        const price = Number(expPrice)
+        const hasPrice = !isNaN(price) && price > 0
         await quickEntryApi.logExpense(flockId, { 
-          expense_type: expType, total_amount: total || Number(expPrice), quantity: Number(expQty) || undefined,
-          unit_price: Number(expPrice) || undefined, description: expDescription || undefined, notes: expNotes || undefined, entry_date: date 
+          expense_type: expType,
+          quantity: qty,
+          unit_price: hasPrice ? price : undefined,
+          total_amount: hasPrice ? qty * price : 0,
+          description: expDescription || undefined,
+          notes: expNotes || undefined,
+          entry_date: date,
         })
       }
 
@@ -233,23 +243,50 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
 
             {activeTab === 'expense' && (
               <div className="space-y-4">
-                <FormField label="التصنيف" required>
-                  <select value={expType} onChange={(e) => setExpType(e.target.value)} className={inputClass}>
-                    {EXPENSE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                <FormField label="نوع المصروف" required>
+                  <select
+                    value={expType}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setExpType(val);
+                      const preset = EXPENSE_TYPES.find(p => p.value === val);
+                      if (preset) setExpUnitHint(preset.unitHint);
+                    }}
+                    className={inputClass}
+                  >
+                    {EXPENSE_TYPES.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
                   </select>
                 </FormField>
+                {expType === 'other' && (
+                  <FormField label="وصف المصروف" required>
+                    <input type="text" value={expDescription} onChange={(e) => setExpDescription(e.target.value)} placeholder="مثال: إصلاح سقف..." className={inputClass} />
+                  </FormField>
+                )}
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField label={expType === 'water' ? 'العدد' : 'الكمية'} required>
+                  <FormField label={`العدد (${expUnitHint})`} required>
                     <NumericInput value={expQty} onChange={setExpQty} placeholder="0" />
                   </FormField>
-                  <FormField label="السعر/المبلغ" required>
+                  <FormField label="سعر الوحدة ($)">
                     <NumericInput value={expPrice} onChange={setExpPrice} placeholder="0.00" />
                   </FormField>
                 </div>
-                {expType === 'other' && (
-                  <FormField label="وصف المصروف" required>
-                    <input type="text" value={expDescription} onChange={(e) => setExpDescription(e.target.value)} placeholder="اكتب وصفاً..." className={inputClass} />
-                  </FormField>
+
+                <p className="text-[10px] font-bold text-red-600 px-1 -mt-2">
+                  إذا تم ترك السعر فارغاً، سوف يتم إضافة المصروف إلى الذمم والمراجعة
+                </p>
+                {Number(expQty) > 0 && (
+                  <div className={cn(
+                    'flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-bold border',
+                    Number(expPrice) > 0
+                      ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                      : 'bg-amber-50 border-amber-100 text-amber-700'
+                  )}>
+                    {Number(expPrice) > 0
+                      ? `الإجمالي: ${(Number(expQty) * Number(expPrice)).toFixed(2)} $`
+                      : 'بدون سعر — سيتم التسجيل كـ ذمم'}
+                  </div>
                 )}
               </div>
             )}

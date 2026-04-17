@@ -80,8 +80,8 @@ export function FlockCard({ flock }: { flock: Flock }) {
                   isProfit ? "text-emerald-700" : "text-rose-600"
                 )}>
                   {isProfit ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  <span className="text-[10px] opacity-60">$</span>
                   {formatNumber(Math.abs(flock.net_profit))}
-                  <span className="text-[10px] opacity-60">د.أ</span>
                 </div>
                 <p className="text-[9px] font-medium text-slate-400 mt-0.5 Arabic-font">
                   {isProfit ? 'تقدير أرباح' : 'تقدير خسارة'}

@@ -1,30 +1,34 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, AlertCircle, Bird, Calendar, Hash, Clock, Lock } from 'lucide-react'
+import { ArrowRight, AlertCircle, Bird, Calendar, Hash, Clock, Lock, Zap, Edit2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FlockStatusBadge } from '@/components/flocks/FlockStatusBadge'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import { MortalitiesTab } from '@/components/flocks/tabs/MortalitiesTab'
 import { SalesTab } from '@/components/flocks/tabs/SalesTab'
 import { FeedTab } from '@/components/flocks/tabs/FeedTab'
 import { MedicineTab } from '@/components/flocks/tabs/MedicineTab'
+import { ExpensesTab } from '@/components/flocks/tabs/ExpensesTab'
 import { WaterTab } from '@/components/flocks/tabs/WaterTab'
 import { NotesTab } from '@/components/flocks/tabs/NotesTab'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
+import { EditFlockModal } from '@/components/flocks/EditFlockModal'
 import { formatDate, formatNumber, cn } from '@/lib/utils'
 import type { Flock } from '@/types/flock'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-type TabKey = 'mortalities' | 'feed' | 'medicine' | 'water' | 'notes' | 'sales'
+type TabKey = 'mortalities' | 'feed' | 'medicine' | 'water' | 'expenses' | 'notes' | 'sales'
 
 const TABS: { key: TabKey; label: string; labelEn: string }[] = [
   { key: 'mortalities', label: 'النفوق',     labelEn: 'Mortalities' },
   { key: 'feed',        label: 'العلف',      labelEn: 'Feed' },
   { key: 'medicine',    label: 'الدواء',     labelEn: 'Medicine' },
   { key: 'water',       label: 'المياه',     labelEn: 'Water' },
+  { key: 'expenses',    label: 'المصروفات',  labelEn: 'Expenses' },
   { key: 'notes',       label: 'الملاحظات', labelEn: 'Notes' },
   { key: 'sales',       label: 'المبيعات',  labelEn: 'Sales' },
 ]
@@ -61,6 +65,7 @@ function TabPlaceholder({ tab }: { tab: TabKey }) {
     feed:        'سجلات العلف',
     medicine:    'سجلات الدواء',
     water:       'سجلات المياه',
+    expenses:    'المصروفات',
     notes:       'الملاحظات',
     sales:       'المبيعات',
   }
@@ -82,22 +87,27 @@ export default function FlockDetailPage({
   const { id } = use(params)
   const flockId = Number(id)
 
-  const [flock, setFlock] = useState<Flock | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabKey>('mortalities')
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
 
-  useEffect(() => {
-    setLoading(true)
-    flocksApi
-      .get(flockId)
-      .then((res) => setFlock(res.data))
-      .catch((err: { response?: { status?: number } }) => {
-        setError(err?.response?.status === 404 ? 'الفوج غير موجود' : 'تعذّر تحميل بيانات الفوج')
-      })
-      .finally(() => setLoading(false))
-  }, [flockId])
+  const {
+    data: flockData,
+    isLoading: loading,
+    error: fetchError,
+  } = useQuery({
+    queryKey: ['flock', flockId],
+    queryFn: () => flocksApi.get(flockId),
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+    retry: (_, err: any) => err?.response?.status !== 404,
+  })
+
+  const flock = flockData?.data ?? null
+  const error = fetchError
+    ? ((fetchError as any)?.response?.status === 404 ? 'الفوج غير موجود' : 'تعذّر تحميل بيانات الفوج')
+    : null
 
   if (loading) return <FlockDetailsSkeleton />
 
@@ -140,6 +150,15 @@ export default function FlockDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {(flock.status === 'active' || flock.status === 'draft') && (
+            <button
+              onClick={() => setEditModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+              تعديل البيانات
+            </button>
+          )}
           <FlockStatusBadge status={flock.status} />
           {flock.status === 'active' && (
             <button
@@ -154,14 +173,14 @@ export default function FlockDetailPage({
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardContent className="py-4">
             <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-500">
               <Hash className="h-3.5 w-3.5" />
               العدد الأولي
             </div>
-            <p className="text-2xl font-bold text-slate-900">
+            <p className="text-xl font-bold text-slate-900">
               {formatNumber(flock.initial_count)}
             </p>
           </CardContent>
@@ -173,7 +192,7 @@ export default function FlockDetailPage({
               <Calendar className="h-3.5 w-3.5" />
               تاريخ البدء
             </div>
-            <p className="text-base font-semibold text-slate-900">
+            <p className="text-sm font-semibold text-slate-900 leading-tight">
               {formatDate(flock.start_date)}
             </p>
           </CardContent>
@@ -185,9 +204,35 @@ export default function FlockDetailPage({
               <Clock className="h-3.5 w-3.5" />
               عمر الفوج
             </div>
-            <p className="text-2xl font-bold text-slate-900">
+            <p className="text-xl font-bold text-slate-900">
               {flock.current_age_days !== null
                 ? `${flock.current_age_days} يوم`
+                : '—'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="py-4">
+            <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="text-[10px] font-bold text-primary-500">$</span>
+              سعر الصوص
+            </div>
+            <p className="text-xl font-black text-primary-700">
+              {flock.chick_unit_price ? `$${flock.chick_unit_price}` : '—'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-primary-50/30 border-primary-100">
+          <CardContent className="py-4">
+            <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-600">
+              <Zap className="h-3.5 w-3.5 text-primary-500" />
+              إجمالي الاستثمار
+            </div>
+            <p className="text-xl font-black text-primary-700">
+              {flock.total_chick_cost 
+                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(flock.total_chick_cost)
                 : '—'}
             </p>
           </CardContent>
@@ -199,7 +244,7 @@ export default function FlockDetailPage({
               <Bird className="h-3.5 w-3.5" />
               الحالة
             </div>
-            <div className="mt-1">
+            <div className="mt-0.5">
               <FlockStatusBadge status={flock.status} />
             </div>
           </CardContent>
@@ -220,8 +265,21 @@ export default function FlockDetailPage({
           isOpen={closeDialogOpen}
           onClose={() => setCloseDialogOpen(false)}
           onSuccess={(updated) => {
-            setFlock(updated)
+            queryClient.setQueryData(['flock', flockId], { data: updated })
             setCloseDialogOpen(false)
+          }}
+        />
+      )}
+
+      {/* Edit flock modal */}
+      {editModalOpen && (
+        <EditFlockModal
+          flock={flock}
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          onSuccess={(updated) => {
+            queryClient.setQueryData(['flock', flockId], { data: updated })
+            setEditModalOpen(false)
           }}
         />
       )}
@@ -252,16 +310,18 @@ export default function FlockDetailPage({
         <div className="mt-0 rounded-b-xl rounded-tr-xl border border-t-0 border-slate-200 bg-white">
           {activeTab === 'mortalities' ? (
             <MortalitiesTab flockId={flockId} flockStatus={flock.status} />
-          ) : activeTab === 'sales' ? (
-            <SalesTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'feed' ? (
             <FeedTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'medicine' ? (
             <MedicineTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'water' ? (
             <WaterTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'expenses' ? (
+            <ExpensesTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'notes' ? (
             <NotesTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'sales' ? (
+            <SalesTab flockId={flockId} flockStatus={flock.status} />
           ) : (
             <TabPlaceholder tab={activeTab} />
           )}

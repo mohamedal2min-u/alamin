@@ -34,6 +34,7 @@ export function NoteSheet({
       // or we can use another API if available.
       await quickEntryApi.logExpense(flockId, {
         expense_type: 'other',
+        quantity: 1,
         total_amount: 0,
         entry_date: new Date().toISOString().split('T')[0],
         notes: `ملاحظة العامل: ${note}`,

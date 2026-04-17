@@ -1,35 +1,35 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ShoppingCart, AlertCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { salesApi } from '@/lib/api/sales'
+import { useFarmStore } from '@/stores/farm.store'
 import { PaymentStatusBadge } from '@/components/sales/PaymentStatusBadge'
 import { UpdatePaymentDialog } from '@/components/sales/UpdatePaymentDialog'
 import { formatDate, formatNumber } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
 
 export default function SalesPage() {
-  const [sales, setSales]           = useState<Sale[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [error, setError]           = useState<string | null>(null)
+  const { currentFarm } = useFarmStore()
+  const queryClient = useQueryClient()
   const [paymentSale, setPaymentSale] = useState<Sale | null>(null)
 
-  const fetchSales = useCallback(() => {
-    setLoading(true)
-    setError(null)
-    salesApi
-      .listAll()
-      .then((res) => setSales(res.data))
-      .catch(() => setError('تعذّر تحميل سجلات المبيعات'))
-      .finally(() => setLoading(false))
-  }, [])
+  const { data, isLoading: loading, isError } = useQuery({
+    queryKey: ['sales', currentFarm?.id],
+    queryFn: () => salesApi.listAll().then((res) => res.data),
+    enabled: !!currentFarm,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchSales()
-  }, [fetchSales])
+  const sales = data ?? []
+  const error = isError ? 'تعذّر تحميل سجلات المبيعات' : null
 
   const handlePaymentUpdated = (updated: Sale) => {
-    setSales((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+    queryClient.setQueryData(['sales', currentFarm?.id], (old: Sale[] | undefined) =>
+      old ? old.map((s) => (s.id === updated.id ? updated : s)) : []
+    )
     setPaymentSale(null)
   }
 

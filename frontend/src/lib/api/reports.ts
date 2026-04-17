@@ -29,6 +29,7 @@ export interface FlockReport {
     total_feed_bags: number
     feed_cost: number
     total_medicine_cost: number
+    chick_cost: number
   }
   sales_analytics: {
     birds_sold: number
@@ -42,6 +43,22 @@ export interface FlockReport {
     is_profitable: boolean
     profit_status_label: string
   }
+  details: {
+    expense_records: Array<{
+      id: number;
+      date: string;
+      category: string;
+      amount: number;
+      description?: string;
+    }>;
+    sale_records: Array<{
+      id: number;
+      date: string;
+      category: string;
+      amount: number;
+      description?: string;
+    }>;
+  };
 }
 
 export interface AccountingSummary {

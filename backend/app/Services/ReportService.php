@@ -22,8 +22,12 @@ class ReportService
         $activeFlock = Flock::where('farm_id', $farmId)->where('status', 'active')->first();
         
         $totalSales = Sale::where('farm_id', $farmId)->sum('net_amount');
-        $totalExpenses = Expense::where('farm_id', $farmId)->sum('total_amount')
-            + $this->inventoryConsumptionCost($farmId);
+        
+        $opExpenses = Expense::where('farm_id', $farmId)->sum('total_amount');
+        $inventoryCost = $this->inventoryConsumptionCost($farmId);
+        $chickCost = Flock::where('farm_id', $farmId)->sum('total_chick_cost');
+        
+        $totalExpenses = $opExpenses + $inventoryCost + $chickCost;
 
         $inventoryValue = WarehouseItem::where('farm_id', $farmId)
             ->selectRaw('SUM(current_quantity * COALESCE(average_cost, 0)) as total_value')
@@ -73,8 +77,12 @@ class ReportService
             ->sum('total_amount');
 
         $totalSales = $flock->sales()->sum('net_amount');
-        $totalExpenses = $flock->expenses()->sum('total_amount')
-            + $this->inventoryConsumptionCost($farmId, $flockId);
+        
+        $opExpenses = $flock->expenses()->sum('total_amount');
+        $inventoryCost = $this->inventoryConsumptionCost($farmId, $flockId);
+        $chickCost = (float) $flock->total_chick_cost;
+        
+        $totalExpenses = $opExpenses + $inventoryCost + $chickCost;
         
         // Sales statistics from sale_items
         $salesDetails = DB::table('sale_items')
@@ -127,6 +135,7 @@ class ReportService
                 'total_feed_bags' => (float) $totalFeedBags,
                 'feed_cost' => $feedCost,
                 'total_medicine_cost' => (float) $medicineExpenses,
+                'chick_cost' => $chickCost,
             ],
             'sales_analytics' => [
                 'birds_sold' => $birdsSold,
@@ -139,6 +148,31 @@ class ReportService
                 'profit_loss' => (float) ($totalSales - $totalExpenses),
                 'is_profitable' => $totalSales >= $totalExpenses,
                 'profit_status_label' => ($totalSales >= $totalExpenses) ? 'ربح' : 'خسارة',
+            ],
+            'details' => [
+                'expense_records' => $flock->expenses()
+                    ->with('expenseCategory:id,name')
+                    ->orderByDesc('entry_date')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->map(fn($e) => [
+                        'id' => $e->id,
+                        'date' => $e->entry_date->toDateString(),
+                        'category' => $e->expenseCategory?->name ?? 'غير محدد',
+                        'amount' => (float) $e->total_amount,
+                        'description' => $e->description,
+                    ]),
+                'sale_records' => $flock->sales()
+                    ->orderByDesc('sale_date')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->map(fn($s) => [
+                        'id' => $s->id,
+                        'date' => $s->sale_date->toDateString(),
+                        'category' => 'مبيعات',
+                        'amount' => (float) $s->net_amount,
+                        'description' => $s->buyer_name ? "مشتري: {$s->buyer_name}" : 'بيع نقدي',
+                    ]),
             ],
         ];
     }
@@ -166,8 +200,23 @@ class ReportService
             $salesQuery->where('sale_date', '<=', $endDate);
         }
 
-        $totalExpenses = $expensesQuery->sum('total_amount')
-            + $this->inventoryConsumptionCost($farmId, $flockId, $startDate, $endDate);
+        $opExpenses = $expensesQuery->sum('total_amount');
+        $inventoryCost = $this->inventoryConsumptionCost($farmId, $flockId, $startDate, $endDate);
+        
+        // Calculate chick cost for relevant flocks
+        $chickCostQuery = Flock::where('farm_id', $farmId);
+        if ($flockId) {
+            $chickCostQuery->where('id', $flockId);
+        }
+        if ($startDate) {
+            $chickCostQuery->where('start_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $chickCostQuery->where('start_date', '<=', $endDate);
+        }
+        $chickCost = (float) $chickCostQuery->sum('total_chick_cost');
+
+        $totalExpenses = $opExpenses + $inventoryCost + $chickCost;
         $totalSales = $salesQuery->sum('net_amount');
 
         $totalPaidExpenses = $expensesQuery->sum('paid_amount');
@@ -190,6 +239,14 @@ class ReportService
         }
 
         $expensesByCategory = $categoryQuery->get();
+
+        // Inject Chick Purchase if applicable
+        if ($chickCost > 0) {
+            $expensesByCategory->push((object)[
+                'category' => 'شراء صوص',
+                'amount' => (float) $chickCost
+            ]);
+        }
 
         return [
             'summary' => [

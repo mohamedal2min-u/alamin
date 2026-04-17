@@ -13,7 +13,8 @@ import { PartnersReportTab } from '@/components/reports/tabs/PartnersReportTab'
 import { WorkersReportTab } from '@/components/reports/tabs/WorkersReportTab'
 import { DailyReportTab } from '@/components/reports/tabs/DailyReportTab'
 import { Card } from '@/components/ui/Card'
-import { Loader2, Package, Users, CalendarDays, UserCheck } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Loader2, Package, Users, CalendarDays, UserCheck, Printer, Download } from 'lucide-react'
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState('flock')
@@ -92,14 +93,37 @@ export default function ReportsPage() {
       {/* Main Reports Area */}
       <div className="reports-container">
         <Tabs defaultValue="flock" onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="flock">تقرير الفوج</TabsTrigger>
-            <TabsTrigger value="accounting">المحاسبة</TabsTrigger>
-            <TabsTrigger value="inventory">المخزون</TabsTrigger>
-            <TabsTrigger value="partners">الشركاء</TabsTrigger>
-            <TabsTrigger value="workers">العمال</TabsTrigger>
-            <TabsTrigger value="daily">اليومي</TabsTrigger>
-          </TabsList>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+            <TabsList className="bg-slate-50 border border-slate-100 p-1 rounded-xl">
+              <TabsTrigger value="flock">تقرير الفوج</TabsTrigger>
+              <TabsTrigger value="accounting">المحاسبة</TabsTrigger>
+              <TabsTrigger value="inventory">المخزون</TabsTrigger>
+              <TabsTrigger value="partners">الشركاء</TabsTrigger>
+              <TabsTrigger value="workers">العمال</TabsTrigger>
+              <TabsTrigger value="daily">اليومي</TabsTrigger>
+            </TabsList>
+
+            <div className="flex items-center gap-2 px-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 md:flex-none h-10 gap-2 text-xs font-bold border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+                onClick={() => window.print()}
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-500" /> 
+                <span>طباعة الصفحة</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 md:flex-none h-10 gap-2 text-xs font-bold border-slate-200 bg-white shadow-sm opacity-60 cursor-not-allowed"
+                disabled
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" /> 
+                <span>تصدير PDF</span>
+              </Button>
+            </div>
+          </div>
 
           <div className="mt-5 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/60 min-h-[400px]" style={{ boxShadow: 'var(--shadow-card)' }}>
             {/* 1. Flock Report Tab */}

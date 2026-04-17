@@ -57,7 +57,21 @@ class UpdateFlockAction
                 // ======= Profit/Loss Distribution on Closure =======
                 if ($data['status'] === 'closed') {
                     $totalSales = $flock->sales()->sum('net_amount');
-                    $totalExpenses = $flock->expenses()->sum('total_amount');
+                    
+                    // 1. Operational Expenses (manual entry)
+                    $opExpenses = $flock->expenses()->sum('total_amount');
+                    
+                    // 2. Chick Cost (initial investment)
+                    $chickCost = (float) $flock->total_chick_cost;
+                    
+                    // 3. Inventory Consumption (feed, medicine, etc.)
+                    $inventoryCost = (float) \App\Models\InventoryTransaction::where('flock_id', $flock->id)
+                        ->where('direction', 'out')
+                        ->where('transaction_type', 'consumption')
+                        ->sum('total_amount');
+
+                    $totalExpenses = $opExpenses + $chickCost + $inventoryCost;
+                    
                     $netProfit = $totalSales - $totalExpenses;
                     $transactionType = $netProfit >= 0 ? 'profit' : 'loss';
                     $amountToDistribute = abs($netProfit);

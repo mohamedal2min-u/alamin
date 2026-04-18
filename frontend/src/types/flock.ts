@@ -26,6 +26,7 @@ export interface CreateFlockPayload {
   start_date: string
   initial_count: number
   chick_unit_price?: number | null
+  chick_paid_amount?: number
   notes?: string
 }
 

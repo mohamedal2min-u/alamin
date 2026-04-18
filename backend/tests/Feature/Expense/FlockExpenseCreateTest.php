@@ -66,6 +66,7 @@ class FlockExpenseCreateTest extends TestCase
             ->withHeaders(['X-Farm-Id' => $farm->id])
             ->postJson("/api/flocks/{$flock->id}/expenses", [
                 'expense_type' => 'bedding',
+                'quantity'     => 5,
                 'total_amount' => 500,
             ])
             ->assertStatus(201);
@@ -81,7 +82,7 @@ class FlockExpenseCreateTest extends TestCase
 
         $this->actingAs($user, 'sanctum')
             ->withHeaders(['X-Farm-Id' => $farm->id])
-            ->postJson("/api/flocks/{$flock->id}/expenses", ['expense_type' => 'water', 'total_amount' => 100])
+            ->postJson("/api/flocks/{$flock->id}/expenses", ['expense_type' => 'water', 'quantity' => 5, 'total_amount' => 100])
             ->assertStatus(422)
             ->assertJsonPath('message', 'لا يمكن تسجيل مصروف على فوج غير نشط');
     }

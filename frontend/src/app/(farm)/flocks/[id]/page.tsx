@@ -2,13 +2,14 @@
 
 import { use, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, AlertCircle, Bird, Calendar, Hash, Clock, Lock, Zap, Edit2 } from 'lucide-react'
+import { ArrowRight, AlertCircle, AlertTriangle, Bird, Calendar, Hash, Clock, Lock, Zap, Edit2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FlockStatusBadge } from '@/components/flocks/FlockStatusBadge'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
-import { MortalitiesTab } from '@/components/flocks/tabs/MortalitiesTab'
+import { accountingApi } from '@/lib/api/accounting'
+import { OverviewTab } from '@/components/flocks/tabs/OverviewTab'
 import { SalesTab } from '@/components/flocks/tabs/SalesTab'
 import { FeedTab } from '@/components/flocks/tabs/FeedTab'
 import { MedicineTab } from '@/components/flocks/tabs/MedicineTab'
@@ -21,10 +22,10 @@ import { formatDate, formatNumber, cn } from '@/lib/utils'
 import type { Flock } from '@/types/flock'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-type TabKey = 'mortalities' | 'feed' | 'medicine' | 'water' | 'expenses' | 'notes' | 'sales'
+type TabKey = 'overview' | 'feed' | 'medicine' | 'water' | 'expenses' | 'notes' | 'sales'
 
 const TABS: { key: TabKey; label: string; labelEn: string }[] = [
-  { key: 'mortalities', label: 'النفوق',     labelEn: 'Mortalities' },
+  { key: 'overview',    label: 'نظرة عامة',  labelEn: 'Overview' },
   { key: 'feed',        label: 'العلف',      labelEn: 'Feed' },
   { key: 'medicine',    label: 'الدواء',     labelEn: 'Medicine' },
   { key: 'water',       label: 'المياه',     labelEn: 'Water' },
@@ -61,7 +62,7 @@ function FlockDetailsSkeleton() {
 // ── Tab placeholder panel (only for tabs not yet implemented) ─────────────────
 function TabPlaceholder({ tab }: { tab: TabKey }) {
   const labels: Record<TabKey, string> = {
-    mortalities: 'سجلات النفوق',
+    overview:    'النظرة العامة',
     feed:        'سجلات العلف',
     medicine:    'سجلات الدواء',
     water:       'سجلات المياه',
@@ -88,7 +89,7 @@ export default function FlockDetailPage({
   const flockId = Number(id)
 
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<TabKey>('mortalities')
+  const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
 
@@ -108,6 +109,14 @@ export default function FlockDetailPage({
   const error = fetchError
     ? ((fetchError as any)?.response?.status === 404 ? 'الفوج غير موجود' : 'تعذّر تحميل بيانات الفوج')
     : null
+
+  const { data: reviewData } = useQuery({
+    queryKey: ['accounting', 'review-queue', { flock_id: flockId, filter: 'blocking' }],
+    queryFn: () => accountingApi.getReviewQueue({ flock_id: flockId, filter: 'blocking' }),
+    enabled: flock?.status === 'active',
+    staleTime: 30_000,
+  })
+  const blockingCount = reviewData?.summary.blocking_flock_closure_count ?? 0
 
   if (loading) return <FlockDetailsSkeleton />
 
@@ -231,8 +240,8 @@ export default function FlockDetailPage({
               إجمالي الاستثمار
             </div>
             <p className="text-xl font-black text-primary-700">
-              {flock.total_chick_cost 
-                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(flock.total_chick_cost)
+              {flock.total_expenses 
+                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(flock.total_expenses)
                 : '—'}
             </p>
           </CardContent>
@@ -256,6 +265,20 @@ export default function FlockDetailPage({
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {flock.notes}
         </div>
+      )}
+
+      {/* Blocking records banner */}
+      {flock.status === 'active' && blockingCount > 0 && (
+        <Link
+          href={`/accounting?tab=review&filter=blocking&flock_id=${flock.id}`}
+          className="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 hover:bg-red-100 transition-colors"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            يوجد <strong>{blockingCount}</strong> سجل مالي غير مسدد يمنع إغلاق هذا الفوج
+          </span>
+          <span className="me-auto text-xs font-medium underline">عرض السجلات المانعة ←</span>
+        </Link>
       )}
 
       {/* Close flock dialog */}
@@ -308,8 +331,8 @@ export default function FlockDetailPage({
 
         {/* Tab content */}
         <div className="mt-0 rounded-b-xl rounded-tr-xl border border-t-0 border-slate-200 bg-white">
-          {activeTab === 'mortalities' ? (
-            <MortalitiesTab flockId={flockId} flockStatus={flock.status} />
+          {activeTab === 'overview' ? (
+            <OverviewTab flockId={flockId} flockStatus={flock.status} flockName={flock.name} />
           ) : activeTab === 'feed' ? (
             <FeedTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'medicine' ? (

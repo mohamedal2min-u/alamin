@@ -110,11 +110,15 @@ class FlockController extends Controller
             $flock = $this->showAction->execute($farmId, $flockId);
             $flock = $this->updateAction->execute($flock, $userId, $request->validated());
         } catch (\Exception $e) {
-            $code = (int) $e->getCode();
-            return response()->json(
-                ['message' => $e->getMessage()],
-                $code >= 400 && $code < 600 ? $code : 422
-            );
+            $code   = (int) $e->getCode();
+            $status = $code >= 400 && $code < 600 ? $code : 422;
+
+            $decoded = json_decode($e->getMessage(), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return response()->json($decoded, $status);
+            }
+
+            return response()->json(['message' => $e->getMessage()], $status);
         }
 
         return response()->json([

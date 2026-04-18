@@ -54,6 +54,11 @@ class UpdateFlockAction
                     }
                 }
 
+                // ======= Block closure if financial records are incomplete =======
+                if ($data['status'] === 'closed') {
+                    $this->assertNoBlockingRecords($flock);
+                }
+
                 // ======= Profit/Loss Distribution on Closure =======
                 if ($data['status'] === 'closed') {
                     $totalSales = $flock->sales()->sum('net_amount');
@@ -70,7 +75,10 @@ class UpdateFlockAction
                         ->where('transaction_type', 'consumption')
                         ->sum('total_amount');
 
-                    $totalExpenses = $opExpenses + $chickCost + $inventoryCost;
+                    // 4. Water Cost (Tankers)
+                    $waterCost = (float) \App\Models\FlockWaterLog::where('flock_id', $flock->id)->sum('total_amount');
+
+                    $totalExpenses = $opExpenses + $chickCost + $inventoryCost + $waterCost;
                     
                     $netProfit = $totalSales - $totalExpenses;
                     $transactionType = $netProfit >= 0 ? 'profit' : 'loss';
@@ -124,6 +132,52 @@ class UpdateFlockAction
         if (! in_array($to, $allowed)) {
             throw new \Exception(
                 "لا يمكن الانتقال من حالة «{$from}» إلى «{$to}»",
+                422
+            );
+        }
+    }
+
+    /**
+     * @throws \Exception code 422 when blocking financial records exist
+     *
+     * Blocking conditions:
+     *   - expenses/sales with payment_status unpaid or partial
+     *   - expenses with quantity=0/null, unit_price=0/null, or total_amount<=0
+     *   - sales with net_amount<=0
+     */
+    private function assertNoBlockingRecords(Flock $flock): void
+    {
+        $unpaidExpenses = $flock->expenses()
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->count();
+
+        $unpaidSales = $flock->sales()
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->count();
+
+        $missingPriceExpenses = $flock->expenses()
+            ->where(function ($q): void {
+                $q->whereNull('quantity')
+                  ->orWhere('quantity', '<=', 0)
+                  ->orWhereNull('unit_price')
+                  ->orWhere('unit_price', '<=', 0)
+                  ->orWhere('total_amount', '<=', 0);
+            })
+            ->count();
+
+        $missingPriceSales = $flock->sales()
+            ->where('net_amount', '<=', 0)
+            ->count();
+
+        $blockingCount = $unpaidExpenses + $unpaidSales + $missingPriceExpenses + $missingPriceSales;
+
+        if ($blockingCount > 0) {
+            throw new \Exception(
+                json_encode([
+                    'message'        => 'لا يمكن إغلاق الفوج — يوجد ' . $blockingCount . ' سجل مالي غير مكتمل أو غير مسدد.',
+                    'blocking_count' => $blockingCount,
+                    'review_url'     => '/accounting?tab=review&filter=blocking&flock_id=' . $flock->id,
+                ]),
                 422
             );
         }

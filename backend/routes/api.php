@@ -124,6 +124,13 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::get('partners-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'partnersReport']);
         Route::get('workers-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'workersReport']);
         Route::get('daily-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'dailyReport']);
+        Route::get('flocks/{flock}/daily-summary', [\App\Http\Controllers\Api\Report\ReportsController::class, 'flockDailySummary']);
+    });
+
+    // ── Accounting: Review Queue ───────────────────────────────────────────────
+    Route::prefix('accounting')->group(function (): void {
+        Route::get('review-queue',               [\App\Http\Controllers\Api\Accounting\ReviewQueueController::class, 'index']);
+        Route::patch('review-queue/{type}/{id}', [\App\Http\Controllers\Api\Accounting\ReviewQueueController::class, 'update']);
     });
 
     // ── V1-J: Partners Management ─────────────────────────────────────────────

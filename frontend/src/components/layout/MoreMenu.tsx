@@ -2,7 +2,7 @@
 'use client'
 
 import {
-  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, ChevronLeft, Settings
+  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, ChevronLeft, Settings, Calculator
 } from 'lucide-react'
 import Link from 'next/link'
 import { FarmSelector } from './FarmSelector'
@@ -44,6 +44,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     { label: 'المصروفات', href: '/expenses',  icon: Receipt,     color: 'text-orange-600',  bg: 'bg-orange-50' },
     { label: 'الشركاء',   href: '/partners', icon: Users,       color: 'text-blue-600',    bg: 'bg-blue-50' },
     { label: 'العمال',    href: '/workers',  icon: Users,       color: 'text-slate-600',   bg: 'bg-slate-50' },
+    { label: 'المحاسبة',  href: '/accounting', icon: Calculator,  color: 'text-violet-600', bg: 'bg-violet-50' },
     { label: 'التقارير',  href: '/reports',  icon: BarChart3,   color: 'text-sky-600',     bg: 'bg-sky-50' },
   ].filter(item => allowedHrefs.includes(item.href))
 

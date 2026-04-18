@@ -18,7 +18,9 @@ return new class extends Migration
             $table->string('payment_status', 20)->nullable()->after('paid_amount');
         });
 
-        DB::statement("ALTER TABLE flock_water_logs ADD CONSTRAINT flock_water_logs_payment_status_check CHECK (payment_status IN ('paid', 'partial', 'unpaid') OR payment_status IS NULL)");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE flock_water_logs ADD CONSTRAINT flock_water_logs_payment_status_check CHECK (payment_status IN ('paid', 'partial', 'unpaid') OR payment_status IS NULL)");
+        }
     }
 
     /**
@@ -26,7 +28,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE flock_water_logs DROP CONSTRAINT IF EXISTS flock_water_logs_payment_status_check");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE flock_water_logs DROP CONSTRAINT IF EXISTS flock_water_logs_payment_status_check");
+        }
 
         Schema::table('flock_water_logs', function (Blueprint $table) {
             $table->dropColumn(['total_amount', 'paid_amount', 'payment_status']);

@@ -82,7 +82,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
                 <circle cx="18" cy="18" r="16" fill="none" className="stroke-primary-100" strokeWidth="4" />
                 <circle 
                   cx="18" cy="18" r="16" fill="none" 
-                  className={todayDay.stats.completion_rate === 100 ? "stroke-primary-500" : "stroke-amber-400"}
+                  className={todayDay.stats.completion_rate === 100 ? "stroke-primary-500" : "stroke-emerald-400"}
                   strokeWidth="4" 
                   strokeDasharray={`${todayDay.stats.completion_rate}, 100`}
                   strokeLinecap="round"
@@ -96,7 +96,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
             {/* Center: Key Stats */}
             <div className="flex-1 flex justify-center gap-3 px-2">
               <TodayStat icon={<Bird />} value={todayDay.stats.mortality} color="red" label="نفوق" />
-              <TodayStat icon={<Wheat />} value={todayDay.stats.feed} color="amber" label="علف" />
+              <TodayStat icon={<Wheat />} value={todayDay.stats.feed} color="emerald" label="علف" />
               <TodayStat icon={<Pill />} value={todayDay.stats.medicine_count} color="indigo" label="أدوية" />
               {role === 'manager' && (
                 <TodayStat icon={<Receipt />} value={todayDay.stats.expense_count ?? 0} color="emerald" label="مصروف" />
@@ -138,7 +138,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
                 </div>
                 <div className="flex items-center gap-3">
                   <StatMini icon={<Bird />} value={day.stats.mortality} color="red" />
-                  <StatMini icon={<Wheat />} value={day.stats.feed} color="amber" />
+                  <StatMini icon={<Wheat />} value={day.stats.feed} color="emerald" />
                   <StatMini icon={<Pill />} value={day.stats.medicine_count} color="indigo" />
                   {role === 'manager' && (
                     <StatMini icon={<Receipt />} value={day.stats.expense_count ?? 0} color="emerald" />
@@ -152,7 +152,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
                   <circle cx="18" cy="18" r="15" fill="none" className="stroke-slate-100" strokeWidth="3" />
                   <circle 
                     cx="18" cy="18" r="15" fill="none" 
-                    className={day.stats.completion_rate === 100 ? "stroke-primary-500" : "stroke-amber-400"}
+                    className={day.stats.completion_rate === 100 ? "stroke-primary-500" : "stroke-emerald-400"}
                     strokeWidth="3" 
                     strokeDasharray={`${day.stats.completion_rate}, 100`}
                     strokeLinecap="round"
@@ -201,12 +201,11 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
   )
 }
 
-function TodayStat({ icon, value, color, label }: { icon: any; value: any; color: 'red' | 'amber' | 'indigo' | 'emerald'; label: string }) {
+function TodayStat({ icon, value, color, label }: { icon: any; value: any; color: 'red' | 'emerald' | 'indigo'; label: string }) {
   const colors = {
     red: "text-red-600 bg-red-100/50",
-    amber: "text-amber-600 bg-amber-100/50",
-    indigo: "text-indigo-600 bg-indigo-100/50",
     emerald: "text-emerald-600 bg-emerald-100/50",
+    indigo: "text-indigo-600 bg-indigo-100/50",
   }
   return (
     <div className="flex flex-col items-center gap-1">
@@ -221,12 +220,11 @@ function TodayStat({ icon, value, color, label }: { icon: any; value: any; color
   )
 }
 
-function StatMini({ icon, value, color }: { icon: any; value: any; color: 'red' | 'amber' | 'indigo' | 'emerald' }) {
+function StatMini({ icon, value, color }: { icon: any; value: any; color: 'red' | 'emerald' | 'indigo' }) {
   const colors = {
     red: "text-red-500 bg-red-50",
-    amber: "text-amber-500 bg-amber-50",
-    indigo: "text-indigo-500 bg-indigo-50",
     emerald: "text-emerald-500 bg-emerald-50",
+    indigo: "text-indigo-500 bg-indigo-50",
   }
   return (
     <div className="flex items-center gap-1">

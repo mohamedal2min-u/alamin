@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -132,8 +132,8 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
 
           {/* No medicine items warning */}
           {items.length === 0 && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
               <span>
                 لا توجد أصناف دواء مسجّلة في المخزون.{' '}
                 <a href="/inventory" className="font-semibold underline hover:no-underline">

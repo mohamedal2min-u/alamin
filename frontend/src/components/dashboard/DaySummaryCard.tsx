@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { ClipboardList, ChevronDown, ChevronUp, Skull, Wheat, Syringe, Calendar, ThermometerSun, User, Clock, Droplets } from 'lucide-react'
@@ -66,8 +66,8 @@ export function DaySummaryCard({ summary, loading }: Props) {
           value={feedTotal > 0 ? formatNumber(feedTotal) : '—'} 
           unit={feedTotal > 0 ? (summary.feed.entries[0]?.unit_label || 'كيس') : ''}
           icon={<Wheat className="w-4 h-4" />}
-          color="text-amber-600" 
-          bgColor="bg-amber-50/30"
+          color="text-emerald-600" 
+          bgColor="bg-emerald-50/30"
         />
         <SummaryKpi 
           label="الأدوية" 
@@ -118,7 +118,7 @@ export function DaySummaryCard({ summary, loading }: Props) {
             )}
 
             {summary.feed.entries.length > 0 && (
-              <DetailSection title={`سجل استهلاك العلف (المجموع: ${feedExpr})`} colorClass="text-amber-700" icon={<Wheat className="h-3 w-3"/>}>
+              <DetailSection title={`سجل استهلاك العلف (المجموع: ${feedExpr})`} colorClass="text-emerald-700" icon={<Wheat className="h-3 w-3"/>}>
                 {summary.feed.entries.map((e, i) => (
                   <DetailRow 
                     key={i} 
@@ -160,7 +160,7 @@ export function DaySummaryCard({ summary, loading }: Props) {
             )}
 
             {summary.temperatures?.entries.length > 0 && (
-              <DetailSection title="سجل درجات الحرارة اليومي" colorClass="text-amber-500" icon={<ThermometerSun className="h-3 w-3"/>}>
+              <DetailSection title="سجل درجات الحرارة اليومي" colorClass="text-emerald-500" icon={<ThermometerSun className="h-3 w-3"/>}>
                 <div className="grid grid-cols-1 gap-2">
                   {summary.temperatures.entries.map((e, i) => (
                     <DetailRow 

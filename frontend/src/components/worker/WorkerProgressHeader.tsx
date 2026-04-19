@@ -73,7 +73,7 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role
           label="استهلاك العلف"
           equation={getEq(summary?.feed?.entries)}
           value={summary?.feed?.total ?? 0}
-          color="amber"
+          color="emerald"
           icon={<Wheat className="h-5 w-5" />}
           isLoading={isLoading}
           onClick={() => onStatClick('feed')}
@@ -129,7 +129,7 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
   equation: string 
   value: number
   unit?: string
-  color: 'red' | 'amber' | 'indigo' | 'green'
+  color: 'red' | 'emerald' | 'indigo' | 'green'
   icon: React.ReactNode 
   isLoading?: boolean
   onClick: () => void 
@@ -141,11 +141,11 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
       iconBg: 'bg-rose-100 text-rose-500',
       text: 'text-rose-600',
     },
-    amber: {
-      bg: 'bg-gradient-to-br from-amber-50 to-white',
-      border: 'border-amber-200/50',
-      iconBg: 'bg-amber-100 text-amber-500',
-      text: 'text-amber-600',
+    emerald: {
+      bg: 'bg-gradient-to-br from-emerald-50 to-white',
+      border: 'border-emerald-200/50',
+      iconBg: 'bg-emerald-100 text-emerald-500',
+      text: 'text-emerald-600',
     },
     indigo: {
       bg: 'bg-gradient-to-br from-indigo-50 to-white',

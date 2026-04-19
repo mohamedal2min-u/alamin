@@ -101,7 +101,7 @@ export default function RegistrationRequestsPage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     {req.status === 'pending' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
                         <Clock className="h-3.5 w-3.5" />
                         قيد الانتظار
                       </span>

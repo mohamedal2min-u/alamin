@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
@@ -138,7 +138,7 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
                 </div>
                 <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">تكلفة العلف</span>
-                    <span className="font-bold text-amber-700">$ {data.performance.feed_cost.toLocaleString()}</span>
+                    <span className="font-bold text-emerald-700">$ {data.performance.feed_cost.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">تكلفة الدواء</span>
@@ -189,14 +189,14 @@ function FeedConsumptionBadge({ kg, bags }: { kg: number; bags: number }) {
     : `${kg.toLocaleString()} كغ`
 
   return (
-    <div className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
-      <Utensils className="w-4 h-4 text-amber-600 shrink-0" />
+    <div className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+      <Utensils className="h-4 w-4 text-emerald-600 shrink-0" />
       <div className="flex flex-col leading-tight">
-        <span className="text-[10px] font-bold text-amber-800">استهلاك العلف</span>
+        <span className="text-[10px] font-bold text-emerald-800">استهلاك العلف</span>
         {bags > 0 && (
-          <span className="text-xs font-black text-amber-900">{bags.toLocaleString()} كيس</span>
+          <span className="text-xs font-black text-emerald-900">{bags.toLocaleString()} كيس</span>
         )}
-        <span className="text-[10px] text-amber-700">{weightLabel}</span>
+        <span className="text-[10px] text-emerald-700">{weightLabel}</span>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { ChevronLeft, CheckCircle2, Circle } from 'lucide-react'
 import { TodaySummary } from '@/types/dashboard'
@@ -37,7 +37,7 @@ export function WorkerTaskChecklist({ summary, onTaskClick }: Props) {
             <circle 
               cx="18" cy="18" r="15" fill="none"
               className={cn(
-                percent === 100 ? "stroke-primary-500" : "stroke-amber-400"
+                percent === 100 ? "stroke-primary-500" : "stroke-emerald-400"
               )}
               strokeWidth="4"
               strokeDasharray={`${percent}, 100`}

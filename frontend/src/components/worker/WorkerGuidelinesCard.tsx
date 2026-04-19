@@ -29,7 +29,7 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
       unit: 'كيس',
       sub: `${gramsPerBird}ج / ${guidelines.feedGoalKilos}كجم`,
       icon: Wheat,
-      gradient: 'from-amber-400 to-amber-600',
+      gradient: 'from-emerald-400 to-emerald-600',
     },
     {
       title: 'فترة التعتيم',

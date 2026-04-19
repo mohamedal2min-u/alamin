@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -333,7 +333,7 @@ export default function SettingsPage() {
             <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
               {theme === 'dark'
                 ? <Moon className="h-5 w-5 text-indigo-400" />
-                : <Sun className="h-5 w-5 text-amber-500" />
+                : <Sun className="h-5 w-5 text-emerald-500" />
               }
             </div>
             <div>

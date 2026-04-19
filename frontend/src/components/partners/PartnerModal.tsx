@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useEffect, useState } from 'react'
 import { Partner } from '@/lib/api/partners'
@@ -182,7 +182,7 @@ export const PartnerModal = ({ isOpen, onClose, onSave, initialData, hasActiveFl
                 />
               </div>
               {hasActiveFlock && (
-                <p className="text-[10px] text-amber-600 font-bold flex items-center gap-1 mr-1">
+                <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mr-1">
                   <Info className="w-3 h-3" />
                   لا يمكن تعديل الحصص أثناء وجود فوج نشط
                 </p>

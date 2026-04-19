@@ -185,7 +185,7 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
     <div className="relative overflow-hidden rounded-[2.5rem] bg-white p-6 shadow-xl shadow-slate-200/60 border border-slate-50">
       {/* ── Background Decoration ── */}
       <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-primary-500/5 blur-3xl opacity-50" />
-      <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-amber-500/5 blur-3xl opacity-50" />
+      <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-emerald-500/5 blur-3xl opacity-50" />
 
       {/* ── Section Label ── */}
       <div className="relative mb-6 flex items-center justify-between px-1">

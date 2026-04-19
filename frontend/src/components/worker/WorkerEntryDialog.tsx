@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -162,11 +162,11 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
       shadow: 'shadow-rose-500/20'
     },
     feed: { 
-      text: 'text-amber-600', 
-      bg: 'bg-amber-600', 
-      border: 'focus:border-amber-500', 
-      ring: 'focus:ring-amber-500/10',
-      shadow: 'shadow-amber-500/20'
+      text: 'text-emerald-600', 
+      bg: 'bg-emerald-600', 
+      border: 'focus:border-emerald-500', 
+      ring: 'focus:ring-emerald-500/10',
+      shadow: 'shadow-emerald-500/20'
     },
     medicine: { 
       text: 'text-primary-600', 
@@ -183,11 +183,11 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
       shadow: 'shadow-indigo-500/20'
     },
     expense: { 
-      text: 'text-amber-600', 
-      bg: 'bg-amber-600', 
-      border: 'focus:border-amber-500', 
-      ring: 'focus:ring-amber-500/10',
-      shadow: 'shadow-amber-500/20'
+      text: 'text-emerald-600', 
+      bg: 'bg-emerald-600', 
+      border: 'focus:border-emerald-500', 
+      ring: 'focus:ring-emerald-500/10',
+      shadow: 'shadow-emerald-500/20'
     },
   }
 
@@ -341,9 +341,9 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
                 'flex items-center gap-3 rounded-[1.25rem] px-4 py-3 text-[11px] font-bold border',
                 Number(expPrice) > 0
                   ? 'bg-primary-50/50 border-primary-100/50 text-primary-700'
-                  : 'bg-amber-50/50 border-amber-100/50 text-amber-700',
+                  : 'bg-emerald-50/50 border-emerald-100/50 text-emerald-700',
               )}>
-                <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', Number(expPrice) > 0 ? 'bg-primary-500' : 'bg-amber-500')} />
+                <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', Number(expPrice) > 0 ? 'bg-primary-500' : 'bg-emerald-500')} />
                 {Number(expPrice) > 0
                   ? `الإجمالي: ${(Number(expQty) * Number(expPrice)).toFixed(2)} $`
                   : <>بدون سعر — سيُضاف إلى{' '}<Link href="/accounting?tab=review" className="underline hover:opacity-80">الذمم والمراجعة</Link></>}

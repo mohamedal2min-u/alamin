@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { CalendarDays } from 'lucide-react'
 
@@ -44,7 +44,7 @@ export function Last7DaysSummary({ data }: Props) {
                     نفوق: <span className="text-red-500">{item.mortality}</span>
                   </span>
                   <span className="text-[11px] font-bold text-slate-500">
-                    علف: <span className="text-amber-600">{item.feed}</span>
+                    علف: <span className="text-emerald-600">{item.feed}</span>
                   </span>
                 </div>
                 <span className="text-[11px] font-extrabold text-primary-600">

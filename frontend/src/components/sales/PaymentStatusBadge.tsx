@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   paid:    { label: 'مدفوع',       className: 'bg-emerald-100 text-emerald-700' },
-  partial: { label: 'جزئي',        className: 'bg-amber-100 text-amber-700' },
+  partial: { label: 'جزئي',        className: 'bg-emerald-100 text-emerald-700' },
   debt:    { label: 'غير مدفوع',   className: 'bg-red-100 text-red-700' },
 }
 

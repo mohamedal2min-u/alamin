@@ -55,7 +55,7 @@ const DIRECTION_CONFIG: Record<string, { label: string; icon: typeof ArrowDownCi
 
 const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
   paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
-  partial: { label: 'جزئي',      color: 'bg-amber-100 text-amber-700' },
+  partial: { label: 'جزئي',      color: 'bg-emerald-100 text-emerald-700' },
   unpaid:  { label: 'غير مدفوع', color: 'bg-red-100 text-red-700'    },
 }
 
@@ -126,8 +126,8 @@ function StockStatusBadge({ item }: { item: StockItem }) {
     )
   if (item.total_quantity <= item.minimum_stock)
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-[10px] font-bold text-emerald-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
         منخفض
       </span>
     )
@@ -161,7 +161,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
           </div>
         </div>
         {lowCount > 0 && (
-          <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-600 border border-amber-100">
+          <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-600 border border-emerald-100">
             <AlertTriangle className="h-3 w-3" />{lowCount} منخفض
           </span>
         )}
@@ -191,7 +191,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                       <div
                         className={cn(
                           "h-full rounded-full transition-all duration-500",
-                          isLow ? "bg-amber-400" : "bg-orange-400"
+                          isLow ? "bg-emerald-400" : "bg-emerald-500"
                         )}
                         style={{ width: `${pct}%` }}
                       />
@@ -201,7 +201,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
               </div>
               <span className={cn(
                 "text-xs font-bold tabular-nums whitespace-nowrap",
-                isLow ? "text-amber-700" : "text-slate-700"
+                isLow ? "text-emerald-700" : "text-slate-700"
               )}>
                 {formatNumber(item.total_quantity)} {item.content_unit}
               </span>
@@ -243,12 +243,12 @@ function ItemsTable({ items }: { items: StockItem[] }) {
               {rows.map(item => {
                 const isLow = item.minimum_stock > 0 && item.total_quantity <= item.minimum_stock
                 return (
-                  <tr key={item.id} className={cn("transition-colors duration-150 hover:bg-slate-50/60", isLow && 'bg-amber-50/30')}>
+                  <tr key={item.id} className={cn("transition-colors duration-150 hover:bg-slate-50/60", isLow && 'bg-emerald-50/30')}>
                     <td className="px-4 py-3.5 font-semibold text-slate-800">{item.name}</td>
                     <td className="px-4 py-3.5 tabular-nums">
                       <div className="flex items-center gap-1.5">
-                        {isLow && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
-                        <span className={cn("font-semibold", isLow ? 'text-amber-700' : 'text-slate-700')}>
+                        {isLow && <AlertTriangle className="h-3 w-3 text-emerald-500 shrink-0" />}
+                        <span className={cn("font-semibold", isLow ? 'text-emerald-700' : 'text-slate-700')}>
                           {formatNumber(item.total_quantity)} {item.content_unit}
                         </span>
                       </div>
@@ -272,7 +272,7 @@ function ItemsTable({ items }: { items: StockItem[] }) {
   const otherItems = items.filter(i => i.type_code !== 'feed' && i.type_code !== 'medicine')
   return (
     <div className="space-y-6">
-      <Section title="العلف"  rows={feedItems}  color="text-amber-700" icon={Package} />
+      <Section title="العلف"  rows={feedItems}  color="text-emerald-700" icon={Package} />
       <Section title="الدواء" rows={medItems}   color="text-blue-700"  icon={Package} />
       <Section title="أخرى"  rows={otherItems} color="text-slate-600" icon={Package} />
     </div>
@@ -596,7 +596,7 @@ function AddShipmentForm({
         )}
 
         {warehouses.length === 0 && (
-          <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-700">
+          <div className="mb-5 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             لا يوجد مستودع نشط. أضف مستودعاً من إعدادات المزرعة أولاً.
           </div>
@@ -815,8 +815,8 @@ function AlertsTab({ items }: { items: StockItem[] }) {
   if (lowItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50">
-          <CheckCircle className="h-7 w-7 text-orange-400" />
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+          <CheckCircle className="h-7 w-7 text-emerald-400" />
         </div>
         <p className="font-bold text-slate-600">لا توجد تنبيهات</p>
         <p className="mt-1 text-xs text-slate-400">جميع المواد بمستوى آمن ومقبول</p>
@@ -850,15 +850,15 @@ function AlertsTab({ items }: { items: StockItem[] }) {
 
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <div className="rounded-lg bg-amber-50 p-1.5">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+          <div className="rounded-lg bg-emerald-50 p-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 text-emerald-600" />
           </div>
-          <h3 className="text-xs font-bold text-amber-700 uppercase tracking-wider">مواد تقترب من النفاد</h3>
+          <h3 className="text-xs font-bold text-emerald-700 uppercase tracking-wider">مواد تقترب من النفاد</h3>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-amber-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
+        <div className="overflow-hidden rounded-2xl border border-emerald-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-amber-100 bg-amber-50/50 text-right text-[10px] font-bold uppercase tracking-wider text-amber-600">
+              <tr className="border-b border-emerald-100 bg-emerald-50/50 text-right text-[10px] font-bold uppercase tracking-wider text-emerald-600">
                 <th className="px-4 py-3">الصنف</th>
                 <th className="px-4 py-3">النوع</th>
                 <th className="px-4 py-3">المتاح</th>
@@ -866,14 +866,14 @@ function AlertsTab({ items }: { items: StockItem[] }) {
                 <th className="px-4 py-3">النسبة</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-amber-50">
+            <tbody className="divide-y divide-emerald-50">
               {lowItems.map(item => {
                 const pct = item.minimum_stock > 0 ? Math.round((item.total_quantity / item.minimum_stock) * 100) : 0
                 return (
-                  <tr key={item.id} className="transition-colors hover:bg-amber-50/30">
+                   <tr key={item.id} className="transition-colors hover:bg-emerald-50/30">
                     <td className="px-4 py-3.5 font-semibold text-slate-800">{item.name}</td>
                     <td className="px-4 py-3.5 text-slate-500 text-xs">{TYPE_LABEL[item.type_code] ?? item.type_code}</td>
-                    <td className="px-4 py-3.5 tabular-nums font-bold text-amber-700">
+                    <td className="px-4 py-3.5 tabular-nums font-bold text-emerald-700">
                       {formatNumber(item.total_quantity)} {item.content_unit}
                     </td>
                     <td className="px-4 py-3.5 tabular-nums text-slate-400 text-xs">
@@ -881,10 +881,10 @@ function AlertsTab({ items }: { items: StockItem[] }) {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-16 rounded-full bg-amber-100 overflow-hidden">
-                          <div className="h-full rounded-full bg-amber-400" style={{ width: `${pct}%` }} />
+                        <div className="h-1.5 w-16 rounded-full bg-emerald-100 overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-400" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-[10px] font-bold text-amber-600 tabular-nums">{pct}%</span>
+                        <span className="text-[10px] font-bold text-emerald-600 tabular-nums">{pct}%</span>
                       </div>
                     </td>
                   </tr>
@@ -986,9 +986,9 @@ export default function InventoryPage() {
           {/* KPI Cards */}
           {summary && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <KpiCard label="رصيد العلف"           value={formatNumber(summary.feed_quantity)}     sub={summary.feed_unit}                             icon={Package}    color="text-amber-700" />
+              <KpiCard label="رصيد العلف"           value={formatNumber(summary.feed_quantity)}     sub={summary.feed_unit}                             icon={Package}    color="text-emerald-700" />
               <KpiCard label="رصيد الدواء"          value={formatNumber(summary.medicine_quantity)} sub={summary.medicine_unit}                         icon={Package}    color="text-blue-700" />
-              <KpiCard label="مواد منخفضة"          value={String(summary.low_stock_count)}         sub={summary.low_stock_count > 0 ? 'تحتاج متابعة' : 'المخزون كافٍ'} icon={TrendingDown} color={summary.low_stock_count > 0 ? 'text-red-600' : 'text-orange-600'} />
+              <KpiCard label="مواد منخفضة"          value={String(summary.low_stock_count)}         sub={summary.low_stock_count > 0 ? 'تحتاج متابعة' : 'المخزون كافٍ'} icon={TrendingDown} color={summary.low_stock_count > 0 ? 'text-red-600' : 'text-emerald-600'} />
               <KpiCard label="آخر حمولة"            value={summary.last_shipment_date ? formatDate(summary.last_shipment_date) : '—'}                  icon={Truck}      color="text-slate-600" />
               <KpiCard label="إجمالي قيمة المخزون" value={formatNumber(summary.total_value)}       sub="USD"                                           icon={DollarSign} color="text-primary-700" />
             </div>
@@ -1023,7 +1023,7 @@ export default function InventoryPage() {
                         isActive
                           ? "bg-white/20 text-white"
                           : tab.id === 'alerts'
-                            ? "bg-amber-100 text-amber-700"
+                            ? "bg-emerald-100 text-emerald-700"
                             : "bg-slate-100 text-slate-500"
                       )}>
                         {tab.badge}
@@ -1039,7 +1039,7 @@ export default function InventoryPage() {
           <div>
             {activeTab === 'overview' && (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <MaterialCard title="العلف"  items={feedItems}  color="text-amber-700" icon={Package} />
+                <MaterialCard title="العلف"  items={feedItems}  color="text-emerald-700" icon={Package} />
                 <MaterialCard title="الدواء" items={medItems}   color="text-blue-700"  icon={Package} />
                 <MaterialCard title="أخرى"  items={otherItems} color="text-slate-600" icon={Package} />
                 {feedItems.length === 0 && medItems.length === 0 && otherItems.length === 0 && (

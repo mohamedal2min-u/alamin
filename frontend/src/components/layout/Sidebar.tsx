@@ -67,7 +67,7 @@ export function Sidebar() {
 
       {/* Read-only badge — partner only */}
       {isPartner && (
-        <div className="mx-3 mt-3 flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 border border-amber-100">
+        <div className="mx-3 mt-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 border border-emerald-100">
           <Lock className="h-3.5 w-3.5 shrink-0" />
           <span>وضع القراءة فقط</span>
         </div>

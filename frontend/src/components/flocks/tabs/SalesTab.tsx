@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { Plus, ShoppingCart, AlertCircle } from 'lucide-react'
@@ -141,7 +141,7 @@ function SaleRow({ sale, onUpdatePayment }: { sale: Sale; onUpdatePayment: () =>
         <span>
           مستلم: <span className="tabular-nums font-medium text-primary-700">{formatNumber(Number(sale.received_amount))}</span>
           {sale.discount_amount > 0 && (
-            <span className="ms-3">خصم: <span className="tabular-nums text-amber-600">{formatNumber(Number(sale.discount_amount))}</span></span>
+            <span className="ms-3">خصم: <span className="tabular-nums text-emerald-600">{formatNumber(Number(sale.discount_amount))}</span></span>
           )}
         </span>
         {sale.payment_status !== 'paid' && (

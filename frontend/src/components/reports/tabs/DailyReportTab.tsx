@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
@@ -15,7 +15,7 @@ export const DailyReportTab = ({ data, isLoading }: DailyReportTabProps) => {
 
   const stats = [
     { label: 'النفوق', value: data.summary.mortality, icon: Skull, color: 'text-rose-600', bg: 'bg-rose-50' },
-    { label: 'استهلاك العلف', value: data.summary.feed, unit: 'كغ', icon: Utensils, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'استهلاك العلف', value: data.summary.feed, unit: 'كغ', icon: Utensils, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'المصاريف', value: data.summary.expenses, currency: true, icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'المبيعات', value: data.summary.sales, currency: true, icon: TrendingUp, color: 'text-primary-600', bg: 'bg-primary-50' },
   ]

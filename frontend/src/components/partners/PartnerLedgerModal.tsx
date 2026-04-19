@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -24,7 +24,7 @@ const TRANSACTION_CONFIG: Record<string, { label: string; color: string; bgColor
   deposit:    { label: 'إيداع نقدي',   color: 'text-primary-600', bgColor: 'bg-primary-50',  icon: ArrowDownLeft,  sign: '+' },
   withdraw:   { label: 'سحب رصيد',     color: 'text-rose-600',    bgColor: 'bg-rose-50',     icon: ArrowUpRight,   sign: '-' },
   profit:     { label: 'أرباح فوج',    color: 'text-sky-600',     bgColor: 'bg-sky-50',      icon: TrendingUp,     sign: '+' },
-  loss:       { label: 'خسائر فوج',    color: 'text-orange-600',  bgColor: 'bg-orange-50',   icon: TrendingDown,   sign: '-' },
+  loss:       { label: 'خسائر فوج',    color: 'text-emerald-600',  bgColor: 'bg-emerald-50',   icon: TrendingDown,   sign: '-' },
   settlement: { label: 'تسوية',        color: 'text-slate-600',   bgColor: 'bg-slate-50',    icon: Scale,          sign: '' },
   adjustment: { label: 'تعديل',        color: 'text-indigo-600',  bgColor: 'bg-indigo-50',   icon: Scale,          sign: '' },
 }

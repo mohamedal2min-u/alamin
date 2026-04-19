@@ -112,16 +112,16 @@ export default function FlocksPage() {
         <>
           {/* ── Draft activation banner ───────────────────────────── */}
           {canCreateFlock && draftFlock && (
-            <div className="rounded-2xl bg-amber-50/80 border border-amber-100 p-5 dark:bg-amber-900/20 dark:border-amber-800/40">
+            <div className="rounded-2xl bg-emerald-50/80 border border-emerald-100 p-5 dark:bg-emerald-900/20 dark:border-emerald-800/40">
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shrink-0 shadow-sm">
-                  <Zap className="h-5 w-5 text-amber-500" />
+                  <Zap className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-extrabold text-amber-900 dark:text-amber-300 text-sm">
+                  <h3 className="font-extrabold text-emerald-900 dark:text-emerald-300 text-sm">
                     الفوج في انتظار التفعيل
                   </h3>
-                  <p className="mt-1 text-[12px] font-medium text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
+                  <p className="mt-1 text-[12px] font-medium text-emerald-700/80 dark:text-emerald-400/80 leading-relaxed">
                     فعّل الفوج للبدء في تسجيل البيانات التشغيلية.
                     {activeFlock && (
                       <span className="block mt-1 font-bold text-red-600">
@@ -135,7 +135,7 @@ export default function FlocksPage() {
                   <button
                     onClick={handleActivate}
                     disabled={activating || !!activeFlock}
-                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white active:scale-[0.98] disabled:opacity-50 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none transition-all shadow-sm shadow-amber-200"
+                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white active:scale-[0.98] disabled:opacity-50 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none transition-all shadow-sm shadow-emerald-200"
                   >
                     {activating ? 'جارٍ التفعيل...' : 'تفعيل الفوج'}
                   </button>

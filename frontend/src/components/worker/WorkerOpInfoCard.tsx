@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Thermometer, Wheat, Moon } from 'lucide-react'
 
@@ -21,7 +21,7 @@ export function WorkerOpInfoCard({
           <span className="font-semibold">{targetTemp}°C مطلوب</span>
         </div>
         <div className="flex items-center gap-2 text-primary-800">
-          <Wheat className="w-5 h-5 text-amber-600" />
+          <Wheat className="w-5 h-5 text-emerald-600" />
           <span className="font-semibold">{feedTargetKg} كجم اليوم</span>
         </div>
       </div>

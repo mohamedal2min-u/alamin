@@ -24,7 +24,7 @@ interface QuickPreset {
 }
 
 const QUICK_PRESETS: QuickPreset[] = [
-  { code: 'bedding',      label: 'نشارة',       icon: '🪵', color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200 hover:bg-amber-100',  unitLabel: 'كيس' },
+  { code: 'bedding',      label: 'نشارة',       icon: '🪵', color: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100',  unitLabel: 'كيس' },
   { code: 'farm_wash',    label: 'غسيل مدجنة',  icon: '🧹', color: 'text-sky-700',   bgColor: 'bg-sky-50 border-sky-200 hover:bg-sky-100',        unitLabel: 'مرة' },
   { code: 'disinfectant', label: 'معقم',         icon: '🧴', color: 'text-primary-700', bgColor: 'bg-primary-50 border-primary-200 hover:bg-primary-100', unitLabel: 'قطعة' },
 ]
@@ -33,7 +33,7 @@ const QUICK_PRESETS: QuickPreset[] = [
 
 const PAYMENT_BADGE: Record<string, { label: string; color: string }> = {
   paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
-  partial: { label: 'جزئي',      color: 'bg-amber-100 text-amber-700' },
+  partial: { label: 'جزئي',      color: 'bg-emerald-100 text-emerald-700' },
   unpaid:  { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
   debt:    { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
 }
@@ -346,8 +346,8 @@ function QuickEntryForm({
           </div>
         ) : (
           <div className="flex items-center gap-2 text-xs">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-            <span className="font-medium text-amber-700">
+            <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <span className="font-medium text-emerald-700">
               بدون سعر — سيتم إضافة الكمية إلى الذمم والمراجعة لاحقاً
             </span>
           </div>
@@ -526,8 +526,8 @@ function CustomExpenseForm({
           </div>
         ) : (
           <div className="flex items-center gap-2 text-xs">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-            <span className="font-medium text-amber-700">
+            <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <span className="font-medium text-emerald-700">
               بدون سعر — سيتم إضافة الكمية إلى الذمم والمراجعة لاحقاً
             </span>
           </div>

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -13,8 +13,8 @@ import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
 // ── Badge color map — single source of truth ──────────────────────────────────
 const REASON_COLORS: Record<ReviewReason, string> = {
   unpaid:                        'bg-red-100 text-red-700 border-red-200',
-  partial_payment:               'bg-amber-100 text-amber-700 border-amber-200',
-  missing_price:                 'bg-orange-100 text-orange-700 border-orange-200',
+  partial_payment:               'bg-emerald-100 text-emerald-700 border-emerald-200',
+  missing_price:                 'bg-emerald-100 text-emerald-700 border-emerald-200',
   missing_payment_status:        'bg-gray-100 text-gray-700 border-gray-200',
   inconsistent_financial_state:  'bg-purple-100 text-purple-700 border-purple-200',
   blocking_flock_closure:        'bg-red-200 text-red-800 border-red-300',
@@ -77,8 +77,8 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
       {summary && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <SummaryCard label="غير مدفوع"        count={summary.unpaid_count}                       color="red" />
-          <SummaryCard label="دفع جزئي"         count={summary.partial_payment_count}               color="amber" />
-          <SummaryCard label="ناقص السعر"       count={summary.missing_price_count}                 color="orange" />
+          <SummaryCard label="دفع جزئي"         count={summary.partial_payment_count}               color="emerald" />
+          <SummaryCard label="ناقص السعر"       count={summary.missing_price_count}                 color="emerald" />
           <SummaryCard label="ناقص حالة الدفع"  count={summary.missing_payment_status_count}        color="gray" />
           <SummaryCard label="تناقض مالي"       count={summary.inconsistent_financial_state_count}  color="purple" />
           <SummaryCard label="مانع إغلاق"       count={summary.blocking_flock_closure_count}        color="rose" />
@@ -204,8 +204,8 @@ function SummaryCard({ label, count, color }: { label: string; count: number; co
 
   const colorMap: Record<string, string> = {
     red:    'bg-red-50 border-red-200 text-red-700',
-    amber:  'bg-amber-50 border-amber-200 text-amber-700',
-    orange: 'bg-orange-50 border-orange-200 text-orange-700',
+    amber:  'bg-emerald-50 border-emerald-200 text-emerald-700',
+    orange: 'bg-emerald-50 border-emerald-200 text-emerald-700',
     gray:   'bg-gray-50 border-gray-200 text-gray-700',
     purple: 'bg-purple-50 border-purple-200 text-purple-700',
     rose:   'bg-rose-50 border-rose-200 text-rose-800',

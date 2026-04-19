@@ -41,8 +41,8 @@ const CONFIG: Record<DayEntryType, {
   feed: {
     label: 'استهلاك العلف',
     icon: Wheat,
-    color: 'text-amber-600',
-    iconBg: 'bg-amber-100',
+    color: 'text-emerald-600',
+    iconBg: 'bg-emerald-100',
     totalLabel: 'إجمالي العلف',
     unit: 'كجم',
   },

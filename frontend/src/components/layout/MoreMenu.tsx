@@ -1,4 +1,4 @@
-﻿// frontend/src/components/layout/MoreMenu.tsx
+// frontend/src/components/layout/MoreMenu.tsx
 'use client'
 
 import {
@@ -41,7 +41,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
 
   const items = [
     { label: 'المبيعات',  href: '/sales',      icon: ShoppingCart, color: 'text-primary-600', bg: 'bg-primary-50' },
-    { label: 'المصروفات', href: '/expenses',    icon: Receipt,      color: 'text-orange-600',  bg: 'bg-orange-50' },
+    { label: 'المصروفات', href: '/expenses',    icon: Receipt,      color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'الشركاء',   href: '/partners',   icon: Users,        color: 'text-blue-600',    bg: 'bg-blue-50' },
     { label: 'العمال',    href: '/workers',    icon: Users,        color: 'text-slate-600',   bg: 'bg-slate-50' },
     { label: 'المحاسبة',  href: '/accounting', icon: Calculator,   color: 'text-violet-600',  bg: 'bg-violet-50' },

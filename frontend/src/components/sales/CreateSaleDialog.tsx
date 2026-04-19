@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
@@ -262,7 +262,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
               <span className="tabular-nums">{formatNumber(Number(gross.toFixed(2)))}</span>
             </div>
             {watchDiscount > 0 && (
-              <div className="flex justify-between text-amber-700">
+              <div className="flex justify-between text-emerald-700">
                 <span>الخصم</span>
                 <span className="tabular-nums">- {formatNumber(Number(watchDiscount.toFixed(2)))}</span>
               </div>

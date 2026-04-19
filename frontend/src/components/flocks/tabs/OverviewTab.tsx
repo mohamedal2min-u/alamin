@@ -135,7 +135,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
               </th>
               <th className="px-4 py-3 font-bold text-center">
                 <div className="flex items-center justify-center gap-1.5">
-                  <Wheat className="h-3.5 w-3.5 text-amber-500" />
+                  <Wheat className="h-3.5 w-3.5 text-emerald-500" />
                   استهلاك العلف
                 </div>
               </th>
@@ -170,7 +170,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
                 </td>
                 <td className={cn(
                   "px-4 py-3 text-center font-bold",
-                  row.feed > 0 ? "text-amber-700" : "text-slate-300"
+                  row.feed > 0 ? "text-emerald-700" : "text-slate-300"
                 )}>
                   {renderFeed(row.feed)}
                 </td>
@@ -205,7 +205,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
             <tr className="bg-primary-50/50 border-t-2 border-primary-100 font-black text-slate-900">
               <td colSpan={2} className="px-4 py-4 text-center text-primary-700">المجموع الإجمالي</td>
               <td className="px-4 py-4 text-center text-red-700 border-x border-primary-100/30">{formatNumber(totals.mortality)}</td>
-              <td className="px-4 py-4 text-center text-amber-800 border-x border-primary-100/30">{renderFeed(totals.feed)}</td>
+              <td className="px-4 py-4 text-center text-emerald-800 border-x border-primary-100/30">{renderFeed(totals.feed)}</td>
               <td className="px-4 py-4 text-center text-blue-800 border-x border-primary-100/30">{formatNumber(totals.medicine)}</td>
               <td className="px-4 py-4 text-center text-emerald-700 border-x border-primary-100/30">${formatNumber(totals.expense)}</td>
             </tr>

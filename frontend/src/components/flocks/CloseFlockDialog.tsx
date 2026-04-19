@@ -108,11 +108,11 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4" noValidate>
 
         {/* Warning banner */}
-        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <div className="text-sm text-amber-800">
+        <div className="flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          <div className="text-sm text-emerald-800">
             <p className="font-semibold">هذا الإجراء لا يمكن التراجع عنه</p>
-            <p className="mt-0.5 text-amber-700">
+            <p className="mt-0.5 text-emerald-700">
               سيتم إغلاق الفوج وتوزيع الأرباح/الخسائر على الشركاء تلقائياً.
             </p>
           </div>
@@ -150,12 +150,12 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
         {stockLoading ? (
           <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
         ) : hasStock ? (
-          <div className={`rounded-xl border p-4 space-y-3 ${stockAction === null ? 'border-orange-300 bg-orange-50' : 'border-slate-200 bg-slate-50'}`}>
+          <div className={`rounded-xl border p-4 space-y-3 ${stockAction === null ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <Package className="h-4 w-4 text-slate-500" />
               مخزون متبقٍّ ({remainingStock.length} صنف)
               {stockAction === null && (
-                <span className="text-xs font-medium text-orange-600 bg-orange-100 rounded-full px-2 py-0.5">مطلوب اختيار</span>
+                <span className="text-xs font-medium text-emerald-600 bg-emerald-100 rounded-full px-2 py-0.5">مطلوب اختيار</span>
               )}
             </div>
             <div className="space-y-1.5 max-h-32 overflow-y-auto">
@@ -266,7 +266,7 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
 
         {/* Checklist summary */}
         {!canClose && !reviewLoading && !stockLoading && (
-          <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs text-orange-700 space-y-1">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700 space-y-1">
             <p className="font-semibold">يجب استيفاء الشروط التالية قبل الإغلاق:</p>
             {blockingCount > 0 && <p>• تسوية {blockingCount} سجل مالي مانع</p>}
             {hasStock && stockAction === null && <p>• اختيار قرار المخزون المتبقي (ترحيل أو تسوية)</p>}

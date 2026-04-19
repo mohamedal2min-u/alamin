@@ -39,7 +39,7 @@ type FormData = z.infer<typeof schema>
 
 const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
   paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
-  partial: { label: 'جزئي',      color: 'bg-amber-100 text-amber-700' },
+  partial: { label: 'جزئي',      color: 'bg-emerald-100 text-emerald-700' },
   unpaid:  { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
 }
 
@@ -245,10 +245,10 @@ export default function ExpensesPage() {
 
           {/* Review queue hint — shown for unpaid, or partial with amount != total */}
           {showPaidHint && (
-            <p className="flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+            <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700">
               <ClipboardList className="h-3.5 w-3.5 shrink-0" />
               سيُضاف هذا المصروف تلقائياً إلى{' '}
-              <Link href="/accounting?tab=review" className="underline font-semibold hover:text-amber-900">
+              <Link href="/accounting?tab=review" className="underline font-semibold hover:text-emerald-900">
                 قائمة الذمم والمراجعة
               </Link>
             </p>

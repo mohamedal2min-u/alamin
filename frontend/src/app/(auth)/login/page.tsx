@@ -172,7 +172,7 @@ function LoginPageInner() {
       {/* ── Background Branding Glow (Minimalist) ───────────────── */}
       <div 
         className="absolute inset-x-0 -top-40 h-[100dvh] pointer-events-none opacity-10"
-        style={{ background: 'radial-gradient(circle at 50% 0%, #ea580c 0%, transparent 60%)' }}
+        style={{ background: 'radial-gradient(circle at 50% 0%, #10b981 0%, transparent 60%)' }}
       />
       
       <div className="w-full max-w-sm relative z-10">
@@ -200,7 +200,7 @@ function LoginPageInner() {
 
             {/* Subtitle Badge (Minimalist) */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black/30 border border-white/[0.06] rounded-full">
-              <span className="flex h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
+              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
               <span className="text-[10px] font-bold text-slate-400 tracking-[0.1em] text-center uppercase">
                 Yasin Modern Digital
               </span>
@@ -256,7 +256,7 @@ function LoginPageInner() {
 
               <Button
                 type="submit"
-                className="w-full !rounded-[1.15rem] !h-12 !text-sm !font-bold touch-manipulation bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white shadow-lg shadow-orange-900/40 border-t border-white/20 transition-all duration-200 active:scale-[0.98]"
+                className="w-full !rounded-[1.15rem] !h-12 !text-sm !font-bold touch-manipulation bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-900/40 border-t border-white/20 transition-all duration-200 active:scale-[0.98]"
                 size="lg"
                 loading={loginForm.formState.isSubmitting}
               >
@@ -406,7 +406,7 @@ function LoginPageInner() {
           {/* ── Trust Badges ───────────────────────────────────── */}
           <div className="mt-5 pt-4 border-t border-white/[0.04] flex items-center justify-between px-2">
             <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all duration-300 border border-orange-500/20 group-hover:scale-110 group-hover:bg-orange-500/20 group-hover:shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all duration-300 border border-emerald-500/20 group-hover:scale-110 group-hover:bg-emerald-500/20 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]">
                 <ShieldCheck className="h-5 w-5" strokeWidth={2} />
               </div>
               <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors">حماية فائقة</span>

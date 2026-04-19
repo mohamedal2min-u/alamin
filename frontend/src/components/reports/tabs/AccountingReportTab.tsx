@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Card } from "@/components/ui/Card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
@@ -51,7 +51,7 @@ export const AccountingReportTab = ({ data, isLoading }: AccountingReportTabProp
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} fontSize={10} />
                   <YAxis dataKey="category" type="category" width={110} fontSize={10} tick={{ fill: '#64748b' }} />
-                  <Tooltip formatter={(v: number) => [`${v.toLocaleString()} USD`, 'المبلغ']} />
+                  <Tooltip formatter={(v: any) => [`${Number(v || 0).toLocaleString()} USD`, 'المبلغ']} />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                     {data.expense_breakdown.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

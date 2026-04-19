@@ -264,7 +264,7 @@ export default function FlockDetailPage({
 
       {/* Notes banner */}
       {flock.notes && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {flock.notes}
         </div>
       )}

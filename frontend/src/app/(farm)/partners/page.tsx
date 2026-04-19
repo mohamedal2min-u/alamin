@@ -132,7 +132,7 @@ export default function PartnersPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
         <StatCard icon={Users} label="إجمالي الشركاء" value={totalPartners} accent="bg-sky-500" />
         <StatCard icon={Shield} label="الشركاء النشطون" value={activePartners} accent="bg-emerald-500" />
-        <StatCard icon={TrendingUp} label="الحصص الموزّعة" value={`${totalSharesAllocated}%`} accent="bg-amber-500" />
+        <StatCard icon={TrendingUp} label="الحصص الموزّعة" value={`${totalSharesAllocated}%`} accent="bg-emerald-500" />
         <div className="relative group">
           <div className="h-full flex items-center bg-white border border-slate-200/60 rounded-2xl overflow-hidden" style={{ boxShadow: 'var(--shadow-card)' }}>
             <Search className="absolute right-4 w-4 h-4 text-slate-300 group-focus-within:text-sky-500 transition-colors duration-200" />

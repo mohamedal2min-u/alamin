@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { AlertCircle, Zap, Bird, Calendar } from 'lucide-react'
@@ -179,21 +179,21 @@ export default function DashboardPage() {
         <>
           {/* Draft Activation */}
           {draftFlock && !isReadOnly && (
-            <div className="rounded-2xl bg-amber-50/80 border border-amber-100 p-5">
+            <div className="rounded-2xl bg-emerald-50/80 border border-emerald-100 p-5">
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Zap className="h-5 w-5 text-amber-500" />
+                  <Zap className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-extrabold text-amber-900 text-sm">الفوج في انتظار التفعيل</h3>
-                  <p className="mt-1 text-[12px] font-medium text-amber-700/80 leading-relaxed">
+                  <h3 className="font-extrabold text-emerald-900 text-sm">الفوج في انتظار التفعيل</h3>
+                  <p className="mt-1 text-[12px] font-medium text-emerald-700/80 leading-relaxed">
                     فعّل الفوج للبدء في تسجيل البيانات التشغيلية.
                   </p>
                   {activateError && <p className="mt-2 text-[11px] font-bold text-red-600">{activateError}</p>}
                   <button 
                     onClick={handleActivate} 
                     disabled={activating} 
-                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white active:scale-[0.98] disabled:opacity-50 transition-all shadow-sm shadow-amber-200"
+                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white active:scale-[0.98] disabled:opacity-50 transition-all shadow-sm shadow-emerald-200"
                   >
                     {activating ? 'جارٍ التفعيل...' : 'تفعيل الفوج'}
                   </button>

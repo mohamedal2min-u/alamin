@@ -1,4 +1,4 @@
-﻿// frontend/src/components/flocks/FlockCard.tsx
+// frontend/src/components/flocks/FlockCard.tsx
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/Card'
 import { FlockStatusBadge } from './FlockStatusBadge'
@@ -48,8 +48,8 @@ export function FlockCard({ flock }: { flock: Flock }) {
               </div>
             </div>
 
-            {/* ── Section 2: Production Stats ── */}
-            <div className="flex-[2.5] grid grid-cols-3 p-5 gap-2 items-center">
+            {/* ── Section 2: Unified Stats Row ── */}
+            <div className="flex-[3.5] grid grid-cols-4 p-5 px-3 min-w-0 items-center">
               <MinimalStatItem 
                 label="العدد الكلي" 
                 value={formatNumber(flock.initial_count)} 
@@ -67,32 +67,21 @@ export function FlockCard({ flock }: { flock: Flock }) {
                 value={formatNumber(flock.remaining_count)} 
                 icon={<Bird className="w-3.5 h-3.5" />}
                 isAccent={true}
-                accentColor="text-primary-600"
+                accentColor="text-emerald-600"
+              />
+              <MinimalStatItem 
+                label="صافي القيمة" 
+                value={formatNumber(Math.abs(flock.net_profit))}
+                icon={isProfit ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                isAccent={true}
+                accentColor={isProfit ? "text-emerald-700" : "text-rose-600"}
+                prefix="$"
+                subLabel={flock.status === 'active' ? (isProfit ? 'تقدير' : 'تقدير') : ''}
               />
             </div>
 
-            {/* ── Section 3: Profit/Loss ── */}
-            <div className="flex-1 p-5 md:p-6 bg-slate-50/40 flex flex-col items-center md:items-end justify-center">
-              <div className="flex flex-col items-center md:items-end">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight Arabic-font mb-1">صافي القيمة</span>
-                <div className={cn(
-                  "flex items-center gap-1.5 text-base font-bold tabular-nums Arabic-font",
-                  isProfit ? "text-primary-700" : "text-rose-600"
-                )}>
-                  {isProfit ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  <span className="text-[10px] opacity-60">$</span>
-                  {formatNumber(Math.abs(flock.net_profit))}
-                </div>
-                <p className="text-[9px] font-medium text-slate-400 mt-0.5 Arabic-font">
-                  {flock.status === 'active'
-                    ? (isProfit ? 'تقدير أرباح' : 'تقدير مصروف')
-                    : (isProfit ? 'أرباح' : 'خسارة')}
-                </p>
-              </div>
-            </div>
-
             {/* Desktop Action Indicator */}
-            <div className="hidden md:flex pr-4 items-center justify-center text-slate-300 group-hover:text-indigo-400 transition-colors">
+            <div className="hidden md:flex pr-6 items-center justify-center text-slate-300 group-hover:text-emerald-400 transition-colors">
               <ChevronLeft className="w-5 h-5" />
             </div>
 
@@ -104,22 +93,30 @@ export function FlockCard({ flock }: { flock: Flock }) {
 }
 
 function MinimalStatItem({ 
-  label, value, icon, isAccent = false, accentColor = "" 
+  label, value, icon, isAccent = false, accentColor = "", prefix = "", subLabel = ""
 }: { 
-  label: string, value: string, icon: React.ReactNode, isAccent?: boolean, accentColor?: string 
+  label: string, value: string, icon: React.ReactNode, isAccent?: boolean, accentColor?: string, prefix?: string, subLabel?: string
 }) {
   return (
-    <div className="flex flex-col items-center text-center px-1">
-      <div className="flex items-center gap-1 mb-1.5 text-slate-400/80">
-        <div className="opacity-70">{icon}</div>
-        <span className="text-[9px] font-bold Arabic-font uppercase">{label}</span>
+    <div className="flex flex-col items-center text-center px-1 min-w-0">
+      <div className="flex items-center gap-1 mb-1 text-slate-400 font-medium">
+        <div className="opacity-70 scale-90">{icon}</div>
+        <span className="text-[9px] font-bold Arabic-font truncate">{label}</span>
       </div>
-      <span className={cn(
-        "text-base font-bold tabular-nums Arabic-font", 
-        isAccent ? accentColor : "text-slate-700"
-      )}>
-        {value}
-      </span>
+      <div className="flex items-baseline gap-0.5">
+        {prefix && <span className="text-[10px] font-medium text-slate-400 mb-0.5">{prefix}</span>}
+        <span className={cn(
+          "text-sm sm:text-base font-bold tabular-nums Arabic-font", 
+          isAccent ? accentColor : "text-slate-700"
+        )}>
+          {value}
+        </span>
+      </div>
+      {subLabel && (
+        <span className="text-[8px] font-medium text-slate-400 -mt-0.5 Arabic-font truncate w-full">
+          {subLabel}
+        </span>
+      )}
     </div>
   )
 }

@@ -104,13 +104,12 @@ export function Sidebar() {
       </nav>
 
       {/* Footer / Credits */}
-      <div className="p-5 mt-auto border-t border-slate-50 dark:border-slate-700/40">
-        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed text-center Arabic-font uppercase tracking-wider">
-          جميع الحقوق محفوظة
-          <br />
-          تطبيق محاسبة ذكي
-          <br />
-          بتطوير <span className="text-primary-500/80">محمد الأمين</span>
+      <div className="p-5 mt-auto border-t border-slate-50 dark:border-slate-700/40 opacity-70" dir="ltr">
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed text-center uppercase tracking-wider">
+          © {new Date().getFullYear()} Smart Accounting App — All Rights Reserved
+        </p>
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed text-center uppercase tracking-wider mt-1">
+          Developed by <span className="text-primary-500/80 font-black">Mohamed Al-Amin</span>
         </p>
       </div>
     </aside>

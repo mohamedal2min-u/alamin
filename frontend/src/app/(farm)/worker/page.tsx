@@ -73,6 +73,10 @@ export default function WorkerPage() {
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: true,
     placeholderData: keepPreviousData,
+    retry: (failureCount, error: any) => {
+      if (error?.response?.status === 404) return false
+      return failureCount < 2
+    },
   })
 
   const {

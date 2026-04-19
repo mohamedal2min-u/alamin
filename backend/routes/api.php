@@ -65,10 +65,12 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
 
     // ── V1-B: Flocks ─────────────────────────────────────────────────────────
     Route::prefix('flocks')->group(function (): void {
-        Route::get('/',         [FlockController::class, 'index']);
-        Route::post('/',        [FlockController::class, 'store']);
-        Route::get('/{flock}',  [FlockController::class, 'show']);
-        Route::put('/{flock}',  [FlockController::class, 'update']);
+        Route::get('/',                      [FlockController::class, 'index']);
+        Route::post('/',                     [FlockController::class, 'store']);
+        Route::get('/{flock}/today-summary', [FlockController::class, 'todaySummary']);
+        Route::get('/{flock}',               [FlockController::class, 'show']);
+        Route::put('/{flock}',               [FlockController::class, 'update']);
+        Route::delete('/{flock}',            [FlockController::class, 'destroy']);
     });
 
     // ── V1-C: Mortalities ────────────────────────────────────────────────────

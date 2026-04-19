@@ -177,40 +177,40 @@ function LoginPageInner() {
       
       <div className="w-full max-w-sm relative z-10">
         {/* ── Card ──────────────────────────────────────────────── */}
-        <div className="rounded-[2.25rem] border border-white/[0.05] bg-[#14161b] p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] dark ring-1 ring-white/[0.01]">
-          {/* ── Brand Section (Now inside card) ─────────────────── */}
-          <div className="flex flex-col items-center mb-4">
+        <div className="rounded-[2rem] border border-white/[0.05] bg-[#14161b] p-5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] dark ring-1 ring-white/[0.01]">
+          {/* ── Brand Section (Compact) ─────────────────────────── */}
+          <div className="flex flex-col items-center mb-3">
             {/* Logo */}
-            <div className="mb-4">
+            <div className="mb-3">
               <div 
-                className="flex h-28 w-28 items-center justify-center rounded-[2.25rem] bg-[#1a1c21] shadow-xl shadow-black/40 transform transition-all duration-300 hover:scale-105 active:scale-95 border border-white/[0.08]"
+                className="flex h-24 w-24 items-center justify-center rounded-[2rem] bg-[#1a1c21] shadow-xl shadow-black/40 transform transition-all duration-300 hover:scale-105 active:scale-95 border border-white/[0.08]"
               >
                 <img
                   src="/ymd-logo.png?v=7"
                   alt="YMD"
-                  className="h-24 w-24 object-contain"
+                  className="h-20 w-20 object-contain"
                 />
               </div>
             </div>
 
             {/* Brand Name */}
-            <h1 className="text-[2.25rem] font-bold tracking-tight text-white mb-0.5 leading-none text-center">
+            <h1 className="text-[2rem] font-bold tracking-tight text-white mb-0.5 leading-none text-center">
               YMD
             </h1>
 
-            {/* Subtitle Badge (Minimalist) */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black/30 border border-white/[0.06] rounded-full">
-              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <span className="text-[10px] font-bold text-slate-400 tracking-[0.1em] text-center uppercase">
+            {/* Subtitle Badge */}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-black/30 border border-white/[0.06] rounded-full">
+              <span className="flex h-1 w-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              <span className="text-[9px] font-bold text-slate-400 tracking-[0.08em] text-center uppercase">
                 Yasin Modern Digital
               </span>
             </div>
           </div>
 
-          <div className="h-px bg-white/[0.04] mb-5" />
+          <div className="h-px bg-white/[0.04] mb-4" />
 
           {/* Tabs - Apple Style (Matte) */}
-          <div className="mb-5 flex gap-1 rounded-xl bg-black/60 p-1 border border-white/[0.04]">
+          <div className="mb-4 flex gap-1 rounded-xl bg-black/60 p-1 border border-white/[0.04]">
             <TabButton active={mode === 'login'} onClick={() => switchMode('login')}>
               تسجيل الدخول
             </TabButton>
@@ -223,7 +223,7 @@ function LoginPageInner() {
           {mode === 'login' && (
             <form
               onSubmit={loginForm.handleSubmit(onLogin)}
-              className="space-y-3"
+              className="space-y-2.5"
               noValidate
             >
               <Input
@@ -249,14 +249,14 @@ function LoginPageInner() {
               />
 
               {serverError && (
-                <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-600 border border-red-100">
+                <div className="rounded-xl bg-red-500/10 px-3 py-2 text-[10px] font-medium text-red-400 border border-red-500/20">
                   {serverError}
                 </div>
               )}
 
               <Button
                 type="submit"
-                className="w-full !rounded-[1.15rem] !h-12 !text-sm !font-bold touch-manipulation bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-900/40 border-t border-white/20 transition-all duration-200 active:scale-[0.98]"
+                className="w-full !rounded-[1rem] !h-11 !text-sm !font-bold touch-manipulation bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-900/40 border-t border-white/20 transition-all duration-200 active:scale-[0.98] mt-1"
                 size="lg"
                 loading={loginForm.formState.isSubmitting}
               >
@@ -269,7 +269,7 @@ function LoginPageInner() {
           {mode === 'register' && !registerSuccess && (
             <form
               onSubmit={registerForm.handleSubmit(onRegister)}
-              className="space-y-3"
+              className="space-y-2.5"
               noValidate
             >
               <Input
@@ -403,36 +403,36 @@ function LoginPageInner() {
             </div>
           )}
 
-          {/* ── Trust Badges ───────────────────────────────────── */}
-          <div className="mt-5 pt-4 border-t border-white/[0.04] flex items-center justify-between px-2">
-            <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all duration-300 border border-emerald-500/20 group-hover:scale-110 group-hover:bg-emerald-500/20 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                <ShieldCheck className="h-5 w-5" strokeWidth={2} />
+          {/* ── Trust Badges (Compact) ─────────────────────────── */}
+          <div className="mt-3 pt-3 border-t border-white/[0.04] flex items-center justify-between px-1">
+            <div className="flex flex-col items-center gap-1.5 flex-1 relative group cursor-default">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all duration-300 border border-emerald-500/20 group-hover:bg-emerald-500/20">
+                <ShieldCheck className="h-4 w-4" strokeWidth={2} />
               </div>
-              <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors">حماية فائقة</span>
+              <span className="text-[8px] font-bold text-slate-400 group-hover:text-white transition-colors Arabic-font uppercase">حماية فائقة</span>
             </div>
 
-            <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 border border-blue-500/20 group-hover:scale-110 group-hover:bg-blue-500/20 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-                <Cpu className="h-5 w-5" strokeWidth={2} />
+            <div className="flex flex-col items-center gap-1.5 flex-1 relative group cursor-default">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 border border-blue-500/20 group-hover:bg-blue-500/20">
+                <Cpu className="h-4 w-4" strokeWidth={2} />
               </div>
-              <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors">تحليل ذكي</span>
+              <span className="text-[8px] font-bold text-slate-400 group-hover:text-white transition-colors Arabic-font uppercase">تحليل ذكي</span>
             </div>
 
-            <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)] transition-all duration-300 border border-cyan-500/20 group-hover:scale-110 group-hover:bg-cyan-500/20 group-hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]">
-                <Server className="h-5 w-5" strokeWidth={2} />
+            <div className="flex flex-col items-center gap-1.5 flex-1 relative group cursor-default">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)] transition-all duration-300 border border-cyan-500/20 group-hover:bg-cyan-500/20">
+                <Server className="h-4 w-4" strokeWidth={2} />
               </div>
-              <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors">مزامنة سحابية</span>
+              <span className="text-[8px] font-bold text-slate-400 group-hover:text-white transition-colors Arabic-font uppercase">مزامنة سحابية</span>
             </div>
           </div>
 
           {/* Developer Credit Inside Card */}
-          <div className="mt-4 flex flex-col items-center justify-center opacity-70" dir="ltr">
-            <p className="text-[9px] font-bold text-slate-500 tracking-wide text-center uppercase">
+          <div className="mt-3 flex flex-col items-center justify-center opacity-70" dir="ltr">
+            <p className="text-[8px] font-bold text-slate-500 tracking-wide text-center uppercase">
               © {new Date().getFullYear()} Smart Accounting App — All Rights Reserved
             </p>
-            <p className="text-[9px] font-bold text-slate-500 tracking-wide text-center uppercase mt-0.5">
+            <p className="text-[8px] font-bold text-slate-500 tracking-wide text-center uppercase mt-0.5">
               Developed by <span className="text-emerald-500 font-black">Mohamed Al-Amin</span>
             </p>
           </div>

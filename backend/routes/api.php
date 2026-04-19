@@ -68,6 +68,7 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::get('/',                      [FlockController::class, 'index']);
         Route::post('/',                     [FlockController::class, 'store']);
         Route::get('/{flock}/today-summary', [FlockController::class, 'todaySummary']);
+        Route::get('/{flock}/today_summary', [FlockController::class, 'todaySummary']); // Compatibility alias
         Route::get('/{flock}',               [FlockController::class, 'show']);
         Route::put('/{flock}',               [FlockController::class, 'update']);
         Route::delete('/{flock}',            [FlockController::class, 'destroy']);

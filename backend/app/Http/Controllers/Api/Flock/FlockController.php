@@ -93,7 +93,17 @@ class FlockController extends Controller
             $flock   = $this->showAction->execute($farmId, $flockId);
             $summary = $this->todaySummaryAction->execute($flock, $request->query('date'));
         } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 404);
+            \Illuminate\Support\Facades\Log::error("todaySummary Error: " . $e->getMessage(), [
+                'flockId' => $flockId,
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return response()->json([
+                'message' => 'حدث خطأ في النظام',
+                'debug' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
         }
 
         return response()->json(['data' => $summary]);

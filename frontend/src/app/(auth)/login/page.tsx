@@ -180,13 +180,13 @@ function LoginPageInner() {
       
       <div className="w-full max-w-sm relative z-10">
         {/* ── Card ──────────────────────────────────────────────── */}
-        <div className="rounded-[2rem] border border-white/[0.05] bg-[#14161b] p-5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] dark ring-1 ring-white/[0.01]">
+        <div className="rounded-[2rem] border border-amber-500/20 bg-[#14161b] p-5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] dark ring-1 ring-white/[0.01]">
           {/* ── Brand Section (Compact) ─────────────────────────── */}
           <div className="flex flex-col items-center mb-3">
             {/* Logo */}
             <div className="mb-3">
               <div 
-                className="flex h-24 w-24 items-center justify-center rounded-[2rem] bg-[#1a1c21] shadow-xl shadow-black/40 transform transition-all duration-300 hover:scale-105 active:scale-95 border border-white/[0.08]"
+                className="flex h-24 w-24 items-center justify-center rounded-[2rem] bg-[#1a1c21] shadow-xl shadow-black/40 transform transition-all duration-300 hover:scale-105 active:scale-95 border border-amber-500/30"
               >
                 <img
                   src="/ymd-logo.png?v=7"

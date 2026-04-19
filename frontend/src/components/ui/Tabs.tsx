@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
@@ -11,17 +11,23 @@ interface TabsContextType {
 const TabsContext = React.createContext<TabsContextType | undefined>(undefined)
 
 interface TabsProps {
-  defaultValue: string
+  value?: string
+  defaultValue?: string
   onValueChange?: (value: string) => void
   children: React.ReactNode
   className?: string
 }
 
-export const Tabs = ({ defaultValue, onValueChange, children, className }: TabsProps) => {
-  const [value, setValue] = React.useState(defaultValue)
+export const Tabs = ({ value: controlledValue, defaultValue, onValueChange, children, className }: TabsProps) => {
+  const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue ?? "")
+  
+  const isControlled = controlledValue !== undefined
+  const value = isControlled ? controlledValue : uncontrolledValue
 
   const handleValueChange = (newValue: string) => {
-    setValue(newValue)
+    if (!isControlled) {
+      setUncontrolledValue(newValue)
+    }
     onValueChange?.(newValue)
   }
 

@@ -15,7 +15,7 @@ import type { Farm } from '@/types/farm'
 import type { FarmRole } from '@/types/auth'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { ShieldCheck, Sparkles, Server, Brain, Cpu } from 'lucide-react'
+import { ShieldCheck, Sparkles, Server, Brain, Cpu, User, Lock, Eye, EyeOff, Phone, Mail, Home, MapPin, UserPlus } from 'lucide-react'
 
 // ── Local Utils (Fallback for build issues) ──────────────────────────────────
 function cn(...inputs: ClassValue[]) {
@@ -84,6 +84,9 @@ function LoginPageInner() {
   const [mode, setMode] = useState<AuthMode>('login')
   const [serverError, setServerError] = useState<string | null>(null)
   const [registerSuccess, setRegisterSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showRegPassword, setShowRegPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // ── Login Form ────────────────────────────────────────────────────────────
   const loginForm = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
@@ -233,6 +236,7 @@ function LoginPageInner() {
                 placeholder="أدخل رقم الواتساب أو البريد الإلكتروني"
                 type="text"
                 autoComplete="username"
+                startIcon={<User size={18} />}
                 error={loginForm.formState.errors.login?.message}
                 required
               />
@@ -242,8 +246,18 @@ function LoginPageInner() {
                 id="password"
                 label="كلمة المرور"
                 placeholder="أدخل كلمة المرور"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
+                startIcon={<Lock size={18} />}
+                endIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="p-1 hover:text-emerald-500 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                }
                 error={loginForm.formState.errors.password?.message}
                 required
               />
@@ -280,6 +294,7 @@ function LoginPageInner() {
                 placeholder="أدخل اسمك الكامل"
                 type="text"
                 autoComplete="name"
+                startIcon={<User size={18} />}
                 error={registerForm.formState.errors.name?.message}
                 required
               />
@@ -293,6 +308,7 @@ function LoginPageInner() {
                 dir="ltr"
                 className="text-left"
                 autoComplete="tel"
+                startIcon={<Phone size={18} />}
                 error={registerForm.formState.errors.whatsapp?.message}
                 required
               />
@@ -306,6 +322,7 @@ function LoginPageInner() {
                 dir="ltr"
                 className="text-left"
                 autoComplete="email"
+                startIcon={<Mail size={18} />}
                 error={registerForm.formState.errors.email?.message}
               />
 
@@ -314,8 +331,18 @@ function LoginPageInner() {
                 id="reg-password"
                 label="كلمة المرور"
                 placeholder="8 أحرف على الأقل"
-                type="password"
+                type={showRegPassword ? 'text' : 'password'}
                 autoComplete="new-password"
+                startIcon={<Lock size={18} />}
+                endIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="p-1 hover:text-emerald-500 transition-colors"
+                  >
+                    {showRegPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                }
                 error={registerForm.formState.errors.password?.message}
                 required
               />
@@ -325,8 +352,18 @@ function LoginPageInner() {
                 id="reg-password-confirm"
                 label="تأكيد كلمة المرور"
                 placeholder="أعد إدخال كلمة المرور"
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 autoComplete="new-password"
+                startIcon={<Lock size={18} />}
+                endIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="p-1 hover:text-emerald-500 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                }
                 error={registerForm.formState.errors.password_confirmation?.message}
                 required
               />
@@ -337,6 +374,7 @@ function LoginPageInner() {
                 label="اسم المزرعة"
                 placeholder="اختياري"
                 type="text"
+                startIcon={<Home size={18} />}
                 error={registerForm.formState.errors.farm_name?.message}
               />
 
@@ -346,6 +384,7 @@ function LoginPageInner() {
                 label="الموقع"
                 placeholder="اختياري — المدينة أو المنطقة"
                 type="text"
+                startIcon={<MapPin size={18} />}
                 error={registerForm.formState.errors.location?.message}
               />
 
@@ -357,11 +396,12 @@ function LoginPageInner() {
 
               <Button
                 type="submit"
-                className="w-full !rounded-xl !h-11 !text-sm !font-bold touch-manipulation"
+                className="w-full !rounded-[1rem] !h-11 !text-sm !font-bold touch-manipulation bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-400 hover:from-emerald-500 hover:to-emerald-300 text-white shadow-lg shadow-emerald-900/40 border-t border-white/20 transition-all duration-300 active:scale-[0.98] mt-1 flex items-center justify-center gap-2 group/btn"
                 size="lg"
                 loading={registerForm.formState.isSubmitting}
               >
-                إرسال طلب الاشتراك
+                {!registerForm.formState.isSubmitting && <UserPlus size={18} className="text-emerald-100 group-hover/btn:scale-110 transition-transform" />}
+                {registerForm.formState.isSubmitting ? 'جاري الإرسال...' : 'إرسال طلب الاشتراك'}
               </Button>
 
               <p className="text-center text-[10px] text-slate-400 leading-relaxed">

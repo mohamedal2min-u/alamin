@@ -256,11 +256,12 @@ function LoginPageInner() {
 
               <Button
                 type="submit"
-                className="w-full !rounded-[1rem] !h-11 !text-sm !font-bold touch-manipulation bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-900/40 border-t border-white/20 transition-all duration-200 active:scale-[0.98] mt-1"
+                className="w-full !rounded-[1rem] !h-11 !text-sm !font-bold touch-manipulation bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-900/40 border-t border-white/20 transition-all duration-200 active:scale-[0.98] mt-1 flex items-center justify-center gap-2"
                 size="lg"
                 loading={loginForm.formState.isSubmitting}
               >
-                دخول للنظام
+                {!loginForm.formState.isSubmitting && <ShieldCheck size={18} className="text-emerald-200" />}
+                {loginForm.formState.isSubmitting ? 'جاري الدخول...' : 'دخول للنظام'}
               </Button>
             </form>
           )}

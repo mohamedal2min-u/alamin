@@ -228,16 +228,22 @@ body {
   }
 }
 
-/* ── Login Page Sparkle / Twinkle ─────────────────────────────── */
+/* ── Login Page Premium Shine Effects ─────────────────────────── */
 
-@keyframes twinkle {
-  0%, 100% { opacity: 0; transform: scale(0.2) rotate(30deg); }
-  40%, 60% { opacity: 1; transform: scale(1) rotate(30deg); }
+@keyframes border-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 @keyframes logo-glow-pulse {
-  0%, 100% { opacity: 0.18; transform: scale(1); }
-  50%       { opacity: 0.35; transform: scale(1.08); }
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(1.1); }
+}
+
+@keyframes icon-ring-pulse {
+  0%   { transform: scale(1);   opacity: 0.5; }
+  70%  { transform: scale(1.7); opacity: 0; }
+  100% { transform: scale(1.7); opacity: 0; }
 }
 
 /* ── Custom Animations ─────────────────────────────────────────── */

@@ -182,33 +182,43 @@ function LoginPageInner() {
           <div className="flex flex-col items-center mb-4">
             {/* Logo */}
             <div className="mb-4 relative flex items-center justify-center">
-              {/* Breathing ambient glow */}
+              {/* Breathing ambient glow behind */}
               <div
-                className="absolute inset-0 rounded-[2.5rem] bg-emerald-500/20 blur-2xl pointer-events-none"
+                className="absolute inset-[-8px] rounded-[2.8rem] bg-emerald-500/20 blur-2xl pointer-events-none"
                 style={{ animation: 'logo-glow-pulse 3s ease-in-out infinite' }}
               />
-              {/* Sparkle stars around logo */}
-              <span className="absolute -top-3 left-4 text-emerald-300 pointer-events-none select-none" style={{ fontSize: 14, animation: 'twinkle 2.8s ease-in-out 0.0s infinite' }}>✦</span>
-              <span className="absolute -top-1 -right-3 text-yellow-200 pointer-events-none select-none" style={{ fontSize: 10, animation: 'twinkle 2.8s ease-in-out 0.7s infinite' }}>✦</span>
-              <span className="absolute top-6 -right-4 text-white pointer-events-none select-none"       style={{ fontSize: 7,  animation: 'twinkle 2.8s ease-in-out 1.4s infinite' }}>✧</span>
-              <span className="absolute -bottom-3 right-5 text-emerald-200 pointer-events-none select-none" style={{ fontSize: 12, animation: 'twinkle 2.8s ease-in-out 2.1s infinite' }}>✦</span>
-              <span className="absolute -bottom-2 -left-3 text-white/70 pointer-events-none select-none" style={{ fontSize: 8,  animation: 'twinkle 2.8s ease-in-out 0.4s infinite' }}>✦</span>
-              <span className="absolute top-8  -left-4 text-emerald-400 pointer-events-none select-none" style={{ fontSize: 6,  animation: 'twinkle 2.8s ease-in-out 1.8s infinite' }}>✧</span>
 
-              <div
-                className="relative flex h-28 w-28 items-center justify-center rounded-[2.25rem] overflow-hidden transform transition-all duration-300 hover:scale-105 active:scale-95"
-                style={{
-                  background: 'linear-gradient(145deg, #1e2129 0%, #12141a 100%)',
-                  boxShadow: '0 0 0 1px rgba(16,185,129,0.28), 0 0 30px rgba(16,185,129,0.16), 0 20px 50px rgba(0,0,0,0.8)',
-                }}
-              >
-                {/* Inner glass top-highlight */}
-                <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.09] to-transparent pointer-events-none rounded-t-[2.25rem]" />
-                <img
-                  src="/ymd-logo.png?v=7"
-                  alt="YMD"
-                  className="h-24 w-24 object-contain relative z-10"
-                />
+              {/* Spinning gradient border container */}
+              <div className="relative h-28 w-28">
+                {/* The spinning conic gradient — creates the "laser ring" border */}
+                <div className="absolute inset-[-2px] rounded-[2.4rem] overflow-hidden pointer-events-none">
+                  <div
+                    className="absolute animate-spin"
+                    style={{
+                      inset: '-75%',
+                      background: 'conic-gradient(from 0deg, transparent 0deg, transparent 120deg, rgba(16,185,129,0.95) 150deg, rgba(255,255,255,0.85) 165deg, rgba(16,185,129,0.95) 180deg, transparent 210deg, transparent 360deg)',
+                      animationDuration: '4s',
+                      animationTimingFunction: 'linear',
+                    }}
+                  />
+                </div>
+
+                {/* Logo box on top */}
+                <div
+                  className="relative flex h-full w-full items-center justify-center rounded-[2.25rem] overflow-hidden transform transition-all duration-300 hover:scale-105 active:scale-95"
+                  style={{
+                    background: 'linear-gradient(145deg, #1e2129 0%, #12141a 100%)',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.9)',
+                  }}
+                >
+                  {/* Glass top highlight */}
+                  <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.08] to-transparent pointer-events-none rounded-t-[2.25rem]" />
+                  <img
+                    src="/ymd-logo.png?v=7"
+                    alt="YMD"
+                    className="h-24 w-24 object-contain relative z-10"
+                  />
+                </div>
               </div>
             </div>
 
@@ -426,14 +436,18 @@ function LoginPageInner() {
           <div className="mt-5 pt-4 border-t border-white/[0.04] flex items-center justify-between px-2">
             {/* Shield */}
             <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
-              <div className="relative">
-                <span className="absolute -top-2 -right-1 text-emerald-300 pointer-events-none select-none" style={{ fontSize: 8, animation: 'twinkle 2.4s ease-in-out 0.0s infinite' }}>✦</span>
-                <span className="absolute -bottom-1 -left-2 text-white/50 pointer-events-none select-none" style={{ fontSize: 6, animation: 'twinkle 2.4s ease-in-out 1.2s infinite' }}>✧</span>
+              <div className="relative flex items-center justify-center">
+                {/* Pulsing ring */}
                 <div
-                  className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 transition-all duration-300 group-hover:scale-110 group-hover:bg-emerald-500/20"
-                  style={{ boxShadow: '0 0 18px rgba(16,185,129,0.22), inset 0 1px 0 rgba(255,255,255,0.06)' }}
+                  className="absolute inset-0 rounded-xl bg-emerald-500/30"
+                  style={{ animation: 'icon-ring-pulse 2.5s ease-out 0.0s infinite' }}
+                />
+                <div
+                  className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 transition-all duration-300 group-hover:scale-110 group-hover:bg-emerald-500/20"
+                  style={{ boxShadow: '0 0 20px rgba(16,185,129,0.28), inset 0 1px 0 rgba(255,255,255,0.07)' }}
                 >
-                  <ShieldCheck className="h-5 w-5" strokeWidth={1.75} />
+                  <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.07] to-transparent rounded-t-xl pointer-events-none" />
+                  <ShieldCheck className="h-5 w-5 relative z-10" strokeWidth={1.75} />
                 </div>
               </div>
               <span className="text-[10px] font-bold text-slate-400 group-hover:text-emerald-400 transition-colors">حماية فائقة</span>
@@ -441,14 +455,17 @@ function LoginPageInner() {
 
             {/* CPU */}
             <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
-              <div className="relative">
-                <span className="absolute -top-2 left-0 text-blue-300 pointer-events-none select-none" style={{ fontSize: 8, animation: 'twinkle 2.4s ease-in-out 0.8s infinite' }}>✦</span>
-                <span className="absolute -bottom-1 -right-2 text-white/50 pointer-events-none select-none" style={{ fontSize: 6, animation: 'twinkle 2.4s ease-in-out 2.0s infinite' }}>✧</span>
+              <div className="relative flex items-center justify-center">
                 <div
-                  className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/30 transition-all duration-300 group-hover:scale-110 group-hover:bg-blue-500/20"
-                  style={{ boxShadow: '0 0 18px rgba(59,130,246,0.22), inset 0 1px 0 rgba(255,255,255,0.06)' }}
+                  className="absolute inset-0 rounded-xl bg-blue-500/30"
+                  style={{ animation: 'icon-ring-pulse 2.5s ease-out 0.8s infinite' }}
+                />
+                <div
+                  className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/40 transition-all duration-300 group-hover:scale-110 group-hover:bg-blue-500/20"
+                  style={{ boxShadow: '0 0 20px rgba(59,130,246,0.28), inset 0 1px 0 rgba(255,255,255,0.07)' }}
                 >
-                  <Cpu className="h-5 w-5" strokeWidth={1.75} />
+                  <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.07] to-transparent rounded-t-xl pointer-events-none" />
+                  <Cpu className="h-5 w-5 relative z-10" strokeWidth={1.75} />
                 </div>
               </div>
               <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-400 transition-colors">تحليل ذكي</span>
@@ -456,14 +473,17 @@ function LoginPageInner() {
 
             {/* Server */}
             <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
-              <div className="relative">
-                <span className="absolute -top-2 -right-1 text-cyan-300 pointer-events-none select-none" style={{ fontSize: 8, animation: 'twinkle 2.4s ease-in-out 1.6s infinite' }}>✦</span>
-                <span className="absolute -bottom-1 -left-2 text-white/50 pointer-events-none select-none" style={{ fontSize: 6, animation: 'twinkle 2.4s ease-in-out 0.4s infinite' }}>✧</span>
+              <div className="relative flex items-center justify-center">
                 <div
-                  className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 transition-all duration-300 group-hover:scale-110 group-hover:bg-cyan-500/20"
-                  style={{ boxShadow: '0 0 18px rgba(6,182,212,0.22), inset 0 1px 0 rgba(255,255,255,0.06)' }}
+                  className="absolute inset-0 rounded-xl bg-cyan-500/30"
+                  style={{ animation: 'icon-ring-pulse 2.5s ease-out 1.6s infinite' }}
+                />
+                <div
+                  className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/40 transition-all duration-300 group-hover:scale-110 group-hover:bg-cyan-500/20"
+                  style={{ boxShadow: '0 0 20px rgba(6,182,212,0.28), inset 0 1px 0 rgba(255,255,255,0.07)' }}
                 >
-                  <Server className="h-5 w-5" strokeWidth={1.75} />
+                  <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.07] to-transparent rounded-t-xl pointer-events-none" />
+                  <Server className="h-5 w-5 relative z-10" strokeWidth={1.75} />
                 </div>
               </div>
               <span className="text-[10px] font-bold text-slate-400 group-hover:text-cyan-400 transition-colors">مزامنة سحابية</span>

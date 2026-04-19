@@ -12,7 +12,7 @@ const HOST = '82.29.181.61'
 const PASS = 'a550055A!'
 
 const BACKEND_CMDS = [
-  'cd /home/alamin-api/app && git pull origin main',
+  'cd /home/alamin-api/app && git fetch origin && git reset --hard origin/main',
   'cd /home/alamin-api/app/backend && php artisan config:cache',
   'cd /home/alamin-api/app/backend && php artisan route:cache',
   'cd /home/alamin-api/app/backend && php artisan migrate --force',
@@ -20,7 +20,7 @@ const BACKEND_CMDS = [
 ]
 
 const FRONTEND_CMDS = [
-  'cd /home/maa/app && git pull origin main',
+  'cd /home/maa/app && git fetch origin && git reset --hard origin/main',
   'cd /home/maa/app/frontend && npm install --production=false',
   'cd /home/maa/app/frontend && npm run build',
   'pm2 restart alamin-frontend',

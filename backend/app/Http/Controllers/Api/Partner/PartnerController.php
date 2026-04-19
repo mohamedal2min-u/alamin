@@ -20,6 +20,27 @@ use Spatie\Permission\PermissionRegistrar;
 class PartnerController extends Controller
 {
     /**
+     * Returns the current authenticated user's own partner record for this farm.
+     * Used by the partner to load their wallet without needing to know their partner_id.
+     */
+    public function myInfo(Request $request): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+        $userId = $request->user()->id;
+
+        $partner = Partner::where('farm_id', $farmId)
+            ->where('user_id', $userId)
+            ->with(['shares' => fn ($q) => $q->where('is_active', true)])
+            ->first();
+
+        if (!$partner) {
+            return response()->json(['message' => 'لا يوجد سجل شريك لهذا الحساب في هذه المزرعة'], 404);
+        }
+
+        return (new PartnerResource($partner))->response();
+    }
+
+    /**
      * Display a listing of partners for the current farm.
      */
     public function index(Request $request): AnonymousResourceCollection

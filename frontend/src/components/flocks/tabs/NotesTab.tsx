@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -16,7 +16,7 @@ import type { FlockStatus } from '@/types/flock'
 const NOTE_TYPES: { value: NoteType; label: string; className: string }[] = [
   { value: 'general',     label: 'عامة',    className: 'bg-slate-100 text-slate-700' },
   { value: 'instruction', label: 'تعليمات', className: 'bg-blue-100 text-blue-700' },
-  { value: 'operational', label: 'تشغيلية', className: 'bg-emerald-100 text-emerald-700' },
+  { value: 'operational', label: 'تشغيلية', className: 'bg-primary-100 text-primary-700' },
   { value: 'alert',       label: 'تنبيه',   className: 'bg-red-100 text-red-700' },
 ]
 
@@ -237,3 +237,4 @@ function NoteRow({ note }: { note: FlockNote }) {
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -32,6 +32,12 @@ const createFlockSchema = z.object({
     .optional()
     .or(z.literal(''))
     .or(z.null()),
+  chick_paid_amount: z
+    .number({ invalid_type_error: 'يجب إدخال رقم' })
+    .min(0, 'المبلغ المدفوع لا يمكن أن يكون أقل من الصفر')
+    .optional()
+    .or(z.literal(''))
+    .or(z.null()),
   notes: z.string().max(1000, 'الملاحظات طويلة جداً').optional().or(z.literal('')),
 })
 type CreateFlockForm = z.infer<typeof createFlockSchema>
@@ -52,6 +58,7 @@ export default function CreateFlockPage() {
       start_date: new Date().toISOString().split('T')[0],
       initial_count: 0,
       chick_unit_price: '',
+      chick_paid_amount: '',
     },
   })
 
@@ -67,6 +74,7 @@ export default function CreateFlockPage() {
         start_date: data.start_date,
         initial_count: data.initial_count,
         chick_unit_price: data.chick_unit_price ? Number(data.chick_unit_price) : null,
+        chick_paid_amount: data.chick_paid_amount ? Number(data.chick_paid_amount) : 0,
         notes: data.notes || undefined,
       })
       router.push(`/flocks/${result.data.id}`)
@@ -143,7 +151,22 @@ export default function CreateFlockPage() {
                 placeholder="مثال: 0.50"
                 error={errors.chick_unit_price?.message}
               />
+
+              <Input
+                {...register('chick_paid_amount', { valueAsNumber: true })}
+                id="chick_paid_amount"
+                label="المبلغ المدفوع حالياً ($)"
+                type="number"
+                step="0.01"
+                min={0}
+                placeholder="مثال: 1000"
+                error={errors.chick_paid_amount?.message}
+              />
             </div>
+
+            <p className="text-[11px] text-red-500 font-medium">
+              إذا تم ترك المبلغ المدفوع فارغاً أو أقل من الإجمالي، سيتم اعتبار الباقي ديناً في كشف الحساب.
+            </p>
 
             {totalInvestment > 0 && (
               <div className="rounded-xl bg-primary-50/50 border border-primary-100 p-4 dark:bg-primary-900/10 dark:border-primary-800/40">
@@ -198,3 +221,4 @@ export default function CreateFlockPage() {
     </div>
   )
 }
+

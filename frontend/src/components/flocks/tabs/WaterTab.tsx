@@ -272,7 +272,7 @@ function WaterLogRow({ log }: { log: WaterLog }) {
   const displayUnit = log.unit_label ?? 'صهريج'
 
   const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
-    paid:    { label: 'مدفوع',     color: 'bg-green-100 text-green-700' },
+    paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
     partial: { label: 'جزئي',      color: 'bg-amber-100 text-amber-700' },
     unpaid:  { label: 'دين',       color: 'bg-red-100 text-red-700' },
   }
@@ -310,4 +310,5 @@ function WaterLogRow({ log }: { log: WaterLog }) {
     </div>
   )
 }
+
 

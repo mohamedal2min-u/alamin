@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect } from 'react'
 import { useThemeStore } from '@/stores/theme.store'
@@ -16,3 +16,4 @@ export function ThemeApplier() {
 
   return null
 }
+

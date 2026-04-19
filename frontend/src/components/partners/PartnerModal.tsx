@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useEffect, useState } from 'react'
 import { Partner } from '@/lib/api/partners'
@@ -166,7 +166,7 @@ export const PartnerModal = ({ isOpen, onClose, onSave, initialData, hasActiveFl
                 )}
               </div>
               <div className="relative">
-                <Percent className={`absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${hasActiveFlock ? 'text-slate-200' : 'text-emerald-400'}`} />
+                <Percent className={`absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${hasActiveFlock ? 'text-slate-200' : 'text-primary-400'}`} />
                 <Input
                   type="number"
                   step="0.01"
@@ -243,3 +243,4 @@ export const PartnerModal = ({ isOpen, onClose, onSave, initialData, hasActiveFl
     </div>
   )
 }
+

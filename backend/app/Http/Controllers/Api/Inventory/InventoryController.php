@@ -359,9 +359,11 @@ class InventoryController extends Controller
 
     public function transactions(Request $request): JsonResponse
     {
-        $farmId = $request->attributes->get('farm_id');
+        $farmId  = $request->attributes->get('farm_id');
+        $flockId = $request->query('flock_id');
 
         $txns = InventoryTransaction::where('farm_id', $farmId)
+            ->when($flockId, fn ($q) => $q->where('flock_id', (int) $flockId))
             ->with([
                 'item:id,name,input_unit,content_unit,unit_value',
                 'flock:id,name',
@@ -370,7 +372,7 @@ class InventoryController extends Controller
             ])
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')
-            ->limit(200)
+            ->limit(500)
             ->get();
 
         return response()->json([

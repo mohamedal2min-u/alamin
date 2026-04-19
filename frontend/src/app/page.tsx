@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -31,7 +31,8 @@ export default function RootPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white dark:bg-slate-900">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" />
     </div>
   )
 }
+

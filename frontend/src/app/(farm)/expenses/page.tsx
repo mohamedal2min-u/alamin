@@ -1,14 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Receipt, AlertCircle, Plus, X } from 'lucide-react'
+import { Receipt, AlertCircle, Plus, X, ClipboardList } from 'lucide-react'
+import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { expensesApi, type ExpenseItem, type ExpenseCategory } from '@/lib/api/expenses'
+import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
+import { useIsReadOnly } from '@/lib/roles'
 import { formatDate, formatNumber } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -24,6 +27,10 @@ const schema = z.object({
     (v) => Number(v),
     z.number({ invalid_type_error: 'المبلغ يجب أن يكون رقماً' }).min(0.01, 'المبلغ يجب أن يكون أكبر من صفر')
   ),
+  paid_amount: z.preprocess(
+    (v) => v === '' || v === undefined || v === null ? undefined : Number(v),
+    z.number().min(0).optional()
+  ),
   payment_status: z.enum(['paid', 'partial', 'unpaid']).default('paid'),
   description:  z.string().max(255).optional().or(z.literal('')),
   notes:        z.string().max(5000).optional().or(z.literal('')),
@@ -31,7 +38,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  paid:    { label: 'مدفوع',     color: 'bg-green-100 text-green-700' },
+  paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
   partial: { label: 'جزئي',      color: 'bg-amber-100 text-amber-700' },
   unpaid:  { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
 }
@@ -40,12 +47,22 @@ const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
 export default function ExpensesPage() {
   const { currentFarm } = useFarmStore()
   const queryClient = useQueryClient()
+  const isReadOnly = useIsReadOnly()
   const [showForm, setShowForm] = useState(false)
 
-  const { data, isLoading: loading, isError } = useQuery({
-    queryKey: ['expenses', currentFarm?.id],
-    queryFn: () => expensesApi.list(),
+  // Always fetch flocks to get the reliable active flock ID
+  const { data: flocksData } = useQuery({
+    queryKey: ['flocks', currentFarm?.id],
+    queryFn: () => flocksApi.list().then((r) => r.data),
     enabled: !!currentFarm,
+    staleTime: 60_000,
+  })
+  const activeFlockId = flocksData?.find((f) => f.status === 'active')?.id
+
+  const { data, isLoading: loading, isError } = useQuery({
+    queryKey: ['expenses', currentFarm?.id, activeFlockId],
+    queryFn: () => expensesApi.list(activeFlockId),
+    enabled: !!currentFarm && activeFlockId !== undefined,
     staleTime: 30_000,
   })
 
@@ -66,6 +83,7 @@ export default function ExpensesPage() {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -74,6 +92,13 @@ export default function ExpensesPage() {
       payment_status: 'paid',
     },
   })
+
+  const paymentStatus = watch('payment_status')
+  const totalAmountVal = watch('total_amount')
+  const paidAmountVal  = watch('paid_amount')
+  const showPaidHint   =
+    paymentStatus === 'unpaid' ||
+    (paymentStatus === 'partial' && (!paidAmountVal || paidAmountVal <= 0 || paidAmountVal !== Number(totalAmountVal)))
 
   const handleCancel = () => {
     reset({ entry_date: new Date().toISOString().split('T')[0], payment_status: 'paid' })
@@ -84,16 +109,18 @@ export default function ExpensesPage() {
     try {
       await expensesApi.create({
         expense_category_id: data.expense_category_id,
+        flock_id:            activeFlockId ?? undefined,
         entry_date:          data.entry_date,
         quantity:            1,
         total_amount:        data.total_amount,
+        paid_amount:         data.payment_status === 'partial' ? (data.paid_amount ?? 0) : undefined,
         payment_status:      data.payment_status,
         description:         data.description || undefined,
         notes:               data.notes || undefined,
       })
       toast.success('تم تسجيل المصروف بنجاح')
       handleCancel()
-      queryClient.invalidateQueries({ queryKey: ['expenses', currentFarm?.id] })
+      queryClient.invalidateQueries({ queryKey: ['expenses', currentFarm?.id, activeFlockId] })
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } }
       toast.error(axiosErr?.response?.data?.message ?? 'حدث خطأ غير متوقع')
@@ -112,7 +139,7 @@ export default function ExpensesPage() {
           </div>
         ) : <span />}
 
-        {!showForm && (
+        {!showForm && !isReadOnly && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="me-1.5 h-4 w-4" />
             إضافة مصروف
@@ -121,7 +148,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Inline creation form */}
-      {showForm && (
+      {showForm && !isReadOnly && (
         <form
           onSubmit={handleSubmit(onSubmit)}
           className="rounded-2xl border border-primary-200 bg-primary-50/40 p-5 space-y-4"
@@ -166,12 +193,20 @@ export default function ExpensesPage() {
             />
           </div>
 
+          {(paymentStatus === 'partial' || paymentStatus === 'unpaid') && (
+            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+              {paymentStatus === 'partial'
+                ? 'أدخل القيمة الإجمالية للمصروف في "المبلغ الكامل"، ثم أدخل ما تم دفعه فعلياً في "المبلغ المدفوع".'
+                : 'أدخل القيمة الإجمالية للمصروف — سيُسجَّل كذمة كاملة حتى يتم تسديدها لاحقاً.'}
+            </p>
+          )}
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* Amount */}
             <Input
               {...register('total_amount')}
               id="exp_total_amount"
-              label="المبلغ (USD)"
+              label={paymentStatus === 'partial' ? 'المبلغ الكامل (USD)' : 'المبلغ (USD)'}
               type="number"
               step="0.01"
               min="0.01"
@@ -189,10 +224,35 @@ export default function ExpensesPage() {
               >
                 <option value="paid">مدفوع بالكامل</option>
                 <option value="partial">مدفوع جزئياً</option>
-                <option value="debt">دين</option>
+                <option value="unpaid">غير مدفوع (ذمم)</option>
               </select>
             </div>
           </div>
+
+          {/* Paid amount — only when partial */}
+          {paymentStatus === 'partial' && (
+            <Input
+              {...register('paid_amount')}
+              id="exp_paid_amount"
+              label="المبلغ المدفوع (USD)"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              error={errors.paid_amount?.message}
+            />
+          )}
+
+          {/* Review queue hint — shown for unpaid, or partial with amount != total */}
+          {showPaidHint && (
+            <p className="flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+              <ClipboardList className="h-3.5 w-3.5 shrink-0" />
+              سيُضاف هذا المصروف تلقائياً إلى{' '}
+              <Link href="/accounting?tab=review" className="underline font-semibold hover:text-amber-900">
+                قائمة الذمم والمراجعة
+              </Link>
+            </p>
+          )}
 
           {/* Description */}
           <Input
@@ -222,8 +282,17 @@ export default function ExpensesPage() {
       {/* Loading skeleton */}
       {loading && <div className="h-64 animate-pulse rounded-2xl bg-slate-200/60" />}
 
+      {/* No active flock */}
+      {!loading && !activeFlockId && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
+          <Receipt className="mb-4 h-12 w-12 text-slate-300" />
+          <h3 className="text-base font-bold text-slate-700">لا يوجد فوج نشط</h3>
+          <p className="mt-1 text-sm text-slate-500 font-medium">تظهر المصروفات فقط عند وجود فوج نشط</p>
+        </div>
+      )}
+
       {/* Empty state */}
-      {!loading && !error && expenses.length === 0 && (
+      {!loading && !error && !!activeFlockId && expenses.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
           <Receipt className="mb-4 h-12 w-12 text-slate-300" />
           <h3 className="text-base font-bold text-slate-700">لا توجد مصروفات مسجّلة</h3>
@@ -274,3 +343,4 @@ export default function ExpensesPage() {
     </div>
   )
 }
+

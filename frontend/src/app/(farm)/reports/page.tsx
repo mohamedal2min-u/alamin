@@ -1,8 +1,9 @@
-'use client'
+﻿'use client'
 
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/lib/api/reports'
+import { useFarmStore } from '@/stores/farm.store'
 import { KpiSection } from '@/components/reports/KpiSection'
 import { FiltersBar } from '@/components/reports/FiltersBar'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
@@ -13,26 +14,26 @@ import { PartnersReportTab } from '@/components/reports/tabs/PartnersReportTab'
 import { WorkersReportTab } from '@/components/reports/tabs/WorkersReportTab'
 import { DailyReportTab } from '@/components/reports/tabs/DailyReportTab'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Loader2, Package, Users, CalendarDays, UserCheck, Printer, Download } from 'lucide-react'
+import { Loader2, Package, Users, CalendarDays, UserCheck } from 'lucide-react'
 
 export default function ReportsPage() {
+  const { activeFlock } = useFarmStore()
   const [activeTab, setActiveTab] = useState('flock')
   const [filters, setFilters] = useState<any>({
-    flock_id: '',
+    flock_id: activeFlock?.id?.toString() || '',
     start_date: '',
     end_date: '',
     query: ''
   })
 
-  // 1. Fetch Summary KPIs
+  // 1. Fetch Summary KPIs (parallel with flock report)
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
     queryKey: ['reports', 'summary-kpis'],
     queryFn: () => reportsApi.getSummaryKpis(),
     staleTime: 30_000,
   })
 
-  // Auto-select active flock if available
+  // Fallback: if store had no cached flock, use summaryData once it loads
   React.useEffect(() => {
     if (summaryData?.active_flock_id && !filters.flock_id) {
       setFilters((prev: any) => ({ ...prev, flock_id: summaryData.active_flock_id!.toString() }))
@@ -93,37 +94,14 @@ export default function ReportsPage() {
       {/* Main Reports Area */}
       <div className="reports-container">
         <Tabs defaultValue="flock" onValueChange={setActiveTab}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
-            <TabsList className="bg-slate-50 border border-slate-100 p-1 rounded-xl">
-              <TabsTrigger value="flock">تقرير الفوج</TabsTrigger>
-              <TabsTrigger value="accounting">المحاسبة</TabsTrigger>
-              <TabsTrigger value="inventory">المخزون</TabsTrigger>
-              <TabsTrigger value="partners">الشركاء</TabsTrigger>
-              <TabsTrigger value="workers">العمال</TabsTrigger>
-              <TabsTrigger value="daily">اليومي</TabsTrigger>
-            </TabsList>
-
-            <div className="flex items-center gap-2 px-1">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1 md:flex-none h-10 gap-2 text-xs font-bold border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-all active:scale-95"
-                onClick={() => window.print()}
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-500" /> 
-                <span>طباعة الصفحة</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1 md:flex-none h-10 gap-2 text-xs font-bold border-slate-200 bg-white shadow-sm opacity-60 cursor-not-allowed"
-                disabled
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" /> 
-                <span>تصدير PDF</span>
-              </Button>
-            </div>
-          </div>
+          <TabsList>
+            <TabsTrigger value="flock">تقرير الفوج</TabsTrigger>
+            <TabsTrigger value="accounting">المحاسبة</TabsTrigger>
+            <TabsTrigger value="inventory">المخزون</TabsTrigger>
+            <TabsTrigger value="partners">الشركاء</TabsTrigger>
+            <TabsTrigger value="workers">العمال</TabsTrigger>
+            <TabsTrigger value="daily">اليومي</TabsTrigger>
+          </TabsList>
 
           <div className="mt-5 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/60 min-h-[400px]" style={{ boxShadow: 'var(--shadow-card)' }}>
             {/* 1. Flock Report Tab */}
@@ -161,7 +139,7 @@ export default function ReportsPage() {
 
       {/* Print Specific Footer */}
       <div className="hidden print:block mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400">
-        تم استخراج هذا التقرير آلياً من نظام «الياسين» بتاريخ {new Date().toLocaleDateString('ar-EG')}
+        تم استخراج هذا التقرير آلياً من نظام «YMD» بتاريخ {new Date().toLocaleDateString('ar-EG')}
       </div>
     </div>
   )
@@ -178,3 +156,5 @@ function PlaceholderView({ icon: Icon, title, description }: { icon: any, title:
     </div>
   )
 }
+
+

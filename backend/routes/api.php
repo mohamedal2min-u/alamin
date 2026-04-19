@@ -45,7 +45,11 @@ Route::middleware(['auth:sanctum', 'super_admin'])->prefix('admin')->group(funct
     Route::put('farms/{farm}/admin',       [AdminFarmController::class, 'assignAdmin']);
     Route::post('farms/{farm}/manager',    [AdminFarmController::class, 'createManager']);
     Route::delete('farms/{farm}',          [AdminFarmController::class, 'destroy']);
+    Route::get('farms/{farm}/members',              [AdminFarmController::class, 'farmMembers']);
+    Route::put('farms/{farm}/members/{user}/role',  [AdminFarmController::class, 'assignMemberRole']);
     Route::get('users',                    [AdminFarmController::class, 'users']);
+    Route::put('users/{user}/password',    [AdminFarmController::class, 'resetUserPassword']);
+    Route::put('users/{user}/status',      [AdminFarmController::class, 'toggleUserStatus']);
     Route::get('registration-requests',         [AdminRegistrationRequestController::class, 'index']);
     Route::post('registration-requests/{registrationRequest}/approve', [AdminRegistrationRequestController::class, 'approve']);
     Route::post('registration-requests/{registrationRequest}/reject',  [AdminRegistrationRequestController::class, 'reject']);
@@ -134,6 +138,7 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     });
 
     // ── V1-J: Partners Management ─────────────────────────────────────────────
+    Route::get('partners/my-info', [\App\Http\Controllers\Api\Partner\PartnerController::class, 'myInfo']);
     Route::apiResource('partners', \App\Http\Controllers\Api\Partner\PartnerController::class);
     Route::get('partners/{partner}/transactions', [\App\Http\Controllers\Api\Partner\PartnerTransactionController::class, 'index']);
     Route::post('partners/{partner}/transactions', [\App\Http\Controllers\Api\Partner\PartnerTransactionController::class, 'store']);

@@ -25,7 +25,13 @@ class FlockResource extends JsonResource
         $totalBirdsSold = (int) ($this->sale_items_sum_birds_count ?? 0);
 
         $totalSales    = (float) ($this->sales_sum_net_amount ?? 0);
-        $totalExpenses = (float) ($this->expenses_sum_total_amount ?? 0);
+        $opExpenses    = (float) ($this->expenses_sum_total_amount ?? 0);
+        $chickCost     = (float) ($this->total_chick_cost ?? 0);
+        $inventoryCost = (float) ($this->inventory_consumption_sum ?? 0);
+        $waterCost     = (float) ($this->water_logs_sum_total_amount ?? 0);
+
+        // $opExpenses already includes "شراء كتاكيت" expense — do NOT add $chickCost to avoid double-counting
+        $totalExpenses = $opExpenses + $inventoryCost + $waterCost;
 
         return [
             'id'               => $this->id,
@@ -36,7 +42,7 @@ class FlockResource extends JsonResource
             'end_date'         => $this->close_date?->toDateString(),
             'initial_count'    => $this->initial_count,
             'chick_unit_price' => (float) $this->chick_unit_price,
-            'total_chick_cost' => (float) $this->total_chick_cost,
+            'total_chick_cost' => $chickCost,
             'current_age_days' => $agedays,
             'total_mortality'  => $totalMortality,
             'remaining_count'  => $this->initial_count - $totalMortality - $totalBirdsSold,

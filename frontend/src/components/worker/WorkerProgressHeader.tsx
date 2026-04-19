@@ -103,7 +103,7 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role
             label="المصروفات اليومية"
             equation={`${summary?.expenses?.entries?.length ?? 0} حركة`}
             value={summary?.expenses?.total ?? 0}
-            color="orange"
+            color="green"
             icon={<Receipt className="h-5 w-5" />}
             isLoading={isLoading}
             onClick={() => onStatClick('expense')}
@@ -129,7 +129,7 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
   equation: string 
   value: number
   unit?: string
-  color: 'red' | 'amber' | 'indigo' | 'green' | 'orange'
+  color: 'red' | 'amber' | 'indigo' | 'green'
   icon: React.ReactNode 
   isLoading?: boolean
   onClick: () => void 
@@ -154,17 +154,12 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
       text: 'text-indigo-600',
     },
     green: {
-      bg: 'bg-gradient-to-br from-emerald-50 to-white',
-      border: 'border-emerald-200/50',
-      iconBg: 'bg-emerald-100 text-emerald-500',
-      text: 'text-emerald-700',
+      bg: 'bg-gradient-to-br from-primary-50 to-white',
+      border: 'border-primary-200/50',
+      iconBg: 'bg-primary-100 text-primary-500',
+      text: 'text-primary-700',
     },
-    orange: {
-      bg: 'bg-gradient-to-br from-orange-50 to-white',
-      border: 'border-orange-200/50',
-      iconBg: 'bg-orange-100 text-orange-500',
-      text: 'text-orange-600',
-    }
+
   }
 
   const t = themes[color]
@@ -209,3 +204,4 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
     </button>
   )
 }
+

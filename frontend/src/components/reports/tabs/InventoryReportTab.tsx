@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
@@ -79,3 +79,4 @@ export const InventoryReportTab = ({ data, isLoading }: InventoryReportTabProps)
     </div>
   )
 }
+

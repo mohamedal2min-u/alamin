@@ -29,6 +29,11 @@ export const partnersApi = {
         return data.data
     },
 
+    getMyInfo: async (): Promise<Partner> => {
+        const { data } = await apiClient.get<{ data: Partner }>('/partners/my-info')
+        return data.data
+    },
+
     create: async (data: Partial<Partner & { share_percent?: number, password?: string }>) => {
         const { data: response } = await apiClient.post<{ data: Partner }>('/partners', data)
         return response.data

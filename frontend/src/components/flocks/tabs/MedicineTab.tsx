@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -267,7 +267,7 @@ function MedicineLogRow({ log }: { log: MedicineLog }) {
       <div className="shrink-0 pt-0.5">
         {log.inventory_linked ? (
           <span title="تم خصم المخزون">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <CheckCircle2 className="h-4 w-4 text-primary-500" />
           </span>
         ) : (
           <span className="text-xs text-slate-300">—</span>
@@ -276,3 +276,4 @@ function MedicineLogRow({ log }: { log: MedicineLog }) {
     </div>
   )
 }
+

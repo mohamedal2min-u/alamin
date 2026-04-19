@@ -16,7 +16,7 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
   farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting'],
 
   worker:  ['/dashboard', '/worker'],
-  partner: ['/flocks', '/reports'],
+  partner: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/my-wallet'],
 }
 
 // ── Route access guard ────────────────────────────────────────────────────────
@@ -52,9 +52,14 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
   }
 
   if (role === 'partner') {
+    if (pathname === '/dashboard') return true
     if (pathname === '/flocks') return true
     if (pathname.startsWith('/flocks/') && pathname !== '/flocks/new') return true
+    if (pathname === '/inventory') return true
+    if (pathname === '/sales') return true
+    if (pathname === '/expenses') return true
     if (pathname === '/reports' || pathname.startsWith('/reports/')) return true
+    if (pathname === '/my-wallet') return true
     return false
   }
 
@@ -70,7 +75,6 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
  */
 export function getDefaultRoute(role: FarmRole | null): string {
   if (role === 'super_admin') return '/admin/farms'
-  if (role === 'worker' || role === 'farm_admin') return '/dashboard'
   return '/dashboard'
 }
 

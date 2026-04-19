@@ -63,10 +63,10 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'relative flex-1 py-3 text-sm font-medium transition-all duration-300 rounded-xl',
+        'flex-1 rounded-xl py-2.5 px-4 text-xs font-semibold transition-all duration-200',
         active
-          ? 'bg-emerald-600 text-white shadow-md'
-          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-emerald-50 dark:hover:bg-slate-700'
+          ? 'bg-[#1a1c21] text-white shadow-[0_2px_10px_rgba(0,0,0,0.5)] ring-1 ring-white/10'
+          : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'
       )}
     >
       {children}
@@ -101,6 +101,7 @@ function LoginPageInner() {
           status: f.status,
           role: f.role,
           is_primary: f.is_primary,
+          partner_id: f.partner_id,
         }))
         setFarms(farms)
 
@@ -167,44 +168,49 @@ function LoginPageInner() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-white dark:bg-slate-900 px-5 py-8" dir="rtl">
-      <div className="w-full max-w-sm">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[#0b1224] px-5 py-8 relative overflow-hidden" dir="rtl">
+      {/* ── Background Branding Glow (Minimalist) ───────────────── */}
+      <div 
+        className="absolute inset-x-0 -top-40 h-[100dvh] pointer-events-none opacity-10"
+        style={{ background: 'radial-gradient(circle at 50% 0%, #ea580c 0%, transparent 60%)' }}
+      />
+      
+      <div className="w-full max-w-sm relative z-10">
         {/* ── Card ──────────────────────────────────────────────── */}
-        <div className="rounded-[1.75rem] border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800 p-5 shadow-sm shadow-slate-200/40">
+        <div className="rounded-[2.25rem] border border-white/[0.05] bg-[#14161b] p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] dark ring-1 ring-white/[0.01]">
           {/* ── Brand Section (Now inside card) ─────────────────── */}
-          <div className="flex flex-col items-center mb-5">
+          <div className="flex flex-col items-center mb-4">
             {/* Logo */}
             <div className="mb-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-xl shadow-emerald-200/50 transform transition-transform hover:scale-105 active:scale-95">
+              <div 
+                className="flex h-28 w-28 items-center justify-center rounded-[2.25rem] bg-[#1a1c21] shadow-xl shadow-black/40 transform transition-all duration-300 hover:scale-105 active:scale-95 border border-white/[0.08]"
+              >
                 <img
-                  src="/logo.png"
-                  alt="الياسين"
-                  className="h-12 w-12 object-contain brightness-0 invert"
+                  src="/ymd-logo.png?v=7"
+                  alt="YMD"
+                  className="h-24 w-24 object-contain"
                 />
               </div>
             </div>
 
             {/* Brand Name */}
-            <h1 className="text-[1.75rem] font-bold tracking-tight text-emerald-950 dark:text-emerald-100 mb-1 leading-none text-center">
-              الياسين
+            <h1 className="text-[2.25rem] font-bold tracking-tight text-white mb-0.5 leading-none text-center">
+              YMD
             </h1>
 
-            {/* Subtitle with pulsing dot */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50/50 border border-emerald-100/50 rounded-full">
-              <span className="relative flex h-2 w-2 justify-center items-center">
-                <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-600" />
-              </span>
-              <span className="text-[10px] font-bold text-emerald-700 tracking-wide text-center">
-                نظام إدارة مزارع الدواجن الذكي
+            {/* Subtitle Badge (Minimalist) */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black/30 border border-white/[0.06] rounded-full">
+              <span className="flex h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
+              <span className="text-[10px] font-bold text-slate-400 tracking-[0.1em] text-center uppercase">
+                Yasin Modern Digital
               </span>
             </div>
           </div>
 
-          <div className="h-px bg-slate-100/60 dark:bg-slate-700/60 mb-5" />
+          <div className="h-px bg-white/[0.04] mb-5" />
 
-          {/* Tabs */}
-          <div className="mb-4 flex gap-1 rounded-2xl bg-slate-100/80 dark:bg-slate-700/50 p-1">
+          {/* Tabs - Apple Style (Matte) */}
+          <div className="mb-5 flex gap-1 rounded-xl bg-black/60 p-1 border border-white/[0.04]">
             <TabButton active={mode === 'login'} onClick={() => switchMode('login')}>
               تسجيل الدخول
             </TabButton>
@@ -217,7 +223,7 @@ function LoginPageInner() {
           {mode === 'login' && (
             <form
               onSubmit={loginForm.handleSubmit(onLogin)}
-              className="space-y-3.5"
+              className="space-y-3"
               noValidate
             >
               <Input
@@ -250,11 +256,11 @@ function LoginPageInner() {
 
               <Button
                 type="submit"
-                className="w-full !rounded-xl !h-11 !text-sm !font-bold touch-manipulation"
+                className="w-full !rounded-[1.15rem] !h-12 !text-sm !font-bold touch-manipulation bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white shadow-lg shadow-orange-900/40 border-t border-white/20 transition-all duration-200 active:scale-[0.98]"
                 size="lg"
                 loading={loginForm.formState.isSubmitting}
               >
-                دخول
+                دخول للنظام
               </Button>
             </form>
           )}
@@ -366,9 +372,9 @@ function LoginPageInner() {
           {/* ── Register Success ────────────────────────────── */}
           {mode === 'register' && registerSuccess && (
             <div className="py-8 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 border border-emerald-100">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-50 border border-primary-100">
                 <svg
-                  className="h-7 w-7 text-emerald-600"
+                  className="h-7 w-7 text-primary-600"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={2.5}
@@ -398,38 +404,34 @@ function LoginPageInner() {
           )}
 
           {/* ── Trust Badges ───────────────────────────────────── */}
-          <div className="mt-5 pt-4 border-t border-slate-100/60 dark:border-slate-700/60 flex items-center justify-between px-2">
-            <div className="flex flex-col items-center gap-2 flex-1 relative">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-100/50 shadow-sm shadow-emerald-100/20">
-                <ShieldCheck className="h-[20px] w-[20px]" strokeWidth={2} />
+          <div className="mt-5 pt-4 border-t border-white/[0.04] flex items-center justify-between px-2">
+            <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all duration-300 border border-orange-500/20 group-hover:scale-110 group-hover:bg-orange-500/20 group-hover:shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+                <ShieldCheck className="h-5 w-5" strokeWidth={2} />
               </div>
-              <span className="text-[9px] font-bold text-slate-500">حماية فائقة</span>
+              <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors">حماية فائقة</span>
             </div>
 
-            <div className="flex flex-col items-center gap-2 flex-1 relative">
-              {/* Subtle divider */}
-              <div className="absolute top-3 -right-2 h-5 w-px bg-slate-200/60" />
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-100/50 shadow-sm shadow-emerald-100/20">
-                <Cpu className="h-[20px] w-[20px]" strokeWidth={2} />
+            <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 border border-blue-500/20 group-hover:scale-110 group-hover:bg-blue-500/20 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                <Cpu className="h-5 w-5" strokeWidth={2} />
               </div>
-              <span className="text-[9px] font-bold text-slate-500">تحليل ذكي</span>
+              <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors">تحليل ذكي</span>
             </div>
 
-            <div className="flex flex-col items-center gap-2 flex-1 relative">
-              {/* Subtle divider */}
-              <div className="absolute top-3 -right-2 h-5 w-px bg-slate-200/60" />
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-100/50 shadow-sm shadow-emerald-100/20">
-                <Server className="h-[20px] w-[20px]" strokeWidth={2} />
+            <div className="flex flex-col items-center gap-2 flex-1 relative group cursor-default">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)] transition-all duration-300 border border-cyan-500/20 group-hover:scale-110 group-hover:bg-cyan-500/20 group-hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                <Server className="h-5 w-5" strokeWidth={2} />
               </div>
-              <span className="text-[9px] font-bold text-slate-500">مزامنة سحابية</span>
+              <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors">مزامنة سحابية</span>
             </div>
           </div>
         </div>
 
         {/* ── Footer ─────────────────────────────────────────── */}
-        <div className="mt-5 flex justify-center">
-          <p className="text-[10px] font-medium text-slate-400">
-            © {new Date().getFullYear()} نظام الياسين — جميع الحقوق محفوظة
+        <div className="mt-4 flex justify-center">
+          <p className="text-[9px] font-medium text-slate-500">
+            © {new Date().getFullYear()} YMD System — جميع الحقوق محفوظة
           </p>
         </div>
       </div>
@@ -441,10 +443,12 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="flex min-h-[100dvh] items-center justify-center bg-white">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" />
       </div>
     }>
       <LoginPageInner />
     </Suspense>
   )
 }
+
+

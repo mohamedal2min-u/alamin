@@ -107,7 +107,7 @@ export default function RegistrationRequestsPage() {
                       </span>
                     )}
                     {req.status === 'approved' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         مقبول
                       </span>
@@ -125,7 +125,7 @@ export default function RegistrationRequestsPage() {
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          className="h-8 border-green-600 text-green-700 hover:bg-green-50"
+                          className="h-8 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
                           onClick={() => approveMutation.mutate(req.id)}
                           loading={approveMutation.isPending && approveMutation.variables === req.id}
                           disabled={approveMutation.isPending || rejectMutation.isPending}
@@ -161,3 +161,4 @@ export default function RegistrationRequestsPage() {
     </div>
   )
 }
+

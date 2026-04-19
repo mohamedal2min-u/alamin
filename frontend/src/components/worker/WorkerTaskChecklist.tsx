@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { ChevronLeft, CheckCircle2, Circle } from 'lucide-react'
 import { TodaySummary } from '@/types/dashboard'
@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 
 interface Props {
   summary: TodaySummary
-  onTaskClick: (type: string) => void
+  onTaskClick?: (type: string) => void
 }
 
 export function WorkerTaskChecklist({ summary, onTaskClick }: Props) {
@@ -25,8 +25,8 @@ export function WorkerTaskChecklist({ summary, onTaskClick }: Props) {
 
   return (
     <button 
-      onClick={() => onTaskClick('summary')}
-      className="w-full flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-slate-100 active:scale-[0.98] touch-manipulation focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+      onClick={onTaskClick ? () => onTaskClick('summary') : undefined}
+      className="w-full flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-slate-100 active:scale-[0.98] touch-manipulation focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all"
       dir="rtl"
     >
       <div className="flex items-center gap-3.5">
@@ -37,7 +37,7 @@ export function WorkerTaskChecklist({ summary, onTaskClick }: Props) {
             <circle 
               cx="18" cy="18" r="15" fill="none"
               className={cn(
-                percent === 100 ? "stroke-emerald-500" : "stroke-amber-400"
+                percent === 100 ? "stroke-primary-500" : "stroke-amber-400"
               )}
               strokeWidth="4"
               strokeDasharray={`${percent}, 100`}
@@ -45,23 +45,23 @@ export function WorkerTaskChecklist({ summary, onTaskClick }: Props) {
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[10px] font-black text-emerald-950 tabular-nums">{percent}%</span>
+            <span className="text-[10px] font-black text-primary-950 tabular-nums">{percent}%</span>
           </div>
         </div>
 
         <div className="text-right">
-          <h3 className="text-sm font-black text-emerald-950 leading-tight">حالة المهام اليومية</h3>
+          <h3 className="text-sm font-black text-primary-950 leading-tight">حالة المهام اليومية</h3>
           <div className="flex items-center gap-2 mt-1.5">
             {tasks.map((task) => (
               <div key={task.label} className="flex items-center gap-0.5">
                 {task.done ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary-500" />
                 ) : (
                   <Circle className="h-3.5 w-3.5 text-slate-300" />
                 )}
                 <span className={cn(
                   "text-[9px] font-bold",
-                  task.done ? "text-emerald-600" : "text-slate-400"
+                  task.done ? "text-primary-600" : "text-slate-400"
                 )}>
                   {task.label}
                 </span>
@@ -77,3 +77,4 @@ export function WorkerTaskChecklist({ summary, onTaskClick }: Props) {
     </button>
   )
 }
+

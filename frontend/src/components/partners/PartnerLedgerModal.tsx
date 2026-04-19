@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -21,7 +21,7 @@ interface PartnerLedgerModalProps {
 }
 
 const TRANSACTION_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any; sign: '+' | '-' | '' }> = {
-  deposit:    { label: 'إيداع نقدي',   color: 'text-emerald-600', bgColor: 'bg-emerald-50',  icon: ArrowDownLeft,  sign: '+' },
+  deposit:    { label: 'إيداع نقدي',   color: 'text-primary-600', bgColor: 'bg-primary-50',  icon: ArrowDownLeft,  sign: '+' },
   withdraw:   { label: 'سحب رصيد',     color: 'text-rose-600',    bgColor: 'bg-rose-50',     icon: ArrowUpRight,   sign: '-' },
   profit:     { label: 'أرباح فوج',    color: 'text-sky-600',     bgColor: 'bg-sky-50',      icon: TrendingUp,     sign: '+' },
   loss:       { label: 'خسائر فوج',    color: 'text-orange-600',  bgColor: 'bg-orange-50',   icon: TrendingDown,   sign: '-' },
@@ -174,7 +174,7 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
 
         {/* ─── Success Toast ─── */}
         {successMsg && (
-          <div className="mx-6 mt-4 flex items-center gap-3 bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-3 rounded-xl text-sm font-bold no-print">
+          <div className="mx-6 mt-4 flex items-center gap-3 bg-primary-50 border border-primary-100 text-primary-700 px-4 py-3 rounded-xl text-sm font-bold no-print">
             <CheckCircle className="w-4 h-4 shrink-0" />
             {successMsg}
           </div>
@@ -190,13 +190,13 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
               <div className="grid grid-cols-3 gap-3 no-print">
                 <div className="bg-slate-900 rounded-xl p-4 text-white">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">الرصيد الصافي</p>
-                  <p className={`text-xl sm:text-2xl font-black font-mono ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <p className={`text-xl sm:text-2xl font-black font-mono ${balance >= 0 ? 'text-primary-400' : 'text-rose-400'}`}>
                     ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-xl p-4">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">إجمالي الإيداع</p>
-                  <p className="text-xl font-black text-emerald-600 font-mono">
+                  <p className="text-xl font-black text-primary-600 font-mono">
                     ${totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
@@ -249,7 +249,7 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
                             <p className="text-[11px] text-slate-400 truncate">{t.description || t.transaction_date}</p>
                           </div>
                           <p className={`font-mono font-bold text-sm shrink-0 ${
-                            ['deposit', 'profit'].includes(t.transaction_type) ? 'text-emerald-600' : 'text-rose-600'
+                            ['deposit', 'profit'].includes(t.transaction_type) ? 'text-primary-600' : 'text-rose-600'
                           }`}>
                             {config.sign}{Number(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </p>
@@ -291,7 +291,7 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
                               </td>
                               <td className="px-4 py-3 text-slate-600 text-xs max-w-[200px] truncate">{t.description || '-'}</td>
                               <td className={`px-4 py-3 font-mono font-bold text-left ${
-                                ['deposit', 'profit'].includes(t.transaction_type) ? 'text-emerald-600' : 'text-rose-600'
+                                ['deposit', 'profit'].includes(t.transaction_type) ? 'text-primary-600' : 'text-rose-600'
                               }`}>
                                 {config.sign}{Number(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                               </td>
@@ -326,7 +326,7 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
                         onClick={() => setFormData({ ...formData, transaction_type: opt.value as any })}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                           isSelected 
-                            ? opt.color === 'emerald' ? 'border-emerald-500 bg-emerald-50'
+                            ? opt.color === 'emerald' ? 'border-primary-500 bg-primary-50'
                             : opt.color === 'rose' ? 'border-rose-500 bg-rose-50'
                             : 'border-slate-500 bg-slate-50'
                             : 'border-slate-100 bg-white hover:border-slate-200'
@@ -334,7 +334,7 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
                       >
                         <Icon className={`w-5 h-5 ${
                           isSelected
-                            ? opt.color === 'emerald' ? 'text-emerald-600'
+                            ? opt.color === 'emerald' ? 'text-primary-600'
                             : opt.color === 'rose' ? 'text-rose-600'
                             : 'text-slate-600'
                             : 'text-slate-300'
@@ -422,3 +422,4 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
     </div>
   )
 }
+

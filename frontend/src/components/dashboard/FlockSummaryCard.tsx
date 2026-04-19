@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { Calendar } from 'lucide-react'
@@ -18,13 +18,13 @@ export function FlockSummaryCard({ currentFlock, mortalityRate }: FlockSummaryCa
       {/* Flock Identity Row */}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50">
             <img src="/logo.png" alt="Logo" className="h-5 w-5 object-contain" />
           </div>
           <div className="min-w-0">
             <Link 
               href={`/flocks/${currentFlock.id}`} 
-              className="block text-sm font-extrabold text-slate-900 transition-colors duration-200 hover:text-emerald-700 truncate"
+              className="block text-sm font-extrabold text-slate-900 transition-colors duration-200 hover:text-primary-700 truncate"
             >
               {currentFlock.name}
             </Link>
@@ -49,7 +49,7 @@ export function FlockSummaryCard({ currentFlock, mortalityRate }: FlockSummaryCa
           label="المتبقي" 
           value={formatNumber(currentFlock.remaining_count)} 
           unit="طير" 
-          valueColor="text-emerald-600" 
+          valueColor="text-primary-600" 
         />
         <MetricCell 
           label="الأولي" 
@@ -86,3 +86,4 @@ function MetricCell({ label, value, unit, valueColor = 'text-slate-900' }: {
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
@@ -75,3 +75,4 @@ export const TabsContent = ({ value, children }: { value: string, children: Reac
 
   return <div className="animate-in fade-in duration-200">{children}</div>
 }
+

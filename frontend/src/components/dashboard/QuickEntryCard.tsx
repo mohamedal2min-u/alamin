@@ -1,4 +1,4 @@
-// frontend/src/components/dashboard/QuickEntryCard.tsx
+﻿// frontend/src/components/dashboard/QuickEntryCard.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -18,7 +18,7 @@ type Tab = 'mortality' | 'feed' | 'medicine' | 'expense'
 const TABS: { key: Tab; label: string; icon: any; color: string; bgColor: string; borderColor: string; shadowColor: string }[] = [
   { key: 'mortality', label: 'نفوق',   icon: HeartPulse, color: 'text-rose-600',    bgColor: 'bg-rose-50',    borderColor: 'border-rose-100', shadowColor: 'shadow-rose-100' },
   { key: 'feed',      label: 'علف',    icon: Utensils,   color: 'text-blue-600',    bgColor: 'bg-blue-50',    borderColor: 'border-blue-100', shadowColor: 'shadow-blue-100' },
-  { key: 'medicine',  label: 'دواء',   icon: Pill,       color: 'text-emerald-600', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-100', shadowColor: 'shadow-emerald-100' },
+  { key: 'medicine',  label: 'دواء',   icon: Pill,       color: 'text-primary-600', bgColor: 'bg-primary-50', borderColor: 'border-primary-100', shadowColor: 'shadow-primary-100' },
   { key: 'expense',   label: 'مصروف',  icon: Receipt,    color: 'text-amber-600',   bgColor: 'bg-amber-50',   borderColor: 'border-amber-100', shadowColor: 'shadow-amber-100' },
 ]
 
@@ -280,7 +280,7 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
                   <div className={cn(
                     'flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-bold border',
                     Number(expPrice) > 0
-                      ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                      ? 'bg-primary-50 border-primary-100 text-primary-700'
                       : 'bg-amber-50 border-amber-100 text-amber-700'
                   )}>
                     {Number(expPrice) > 0
@@ -300,7 +300,7 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
               </div>
             )}
             {success && (
-              <div className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 p-3 text-white text-xs font-bold animate-in zoom-in">
+              <div className="flex items-center justify-center gap-2 rounded-xl bg-primary-500 p-3 text-white text-xs font-bold animate-in zoom-in">
                 <CheckCircle2 className="h-4 w-4" /> تم الحفظ بنجاح
               </div>
             )}
@@ -312,7 +312,7 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
                   "w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all active:scale-95",
                   activeTabData?.key === 'mortality' ? "bg-rose-600 shadow-rose-100 shadow-lg" :
                   activeTabData?.key === 'feed' ? "bg-blue-600 shadow-blue-100 shadow-lg" :
-                  activeTabData?.key === 'medicine' ? "bg-emerald-600 shadow-emerald-100 shadow-lg" :
+                  activeTabData?.key === 'medicine' ? "bg-primary-600 shadow-primary-100 shadow-lg" :
                   "bg-amber-600 shadow-amber-100 shadow-lg",
                   loading && "opacity-50"
                 )}
@@ -351,3 +351,4 @@ function SelectInput({ value, onChange, options, placeholder, emptyMessage }: an
     </select>
   )
 }
+

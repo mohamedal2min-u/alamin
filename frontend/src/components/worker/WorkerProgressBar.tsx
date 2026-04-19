@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 interface WorkerProgressBarProps {
   completed: number
@@ -10,7 +10,7 @@ export function WorkerProgressBar({ completed, total }: WorkerProgressBarProps) 
   
   // Decide color based on percentage
   let colorClass = 'bg-slate-200'
-  if (percentage === 100) colorClass = 'bg-emerald-500'
+  if (percentage === 100) colorClass = 'bg-primary-500'
   else if (percentage > 0) colorClass = 'bg-amber-500'
   
   return (
@@ -28,3 +28,4 @@ export function WorkerProgressBar({ completed, total }: WorkerProgressBarProps) 
     </div>
   )
 }
+

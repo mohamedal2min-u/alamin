@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
@@ -17,7 +17,7 @@ export const DailyReportTab = ({ data, isLoading }: DailyReportTabProps) => {
     { label: 'النفوق', value: data.summary.mortality, icon: Skull, color: 'text-rose-600', bg: 'bg-rose-50' },
     { label: 'استهلاك العلف', value: data.summary.feed, unit: 'كغ', icon: Utensils, color: 'text-amber-600', bg: 'bg-amber-50' },
     { label: 'المصاريف', value: data.summary.expenses, currency: true, icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'المبيعات', value: data.summary.sales, currency: true, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'المبيعات', value: data.summary.sales, currency: true, icon: TrendingUp, color: 'text-primary-600', bg: 'bg-primary-50' },
   ]
 
   return (
@@ -59,7 +59,7 @@ export const DailyReportTab = ({ data, isLoading }: DailyReportTabProps) => {
             <div key={idx} className="relative">
               {/* Dot */}
               <div className={`absolute -right-[1.15rem] top-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
-                event.type === 'sale' ? 'bg-emerald-500' : 'bg-blue-500'
+                event.type === 'sale' ? 'bg-primary-500' : 'bg-blue-500'
               }`}></div>
               
               <div className="flex justify-between items-start gap-4">
@@ -73,7 +73,7 @@ export const DailyReportTab = ({ data, isLoading }: DailyReportTabProps) => {
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">{event.detail}</p>
                 </div>
-                <div className={`text-xs font-black ${event.type === 'sale' ? 'text-emerald-600' : 'text-slate-900'}`}>
+                <div className={`text-xs font-black ${event.type === 'sale' ? 'text-primary-600' : 'text-slate-900'}`}>
                     {event.type === 'sale' ? '+' : ''}{Number(event.amount).toLocaleString()} {data.currency}
                 </div>
               </div>
@@ -97,3 +97,4 @@ export const DailyReportTab = ({ data, isLoading }: DailyReportTabProps) => {
     </div>
   )
 }
+

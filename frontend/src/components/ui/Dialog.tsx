@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -72,3 +72,4 @@ export function Dialog({ isOpen, onClose, title, children, className }: DialogPr
     document.body
   )
 }
+

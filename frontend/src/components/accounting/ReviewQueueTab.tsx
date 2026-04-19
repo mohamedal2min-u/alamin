@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -93,8 +93,8 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
             onClick={() => setFilters((f) => ({ ...f, type: t, page: 1 }))}
             className={`rounded-full px-3 py-1 text-sm font-medium border transition-colors ${
               filters.type === t
-                ? 'bg-emerald-600 text-white border-emerald-600'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400'
+                ? 'bg-primary-600 text-white border-primary-600'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-primary-400'
             }`}
           >
             {t === 'all' ? 'الكل' : t === 'expense' ? 'المصروفات' : 'المبيعات'}
@@ -139,7 +139,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
         </div>
       ) : !data?.data.length ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-          <CheckCircle2 className="mb-3 h-10 w-10 text-emerald-400" />
+          <CheckCircle2 className="mb-3 h-10 w-10 text-primary-400" />
           <p className="text-sm font-medium">لا توجد سجلات تحتاج مراجعة</p>
         </div>
       ) : (
@@ -307,7 +307,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
           {!isEditing && (
             <button
               onClick={onEdit}
-              className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-emerald-400 hover:text-emerald-600 transition-colors"
+              className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-primary-400 hover:text-primary-600 transition-colors"
             >
               تسديد / تعديل
             </button>
@@ -317,3 +317,4 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
     </Card>
   )
 }
+

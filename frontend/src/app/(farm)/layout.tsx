@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
@@ -60,10 +60,12 @@ export default function FarmLayout({ children }: { children: React.ReactNode }) 
     )
   }
 
+  const isUnauthorized = pathname === '/unauthorized'
+
   // ── Layout B: Regular Users (Mobile-First / Bottom Nav) ──────────────────
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-[72px]">
-      <FlockGlobalHeader />
+      {!isUnauthorized && role && <FlockGlobalHeader />}
 
       {/* ─── Main Content ─── */}
       <div className="mx-auto max-w-2xl">
@@ -73,8 +75,13 @@ export default function FarmLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* ─── Navigation Layer ─── */}
-      <BottomNav onMoreClick={() => setIsMoreMenuOpen(true)} />
-      <MoreMenu isOpen={isMoreMenuOpen} onClose={() => setIsMoreMenuOpen(false)} />
+      {!isUnauthorized && role && (
+        <>
+          <BottomNav onMoreClick={() => setIsMoreMenuOpen(true)} />
+          <MoreMenu isOpen={isMoreMenuOpen} onClose={() => setIsMoreMenuOpen(false)} />
+        </>
+      )}
     </div>
   )
 }
+

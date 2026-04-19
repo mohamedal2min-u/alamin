@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -141,3 +141,4 @@ export function EditFlockModal({ flock, isOpen, onClose, onSuccess }: EditFlockM
     </div>
   )
 }
+

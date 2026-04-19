@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -104,7 +104,7 @@ export function UpdatePaymentDialog({ sale, isOpen, onClose, onSuccess }: Props)
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm space-y-1.5">
           <div className="flex justify-between text-slate-600">
             <span>المتبقي بعد التحديث</span>
-            <span className={`tabular-nums font-semibold ${remaining > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+            <span className={`tabular-nums font-semibold ${remaining > 0 ? 'text-red-600' : 'text-primary-700'}`}>
               {formatNumber(Number(remaining.toFixed(2)))}
             </span>
           </div>
@@ -130,3 +130,4 @@ export function UpdatePaymentDialog({ sale, isOpen, onClose, onSuccess }: Props)
     </Dialog>
   )
 }
+

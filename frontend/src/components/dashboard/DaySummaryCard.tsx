@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { ClipboardList, ChevronDown, ChevronUp, Skull, Wheat, Syringe, Calendar, ThermometerSun, User, Clock, Droplets } from 'lucide-react'
@@ -256,3 +256,4 @@ function DetailRow({ left, right, workerName, time }: { left: string; right: str
     </div>
   )
 }
+

@@ -42,13 +42,13 @@ export function Header() {
 
   return (
     <header
-      className="sticky top-0 z-50 w-full flex items-center justify-between border-b border-emerald-800/80 bg-emerald-950 px-4 sm:px-6 backdrop-blur-md"
+      className="sticky top-0 z-50 w-full flex items-center justify-between border-b border-primary-800/80 bg-primary-950 px-4 sm:px-6 backdrop-blur-md"
       style={{ height: 'var(--header-height)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
     >
       {/* Brand & Dynamic Title */}
       <div className="flex items-center gap-3 sm:gap-5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shrink-0 shadow-lg shadow-emerald-950/20 border border-emerald-400/30">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-primary-400 to-primary-600 text-white shrink-0 shadow-lg shadow-primary-950/20 border border-primary-400/30">
             <ChickenLogo className="h-6.5 w-6.5 brightness-0 invert" />
           </div>
           <div className="flex flex-col min-w-0 pr-0.5">
@@ -56,21 +56,21 @@ export function Header() {
               {pageTitle}
             </h1>
             {pageSubtitle && (
-              <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mt-0.5 truncate opacity-90">
+              <span className="text-[9px] font-black text-primary-400 uppercase tracking-widest mt-0.5 truncate opacity-90">
                 {pageSubtitle}
               </span>
             )}
           </div>
         </div>
         
-        <div className="hidden md:block h-5 w-px bg-emerald-800/60" />
+        <div className="hidden md:block h-5 w-px bg-primary-800/60" />
         
         <div className="hidden sm:flex items-center gap-2.5">
           <LiveStatus />
           <button
             onClick={handleGlobalRefresh}
             disabled={isRefreshing}
-            className="group p-2 rounded-xl bg-emerald-900/50 border border-emerald-800/60 text-emerald-400 hover:text-white hover:bg-emerald-900 transition-colors duration-200 active:scale-95 disabled:opacity-50"
+            className="group p-2 rounded-xl bg-primary-900/50 border border-primary-800/60 text-primary-400 hover:text-white hover:bg-primary-900 transition-colors duration-200 active:scale-95 disabled:opacity-50"
             title="تحديث البيانات"
           >
             <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
@@ -81,27 +81,27 @@ export function Header() {
       {/* Actions */}
       <div className="flex items-center gap-2.5 sm:gap-3">
         {/* Farm selector in desktop header */}
-        <div className="hidden lg:block bg-emerald-900/40 rounded-xl p-0.5 border border-emerald-800/60">
+        <div className="hidden lg:block bg-primary-900/40 rounded-xl p-0.5 border border-primary-800/60">
            <FarmSelector />
         </div>
 
-        <div className="hidden sm:block h-5 w-px bg-emerald-800/60" />
+        <div className="hidden sm:block h-5 w-px bg-primary-800/60" />
 
         {/* User menu */}
         <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/settings"
-            className="flex items-center gap-2 rounded-xl bg-emerald-900/40 border border-emerald-800/60 pl-3 pr-1 py-1 transition-colors duration-200 hover:bg-emerald-900/60"
+            className="flex items-center gap-2 rounded-xl bg-primary-900/40 border border-primary-800/60 pl-3 pr-1 py-1 transition-colors duration-200 hover:bg-primary-900/60"
             title="إعدادات الحساب"
           >
-            <div className="h-7 w-7 rounded-lg overflow-hidden bg-emerald-100 flex items-center justify-center text-emerald-900 font-bold text-xs shrink-0">
+            <div className="h-7 w-7 rounded-lg overflow-hidden bg-primary-100 flex items-center justify-center text-primary-900 font-bold text-xs shrink-0">
               <img 
                 src={user?.avatar_url || '/default-avatar.jpg'} 
                 alt="" 
                 className="h-full w-full object-cover" 
               />
             </div>
-            <span className="hidden md:block max-w-[100px] truncate text-xs font-semibold text-emerald-50 leading-none">
+            <span className="hidden md:block max-w-[100px] truncate text-xs font-semibold text-primary-50 leading-none">
               {user?.name}
             </span>
           </Link>
@@ -119,3 +119,4 @@ export function Header() {
     </header>
   )
 }
+

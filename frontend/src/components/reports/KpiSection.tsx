@@ -24,8 +24,8 @@ export const KpiSection = ({ data, isLoading }: KpiSectionProps) => {
 
   const items = [
     { label: 'عدد الأفواج', value: data.total_flocks_count, icon: Layers, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'الفوج النشط', value: data.active_flock_name || 'لا يوجد', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'إجمالي المبيعات', value: data.total_sales, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', isMoney: true },
+    { label: 'الفوج النشط', value: data.active_flock_name || 'لا يوجد', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'إجمالي المبيعات', value: data.total_sales, icon: TrendingUp, color: 'text-primary-600', bg: 'bg-primary-50', isMoney: true },
     { label: 'إجمالي المصاريف', value: data.total_expenses, icon: TrendingDown, color: 'text-rose-600', bg: 'bg-rose-50', isMoney: true },
     { label: 'صافي الربح', value: data.net_profit, icon: DollarSign, color: 'text-teal-600', bg: 'bg-teal-50', isMoney: true },
     { label: 'قيمة المخزون', value: data.inventory_value, icon: Package, color: 'text-sky-600', bg: 'bg-sky-50', isMoney: true },
@@ -54,3 +54,4 @@ export const KpiSection = ({ data, isLoading }: KpiSectionProps) => {
     </div>
   )
 }
+

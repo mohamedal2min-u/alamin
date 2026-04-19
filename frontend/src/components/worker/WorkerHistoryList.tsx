@@ -53,13 +53,13 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
       {/* Section Header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <Activity className="h-3.5 w-3.5 text-emerald-500" />
-          <h3 className="text-[13px] font-black text-emerald-950">سجل آخر 7 أيام</h3>
+          <Activity className="h-3.5 w-3.5 text-primary-500" />
+          <h3 className="text-[13px] font-black text-primary-950">سجل آخر 7 أيام</h3>
         </div>
         {isRefreshing && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100 animate-pulse">
-            <span className="w-1 h-1 rounded-full bg-emerald-500" />
-            <span className="text-[8px] font-bold text-emerald-600">مزامنة</span>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-50 border border-primary-100 animate-pulse">
+            <span className="w-1 h-1 rounded-full bg-primary-500" />
+            <span className="text-[8px] font-bold text-primary-600">مزامنة</span>
           </div>
         )}
       </div>
@@ -68,7 +68,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
       {todayDay && (
         <div 
           onClick={() => setSelectedDay(todayDay)}
-          className="group relative flex items-center bg-gradient-to-br from-emerald-50 to-white border border-emerald-200/60 p-4 rounded-[1.5rem] shadow-sm cursor-pointer active:scale-[0.98] transition-all overflow-hidden"
+          className="group relative flex items-center bg-gradient-to-br from-primary-50 to-white border border-primary-200/60 p-4 rounded-[1.5rem] shadow-sm cursor-pointer active:scale-[0.98] transition-all overflow-hidden"
         >
           {/* Subtle decoration */}
           <div className="absolute -left-4 -top-4 opacity-5">
@@ -79,10 +79,10 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
             {/* Left: Progress Ring */}
             <div className="relative h-12 w-12 shrink-0">
               <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="16" fill="none" className="stroke-emerald-100" strokeWidth="4" />
+                <circle cx="18" cy="18" r="16" fill="none" className="stroke-primary-100" strokeWidth="4" />
                 <circle 
                   cx="18" cy="18" r="16" fill="none" 
-                  className={todayDay.stats.completion_rate === 100 ? "stroke-emerald-500" : "stroke-amber-400"}
+                  className={todayDay.stats.completion_rate === 100 ? "stroke-primary-500" : "stroke-amber-400"}
                   strokeWidth="4" 
                   strokeDasharray={`${todayDay.stats.completion_rate}, 100`}
                   strokeLinecap="round"
@@ -99,14 +99,14 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
               <TodayStat icon={<Wheat />} value={todayDay.stats.feed} color="amber" label="علف" />
               <TodayStat icon={<Pill />} value={todayDay.stats.medicine_count} color="indigo" label="أدوية" />
               {role === 'manager' && (
-                <TodayStat icon={<Receipt />} value={todayDay.stats.expense_count ?? 0} color="orange" label="مصروف" />
+                <TodayStat icon={<Receipt />} value={todayDay.stats.expense_count ?? 0} color="emerald" label="مصروف" />
               )}
             </div>
 
             {/* Right: Title & Live Badge */}
             <div className="flex flex-col items-end gap-1.5 shrink-0">
-              <h4 className="text-[13px] font-black text-emerald-950">ملخص اليوم</h4>
-              <div className="flex items-center gap-1.5 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black shadow-sm">
+              <h4 className="text-[13px] font-black text-primary-950">ملخص اليوم</h4>
+              <div className="flex items-center gap-1.5 bg-primary-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black shadow-sm">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
@@ -125,12 +125,12 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
             <div 
               key={day.date}
               onClick={() => setSelectedDay(day)}
-              className="flex items-center justify-between border bg-white border-emerald-50 p-3.5 rounded-[1.25rem] cursor-pointer active:scale-[0.98] transition-all hover:border-emerald-100"
+              className="flex items-center justify-between border bg-white border-primary-50 p-3.5 rounded-[1.25rem] cursor-pointer active:scale-[0.98] transition-all hover:border-primary-100"
             >
               {/* Left: Info */}
               <div className="flex flex-col gap-1.5 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-emerald-950">
+                  <span className="text-xs font-black text-primary-950">
                     {day.age_label}
                   </span>
                   <div className="h-1 w-1 rounded-full bg-slate-300" />
@@ -141,7 +141,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
                   <StatMini icon={<Wheat />} value={day.stats.feed} color="amber" />
                   <StatMini icon={<Pill />} value={day.stats.medicine_count} color="indigo" />
                   {role === 'manager' && (
-                    <StatMini icon={<Receipt />} value={day.stats.expense_count ?? 0} color="orange" />
+                    <StatMini icon={<Receipt />} value={day.stats.expense_count ?? 0} color="emerald" />
                   )}
                 </div>
               </div>
@@ -152,7 +152,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
                   <circle cx="18" cy="18" r="15" fill="none" className="stroke-slate-100" strokeWidth="3" />
                   <circle 
                     cx="18" cy="18" r="15" fill="none" 
-                    className={day.stats.completion_rate === 100 ? "stroke-emerald-500" : "stroke-amber-400"}
+                    className={day.stats.completion_rate === 100 ? "stroke-primary-500" : "stroke-amber-400"}
                     strokeWidth="3" 
                     strokeDasharray={`${day.stats.completion_rate}, 100`}
                     strokeLinecap="round"
@@ -201,12 +201,12 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
   )
 }
 
-function TodayStat({ icon, value, color, label }: { icon: any; value: any; color: 'red' | 'amber' | 'indigo' | 'orange'; label: string }) {
+function TodayStat({ icon, value, color, label }: { icon: any; value: any; color: 'red' | 'amber' | 'indigo' | 'emerald'; label: string }) {
   const colors = {
     red: "text-red-600 bg-red-100/50",
     amber: "text-amber-600 bg-amber-100/50",
     indigo: "text-indigo-600 bg-indigo-100/50",
-    orange: "text-orange-600 bg-orange-100/50",
+    emerald: "text-emerald-600 bg-emerald-100/50",
   }
   return (
     <div className="flex flex-col items-center gap-1">
@@ -221,12 +221,12 @@ function TodayStat({ icon, value, color, label }: { icon: any; value: any; color
   )
 }
 
-function StatMini({ icon, value, color }: { icon: any; value: any; color: 'red' | 'amber' | 'indigo' | 'orange' }) {
+function StatMini({ icon, value, color }: { icon: any; value: any; color: 'red' | 'amber' | 'indigo' | 'emerald' }) {
   const colors = {
     red: "text-red-500 bg-red-50",
     amber: "text-amber-500 bg-amber-50",
     indigo: "text-indigo-500 bg-indigo-50",
-    orange: "text-orange-500 bg-orange-50",
+    emerald: "text-emerald-500 bg-emerald-50",
   }
   return (
     <div className="flex items-center gap-1">
@@ -237,3 +237,4 @@ function StatMini({ icon, value, color }: { icon: any; value: any; color: 'red' 
     </div>
   )
 }
+

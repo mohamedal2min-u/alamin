@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useFarmStore } from '@/stores/farm.store'
 import { useAuthStore } from '@/stores/auth.store'
@@ -21,6 +21,7 @@ export function FarmSelector() {
         status: f.status,
         role: f.role,
         is_primary: f.is_primary,
+        partner_id: f.partner_id,
       }))
 
   if (!currentFarm) return null
@@ -74,3 +75,4 @@ export function FarmSelector() {
     </div>
   )
 }
+

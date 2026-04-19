@@ -1,4 +1,4 @@
-// frontend/src/components/dashboard/OperationalInfoCard.tsx
+﻿// frontend/src/components/dashboard/OperationalInfoCard.tsx
 'use client'
 
 import { ThermometerSun, Wheat, Moon, Bookmark } from 'lucide-react'
@@ -101,3 +101,4 @@ function GuidelineItem({
     </div>
   )
 }
+

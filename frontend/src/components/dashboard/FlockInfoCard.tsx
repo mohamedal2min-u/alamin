@@ -22,13 +22,13 @@ export function FlockInfoCard({ flock }: Props) {
       {/* Header row - Name and Status */}
       <div className="flex items-center justify-between px-5 py-4 bg-slate-50/50">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-600">
             <Bird className="h-6 w-6" />
           </div>
           <div>
             <Link
               href={`/flocks/${flock.id}`}
-              className="text-lg font-extrabold text-slate-900 hover:text-emerald-700 transition-colors"
+              className="text-lg font-extrabold text-slate-900 hover:text-primary-700 transition-colors"
             >
               {flock.name}
             </Link>
@@ -46,13 +46,13 @@ export function FlockInfoCard({ flock }: Props) {
         <StatCell 
           label="العمر الحالي" 
           value={flock.current_age_days !== null ? `${flock.current_age_days} يوم` : '—'} 
-          icon={<Activity className="h-4 w-4 text-orange-500" />}
+          icon={<Activity className="h-4 w-4 text-emerald-500" />}
           bg="bg-white"
         />
         <StatCell 
           label="العدد المتبقي" 
           value={formatNumber(flock.remaining_count)} 
-          icon={<Users className="h-4 w-4 text-emerald-600" />}
+          icon={<Users className="h-4 w-4 text-primary-600" />}
           bg="bg-white"
           highlight
         />
@@ -82,12 +82,13 @@ export function FlockInfoCard({ flock }: Props) {
 
 function StatCell({ label, value, icon, bg, highlight }: { label: string; value: string; icon: React.ReactNode; bg: string; highlight?: boolean }) {
   return (
-    <div className={`flex flex-col items-center justify-center p-5 text-center ${bg} ${highlight ? 'ring-1 ring-inset ring-emerald-50 bg-emerald-50/30' : ''}`}>
+    <div className={`flex flex-col items-center justify-center p-5 text-center ${bg} ${highlight ? 'ring-1 ring-inset ring-primary-50 bg-primary-50/30' : ''}`}>
       <div className="flex items-center gap-2 mb-1">
         {icon}
         <span className="text-xs font-bold text-slate-500">{label}</span>
       </div>
-      <span className={`text-2xl font-black tabular-nums ${highlight ? 'text-emerald-700' : 'text-slate-900'}`}>{value}</span>
+      <span className={`text-2xl font-black tabular-nums ${highlight ? 'text-primary-700' : 'text-slate-900'}`}>{value}</span>
     </div>
   )
 }
+

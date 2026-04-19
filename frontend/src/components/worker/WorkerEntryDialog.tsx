@@ -1,6 +1,7 @@
-'use client'
+﻿'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { 
   AlertCircle, Skull, 
   Wheat, Syringe, ThermometerSun, Receipt
@@ -75,6 +76,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
     : 0
 
   useEffect(() => {
+    setError(null)
     if (activeTab === 'feed') inventoryApi.items('feed').then((res) => setFeedItems(res.data))
     if (activeTab === 'medicine') inventoryApi.items('medicine').then((res) => setMedItems(res.data))
     if (activeTab === 'temp' && initialExtra?.time) setTempTime(initialExtra.time as 'morning' | 'afternoon' | 'evening')
@@ -167,11 +169,11 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
       shadow: 'shadow-amber-500/20'
     },
     medicine: { 
-      text: 'text-emerald-600', 
-      bg: 'bg-emerald-600', 
-      border: 'focus:border-emerald-500', 
-      ring: 'focus:ring-emerald-500/10',
-      shadow: 'shadow-emerald-500/20'
+      text: 'text-primary-600', 
+      bg: 'bg-primary-600', 
+      border: 'focus:border-primary-500', 
+      ring: 'focus:ring-primary-500/10',
+      shadow: 'shadow-primary-500/20'
     },
     temp: { 
       text: 'text-indigo-600', 
@@ -191,8 +193,8 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
 
   const currentTheme = activeTab ? themes[activeTab] : themes.medicine
   const dynamicInputClass = cn(
-    'w-full rounded-[1.25rem] border border-emerald-100 bg-white px-4 py-3.5 text-sm font-bold text-emerald-950',
-    'transition-all duration-300 placeholder:text-emerald-300',
+    'w-full rounded-[1.25rem] border border-primary-100 bg-white px-4 py-3.5 text-sm font-bold text-primary-950',
+    'transition-all duration-300 placeholder:text-primary-300',
     'focus:outline-none focus:ring-4 shadow-sm',
     currentTheme.border,
     currentTheme.ring
@@ -236,8 +238,8 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
                       </FormField>
                     </div>
                     {(Number(feedBags) > 0 || Number(feedExtraKg) > 0) && (
-                      <div className="flex items-center gap-2 rounded-2xl bg-emerald-50/50 px-4 py-3 text-[11px] font-bold text-emerald-700 border border-emerald-100/50">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <div className="flex items-center gap-2 rounded-2xl bg-primary-50/50 px-4 py-3 text-[11px] font-bold text-primary-700 border border-primary-100/50">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
                         الإجمالي: {(Number(feedBags) * item.unit_value + Number(feedExtraKg)).toFixed(2)} كجم
                       </div>
                     )}
@@ -276,7 +278,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
                       "py-3 rounded-[1.25rem] text-xs font-bold border transition-all duration-300", 
                       tempTime === t.id 
                         ? cn(currentTheme.bg, "border-transparent text-white shadow-lg", currentTheme.shadow) 
-                        : "bg-white border-emerald-50 text-emerald-600/70 hover:border-emerald-100"
+                        : "bg-white border-primary-50 text-primary-600/70 hover:border-primary-100"
                     )}
                   >
                     {t.label}
@@ -333,22 +335,18 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
               </FormField>
             </div>
 
-            <p className="text-[10px] font-bold text-red-600 px-1 -mt-2">
-              إذا تم ترك السعر فارغاً، سوف يتم إضافة المصروف إلى الذمم والمراجعة
-            </p>
-
             {/* Calculated total or debt warning */}
             {(Number(expQty) > 0) && (
               <div className={cn(
                 'flex items-center gap-3 rounded-[1.25rem] px-4 py-3 text-[11px] font-bold border',
                 Number(expPrice) > 0
-                  ? 'bg-emerald-50/50 border-emerald-100/50 text-emerald-700'
+                  ? 'bg-primary-50/50 border-primary-100/50 text-primary-700'
                   : 'bg-amber-50/50 border-amber-100/50 text-amber-700',
               )}>
-                <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', Number(expPrice) > 0 ? 'bg-emerald-500' : 'bg-amber-500')} />
+                <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', Number(expPrice) > 0 ? 'bg-primary-500' : 'bg-amber-500')} />
                 {Number(expPrice) > 0
                   ? `الإجمالي: ${(Number(expQty) * Number(expPrice)).toFixed(2)} $`
-                  : 'بدون سعر — سيتم التسجيل كـ ذمم ومراجعته لاحقاً'}
+                  : <>بدون سعر — سيُضاف إلى{' '}<Link href="/accounting?tab=review" className="underline hover:opacity-80">الذمم والمراجعة</Link></>}
               </div>
             )}
 
@@ -385,7 +383,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
 function FormField({ label, children, required }: any) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[11px] font-extrabold text-emerald-700/70 uppercase tracking-wider px-1">{label} {required && <span className="text-rose-400">*</span>}</label>
+      <label className="text-[11px] font-extrabold text-primary-700/70 uppercase tracking-wider px-1">{label} {required && <span className="text-rose-400">*</span>}</label>
       {children}
     </div>
   )
@@ -396,7 +394,7 @@ function NumericInput({ value, onChange, placeholder, min, step, className }: an
 }
 
 function SelectInput({ value, onChange, options, placeholder, emptyMessage, className }: any) {
-  if (options.length === 0) return <div className="rounded-[1.25rem] border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-4 text-[10px] font-bold text-emerald-500 italic text-center uppercase tracking-tight">{emptyMessage}</div>
+  if (options.length === 0) return <div className="rounded-[1.25rem] border border-dashed border-primary-200 bg-primary-50/50 px-4 py-4 text-[10px] font-bold text-primary-500 italic text-center uppercase tracking-tight">{emptyMessage}</div>
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={className}>
       <option value="">{placeholder}</option>
@@ -404,3 +402,4 @@ function SelectInput({ value, onChange, options, placeholder, emptyMessage, clas
     </select>
   )
 }
+

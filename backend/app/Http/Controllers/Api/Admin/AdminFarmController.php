@@ -290,6 +290,114 @@ class AdminFarmController extends Controller
         return response()->json(['data' => $users], 200);
     }
 
+    // ── GET /api/admin/farms/{farm}/members ───────────────────────────────────
+
+    public function farmMembers(Request $request, Farm $farm): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $teamKey = config('permission.column_names.team_foreign_key', 'team_id');
+        $rolePriority = ['farm_admin' => 3, 'partner' => 2, 'worker' => 1];
+
+        $rolesMap = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where("model_has_roles.{$teamKey}", $farm->id)
+            ->select('model_has_roles.model_id as user_id', 'roles.name as role_name')
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn ($roles) => $roles->sortByDesc(fn ($r) => $rolePriority[$r->role_name] ?? 0)->first()->role_name);
+
+        $members = FarmUser::where('farm_id', $farm->id)
+            ->with('user:id,name,email,whatsapp,status')
+            ->get()
+            ->map(fn ($fu) => [
+                'id'       => $fu->user->id,
+                'name'     => $fu->user->name,
+                'email'    => $fu->user->email,
+                'whatsapp' => $fu->user->whatsapp,
+                'status'   => $fu->user->status,
+                'role'     => $rolesMap->get($fu->user_id),
+            ]);
+
+        return response()->json(['data' => $members], 200);
+    }
+
+    // ── PUT /api/admin/farms/{farm}/members/{user}/role ───────────────────────
+
+    public function assignMemberRole(Request $request, Farm $farm, User $user): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $data = $request->validate([
+            'role' => 'required|in:farm_admin,partner,worker',
+        ], [
+            'role.required' => 'يجب اختيار الدور',
+            'role.in'       => 'الدور غير صالح',
+        ]);
+
+        /** @var PermissionRegistrar $registrar */
+        $registrar = app(PermissionRegistrar::class);
+        $registrar->setPermissionsTeamId($farm->id);
+
+        // Remove all existing farm roles for this user in this farm
+        foreach (['farm_admin', 'partner', 'worker'] as $r) {
+            if ($user->hasRole($r)) {
+                $user->removeRole($r);
+            }
+        }
+
+        $user->assignRole($data['role']);
+        $registrar->setPermissionsTeamId(null);
+
+        // Ensure membership exists
+        FarmUser::firstOrCreate(
+            ['farm_id' => $farm->id, 'user_id' => $user->id],
+            ['status' => 'active', 'is_primary' => false, 'joined_at' => now(),
+             'created_by' => $request->user()->id, 'updated_by' => $request->user()->id]
+        );
+
+        return response()->json([
+            'message' => 'تم تعيين الدور بنجاح',
+            'data'    => ['id' => $user->id, 'role' => $data['role']],
+        ], 200);
+    }
+
+    // ── PUT /api/admin/users/{user}/password ──────────────────────────────────
+
+    public function resetUserPassword(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $data = $request->validate([
+            'password' => 'required|string|min:8',
+        ], [
+            'password.required' => 'كلمة المرور مطلوبة',
+            'password.min'      => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+        ]);
+
+        $user->update(['password' => Hash::make($data['password'])]);
+
+        return response()->json(['message' => 'تم تغيير كلمة المرور بنجاح'], 200);
+    }
+
+    // ── PUT /api/admin/users/{user}/status ────────────────────────────────────
+
+    public function toggleUserStatus(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $data = $request->validate([
+            'status' => 'required|in:active,suspended',
+        ]);
+
+        $user->update(['status' => $data['status']]);
+
+        return response()->json([
+            'message' => $data['status'] === 'suspended' ? 'تم توقيف الحساب' : 'تم تفعيل الحساب',
+            'data'    => ['id' => $user->id, 'status' => $user->status],
+        ], 200);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function authorizeSuperAdmin(Request $request): void

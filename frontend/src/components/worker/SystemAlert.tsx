@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { AlertTriangle } from 'lucide-react'
 
@@ -23,3 +23,4 @@ export function SystemAlert({ message }: Props) {
     </div>
   )
 }
+

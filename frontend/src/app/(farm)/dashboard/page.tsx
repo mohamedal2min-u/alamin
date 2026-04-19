@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { AlertCircle, Zap, Bird, Calendar } from 'lucide-react'
@@ -6,22 +6,26 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
+import { useIsReadOnly } from '@/lib/roles'
 import { WorkerProgressHeader } from '@/components/worker/WorkerProgressHeader'
 import { WorkerGuidelinesCard } from '@/components/worker/WorkerGuidelinesCard'
 import { WorkerTaskChecklist } from '@/components/worker/WorkerTaskChecklist'
 import { WorkerHistoryList } from '@/components/worker/WorkerHistoryList'
 import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
+import { DayEntriesModal, type DayEntryType } from '@/components/dashboard/DayEntriesModal'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
 export default function DashboardPage() {
   const { currentFarm, activeFlock: cachedFlock, setActiveFlock } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
+  const isReadOnly = useIsReadOnly()
   const [activating, setActivating] = useState(false)
   const [activateError, setActivateError] = useState<string | null>(null)
 
   const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | null>(null)
   const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
+  const [detailType, setDetailType] = useState<DayEntryType | null>(null)
 
   const getTodayISO = () => {
     const now = new Date()
@@ -124,15 +128,12 @@ export default function DashboardPage() {
   }
 
   const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining' | 'expense') => {
-    if (type === 'remaining') {
-      handleTaskClick('temp')
-      return
+    if (type === 'remaining') return
+    if (isReadOnly) {
+      setDetailType(type as DayEntryType)
+    } else {
+      setActiveEntryTab(type as 'mortality' | 'feed' | 'medicine' | 'expense')
     }
-    if (type === 'expense') {
-      handleTaskClick('expense')
-      return
-    }
-    handleTaskClick(type as any)
   }
 
   return (
@@ -177,7 +178,7 @@ export default function DashboardPage() {
       {!loadingFlocks && currentFlock ? (
         <>
           {/* Draft Activation */}
-          {draftFlock && (
+          {draftFlock && !isReadOnly && (
             <div className="rounded-2xl bg-amber-50/80 border border-amber-100 p-5">
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm">
@@ -207,7 +208,7 @@ export default function DashboardPage() {
               {/* Date Selector */}
               <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400">
                     <Calendar className="h-5 w-5" />
                   </div>
                   <div>
@@ -224,7 +225,7 @@ export default function DashboardPage() {
                 {viewDate !== getTodayISO() && (
                   <button 
                     onClick={() => setViewDate(getTodayISO())}
-                    className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
+                    className="text-[10px] font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-500/10 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
                   >
                     العودة لليوم
                   </button>
@@ -248,28 +249,40 @@ export default function DashboardPage() {
               />
 
               {/* Task Status */}
-              <WorkerTaskChecklist 
-                summary={summary ?? emptyTodaySummary()} 
-                onTaskClick={(type) => handleTaskClick(type as any)}
+              <WorkerTaskChecklist
+                summary={summary ?? emptyTodaySummary()}
+                onTaskClick={isReadOnly ? undefined : (type) => handleTaskClick(type as any)}
               />
 
               {/* History */}
-              <WorkerHistoryList 
-                history={history?.data ?? []} 
+              <WorkerHistoryList
+                history={history?.data ?? []}
                 isLoading={loadingHistory}
                 isRefreshing={refetchingHistory}
-                role="manager"
+                role={isReadOnly ? 'worker' : 'manager'}
               />
-              
-              {/* Entry Dialog */}
-              <WorkerEntryDialog 
-                flockId={currentFlock.id}
-                activeTab={activeEntryTab}
-                initialExtra={entryExtra}
-                entryDate={viewDate}
-                onClose={() => setActiveEntryTab(null)}
-                onSuccess={handleEntrySuccess}
-              />
+
+              {/* Entry Dialog - hidden for read-only partners */}
+              {!isReadOnly && (
+                <WorkerEntryDialog
+                  flockId={currentFlock.id}
+                  activeTab={activeEntryTab}
+                  initialExtra={entryExtra}
+                  entryDate={viewDate}
+                  onClose={() => setActiveEntryTab(null)}
+                  onSuccess={handleEntrySuccess}
+                />
+              )}
+
+              {/* Day Entries Detail Modal - shown when clicking stat cards */}
+              {summary && (
+                <DayEntriesModal
+                  type={detailType}
+                  date={viewDate}
+                  summary={summary}
+                  onClose={() => setDetailType(null)}
+                />
+              )}
             </div>
           )}
         </>
@@ -305,3 +318,4 @@ function emptyTodaySummary(): TodaySummary {
     temperatures: { entries: [] },
   }
 }
+

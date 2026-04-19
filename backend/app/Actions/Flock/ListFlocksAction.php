@@ -17,6 +17,10 @@ class ListFlocksAction
         return Flock::where('farm_id', $farmId)
             ->withSum('mortalities', 'quantity')
             ->withSum('expenses', 'total_amount')
+            ->withSum('waterLogs', 'total_amount')
+            ->withSum(['inventoryTransactions as inventory_consumption_sum' => function ($query) {
+                $query->where('direction', 'out')->where('transaction_type', 'consumption');
+            }], 'total_amount')
             ->withSum('sales', 'net_amount')
             ->withSum('saleItems', 'birds_count')
             ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'draft' THEN 1 ELSE 2 END")

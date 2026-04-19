@@ -2,9 +2,13 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'الياسين — إدارة المداجن',
-  description: 'نظام تشغيل ومحاسبة وتحليل لمداجن دجاج اللحم',
+  title: 'YMD — Yasin Modern Digital',
+  description: 'نظام الياسين المتقدم لإدارة ومتابعة المداجن والدواجن',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  }
 }
 
 import type { Viewport } from 'next'
@@ -49,3 +53,5 @@ export default function RootLayout({
     </html>
   )
 }
+
+

@@ -19,6 +19,7 @@ import { NotesTab } from '@/components/flocks/tabs/NotesTab'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import { EditFlockModal } from '@/components/flocks/EditFlockModal'
 import { formatDate, formatNumber, cn } from '@/lib/utils'
+import { useIsReadOnly } from '@/lib/roles'
 import type { Flock } from '@/types/flock'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -89,6 +90,7 @@ export default function FlockDetailPage({
   const flockId = Number(id)
 
   const queryClient = useQueryClient()
+  const isReadOnly = useIsReadOnly()
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -113,7 +115,7 @@ export default function FlockDetailPage({
   const { data: reviewData } = useQuery({
     queryKey: ['accounting', 'review-queue', { flock_id: flockId, filter: 'blocking' }],
     queryFn: () => accountingApi.getReviewQueue({ flock_id: flockId, filter: 'blocking' }),
-    enabled: flock?.status === 'active',
+    enabled: flock?.status === 'active' && !isReadOnly,
     staleTime: 30_000,
   })
   const blockingCount = reviewData?.summary.blocking_flock_closure_count ?? 0
@@ -159,7 +161,7 @@ export default function FlockDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {(flock.status === 'active' || flock.status === 'draft') && (
+          {(flock.status === 'active' || flock.status === 'draft') && !isReadOnly && (
             <button
               onClick={() => setEditModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
@@ -169,7 +171,7 @@ export default function FlockDetailPage({
             </button>
           )}
           <FlockStatusBadge status={flock.status} />
-          {flock.status === 'active' && (
+          {flock.status === 'active' && !isReadOnly && (
             <button
               onClick={() => setCloseDialogOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
@@ -268,7 +270,7 @@ export default function FlockDetailPage({
       )}
 
       {/* Blocking records banner */}
-      {flock.status === 'active' && blockingCount > 0 && (
+      {flock.status === 'active' && blockingCount > 0 && !isReadOnly && (
         <Link
           href={`/accounting?tab=review&filter=blocking&flock_id=${flock.id}`}
           className="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 hover:bg-red-100 transition-colors"

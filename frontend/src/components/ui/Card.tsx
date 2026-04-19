@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+﻿import { cn } from '@/lib/utils'
 
 interface CardProps {
   className?: string
@@ -31,3 +31,4 @@ export function CardContent({ className, children }: CardProps) {
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { CheckCircle2, ChevronLeft, Circle } from 'lucide-react'
 
@@ -24,20 +24,20 @@ export function ChecklistItem({
       onClick={onClick}
       disabled={disabled}
       className={`w-full flex items-center justify-between p-4 bg-white rounded-xl border transition-all ${
-        disabled ? 'opacity-70 cursor-not-allowed' : 'hover:border-emerald-200 active:scale-[0.99] shadow-sm'
+        disabled ? 'opacity-70 cursor-not-allowed' : 'hover:border-primary-200 active:scale-[0.99] shadow-sm'
       } ${
-        isCompleted ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'
+        isCompleted ? 'border-primary-200 bg-primary-50/50' : 'border-slate-200'
       }`}
     >
       <div className="flex items-center gap-3">
         {isCompleted ? (
-          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+          <CheckCircle2 className="w-5 h-5 text-primary-500 shrink-0" />
         ) : (
           <Circle className="w-5 h-5 text-slate-300 shrink-0" />
         )}
         <div className="flex flex-col items-start gap-1">
           <div className="flex items-center gap-2">
-            <span className={`font-semibold ${isCompleted ? 'text-emerald-900' : 'text-slate-700'}`}>
+            <span className={`font-semibold ${isCompleted ? 'text-primary-900' : 'text-slate-700'}`}>
               {label}
             </span>
             {isRequired && !isCompleted && (
@@ -51,7 +51,7 @@ export function ChecklistItem({
       
       <div className="flex items-center gap-2">
         {displayValue ? (
-          <span className={`text-sm font-medium ${isCompleted ? 'text-emerald-700' : 'text-slate-500'}`}>
+          <span className={`text-sm font-medium ${isCompleted ? 'text-primary-700' : 'text-slate-500'}`}>
             {displayValue}
           </span>
         ) : (
@@ -64,3 +64,4 @@ export function ChecklistItem({
     </button>
   )
 }
+

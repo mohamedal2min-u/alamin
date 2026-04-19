@@ -19,3 +19,4 @@ export function PaymentStatusBadge({ status, className }: Props) {
     </span>
   )
 }
+

@@ -20,6 +20,7 @@ export interface UserFarm {
   status: 'active' | 'pending_setup' | 'suspended'
   role: FarmRole | null
   is_primary: boolean
+  partner_id?: number | null
 }
 
 export interface LoginResponse {

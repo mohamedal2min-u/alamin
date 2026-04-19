@@ -1,4 +1,4 @@
-// frontend/src/components/layout/RoleGuard.tsx
+﻿// frontend/src/components/layout/RoleGuard.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -27,17 +27,22 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!mounted || role === null) return
-    if (!canAccessRoute(role, pathname)) {
+    if (!mounted || pathname === '/unauthorized') return
+    // null role means no Spatie role assigned — treat as unauthorized
+    if (role === null || !canAccessRoute(role, pathname)) {
       router.replace('/unauthorized')
     }
   }, [mounted, role, pathname, router])
 
   // Before mount: show nothing until store hydration is complete
-  if (!mounted || role === null) return null
+  if (!mounted) return null
+
+  // /unauthorized is always accessible (prevents redirect loops)
+  if (pathname === '/unauthorized') return <>{children}</>
 
   // After mount: suppress content while redirect is in progress
-  if (!canAccessRoute(role, pathname)) return null
+  if (role === null || !canAccessRoute(role, pathname)) return null
 
   return <>{children}</>
 }
+

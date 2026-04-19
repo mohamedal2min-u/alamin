@@ -1,4 +1,4 @@
-// frontend/src/app/(farm)/worker/page.tsx
+﻿// frontend/src/app/(farm)/worker/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -45,8 +45,8 @@ export default function WorkerPage() {
     queryKey: ['flocks', currentFarm?.id],
     queryFn: () => flocksApi.list().then((res): Flock[] => res.data),
     enabled: !!currentFarm,
-    staleTime: 60_000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
   })
 
   const activeFlock = flocks.find((f) => f.status === 'active') ?? null
@@ -69,8 +69,8 @@ export default function WorkerPage() {
     queryKey: ['today-summary', activeFlockId, viewDate],
     queryFn: () => flocksApi.todaySummary(activeFlockId!, viewDate).then(res => res.data),
     enabled: !!activeFlockId,
-    staleTime: 60_000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 3 * 60_000,
+    gcTime: 30 * 60_000,
     refetchOnWindowFocus: true,
     placeholderData: keepPreviousData,
   })
@@ -84,8 +84,8 @@ export default function WorkerPage() {
     queryKey: ['flock-history', activeFlock?.id],
     queryFn: () => flocksApi.getHistory(activeFlock!.id),
     enabled: !!activeFlock,
-    staleTime: 60_000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     refetchOnWindowFocus: true,
     placeholderData: keepPreviousData,
   })
@@ -157,7 +157,7 @@ export default function WorkerPage() {
           {/* Date Selector */}
           <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl shadow-sm">
             <div className="flex items-center gap-2.5">
-              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400">
                 <Calendar className="h-5 w-5" />
               </div>
               <div>
@@ -174,7 +174,7 @@ export default function WorkerPage() {
             {viewDate !== getTodayISO() && (
               <button 
                 onClick={() => setViewDate(getTodayISO())}
-                className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
+                className="text-[10px] font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-500/10 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
               >
                 العودة لليوم
               </button>
@@ -185,7 +185,7 @@ export default function WorkerPage() {
           <WorkerProgressHeader 
             flock={activeFlock}
             summary={summary}
-            isLoading={isSummaryLoading}
+            isLoading={!summary && isSummaryLoading}
             viewDate={viewDate}
             onStatClick={handleStatClick}
           />
@@ -223,12 +223,12 @@ export default function WorkerPage() {
 
       {/* Empty State */}
       {!loadingFlocks && !isActive && (
-        <div className="flex flex-col items-center justify-center rounded-[2rem] bg-emerald-50/50 py-16 px-6 text-center border border-dashed border-emerald-100">
-          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mb-5 shadow-sm border border-emerald-50">
-            <Bird className="h-8 w-8 text-emerald-500" />
+        <div className="flex flex-col items-center justify-center rounded-[2rem] bg-primary-50/50 py-16 px-6 text-center border border-dashed border-primary-100">
+          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mb-5 shadow-sm border border-primary-50">
+            <Bird className="h-8 w-8 text-primary-500" />
           </div>
-          <h3 className="text-base font-black text-emerald-950">لا يوجد فوج نشط متاح</h3>
-          <p className="mt-2 text-xs text-emerald-600/70 font-medium max-w-[240px] leading-relaxed">
+          <h3 className="text-base font-black text-primary-950">لا يوجد فوج نشط متاح</h3>
+          <p className="mt-2 text-xs text-primary-600/70 font-medium max-w-[240px] leading-relaxed">
             عند تفعيل الفوج من قبل الإدارة، ستتمكن من تسجيل البيانات اليومية هنا.
           </p>
         </div>
@@ -248,3 +248,4 @@ function emptyTodaySummary(): TodaySummary {
     temperatures: { entries: [] },
   }
 }
+

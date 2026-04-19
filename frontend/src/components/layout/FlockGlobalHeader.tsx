@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { cn } from '@/lib/utils'
 import { Calendar, UserCircle, RefreshCcw } from 'lucide-react'
@@ -86,9 +86,9 @@ export function FlockGlobalHeader() {
       )} 
       dir="rtl"
     >
-      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-emerald-100 dark:border-emerald-900/30 overflow-hidden shadow-sm mx-auto max-w-2xl">
+      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-primary-100 dark:border-primary-900/30 overflow-hidden shadow-sm mx-auto max-w-2xl">
         {/* Top: User (Right) + Flock Name (Center) + Status (Left) */}
-        <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-emerald-50/50 dark:border-emerald-900/20">
+        <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-primary-50/50 dark:border-primary-900/20">
           
           {/* User Profile (Right visually in RTL) */}
           <div className="w-[35%] flex justify-start">
@@ -97,7 +97,7 @@ export function FlockGlobalHeader() {
                 onClick={() => document.getElementById('global-avatar-upload')?.click()}
                 disabled={isUploading}
                 className={cn(
-                  "h-8 w-8 shrink-0 rounded-[8px] bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100/50 dark:border-emerald-900/30 flex flex-col items-center justify-center overflow-hidden transition-all hover:opacity-80 active:scale-95",
+                  "h-8 w-8 shrink-0 rounded-[8px] bg-primary-50 dark:bg-primary-900/20 border border-primary-100/50 dark:border-primary-900/30 flex flex-col items-center justify-center overflow-hidden transition-all hover:opacity-80 active:scale-95",
                   isUploading && "animate-pulse opacity-50 cursor-wait"
                 )}
                 title="تغيير الصورة الشخصية"
@@ -129,11 +129,11 @@ export function FlockGlobalHeader() {
 
           {/* Flock Info (Center) */}
           <div className="w-[30%] flex flex-col items-center justify-center text-center">
-            <h2 className="text-[12px] font-black text-emerald-950 dark:text-emerald-50 leading-none truncate mb-0.5">
+            <h2 className="text-[12px] font-black text-primary-950 dark:text-primary-50 leading-none truncate mb-0.5">
               {activeFlock?.name ?? (isLoading ? 'تحميل...' : 'لا فوج')}
             </h2>
             {activeFlock && (
-              <div className="flex items-center justify-center gap-1 text-[9px] font-bold text-emerald-600/80 dark:text-emerald-400/80 leading-none">
+              <div className="flex items-center justify-center gap-1 text-[9px] font-bold text-primary-600/80 dark:text-primary-400/80 leading-none">
                 <Calendar className="h-2.5 w-2.5" />
                 <span>{formatDate(activeFlock.start_date)}</span>
               </div>
@@ -156,11 +156,11 @@ export function FlockGlobalHeader() {
 
         {/* Metrics: 4 columns */}
         {activeFlock ? (
-          <div className="grid grid-cols-4 divide-x divide-x-reverse divide-emerald-50/50 dark:divide-emerald-900/20">
+          <div className="grid grid-cols-4 divide-x divide-x-reverse divide-primary-50/50 dark:divide-primary-900/20">
             <MetricItem label="الأولي" value={formatNumber(activeFlock.initial_count ?? 0)} color="text-slate-600 dark:text-slate-300" />
             <MetricItem label="النفوق" value={formatNumber(activeFlock.total_mortality ?? 0)} sub={`${mortalityRate}%`} color="text-rose-600 dark:text-rose-400" />
-            <MetricItem label="المتبقي" value={formatNumber(activeFlock.remaining_count ?? 0)} sub="طير" color="text-emerald-600 dark:text-emerald-400" />
-            <MetricItem label="العمر" value={activeFlock.current_age_days ?? '—'} sub="يوم" color="text-emerald-950 dark:text-emerald-50" />
+            <MetricItem label="المتبقي" value={formatNumber(activeFlock.remaining_count ?? 0)} sub="طير" color="text-primary-600 dark:text-primary-400" />
+            <MetricItem label="العمر" value={activeFlock.current_age_days ?? '—'} sub="يوم" color="text-primary-950 dark:text-primary-50" />
           </div>
         ) : (
           !isLoading && (
@@ -183,3 +183,4 @@ function MetricItem({ label, value, sub, color }: { label: string; value: string
     </div>
   )
 }
+

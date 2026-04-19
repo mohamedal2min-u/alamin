@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16c98a"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+
+  <!-- Chicken body -->
+  <ellipse cx="510" cy="700" rx="195" ry="175" fill="white"/>
+
+  <!-- Chicken head -->
+  <circle cx="510" cy="390" r="155" fill="white"/>
+
+  <!-- Comb (3 bumps) -->
+  <ellipse cx="455" cy="248" rx="38" ry="55" fill="#ef4444"/>
+  <ellipse cx="510" cy="228" rx="42" ry="62" fill="#ef4444"/>
+  <ellipse cx="565" cy="248" rx="38" ry="55" fill="#ef4444"/>
+
+  <!-- Wattle -->
+  <ellipse cx="560" cy="498" rx="30" ry="42" fill="#ef4444"/>
+
+  <!-- Beak -->
+  <polygon points="560,405 650,440 560,475" fill="#fbbf24"/>
+
+  <!-- Eye -->
+  <circle cx="466" cy="370" r="38" fill="#1a1a2e"/>
+  <circle cx="474" cy="360" r="14" fill="white"/>
+
+  <!-- Wing detail on body -->
+  <path d="M 340 660 Q 510 590 675 660" fill="none" stroke="#d1fae5" stroke-width="18" stroke-linecap="round"/>
+
+  <!-- Feet -->
+  <rect x="440" y="858" width="22" height="70" rx="8" fill="#fbbf24"/>
+  <rect x="540" y="858" width="22" height="70" rx="8" fill="#fbbf24"/>
+  <rect x="408" y="918" width="60" height="18" rx="8" fill="#fbbf24"/>
+  <rect x="508" y="918" width="60" height="18" rx="8" fill="#fbbf24"/>
+</svg>

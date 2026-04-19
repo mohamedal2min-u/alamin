@@ -99,7 +99,7 @@ export default function WorkersPage() {
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors duration-300 font-bold text-lg">
+                  <div className="h-12 w-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 font-bold text-lg">
                     {worker.name.charAt(0)}
                   </div>
                   <div>
@@ -171,3 +171,4 @@ export default function WorkersPage() {
     </div>
   )
 }
+

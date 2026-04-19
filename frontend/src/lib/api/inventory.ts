@@ -66,7 +66,9 @@ export interface AddShipmentPayload {
   original_quantity: number
   unit_price?: number | null
   total_amount?: number | null
-  payment_status?: 'paid' | 'unpaid' | 'partial'
+  paid_amount?: number | null
+  payment_status?: 'paid' | 'unpaid'
+  flock_id?: number
   supplier_name?: string | null
   invoice_no?: string | null
   notes?: string | null
@@ -131,9 +133,9 @@ export const inventoryApi = {
       .get<{ data: Warehouse[] }>('/inventory/warehouses')
       .then((r) => r.data),
 
-  transactions: () =>
+  transactions: (flockId?: number) =>
     apiClient
-      .get<{ data: InventoryTransaction[] }>('/inventory/transactions')
+      .get<{ data: InventoryTransaction[] }>('/inventory/transactions', { params: flockId ? { flock_id: flockId } : {} })
       .then((r) => r.data),
 
   addShipment: (payload: AddShipmentPayload) => {

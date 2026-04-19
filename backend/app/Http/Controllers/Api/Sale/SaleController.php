@@ -71,14 +71,16 @@ class SaleController extends Controller
 
     public function indexAll(Request $request): ResourceCollection
     {
-        $farmId = $request->attributes->get('farm_id');
+        $farmId  = $request->attributes->get('farm_id');
+        $flockId = $request->query('flock_id');
 
-        $sales = Sale::where('farm_id', $farmId)
-            ->with('saleItems')
-            ->orderByDesc('sale_date')
-            ->get();
+        $query = Sale::where('farm_id', $farmId)->with('saleItems');
 
-        return SaleResource::collection($sales);
+        if ($flockId) {
+            $query->where('flock_id', (int) $flockId);
+        }
+
+        return SaleResource::collection($query->orderByDesc('sale_date')->get());
     }
 
     // ── GET /api/sales/{sale} ─────────────────────────────────────────────────

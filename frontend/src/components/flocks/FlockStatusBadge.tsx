@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/Badge'
+﻿import { Badge } from '@/components/ui/Badge'
 import type { FlockStatus } from '@/types/flock'
 
 const STATUS_MAP: Record<
@@ -16,8 +16,9 @@ export function FlockStatusBadge({ status }: { status: FlockStatus }) {
   
   return (
     <div className="flex items-center gap-1.5">
-      {status === 'active' && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-status-glow" />}
+      {status === 'active' && <div className="h-1.5 w-1.5 rounded-full bg-primary-500 animate-status-glow" />}
       <Badge variant={variant}>{label}</Badge>
     </div>
   )
 }
+

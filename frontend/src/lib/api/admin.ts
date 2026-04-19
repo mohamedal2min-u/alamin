@@ -20,6 +20,15 @@ export interface AdminUser {
   status: string
 }
 
+export interface AdminFarmMember {
+  id: number
+  name: string
+  email: string | null
+  whatsapp: string | null
+  status: 'active' | 'suspended'
+  role: 'farm_admin' | 'partner' | 'worker' | null
+}
+
 export interface CreateFarmPayload {
   name: string
   location?: string
@@ -63,4 +72,16 @@ export const adminApi = {
 
   listUsers: () =>
     apiClient.get<{ data: AdminUser[] }>('/admin/users').then((r) => r.data),
+
+  farmMembers: (farmId: number) =>
+    apiClient.get<{ data: AdminFarmMember[] }>(`/admin/farms/${farmId}/members`).then((r) => r.data),
+
+  resetPassword: (userId: number, password: string) =>
+    apiClient.put<{ message: string }>(`/admin/users/${userId}/password`, { password }).then((r) => r.data),
+
+  toggleUserStatus: (userId: number, status: 'active' | 'suspended') =>
+    apiClient.put<{ message: string; data: { id: number; status: string } }>(`/admin/users/${userId}/status`, { status }).then((r) => r.data),
+
+  assignMemberRole: (farmId: number, userId: number, role: string) =>
+    apiClient.put<{ message: string; data: { id: number; role: string } }>(`/admin/farms/${farmId}/members/${userId}/role`, { role }).then((r) => r.data),
 }

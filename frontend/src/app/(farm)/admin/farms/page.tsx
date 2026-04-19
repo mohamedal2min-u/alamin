@@ -5,9 +5,10 @@ import Link from 'next/link'
 import {
   Building2, Plus, AlertCircle, Users, UserCog,
   Check, X, Trash2, UserPlus, Eye, EyeOff,
+  KeyRound, ShieldOff, ShieldCheck, BadgeCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { adminApi, type AdminFarm, type AdminUser } from '@/lib/api/admin'
+import { adminApi, type AdminFarm, type AdminUser, type AdminFarmMember } from '@/lib/api/admin'
 import { formatDate } from '@/lib/utils'
 
 const STATUS_LABELS: Record<AdminFarm['status'], string> = {
@@ -17,15 +18,27 @@ const STATUS_LABELS: Record<AdminFarm['status'], string> = {
 }
 
 const STATUS_CLASSES: Record<AdminFarm['status'], string> = {
-  active:        'bg-green-50 text-green-700',
+  active:        'bg-emerald-50 text-emerald-700',
   pending_setup: 'bg-amber-50 text-amber-700',
   suspended:     'bg-red-50 text-red-700',
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  farm_admin: 'مدير المزرعة',
+  partner:    'شريك',
+  worker:     'عامل',
+}
+const ROLE_CLASSES: Record<string, string> = {
+  farm_admin: 'bg-violet-50 text-violet-700',
+  partner:    'bg-blue-50 text-blue-700',
+  worker:     'bg-emerald-50 text-emerald-700',
 }
 
 type ActivePanel =
   | { type: 'assign';  farmId: number }
   | { type: 'create';  farmId: number }
   | { type: 'delete';  farmId: number }
+  | { type: 'members'; farmId: number }
   | null
 
 export default function AdminFarmsPage() {
@@ -55,6 +68,20 @@ export default function AdminFarmsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleteError, setDeleteError]     = useState<string | null>(null)
 
+  // ── Members panel state ───────────────────────────────────────────────────
+  const [members, setMembers]             = useState<AdminFarmMember[]>([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [pwUserId, setPwUserId]           = useState<number | null>(null)
+  const [pwValue, setPwValue]             = useState('')
+  const [showPwInline, setShowPwInline]   = useState(false)
+  const [pwLoading, setPwLoading]         = useState(false)
+  const [pwError, setPwError]             = useState<string | null>(null)
+  const [statusLoading, setStatusLoading] = useState<number | null>(null)
+  const [roleUserId, setRoleUserId]       = useState<number | null>(null)
+  const [roleValue, setRoleValue]         = useState('')
+  const [roleLoading, setRoleLoading]     = useState(false)
+  const [roleError, setRoleError]         = useState<string | null>(null)
+
   const fetchData = useCallback(() => {
     setLoading(true)
     setError(null)
@@ -76,6 +103,63 @@ export default function AdminFarmsPage() {
     setNewName(''); setNewWhatsapp(''); setNewEmail(''); setNewPassword('')
     setCreateError(null)
     setDeleteError(null)
+    setMembers([])
+    setPwUserId(null); setPwValue(''); setPwError(null)
+    setRoleUserId(null); setRoleValue(''); setRoleError(null)
+  }
+
+  const openMembersPanel = async (farmId: number) => {
+    closePanel()
+    setActivePanel({ type: 'members', farmId })
+    setMembersLoading(true)
+    try {
+      const res = await adminApi.farmMembers(farmId)
+      setMembers(res.data)
+    } catch {
+      setMembers([])
+    } finally {
+      setMembersLoading(false)
+    }
+  }
+
+  const confirmResetPassword = async (userId: number) => {
+    if (pwValue.length < 8) { setPwError('8 أحرف على الأقل'); return }
+    setPwLoading(true); setPwError(null)
+    try {
+      await adminApi.resetPassword(userId, pwValue)
+      setPwUserId(null); setPwValue('')
+    } catch {
+      setPwError('فشل تغيير كلمة المرور')
+    } finally {
+      setPwLoading(false)
+    }
+  }
+
+  const confirmAssignRole = async (farmId: number, userId: number) => {
+    if (!roleValue) { setRoleError('اختر الدور'); return }
+    setRoleLoading(true); setRoleError(null)
+    try {
+      await adminApi.assignMemberRole(farmId, userId, roleValue)
+      setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, role: roleValue as AdminFarmMember['role'] } : m))
+      setRoleUserId(null); setRoleValue('')
+    } catch {
+      setRoleError('فشل تعيين الدور')
+    } finally {
+      setRoleLoading(false)
+    }
+  }
+
+  const toggleStatus = async (user: AdminFarmMember) => {
+    const next = user.status === 'active' ? 'suspended' : 'active'
+    setStatusLoading(user.id)
+    try {
+      await adminApi.toggleUserStatus(user.id, next)
+      setMembers((prev) => prev.map((m) => m.id === user.id ? { ...m, status: next } : m))
+    } catch {
+      // silent
+    } finally {
+      setStatusLoading(null)
+    }
   }
 
   // ── Confirm assign existing user ─────────────────────────────────────────
@@ -216,10 +300,14 @@ export default function AdminFarmsPage() {
                       {farm.started_at ? formatDate(farm.started_at) : '—'}
                     </td>
                     <td className="px-5 py-3">
-                      <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                      <button
+                        onClick={() => openMembersPanel(farm.id)}
+                        className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 hover:underline transition"
+                        title="عرض الأعضاء"
+                      >
                         <Users className="h-3.5 w-3.5" />
                         {farm.members_count}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
                       {farm.admin?.name ?? (
@@ -255,7 +343,7 @@ export default function AdminFarmsPage() {
                             setActivePanel({ type: 'create', farmId: farm.id })
                           }}
                           title="إنشاء حساب مدير جديد"
-                          className="flex items-center gap-1 rounded-lg border border-emerald-200 dark:border-emerald-700 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 transition hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                          className="flex items-center gap-1 rounded-lg border border-primary-200 dark:border-primary-700 px-2.5 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-400 transition hover:bg-primary-50 dark:hover:bg-primary-900/30"
                         >
                           <UserPlus className="h-3.5 w-3.5" />
                           مدير جديد
@@ -324,9 +412,9 @@ export default function AdminFarmsPage() {
 
                   {/* ── Panel: Create new manager ── */}
                   {activePanel?.type === 'create' && activePanel.farmId === farm.id && (
-                    <tr className="bg-emerald-50 dark:bg-emerald-900/20">
+                    <tr className="bg-primary-50 dark:bg-primary-900/20">
                       <td colSpan={7} className="px-5 py-4">
-                        <p className="mb-3 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                        <p className="mb-3 text-xs font-semibold text-primary-800 dark:text-primary-300">
                           إنشاء حساب مدير جديد لـ &quot;{farm.name}&quot;
                         </p>
                         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -336,7 +424,7 @@ export default function AdminFarmsPage() {
                               value={newName}
                               onChange={(e) => setNewName(e.target.value)}
                               placeholder="الاسم الكامل"
-                              className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                              className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
                             />
                           </div>
                           <div className="flex flex-col gap-1">
@@ -346,7 +434,7 @@ export default function AdminFarmsPage() {
                               onChange={(e) => setNewWhatsapp(e.target.value)}
                               placeholder="05xxxxxxxx"
                               dir="ltr"
-                              className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                              className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
                             />
                           </div>
                           <div className="flex flex-col gap-1">
@@ -357,7 +445,7 @@ export default function AdminFarmsPage() {
                               placeholder="example@mail.com"
                               type="email"
                               dir="ltr"
-                              className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                              className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
                             />
                           </div>
                           <div className="flex flex-col gap-1">
@@ -369,7 +457,7 @@ export default function AdminFarmsPage() {
                                 type={showPw ? 'text' : 'password'}
                                 placeholder="8 أحرف+"
                                 dir="ltr"
-                                className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 pe-8"
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100 pe-8"
                               />
                               <button
                                 type="button"
@@ -388,7 +476,7 @@ export default function AdminFarmsPage() {
                           <button
                             onClick={() => confirmCreate(farm.id)}
                             disabled={createLoading}
-                            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                            className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"
                           >
                             <Check className="h-3.5 w-3.5" />
                             {createLoading ? 'جارٍ الإنشاء...' : 'إنشاء الحساب'}
@@ -401,6 +489,170 @@ export default function AdminFarmsPage() {
                             إلغاء
                           </button>
                         </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* ── Panel: Members ── */}
+                  {activePanel?.type === 'members' && activePanel.farmId === farm.id && (
+                    <tr className="bg-blue-50 dark:bg-blue-900/20">
+                      <td colSpan={7} className="px-5 py-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                            أعضاء مزرعة &quot;{farm.name}&quot;
+                          </p>
+                          <button onClick={closePanel} className="text-slate-400 hover:text-slate-600">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        {membersLoading && (
+                          <div className="space-y-2">
+                            {[1,2,3].map(i => <div key={i} className="h-10 animate-pulse rounded-lg bg-blue-100" />)}
+                          </div>
+                        )}
+
+                        {!membersLoading && members.length === 0 && (
+                          <p className="text-xs text-slate-500 text-center py-4">لا يوجد أعضاء</p>
+                        )}
+
+                        {!membersLoading && members.length > 0 && (
+                          <div className="space-y-2">
+                            {members.map((member) => (
+                              <div key={member.id} className="rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  {/* Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{member.name}</p>
+                                    <p className="text-xs text-slate-400">{member.whatsapp ?? member.email ?? '—'}</p>
+                                  </div>
+
+                                  {/* Role */}
+                                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${member.role ? (ROLE_CLASSES[member.role] ?? 'bg-emerald-100 text-emerald-800 font-bold') : 'bg-orange-50 text-orange-600 border border-orange-200'}`}>
+                                    {member.role ? (ROLE_LABELS[member.role] ?? member.role) : '⚠ بدون دور'}
+                                  </span>
+
+                                  {/* Status */}
+                                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${member.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                                    {member.status === 'active' ? 'نشط' : 'موقوف'}
+                                  </span>
+
+                                  {/* Assign / change role */}
+                                  <button
+                                    onClick={() => {
+                                      setRoleUserId(roleUserId === member.id ? null : member.id)
+                                      setRoleValue(member.role ?? '')
+                                      setRoleError(null)
+                                      setPwUserId(null)
+                                    }}
+                                    className="flex items-center gap-1 rounded-lg border border-violet-200 px-2.5 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-50 transition"
+                                  >
+                                    <BadgeCheck className="h-3.5 w-3.5" />
+                                    {member.role ? 'تغيير الدور' : 'تعيين دور'}
+                                  </button>
+
+                                  {/* Change password */}
+                                  <button
+                                    onClick={() => {
+                                      setPwUserId(pwUserId === member.id ? null : member.id)
+                                      setPwValue(''); setPwError(null)
+                                      setRoleUserId(null)
+                                    }}
+                                    className="flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition"
+                                  >
+                                    <KeyRound className="h-3.5 w-3.5" />
+                                    كلمة المرور
+                                  </button>
+
+                                  {/* Suspend / Activate */}
+                                  <button
+                                    onClick={() => toggleStatus(member)}
+                                    disabled={statusLoading === member.id}
+                                    className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+                                      member.status === 'active'
+                                        ? 'border-red-200 text-red-600 hover:bg-red-50'
+                                        : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                                    }`}
+                                  >
+                                    {member.status === 'active'
+                                      ? <><ShieldOff className="h-3.5 w-3.5" /> توقيف</>
+                                      : <><ShieldCheck className="h-3.5 w-3.5" /> تفعيل</>
+                                    }
+                                  </button>
+                                </div>
+
+                                {/* Inline role form */}
+                                {roleUserId === member.id && (
+                                  <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 flex-wrap">
+                                    <select
+                                      value={roleValue}
+                                      onChange={(e) => setRoleValue(e.target.value)}
+                                      className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                                    >
+                                      <option value="">— اختر الدور —</option>
+                                      <option value="farm_admin">مدير المزرعة</option>
+                                      <option value="partner">شريك</option>
+                                      <option value="worker">عامل</option>
+                                    </select>
+                                    <button
+                                      onClick={() => confirmAssignRole((activePanel as { farmId: number }).farmId, member.id)}
+                                      disabled={roleLoading}
+                                      className="flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-2 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition"
+                                    >
+                                      <Check className="h-3.5 w-3.5" />
+                                      {roleLoading ? '...' : 'حفظ'}
+                                    </button>
+                                    <button
+                                      onClick={() => { setRoleUserId(null); setRoleValue(''); setRoleError(null) }}
+                                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                    {roleError && <p className="text-xs text-red-600">{roleError}</p>}
+                                  </div>
+                                )}
+
+                                {/* Inline password form */}
+                                {pwUserId === member.id && (
+                                  <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+                                    <div className="relative flex-1">
+                                      <input
+                                        value={pwValue}
+                                        onChange={(e) => setPwValue(e.target.value)}
+                                        type={showPwInline ? 'text' : 'password'}
+                                        placeholder="كلمة المرور الجديدة (8+)"
+                                        dir="ltr"
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100 pe-8"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowPwInline(v => !v)}
+                                        className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                      >
+                                        {showPwInline ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                      </button>
+                                    </div>
+                                    <button
+                                      onClick={() => confirmResetPassword(member.id)}
+                                      disabled={pwLoading}
+                                      className="flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-2 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50 transition"
+                                    >
+                                      <Check className="h-3.5 w-3.5" />
+                                      {pwLoading ? '...' : 'حفظ'}
+                                    </button>
+                                    <button
+                                      onClick={() => { setPwUserId(null); setPwValue(''); setPwError(null) }}
+                                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                    {pwError && <p className="text-xs text-red-600">{pwError}</p>}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}
@@ -452,3 +704,4 @@ export default function AdminFarmsPage() {
     </div>
   )
 }
+

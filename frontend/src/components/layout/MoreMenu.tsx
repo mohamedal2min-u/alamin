@@ -1,8 +1,8 @@
-// frontend/src/components/layout/MoreMenu.tsx
+﻿// frontend/src/components/layout/MoreMenu.tsx
 'use client'
 
 import {
-  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, ChevronLeft, Settings, Calculator
+  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, ChevronLeft, Settings, Calculator, Wallet
 } from 'lucide-react'
 import Link from 'next/link'
 import { FarmSelector } from './FarmSelector'
@@ -40,12 +40,13 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
   const allowedHrefs = NAV_HREFS_BY_ROLE[role]
 
   const items = [
-    { label: 'المبيعات',  href: '/sales',    icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'المصروفات', href: '/expenses',  icon: Receipt,     color: 'text-orange-600',  bg: 'bg-orange-50' },
-    { label: 'الشركاء',   href: '/partners', icon: Users,       color: 'text-blue-600',    bg: 'bg-blue-50' },
-    { label: 'العمال',    href: '/workers',  icon: Users,       color: 'text-slate-600',   bg: 'bg-slate-50' },
-    { label: 'المحاسبة',  href: '/accounting', icon: Calculator,  color: 'text-violet-600', bg: 'bg-violet-50' },
-    { label: 'التقارير',  href: '/reports',  icon: BarChart3,   color: 'text-sky-600',     bg: 'bg-sky-50' },
+    { label: 'المبيعات',  href: '/sales',      icon: ShoppingCart, color: 'text-primary-600', bg: 'bg-primary-50' },
+    { label: 'المصروفات', href: '/expenses',    icon: Receipt,      color: 'text-orange-600',  bg: 'bg-orange-50' },
+    { label: 'الشركاء',   href: '/partners',   icon: Users,        color: 'text-blue-600',    bg: 'bg-blue-50' },
+    { label: 'العمال',    href: '/workers',    icon: Users,        color: 'text-slate-600',   bg: 'bg-slate-50' },
+    { label: 'المحاسبة',  href: '/accounting', icon: Calculator,   color: 'text-violet-600',  bg: 'bg-violet-50' },
+    { label: 'التقارير',  href: '/reports',    icon: BarChart3,    color: 'text-sky-600',     bg: 'bg-sky-50' },
+    { label: 'محفظتي',   href: '/my-wallet',  icon: Wallet,       color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ].filter(item => allowedHrefs.includes(item.href))
 
   return (
@@ -73,7 +74,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
             onClick={onClose}
             className="flex items-center gap-3 group"
           >
-            <div className="h-10 w-10 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center text-emerald-700 text-sm font-bold shrink-0">
+            <div className="h-10 w-10 rounded-full overflow-hidden bg-primary-50 flex items-center justify-center text-primary-700 text-sm font-bold shrink-0">
               <img 
                 src={user?.avatar_url || '/default-avatar.jpg'} 
                 alt="" 
@@ -81,8 +82,8 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
               />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-700 transition-colors">{user?.name}</p>
-              <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-primary-700 transition-colors">{user?.name}</p>
+              <p className="text-[11px] text-primary-600 font-medium flex items-center gap-1">
                 <Settings className="h-3 w-3" />
                 إعدادات الحساب
               </p>
@@ -139,3 +140,4 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     </div>
   )
 }
+

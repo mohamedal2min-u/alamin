@@ -17,7 +17,7 @@ export const WorkersReportTab = ({ data, isLoading }: WorkersReportTabProps) => 
     <div className="space-y-6">
       {/* Workers List Section */}
       <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-        <UserCheck className="w-4 h-4 text-orange-500" />
+        <UserCheck className="w-4 h-4 text-emerald-500" />
         قائمة العمال والرواتب
       </h4>
 
@@ -48,9 +48,9 @@ export const WorkersReportTab = ({ data, isLoading }: WorkersReportTabProps) => 
                     <Calendar className="w-2.5 h-2.5" /> {worker.joined_at?.split('T')[0] || '---'}
                 </span>
               </div>
-              <div className="bg-orange-50 p-2 rounded-lg">
-                <span className="text-[9px] text-orange-400 block">إجمالي المقبوضات</span>
-                <span className="text-xs font-black text-orange-700 mt-0.5">
+              <div className="bg-emerald-50 p-2 rounded-lg">
+                <span className="text-[9px] text-emerald-400 block">إجمالي المقبوضات</span>
+                <span className="text-xs font-black text-emerald-700 mt-0.5">
                     {Number(worker.total_payments).toLocaleString()} {data.currency}
                 </span>
               </div>
@@ -72,3 +72,4 @@ export const WorkersReportTab = ({ data, isLoading }: WorkersReportTabProps) => 
     </div>
   )
 }
+

@@ -16,6 +16,13 @@ class ShowFlockAction
         $flock = Flock::where('id', $flockId)
             ->where('farm_id', $farmId)
             ->withSum('mortalities', 'quantity')
+            ->withSum('expenses', 'total_amount')
+            ->withSum('waterLogs', 'total_amount')
+            ->withSum(['inventoryTransactions as inventory_consumption_sum' => function ($query) {
+                $query->where('direction', 'out')->where('transaction_type', 'consumption');
+            }], 'total_amount')
+            ->withSum('sales', 'net_amount')
+            ->withSum('saleItems', 'birds_count')
             ->first();
 
         if (! $flock) {

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -79,13 +79,13 @@ export default function NewWorkerPage() {
 
       <Card className="border-slate-200/60 shadow-sm">
         <CardHeader className="bg-slate-50/50 border-b border-slate-100 flex-row gap-2 items-center p-5 rounded-t-2xl">
-          <UserPlus className="h-5 w-5 text-emerald-600" />
+          <UserPlus className="h-5 w-5 text-primary-600" />
           <h2 className="text-lg font-semibold">بيانات العامل</h2>
         </CardHeader>
         <div className="p-6">
           
           {successMsg && (
-            <div className="mb-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-3 rounded-xl text-sm font-bold">
+            <div className="mb-6 flex items-center gap-3 bg-primary-50 border border-primary-100 text-primary-700 px-4 py-3 rounded-xl text-sm font-bold">
               <CheckCircle className="w-4 h-4 shrink-0" />
               {successMsg}
             </div>
@@ -176,7 +176,7 @@ export default function NewWorkerPage() {
                 type="submit" 
                 size="lg" 
                 disabled={loading}
-                className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white gap-2 min-w-[150px] rounded-xl h-12 font-bold"
+                className="w-full md:w-auto bg-primary-600 hover:bg-primary-700 text-white gap-2 min-w-[150px] rounded-xl h-12 font-bold"
               >
                 {loading ? (
                   <>
@@ -198,3 +198,4 @@ export default function NewWorkerPage() {
     </div>
   )
 }
+

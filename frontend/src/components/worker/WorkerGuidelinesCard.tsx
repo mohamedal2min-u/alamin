@@ -21,7 +21,7 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
       unit: '°',
       sub: 'درجة مئوية',
       icon: Thermometer,
-      gradient: 'from-emerald-500 to-emerald-700',
+      gradient: 'from-primary-500 to-primary-700',
     },
     {
       title: 'توزيع العلف',
@@ -46,16 +46,16 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
       {/* Section Title */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <div className="h-4 w-1 rounded-full bg-emerald-500" />
+          <div className="h-4 w-1 rounded-full bg-primary-500" />
           <h3 className="text-[13px] font-black text-slate-800">التعليمات التشغيلية</h3>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-            <span className="text-[10px] font-black text-slate-500">Ross 2023</span>
+            <ShieldCheck className="h-3.5 w-3.5 text-primary-600" />
+            <span className="text-[10px] font-black text-slate-500 uppercase">Ross 2026 | مباشر</span>
           </div>
-          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[11px] font-black border border-emerald-100 shadow-sm">
+          <div className="flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-[11px] font-black border border-primary-100 shadow-sm">
             <span>اليوم</span>
             <span className="tabular-nums">{ageDays}</span>
           </div>
@@ -106,3 +106,4 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
     </div>
   )
 }
+

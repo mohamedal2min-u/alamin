@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -237,7 +237,7 @@ export function FeedTab({ flockId, flockStatus }: Props) {
 
           {/* Total Preview (Only if bags used) */}
           {isUnitBased && (bags > 0 || extraKg > 0) && (
-            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 border border-emerald-100">
+            <div className="flex items-center gap-2 rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 border border-primary-100">
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>
                 الإجمالي المستهلك: {formatNumber(bags * (selectedItem?.unit_value || 1) + extraKg)} كجم
@@ -331,7 +331,7 @@ function FeedLogRow({ log }: { log: FeedLog }) {
       <div className="shrink-0 pt-0.5">
         {log.inventory_linked ? (
           <span title="تم خصم المخزون">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <CheckCircle2 className="h-4 w-4 text-primary-500" />
           </span>
         ) : (
           <span className="text-xs text-slate-300">—</span>
@@ -340,3 +340,4 @@ function FeedLogRow({ log }: { log: FeedLog }) {
     </div>
   )
 }
+

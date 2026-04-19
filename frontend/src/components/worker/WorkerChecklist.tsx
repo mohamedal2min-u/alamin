@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { ChecklistItem } from './ChecklistItem'
@@ -48,12 +48,12 @@ export function WorkerChecklist({ flockId }: WorkerChecklistProps) {
 
   if (dayClosed) {
     return (
-      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center shadow-sm">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="bg-primary-50 border border-primary-200 rounded-2xl p-6 text-center shadow-sm">
+        <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <span className="text-3xl">✓</span>
         </div>
-        <h2 className="text-xl font-bold text-emerald-900 mb-2">تم تسجيل الوردية</h2>
-        <p className="text-emerald-700">لقد تم إنهاء اليوم بنجاح ولا يمكن تعديل الإدخالات.</p>
+        <h2 className="text-xl font-bold text-primary-900 mb-2">تم تسجيل الوردية</h2>
+        <p className="text-primary-700">لقد تم إنهاء اليوم بنجاح ولا يمكن تعديل الإدخالات.</p>
       </div>
     )
   }
@@ -124,7 +124,7 @@ export function WorkerChecklist({ flockId }: WorkerChecklistProps) {
         <div className="fixed bottom-6 left-4 right-4 z-40 animate-in slide-in-from-bottom flex justify-center">
           <Button
             onClick={handleEndDay}
-            className="w-full max-w-sm h-14 text-lg font-bold shadow-xl shadow-emerald-500/20"
+            className="w-full max-w-sm h-14 text-lg font-bold shadow-xl shadow-primary-500/20"
           >
             🔒 إنهاء يوم اليوم
           </Button>
@@ -175,3 +175,4 @@ export function WorkerChecklist({ flockId }: WorkerChecklistProps) {
     </div>
   )
 }
+

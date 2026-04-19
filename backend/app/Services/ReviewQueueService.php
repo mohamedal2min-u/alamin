@@ -193,7 +193,8 @@ class ReviewQueueService
             $missingPrice = true;
         }
 
-        if ($missingPrice) {
+        // Don't flag missing_price for fully-paid records — payment resolves the financial concern.
+        if ($missingPrice && $row['payment_status'] !== 'paid') {
             $reasons[] = 'missing_price';
         }
 
@@ -203,11 +204,12 @@ class ReviewQueueService
         }
 
         // ── Blocking flock closure ────────────────────────────────────────────
-        // Active flock + (unpaid/partial OR missing_price)
+        // Active flock + unpaid/partial, OR missing_price on an unpaid/partial record.
+        // Fully-paid records never block closure even if unit_price details are missing.
         $isBlockingClosure = $row['flock_status'] === 'active'
             && (
                 in_array($row['payment_status'], ['unpaid', 'partial'])
-                || $missingPrice
+                || ($missingPrice && $row['payment_status'] !== 'paid')
             );
 
         if ($isBlockingClosure) {

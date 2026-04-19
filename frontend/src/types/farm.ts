@@ -8,4 +8,5 @@ export interface Farm {
   status: 'active' | 'pending_setup' | 'suspended'
   role: FarmRole | null
   is_primary: boolean
+  partner_id?: number | null
 }

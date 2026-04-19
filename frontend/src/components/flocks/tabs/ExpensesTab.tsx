@@ -26,13 +26,13 @@ interface QuickPreset {
 const QUICK_PRESETS: QuickPreset[] = [
   { code: 'bedding',      label: 'نشارة',       icon: '🪵', color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200 hover:bg-amber-100',  unitLabel: 'كيس' },
   { code: 'farm_wash',    label: 'غسيل مدجنة',  icon: '🧹', color: 'text-sky-700',   bgColor: 'bg-sky-50 border-sky-200 hover:bg-sky-100',        unitLabel: 'مرة' },
-  { code: 'disinfectant', label: 'معقم',         icon: '🧴', color: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100', unitLabel: 'قطعة' },
+  { code: 'disinfectant', label: 'معقم',         icon: '🧴', color: 'text-primary-700', bgColor: 'bg-primary-50 border-primary-200 hover:bg-primary-100', unitLabel: 'قطعة' },
 ]
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const PAYMENT_BADGE: Record<string, { label: string; color: string }> = {
-  paid:    { label: 'مدفوع',     color: 'bg-green-100 text-green-700' },
+  paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
   partial: { label: 'جزئي',      color: 'bg-amber-100 text-amber-700' },
   unpaid:  { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
   debt:    { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
@@ -91,7 +91,7 @@ export function ExpensesTab({ flockId, flockStatus }: Props) {
   // ── Loading & Error ──────────────────────────────────────────────────────
   if (isLoading) return (
     <div className="flex items-center justify-center py-20 text-slate-400">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" />
     </div>
   )
 
@@ -340,7 +340,7 @@ function QuickEntryForm({
         {hasPrice ? (
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">الإجمالي</span>
-            <span className="text-base font-black text-emerald-700 tabular-nums">
+            <span className="text-base font-black text-primary-700 tabular-nums">
               {formatNumber(total)} <span className="text-[10px]">$</span>
             </span>
           </div>
@@ -520,7 +520,7 @@ function CustomExpenseForm({
         {hasPrice ? (
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">الإجمالي</span>
-            <span className="text-base font-black text-emerald-700 tabular-nums">
+            <span className="text-base font-black text-primary-700 tabular-nums">
               {formatNumber(total)} <span className="text-[10px]">$</span>
             </span>
           </div>
@@ -627,3 +627,4 @@ function ExpenseRow({ expense }: { expense: ExpenseItem }) {
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { CalendarDays } from 'lucide-react'
 
@@ -47,13 +47,13 @@ export function Last7DaysSummary({ data }: Props) {
                     علف: <span className="text-amber-600">{item.feed}</span>
                   </span>
                 </div>
-                <span className="text-[11px] font-extrabold text-emerald-600">
+                <span className="text-[11px] font-extrabold text-primary-600">
                   {item.performance}%
                 </span>
               </div>
               <div className="h-1 w-full overflow-hidden rounded-full bg-white ring-1 ring-black/[0.02]">
                 <div 
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  className="h-full bg-primary-500 rounded-full transition-all duration-500"
                   style={{ width: `${item.performance}%` }}
                 />
               </div>
@@ -64,3 +64,4 @@ export function Last7DaysSummary({ data }: Props) {
     </div>
   )
 }
+

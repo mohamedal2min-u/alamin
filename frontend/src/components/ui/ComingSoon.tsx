@@ -1,4 +1,4 @@
-import { Construction } from 'lucide-react'
+﻿import { Construction } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, CardContent } from './Card'
 import { Skeleton } from './Skeleton'
@@ -57,3 +57,4 @@ export function ComingSoon({ title, description, icon: Icon }: ComingSoonProps) 
     </div>
   )
 }
+

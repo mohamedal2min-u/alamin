@@ -208,7 +208,7 @@ export default function PartnersPage() {
                       <div className="space-y-1">
                         {partner.whatsapp && (
                           <div className="flex items-center gap-2 text-sm text-slate-600">
-                            <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                            <Phone className="w-3.5 h-3.5 text-primary-500" />
                             <span className="font-medium">{partner.whatsapp}</span>
                           </div>
                         )}
@@ -248,7 +248,7 @@ export default function PartnersPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button 
                           onClick={() => handleOpenLedger(partner)}
-                          className="h-8 px-2.5 flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-600 hover:bg-emerald-100 text-xs font-bold transition-colors duration-200"
+                          className="h-8 px-2.5 flex items-center gap-1.5 bg-primary-50 border border-primary-100 rounded-lg text-primary-600 hover:bg-primary-100 text-xs font-bold transition-colors duration-200"
                           title="المحفظة المالية"
                         >
                           <Wallet className="w-3.5 h-3.5" />
@@ -314,3 +314,4 @@ function StatCard({ icon: Icon, label, value, accent }: { icon: any; label: stri
     </div>
   )
 }
+

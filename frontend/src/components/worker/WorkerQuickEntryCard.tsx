@@ -29,8 +29,8 @@ type Tab = 'mortality' | 'feed' | 'medicine' | 'temp'
 const TABS: { key: Tab; label: string; icon: any; color: string; gradient: string; lightBg: string }[] = [
   { key: 'mortality', label: 'نفوق',   icon: Skull, color: 'text-rose-600',    gradient: 'from-rose-500 to-rose-600',    lightBg: 'bg-rose-50/50' },
   { key: 'feed',      label: 'علف',    icon: Wheat,   color: 'text-blue-600',    gradient: 'from-blue-500 to-indigo-500',  lightBg: 'bg-blue-50/50' },
-  { key: 'medicine',  label: 'دواء',   icon: Syringe,       color: 'text-emerald-600', gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50/50' },
-  { key: 'temp',      label: 'حرارة',  icon: ThermometerSun, color: 'text-amber-600',   gradient: 'from-amber-500 to-orange-500', lightBg: 'bg-amber-50/50' },
+  { key: 'medicine',  label: 'دواء',   icon: Syringe,       color: 'text-primary-600', gradient: 'from-primary-500 to-teal-500', lightBg: 'bg-primary-50/50' },
+  { key: 'temp',      label: 'حرارة',  icon: ThermometerSun, color: 'text-emerald-600',   gradient: 'from-emerald-500 to-teal-600', lightBg: 'bg-emerald-50/50' },
 ]
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -144,15 +144,24 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
       iconShadow: 'shadow-rose-500/30'
     },
     feed: { 
-      text: 'text-amber-600', 
-      bg: 'bg-amber-600', 
-      border: 'focus:border-amber-500', 
-      ring: 'focus:ring-amber-500/10', 
-      shadow: 'shadow-amber-500/20',
-      activeRing: 'ring-amber-500/10',
-      iconShadow: 'shadow-amber-500/30'
+      text: 'text-blue-600', 
+      bg: 'bg-blue-600', 
+      border: 'focus:border-blue-500', 
+      ring: 'focus:ring-blue-500/10', 
+      shadow: 'shadow-blue-500/20',
+      activeRing: 'ring-blue-500/10',
+      iconShadow: 'shadow-blue-500/30'
     },
     medicine: { 
+      text: 'text-primary-600', 
+      bg: 'bg-primary-600', 
+      border: 'focus:border-primary-500', 
+      ring: 'focus:ring-primary-500/10', 
+      shadow: 'shadow-primary-500/20',
+      activeRing: 'ring-primary-500/10',
+      iconShadow: 'shadow-primary-500/30'
+    },
+    temp: { 
       text: 'text-emerald-600', 
       bg: 'bg-emerald-600', 
       border: 'focus:border-emerald-500', 
@@ -160,15 +169,6 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
       shadow: 'shadow-emerald-500/20',
       activeRing: 'ring-emerald-500/10',
       iconShadow: 'shadow-emerald-500/30'
-    },
-    temp: { 
-      text: 'text-indigo-600', 
-      bg: 'bg-indigo-600', 
-      border: 'focus:border-indigo-500', 
-      ring: 'focus:ring-indigo-500/10', 
-      shadow: 'shadow-indigo-500/20',
-      activeRing: 'ring-indigo-500/10',
-      iconShadow: 'shadow-indigo-500/30'
     },
   }
 
@@ -184,13 +184,13 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
   return (
     <div className="relative overflow-hidden rounded-[2.5rem] bg-white p-6 shadow-xl shadow-slate-200/60 border border-slate-50">
       {/* ── Background Decoration ── */}
-      <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/5 blur-3xl opacity-50" />
+      <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-primary-500/5 blur-3xl opacity-50" />
       <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-amber-500/5 blur-3xl opacity-50" />
 
       {/* ── Section Label ── */}
       <div className="relative mb-6 flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 px-3 font-bold text-xs gap-2">
+          <div className="flex h-10 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 px-3 font-bold text-xs gap-2">
             <ClipboardEdit className="h-4 w-4" />
             <span>تسجيل جديد</span>
           </div>
@@ -199,7 +199,7 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quick Operations</p>
           </div>
         </div>
-        <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+        <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-primary-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
       </div>
 
       {/* ── 4-Card Interaction Grid ── */}
@@ -281,8 +281,8 @@ export function WorkerQuickEntryCard({ flockId, onSuccess }: Props) {
                         </FormField>
                       </div>
                       {(Number(feedBags) > 0 || Number(feedExtraKg) > 0) && (
-                        <div className="flex items-center gap-2 rounded-2xl bg-emerald-50/50 px-4 py-3 text-[11px] font-bold text-emerald-700 border border-emerald-100/50">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <div className="flex items-center gap-2 rounded-2xl bg-primary-50/50 px-4 py-3 text-[11px] font-bold text-primary-700 border border-primary-100/50">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
                           الإجمالي: {(Number(feedBags) * item.unit_value + Number(feedExtraKg)).toFixed(2)} كجم
                         </div>
                       )}
@@ -381,3 +381,4 @@ function SelectInput({ value, onChange, options, placeholder, emptyMessage, clas
     </select>
   )
 }
+

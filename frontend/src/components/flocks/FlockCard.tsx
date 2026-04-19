@@ -1,4 +1,4 @@
-// frontend/src/components/flocks/FlockCard.tsx
+﻿// frontend/src/components/flocks/FlockCard.tsx
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/Card'
 import { FlockStatusBadge } from './FlockStatusBadge'
@@ -17,7 +17,7 @@ export function FlockCard({ flock }: { flock: Flock }) {
         {/* Subtle Status Bar (Top or Side) - Optional, using a colored edge for emphasis */}
         <div className={cn(
           "absolute top-0 bottom-0 start-0 w-1",
-          isProfit ? "bg-emerald-100" : "bg-rose-100"
+          isProfit ? "bg-primary-100" : "bg-rose-100"
         )} />
 
         <CardContent className="p-0">
@@ -67,7 +67,7 @@ export function FlockCard({ flock }: { flock: Flock }) {
                 value={formatNumber(flock.remaining_count)} 
                 icon={<Bird className="w-3.5 h-3.5" />}
                 isAccent={true}
-                accentColor="text-emerald-600"
+                accentColor="text-primary-600"
               />
             </div>
 
@@ -77,14 +77,16 @@ export function FlockCard({ flock }: { flock: Flock }) {
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight Arabic-font mb-1">صافي القيمة</span>
                 <div className={cn(
                   "flex items-center gap-1.5 text-base font-bold tabular-nums Arabic-font",
-                  isProfit ? "text-emerald-700" : "text-rose-600"
+                  isProfit ? "text-primary-700" : "text-rose-600"
                 )}>
                   {isProfit ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   <span className="text-[10px] opacity-60">$</span>
                   {formatNumber(Math.abs(flock.net_profit))}
                 </div>
                 <p className="text-[9px] font-medium text-slate-400 mt-0.5 Arabic-font">
-                  {isProfit ? 'تقدير أرباح' : 'تقدير خسارة'}
+                  {flock.status === 'active'
+                    ? (isProfit ? 'تقدير أرباح' : 'تقدير مصروف')
+                    : (isProfit ? 'أرباح' : 'خسارة')}
                 </p>
               </div>
             </div>
@@ -121,3 +123,4 @@ function MinimalStatItem({
     </div>
   )
 }
+

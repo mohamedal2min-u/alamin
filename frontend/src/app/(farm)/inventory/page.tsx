@@ -30,8 +30,10 @@ import {
   type AddShipmentPayload,
   type CreateItemPayload,
 } from '@/lib/api/inventory'
+import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
+import { useIsReadOnly } from '@/lib/roles'
 import { formatNumber, formatDate, cn } from '@/lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -46,13 +48,13 @@ const TYPE_LABEL: Record<string, string> = {
 
 const TARGET_TYPE_CODES = ['feed', 'medicine', 'charcoal', 'water']
 
-const DIRECTION_CONFIG: Record<string, { label: string; icon: typeof ArrowDownCircle; color: string }> = {
-  in:  { label: 'وارد',  icon: ArrowDownCircle, color: 'text-green-600' },
-  out: { label: 'صادر', icon: ArrowUpCircle,   color: 'text-red-500'   },
+const DIRECTION_CONFIG: Record<string, { label: string; icon: typeof ArrowDownCircle; color: string; badgeCls: string; amountCls: string }> = {
+  in:  { label: 'وارد',  icon: ArrowDownCircle, color: 'text-emerald-600', badgeCls: 'bg-emerald-50 text-emerald-700', amountCls: 'text-emerald-700' },
+  out: { label: 'صادر', icon: ArrowUpCircle,   color: 'text-red-600',    badgeCls: 'bg-red-50 text-red-600',        amountCls: 'text-red-600'     },
 }
 
 const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  paid:    { label: 'مدفوع',     color: 'bg-green-100 text-green-700' },
+  paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
   partial: { label: 'جزئي',      color: 'bg-amber-100 text-amber-700' },
   unpaid:  { label: 'غير مدفوع', color: 'bg-red-100 text-red-700'    },
 }
@@ -130,8 +132,8 @@ function StockStatusBadge({ item }: { item: StockItem }) {
       </span>
     )
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
       كافٍ
     </span>
   )
@@ -189,7 +191,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                       <div
                         className={cn(
                           "h-full rounded-full transition-all duration-500",
-                          isLow ? "bg-amber-400" : "bg-green-400"
+                          isLow ? "bg-amber-400" : "bg-orange-400"
                         )}
                         style={{ width: `${pct}%` }}
                       />
@@ -342,12 +344,12 @@ function AddItemForm({
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-green-200 bg-gradient-to-b from-green-50 to-white py-16 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-          <CheckCircle className="h-8 w-8 text-green-500" />
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white py-16 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+          <CheckCircle className="h-8 w-8 text-emerald-500" />
         </div>
-        <p className="text-lg font-bold text-green-700">تمت إضافة الصنف بنجاح</p>
-        <p className="mt-1 text-xs text-green-500">سيتم الانتقال لصفحة الأصناف تلقائياً...</p>
+        <p className="text-lg font-bold text-emerald-700">تمت إضافة الصنف بنجاح</p>
+        <p className="mt-1 text-xs text-emerald-500">سيتم الانتقال لصفحة الأصناف تلقائياً...</p>
       </div>
     )
   }
@@ -441,10 +443,12 @@ function AddItemForm({
 function AddShipmentForm({
   stockItems,
   warehouses,
+  activeFlockId,
   onSuccess,
 }: {
   stockItems: StockItem[]
   warehouses: Warehouse[]
+  activeFlockId?: number
   onSuccess: () => void
 }) {
   const [form, setForm] = useState({
@@ -454,6 +458,7 @@ function AddShipmentForm({
     original_quantity: '',
     unit_price:        '',
     total_amount:      '',
+    paid_amount:       '',
     payment_status:    'paid',
     supplier_name:     '',
     invoice_no:        '',
@@ -515,18 +520,23 @@ function AddShipmentForm({
     setSaving(true)
     setError(null)
     try {
+      const totalAmt  = form.total_amount ? Number(form.total_amount) : null
+      const paidAmt   = form.payment_status === 'unpaid' ? 0 : (form.paid_amount ? Number(form.paid_amount) : 0)
+
       const payload: AddShipmentPayload = {
         item_id:           Number(form.item_id),
         warehouse_id:      Number(form.warehouse_id),
         transaction_date:  form.transaction_date,
         original_quantity: Number(form.original_quantity),
-        unit_price:        form.unit_price    ? Number(form.unit_price)    : null,
-        total_amount:      form.total_amount  ? Number(form.total_amount)  : null,
-        payment_status:    (form.payment_status as 'paid' | 'unpaid' | 'partial') || 'paid',
-        supplier_name:     form.supplier_name  || null,
-        invoice_no:        form.invoice_no     || null,
-        notes:             form.notes          || null,
+        unit_price:        form.unit_price ? Number(form.unit_price) : null,
+        total_amount:      totalAmt,
+        paid_amount:       paidAmt,
+        payment_status:    form.payment_status as 'paid' | 'unpaid',
+        supplier_name:     form.supplier_name || null,
+        invoice_no:        form.invoice_no    || null,
+        notes:             form.notes         || null,
         attachment:        form.attachment,
+        flock_id:          activeFlockId,
       }
       await inventoryApi.addShipment(payload)
       setSuccess(true)
@@ -537,6 +547,7 @@ function AddShipmentForm({
         original_quantity: '',
         unit_price: '',
         total_amount: '',
+        paid_amount: '',
         payment_status: 'paid',
         supplier_name: '',
         invoice_no: '',
@@ -554,12 +565,12 @@ function AddShipmentForm({
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-green-200 bg-gradient-to-b from-green-50 to-white py-16 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-          <CheckCircle className="h-8 w-8 text-green-500" />
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white py-16 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+          <CheckCircle className="h-8 w-8 text-emerald-500" />
         </div>
-        <p className="text-lg font-bold text-green-700">تمت إضافة الحمولة بنجاح</p>
-        <p className="mt-1 text-xs text-green-500">سيتم الانتقال لصفحة الحركات تلقائياً...</p>
+        <p className="text-lg font-bold text-emerald-700">تمت إضافة الحمولة بنجاح</p>
+        <p className="mt-1 text-xs text-emerald-500">سيتم الانتقال لصفحة الحركات تلقائياً...</p>
       </div>
     )
   }
@@ -642,26 +653,48 @@ function AddShipmentForm({
           </div>
 
           {/* Section: Financials */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
-            <p className="mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">البيانات المالية</p>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="سعر الوحدة (USD)">
-                <input type="number" min="0" step="0.01" value={form.unit_price} onChange={set('unit_price')} placeholder="0.00" className={inputCls} />
-              </Field>
+          {(() => {
+            const total  = parseFloat(form.total_amount)  || 0
+            const paid   = parseFloat(form.paid_amount)   || 0
+            const remaining = form.payment_status === 'unpaid' ? total : Math.max(0, total - paid)
+            const showDebtHint = total > 0 && remaining > 0
+            return (
+              <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
+                <p className="mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">البيانات المالية</p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field label="سعر الوحدة (USD)">
+                    <input type="number" min="0" step="0.01" value={form.unit_price} onChange={set('unit_price')} placeholder="0.00" className={inputCls} />
+                  </Field>
 
-              <Field label="الإجمالي (USD)">
-                <input type="number" min="0" step="0.01" value={form.total_amount} onChange={set('total_amount')} placeholder="0.00" className={inputCls} />
-              </Field>
+                  <Field label="الإجمالي (USD)">
+                    <input type="number" min="0" step="0.01" value={form.total_amount} onChange={set('total_amount')} placeholder="0.00" className={inputCls} />
+                  </Field>
 
-              <Field label="حالة الدفع">
-                <select value={form.payment_status} onChange={set('payment_status')} className={inputCls}>
-                  <option value="paid">مدفوع</option>
-                  <option value="unpaid">غير مدفوع</option>
-                  <option value="partial">جزئي</option>
-                </select>
-              </Field>
-            </div>
-          </div>
+                  <Field label="حالة الدفع">
+                    <select value={form.payment_status} onChange={(e) => {
+                      set('payment_status')(e)
+                      if (e.target.value === 'unpaid') setForm(prev => ({ ...prev, paid_amount: '', payment_status: 'unpaid' }))
+                    }} className={inputCls}>
+                      <option value="paid">مدفوع</option>
+                      <option value="unpaid">غير مدفوع</option>
+                    </select>
+                  </Field>
+
+                  {form.payment_status === 'paid' && (
+                    <Field label="المبلغ المدفوع (USD)">
+                      <input type="number" min="0" step="0.01" value={form.paid_amount} onChange={set('paid_amount')} placeholder="0.00" className={inputCls} />
+                    </Field>
+                  )}
+                </div>
+
+                {showDebtHint && (
+                  <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600 font-medium">
+                    المبلغ غير المدفوع: <span className="font-black">{remaining.toFixed(2)} USD</span> — سيُرحَّل إلى الذمم والمراجعة تلقائياً.
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Section: Supplier */}
           <div className="grid gap-4 sm:grid-cols-3">
@@ -748,9 +781,7 @@ function MovementsTable({ transactions }: { transactions: InventoryTransaction[]
                 <td className="px-3 py-3 text-slate-500 whitespace-nowrap">{TX_TYPE_LABEL[tx.transaction_type] ?? tx.transaction_type}</td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   {dir ? (
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      tx.direction === 'in' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
-                    }`}>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${dir.badgeCls}`}>
                       <DirIcon className="h-3 w-3" />{dir.label}
                     </span>
                   ) : tx.direction}
@@ -758,7 +789,7 @@ function MovementsTable({ transactions }: { transactions: InventoryTransaction[]
                 <td className="px-3 py-3 tabular-nums text-slate-700 whitespace-nowrap">{formatNumber(tx.original_quantity)} {tx.input_unit}</td>
                 <td className="px-3 py-3 tabular-nums text-slate-700 whitespace-nowrap">{formatNumber(tx.computed_quantity)} {tx.content_unit}</td>
                 <td className="px-3 py-3 tabular-nums text-slate-700 whitespace-nowrap">{tx.unit_price != null ? `${formatNumber(tx.unit_price)} USD` : '—'}</td>
-                <td className="px-3 py-3 tabular-nums font-semibold text-slate-800 whitespace-nowrap">{tx.total_amount != null ? `${formatNumber(tx.total_amount)} USD` : '—'}</td>
+                <td className={`px-3 py-3 tabular-nums font-semibold whitespace-nowrap ${dir?.amountCls ?? 'text-slate-800'}`}>{tx.total_amount != null ? `${formatNumber(tx.total_amount)} USD` : '—'}</td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   {payment ? <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${payment.color}`}>{payment.label}</span> : '—'}
                 </td>
@@ -784,8 +815,8 @@ function AlertsTab({ items }: { items: StockItem[] }) {
   if (lowItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-50">
-          <CheckCircle className="h-7 w-7 text-green-400" />
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50">
+          <CheckCircle className="h-7 w-7 text-orange-400" />
         </div>
         <p className="font-bold text-slate-600">لا توجد تنبيهات</p>
         <p className="mt-1 text-xs text-slate-400">جميع المواد بمستوى آمن ومقبول</p>
@@ -872,12 +903,21 @@ function AlertsTab({ items }: { items: StockItem[] }) {
 export default function InventoryPage() {
   const { currentFarm } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
+  const isReadOnly = useIsReadOnly()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
 
   useEffect(() => {
     setPageTitle('المخزون')
     setPageSubtitle(currentFarm?.name || null)
   }, [currentFarm, setPageTitle, setPageSubtitle])
+
+  const { data: flocksData } = useQuery({
+    queryKey: ['flocks', currentFarm?.id],
+    queryFn: () => flocksApi.list().then((r) => r.data),
+    enabled: !!currentFarm,
+    staleTime: 60_000,
+  })
+  const activeFlockId = flocksData?.find((f) => f.status === 'active')?.id
 
   const {
     data: overviewData,
@@ -891,9 +931,16 @@ export default function InventoryPage() {
     staleTime: 30_000,
   })
 
+  const { data: txData } = useQuery({
+    queryKey: ['inventory-transactions', currentFarm?.id, activeFlockId],
+    queryFn: () => inventoryApi.transactions(activeFlockId),
+    enabled: !!currentFarm && activeFlockId !== undefined,
+    staleTime: 30_000,
+  })
+
   const items        = overviewData?.stock        ?? []
   const summary      = overviewData?.summary      ?? null
-  const transactions = overviewData?.transactions ?? []
+  const transactions = txData?.data               ?? []
   const warehouses   = overviewData?.warehouses   ?? []
   const itemTypes    = overviewData?.item_types   ?? []
   const error        = isError ? 'تعذّر تحميل بيانات المخزون' : null
@@ -906,8 +953,10 @@ export default function InventoryPage() {
   const tabs: { id: Tab; label: string; badge?: number; icon: typeof Eye; isAction?: boolean }[] = [
     { id: 'overview',     label: 'نظرة عامة',  icon: Eye },
     { id: 'items',        label: 'الأصناف',     icon: ListChecks,  badge: items.length },
-    { id: 'add-item',     label: 'صنف جديد',    icon: Plus,        isAction: true },
-    { id: 'add-shipment', label: 'حمولة جديدة', icon: Truck,       isAction: true },
+    ...(!isReadOnly ? [
+      { id: 'add-item'     as Tab, label: 'صنف جديد',    icon: Plus,  isAction: true },
+      { id: 'add-shipment' as Tab, label: 'حمولة جديدة', icon: Truck, isAction: true },
+    ] : []),
     { id: 'movements',    label: 'الحركات',     icon: BarChart3,   badge: transactions.length },
     { id: 'alerts',       label: 'التنبيهات',   icon: Bell,        badge: lowItems.length || undefined },
   ]
@@ -939,9 +988,9 @@ export default function InventoryPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <KpiCard label="رصيد العلف"           value={formatNumber(summary.feed_quantity)}     sub={summary.feed_unit}                             icon={Package}    color="text-amber-700" />
               <KpiCard label="رصيد الدواء"          value={formatNumber(summary.medicine_quantity)} sub={summary.medicine_unit}                         icon={Package}    color="text-blue-700" />
-              <KpiCard label="مواد منخفضة"          value={String(summary.low_stock_count)}         sub={summary.low_stock_count > 0 ? 'تحتاج متابعة' : 'المخزون كافٍ'} icon={TrendingDown} color={summary.low_stock_count > 0 ? 'text-red-600' : 'text-green-600'} />
+              <KpiCard label="مواد منخفضة"          value={String(summary.low_stock_count)}         sub={summary.low_stock_count > 0 ? 'تحتاج متابعة' : 'المخزون كافٍ'} icon={TrendingDown} color={summary.low_stock_count > 0 ? 'text-red-600' : 'text-orange-600'} />
               <KpiCard label="آخر حمولة"            value={summary.last_shipment_date ? formatDate(summary.last_shipment_date) : '—'}                  icon={Truck}      color="text-slate-600" />
-              <KpiCard label="إجمالي قيمة المخزون" value={formatNumber(summary.total_value)}       sub="USD"                                           icon={DollarSign} color="text-emerald-700" />
+              <KpiCard label="إجمالي قيمة المخزون" value={formatNumber(summary.total_value)}       sub="USD"                                           icon={DollarSign} color="text-primary-700" />
             </div>
           )}
 
@@ -999,13 +1048,15 @@ export default function InventoryPage() {
                       <Package className="h-8 w-8 text-slate-300" />
                     </div>
                     <h3 className="text-lg font-bold text-slate-700">لا توجد أصناف في المخزون</h3>
-                    <p className="mt-1 text-xs text-slate-400">أضف أصناف من تبويب &quot;صنف جديد&quot;</p>
-                    <button
-                      onClick={() => setActiveTab('add-item')}
-                      className="mt-4 flex items-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-700 transition-all duration-200 shadow-md shadow-primary-200"
-                    >
-                      <Plus className="h-4 w-4" /> إضافة صنف جديد
-                    </button>
+                    <p className="mt-1 text-xs text-slate-400">{isReadOnly ? 'لا توجد أصناف مضافة بعد' : 'أضف أصناف من تبويب "صنف جديد"'}</p>
+                    {!isReadOnly && (
+                      <button
+                        onClick={() => setActiveTab('add-item')}
+                        className="mt-4 flex items-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-700 transition-all duration-200 shadow-md shadow-primary-200"
+                      >
+                        <Plus className="h-4 w-4" /> إضافة صنف جديد
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1018,9 +1069,11 @@ export default function InventoryPage() {
                     <Package className="h-7 w-7 text-slate-300" />
                   </div>
                   <h3 className="text-lg font-bold text-slate-700">لا توجد أصناف</h3>
-                  <button onClick={() => setActiveTab('add-item')} className="mt-4 flex items-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-700 transition-all duration-200 shadow-md shadow-primary-200">
-                    <Plus className="h-4 w-4" /> إضافة صنف
-                  </button>
+                  {!isReadOnly && (
+                    <button onClick={() => setActiveTab('add-item')} className="mt-4 flex items-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-700 transition-all duration-200 shadow-md shadow-primary-200">
+                      <Plus className="h-4 w-4" /> إضافة صنف
+                    </button>
+                  )}
                 </div>
               ) : <ItemsTable items={items} />
             )}
@@ -1036,6 +1089,7 @@ export default function InventoryPage() {
               <AddShipmentForm
                 stockItems={items}
                 warehouses={warehouses}
+                activeFlockId={activeFlockId}
                 onSuccess={() => { loadData(); setActiveTab('movements') }}
               />
             )}
@@ -1049,3 +1103,4 @@ export default function InventoryPage() {
     </div>
   )
 }
+

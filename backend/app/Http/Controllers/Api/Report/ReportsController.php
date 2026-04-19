@@ -10,10 +10,14 @@ use Illuminate\Http\JsonResponse;
 class ReportsController extends Controller
 {
     protected $reportService;
+    protected $getDailySummaryAction;
 
-    public function __construct(ReportService $reportService)
-    {
+    public function __construct(
+        ReportService $reportService,
+        \App\Actions\Flock\GetDailySummaryAction $getDailySummaryAction
+    ) {
         $this->reportService = $reportService;
+        $this->getDailySummaryAction = $getDailySummaryAction;
     }
 
     /**
@@ -53,15 +57,51 @@ class ReportsController extends Controller
 
     /**
      * GET reports/accounting-summary
+     *
+     * بدون flock_id: يستخدم الفوج النشط تلقائياً، وإن لم يوجد فالأحدث مغلقاً.
      */
     public function accountingSummary(Request $request): JsonResponse
     {
-        $farmId = $request->attributes->get('farm_id');
-        $flockId = $request->query('flock_id');
+        $farmId    = $request->attributes->get('farm_id');
+        $flockId   = $request->query('flock_id');
         $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
+        $endDate   = $request->query('end_date');
 
-        $data = $this->reportService->getAccountingSummary($farmId, $flockId, $startDate, $endDate);
+        // Auto-select flock when not specified
+        $flock = null;
+        if ($flockId) {
+            $flock = \App\Models\Flock::where('farm_id', $farmId)->find((int) $flockId);
+        } else {
+            // 1. Active flock
+            $flock = \App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->first();
+            // 2. Most recently closed flock
+            if (!$flock) {
+                $flock = \App\Models\Flock::where('farm_id', $farmId)
+                    ->where('status', 'closed')
+                    ->orderByDesc('close_date')
+                    ->orderByDesc('id')
+                    ->first();
+            }
+        }
+
+        if (!$flock) {
+            return response()->json([
+                'flock'           => null,
+                'summary'         => ['total_sales' => 0, 'total_expenses' => 0, 'net_profit' => 0],
+                'cash_flow'       => ['total_received' => 0, 'total_paid' => 0, 'balance' => 0],
+                'debts'           => ['receivables' => 0, 'payables' => 0],
+                'expense_breakdown' => [],
+                'currency'        => 'USD',
+            ]);
+        }
+
+        $data = $this->reportService->getAccountingSummary($farmId, $flock->id, $startDate, $endDate);
+        $data['flock'] = [
+            'id'     => $flock->id,
+            'name'   => $flock->name,
+            'status' => $flock->status,
+        ];
+
         return response()->json($data);
     }
 
@@ -100,5 +140,18 @@ class ReportsController extends Controller
         $farmId = $request->attributes->get('farm_id');
         $date = $request->query('date');
         return response()->json($this->reportService->getDailyReport($farmId, $date));
+    }
+
+    /**
+     * GET reports/flocks/{flock}/daily-summary
+     */
+    public function flockDailySummary(Request $request, int $flockId): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+        $flock = \App\Models\Flock::where('farm_id', $farmId)->findOrFail($flockId);
+
+        return response()->json([
+            'data' => $this->getDailySummaryAction->execute($flock)
+        ]);
     }
 }

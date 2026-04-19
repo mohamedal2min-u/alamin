@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { Dialog } from '@/components/ui/Dialog'
@@ -69,7 +69,7 @@ export function NoteSheet({
             onChange={(e) => setNote(e.target.value)}
             placeholder="اكتب ملاحظتك هنا (حالة طيور، عطل فني...)"
             disabled={isSubmitting}
-            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-shadow bg-white text-slate-900 resize-none"
+            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-shadow bg-white text-slate-900 resize-none"
           />
         </div>
 
@@ -86,3 +86,4 @@ export function NoteSheet({
     </Dialog>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -368,3 +368,4 @@ export default function SettingsPage() {
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { Dialog } from '@/components/ui/Dialog'
@@ -95,3 +95,4 @@ export function MortalitySheet({
     </Dialog>
   )
 }
+

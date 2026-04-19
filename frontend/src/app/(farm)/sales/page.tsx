@@ -1,24 +1,39 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
-import { ShoppingCart, AlertCircle } from 'lucide-react'
+import { ShoppingCart, AlertCircle, Bird } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { salesApi } from '@/lib/api/sales'
+import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { PaymentStatusBadge } from '@/components/sales/PaymentStatusBadge'
 import { UpdatePaymentDialog } from '@/components/sales/UpdatePaymentDialog'
 import { formatDate, formatNumber } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
+import type { Flock } from '@/types/flock'
 
 export default function SalesPage() {
   const { currentFarm } = useFarmStore()
   const queryClient = useQueryClient()
   const [paymentSale, setPaymentSale] = useState<Sale | null>(null)
 
-  const { data, isLoading: loading, isError } = useQuery({
-    queryKey: ['sales', currentFarm?.id],
-    queryFn: () => salesApi.listAll().then((res) => res.data),
+  const { data: flocks = [] } = useQuery<Flock[]>({
+    queryKey: ['flocks', currentFarm?.id],
+    queryFn: () => flocksApi.list().then((r) => r.data),
     enabled: !!currentFarm,
+    staleTime: 60_000,
+  })
+
+  // الفوج النشط → آخر فوج مُغلق → لا شيء
+  const targetFlock =
+    flocks.find((f) => f.status === 'active') ??
+    flocks.filter((f) => f.status === 'closed').sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0] ??
+    null
+
+  const { data, isLoading: loading, isError } = useQuery({
+    queryKey: ['sales', currentFarm?.id, targetFlock?.id],
+    queryFn: () => salesApi.listAll(targetFlock?.id).then((res) => res.data),
+    enabled: !!currentFarm && !!targetFlock,
     staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
   })
@@ -40,6 +55,27 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-5">
+
+      {/* Flock indicator */}
+      {targetFlock && (
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600">
+          <Bird className="h-4 w-4 text-slate-400 shrink-0" />
+          <span>المبيعات تخص الفوج:</span>
+          <span className="font-semibold text-slate-800">{targetFlock.name}</span>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${targetFlock.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+            {targetFlock.status === 'active' ? 'نشط' : 'مغلق'}
+          </span>
+        </div>
+      )}
+
+      {/* No flock at all */}
+      {!loading && !targetFlock && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-20 text-center">
+          <Bird className="mb-4 h-12 w-12 text-slate-300" />
+          <h3 className="text-base font-bold text-slate-700">لا يوجد فوج بعد</h3>
+          <p className="mt-1 text-sm text-slate-500">أنشئ فوجاً أولاً لعرض المبيعات</p>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -103,7 +139,7 @@ export default function SalesPage() {
                     <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(totalBirds)}</td>
                     <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(Number(totalWeight.toFixed(1)))}</td>
                     <td className="px-5 py-3 tabular-nums font-semibold text-slate-900">{formatNumber(Number(sale.net_amount))}</td>
-                    <td className="px-5 py-3 tabular-nums text-emerald-700 font-medium">{formatNumber(Number(sale.received_amount))}</td>
+                    <td className="px-5 py-3 tabular-nums text-primary-700 font-medium">{formatNumber(Number(sale.received_amount))}</td>
                     <td className={`px-5 py-3 tabular-nums font-medium ${sale.remaining_amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
                       {formatNumber(Number(sale.remaining_amount))}
                     </td>
@@ -153,7 +189,7 @@ function SummaryCard({
 }) {
   const valueColor = {
     slate:   'text-slate-900',
-    emerald: 'text-emerald-700',
+    emerald: 'text-primary-700',
     red:     'text-red-600',
   }[accent]
 
@@ -167,3 +203,4 @@ function SummaryCard({
     </div>
   )
 }
+

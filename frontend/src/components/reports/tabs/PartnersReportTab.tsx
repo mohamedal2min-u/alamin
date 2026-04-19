@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
@@ -47,7 +47,7 @@ export const PartnersReportTab = ({ data, isLoading }: PartnersReportTabProps) =
       <Card className="p-4 border-slate-100 shadow-sm">
         <div className="flex items-center justify-between mb-4 border-b pb-2">
             <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-emerald-600" />
+                <Wallet className="w-4 h-4 text-primary-600" />
                 آخر الحركات المالية للشركاء
             </h4>
         </div>
@@ -71,7 +71,7 @@ export const PartnersReportTab = ({ data, isLoading }: PartnersReportTabProps) =
                       {tx.transaction_type === 'deposit' ? 'إيداع' : 'سحب'}
                     </Badge>
                   </td>
-                  <td className={`py-3 text-left text-xs font-bold ${tx.transaction_type === 'deposit' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <td className={`py-3 text-left text-xs font-bold ${tx.transaction_type === 'deposit' ? 'text-primary-600' : 'text-rose-600'}`}>
                     {tx.transaction_type === 'deposit' ? '+' : '-'}{Number(tx.amount).toLocaleString()} {data.currency}
                   </td>
                 </tr>
@@ -97,3 +97,4 @@ export const PartnersReportTab = ({ data, isLoading }: PartnersReportTabProps) =
     </div>
   )
 }
+

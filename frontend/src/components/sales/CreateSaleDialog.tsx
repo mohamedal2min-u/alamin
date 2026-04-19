@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
@@ -272,12 +272,12 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
               <span className="tabular-nums">{formatNumber(Number(net.toFixed(2)))}</span>
             </div>
             {watchReceived > 0 && (
-              <div className="flex justify-between text-emerald-700">
+              <div className="flex justify-between text-primary-700">
                 <span>المستلم</span>
                 <span className="tabular-nums">{formatNumber(Number(watchReceived.toFixed(2)))}</span>
               </div>
             )}
-            <div className={`flex justify-between font-semibold ${remaining > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+            <div className={`flex justify-between font-semibold ${remaining > 0 ? 'text-red-600' : 'text-primary-700'}`}>
               <span>المتبقي</span>
               <span className="tabular-nums">{formatNumber(Number(remaining.toFixed(2)))}</span>
             </div>
@@ -313,3 +313,4 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
     </Dialog>
   )
 }
+

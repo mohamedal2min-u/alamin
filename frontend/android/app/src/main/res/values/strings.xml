@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Yassin Modern Digital</string>
+    <string name="title_activity_main">Yassin Modern Digital</string>
+    <string name="package_name">se.alamin.ch</string>
+    <string name="custom_url_scheme">se.alamin.ch</string>
+</resources>

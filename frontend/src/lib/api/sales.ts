@@ -4,9 +4,9 @@ import { apiClient } from './client'
 import type { Sale, CreateSalePayload, UpdatePaymentPayload } from '@/types/sale'
 
 export const salesApi = {
-  /** GET /api/sales — كل مبيعات المزرعة */
-  listAll: () =>
-    apiClient.get<{ data: Sale[] }>('/sales').then((r) => r.data),
+  /** GET /api/sales?flock_id=X — مبيعات مزرعة مع فلتر اختياري بالفوج */
+  listAll: (flockId?: number) =>
+    apiClient.get<{ data: Sale[] }>('/sales', { params: flockId ? { flock_id: flockId } : {} }).then((r) => r.data),
 
   /** GET /api/flocks/{flock}/sales — مبيعات فوج محدد */
   listByFlock: (flockId: number) =>

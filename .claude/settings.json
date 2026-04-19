@@ -13,10 +13,14 @@
       "Bash(git rm:*)",
       "Bash(npm install:*)",
       "Bash(git commit:*)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(node gen-test-icon.mjs)",
+      "Bash(magick --version)",
+      "Bash(convert --version)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\moham\\Desktop\\alamin\\frontend\\src\\app\\(farm)\\flocks"
+      "C:\\Users\\moham\\Desktop\\alamin\\frontend\\src\\app\\(farm)\\flocks",
+      "C:\\Users\\moham\\Desktop"
     ]
   },
   "enabledPlugins": {

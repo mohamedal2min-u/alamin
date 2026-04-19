@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
@@ -77,6 +77,25 @@ export const FiltersBar = ({ onFilterChange, filters }: FiltersBarProps) => {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-50">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-9 gap-2 text-xs"
+          onClick={() => window.print()}
+        >
+          <Printer className="w-4 h-4" /> طباعة الصفحة
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-9 gap-2 text-xs opacity-50 cursor-not-allowed"
+          disabled
+        >
+          <Download className="w-4 h-4" /> تصدير PDF
+        </Button>
+      </div>
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-// frontend/src/components/flocks/tabs/MortalitiesTab.tsx
+﻿// frontend/src/components/flocks/tabs/MortalitiesTab.tsx
 'use client'
 
 import { useForm } from 'react-hook-form'
@@ -147,3 +147,4 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
     </div>
   )
 }
+

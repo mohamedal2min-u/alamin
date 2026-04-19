@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React from 'react'
 import { Dialog } from '@/components/ui/Dialog'
@@ -28,7 +28,7 @@ export function HistoryDetailDialog({ isOpen, onClose, date, age, timeline }: Pr
       case 'mortality': return <Bird className="h-4 w-4 text-red-500" />
       case 'feed': return <Wheat className="h-4 w-4 text-amber-500" />
       case 'medicine': return <Pill className="h-4 w-4 text-indigo-500" />
-      case 'temp': return <Thermometer className="h-4 w-4 text-emerald-500" />
+      case 'temp': return <Thermometer className="h-4 w-4 text-primary-500" />
       default: return <Clock className="h-4 w-4 text-slate-400" />
     }
   }
@@ -38,7 +38,7 @@ export function HistoryDetailDialog({ isOpen, onClose, date, age, timeline }: Pr
       case 'mortality': return 'bg-red-50'
       case 'feed': return 'bg-amber-50'
       case 'medicine': return 'bg-indigo-50'
-      case 'temp': return 'bg-emerald-50'
+      case 'temp': return 'bg-primary-50'
       default: return 'bg-slate-50'
     }
   }
@@ -101,4 +101,5 @@ export function HistoryDetailDialog({ isOpen, onClose, date, age, timeline }: Pr
     </Dialog>
   )
 }
+
 

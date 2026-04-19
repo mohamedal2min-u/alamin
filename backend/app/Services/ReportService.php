@@ -8,6 +8,8 @@ use App\Models\InventoryTransaction;
 use App\Models\Sale;
 use App\Models\WarehouseItem;
 use App\Models\FlockMortality;
+use App\Models\FlockWaterLog;
+use App\Models\PartnerTransaction;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -23,11 +25,12 @@ class ReportService
         
         $totalSales = Sale::where('farm_id', $farmId)->sum('net_amount');
         
+        // $opExpenses includes "شراء كتاكيت" expense records — do NOT add total_chick_cost separately
         $opExpenses = Expense::where('farm_id', $farmId)->sum('total_amount');
         $inventoryCost = $this->inventoryConsumptionCost($farmId);
-        $chickCost = Flock::where('farm_id', $farmId)->sum('total_chick_cost');
-        
-        $totalExpenses = $opExpenses + $inventoryCost + $chickCost;
+        $waterCost = FlockWaterLog::where('farm_id', $farmId)->sum('total_amount');
+
+        $totalExpenses = $opExpenses + $inventoryCost + $waterCost;
 
         $inventoryValue = WarehouseItem::where('farm_id', $farmId)
             ->selectRaw('SUM(current_quantity * COALESCE(average_cost, 0)) as total_value')
@@ -78,11 +81,12 @@ class ReportService
 
         $totalSales = $flock->sales()->sum('net_amount');
         
+        // $opExpenses includes "شراء كتاكيت" expense record — do NOT add total_chick_cost separately
         $opExpenses = $flock->expenses()->sum('total_amount');
         $inventoryCost = $this->inventoryConsumptionCost($farmId, $flockId);
-        $chickCost = (float) $flock->total_chick_cost;
-        
-        $totalExpenses = $opExpenses + $inventoryCost + $chickCost;
+        $waterCost = FlockWaterLog::where('flock_id', $flockId)->sum('total_amount');
+
+        $totalExpenses = $opExpenses + $inventoryCost + $waterCost;
         
         // Sales statistics from sale_items
         $salesDetails = DB::table('sale_items')
@@ -135,7 +139,6 @@ class ReportService
                 'total_feed_bags' => (float) $totalFeedBags,
                 'feed_cost' => $feedCost,
                 'total_medicine_cost' => (float) $medicineExpenses,
-                'chick_cost' => $chickCost,
             ],
             'sales_analytics' => [
                 'birds_sold' => $birdsSold,
@@ -148,31 +151,6 @@ class ReportService
                 'profit_loss' => (float) ($totalSales - $totalExpenses),
                 'is_profitable' => $totalSales >= $totalExpenses,
                 'profit_status_label' => ($totalSales >= $totalExpenses) ? 'ربح' : 'خسارة',
-            ],
-            'details' => [
-                'expense_records' => $flock->expenses()
-                    ->with('expenseCategory:id,name')
-                    ->orderByDesc('entry_date')
-                    ->orderByDesc('id')
-                    ->get()
-                    ->map(fn($e) => [
-                        'id' => $e->id,
-                        'date' => $e->entry_date->toDateString(),
-                        'category' => $e->expenseCategory?->name ?? 'غير محدد',
-                        'amount' => (float) $e->total_amount,
-                        'description' => $e->description,
-                    ]),
-                'sale_records' => $flock->sales()
-                    ->orderByDesc('sale_date')
-                    ->orderByDesc('id')
-                    ->get()
-                    ->map(fn($s) => [
-                        'id' => $s->id,
-                        'date' => $s->sale_date->toDateString(),
-                        'category' => 'مبيعات',
-                        'amount' => (float) $s->net_amount,
-                        'description' => $s->buyer_name ? "مشتري: {$s->buyer_name}" : 'بيع نقدي',
-                    ]),
             ],
         ];
     }
@@ -200,27 +178,32 @@ class ReportService
             $salesQuery->where('sale_date', '<=', $endDate);
         }
 
+        // opExpenses includes "شراء كتاكيت" expenses — do NOT add chickCost separately to avoid double-counting
         $opExpenses = $expensesQuery->sum('total_amount');
         $inventoryCost = $this->inventoryConsumptionCost($farmId, $flockId, $startDate, $endDate);
-        
-        // Calculate chick cost for relevant flocks
-        $chickCostQuery = Flock::where('farm_id', $farmId);
-        if ($flockId) {
-            $chickCostQuery->where('id', $flockId);
-        }
-        if ($startDate) {
-            $chickCostQuery->where('start_date', '>=', $startDate);
-        }
-        if ($endDate) {
-            $chickCostQuery->where('start_date', '<=', $endDate);
-        }
-        $chickCost = (float) $chickCostQuery->sum('total_chick_cost');
 
-        $totalExpenses = $opExpenses + $inventoryCost + $chickCost;
+        // Water Costs
+        $waterQuery = FlockWaterLog::where('farm_id', $farmId);
+        if ($flockId) $waterQuery->where('flock_id', $flockId);
+        if ($startDate) $waterQuery->where('entry_date', '>=', $startDate);
+        if ($endDate) $waterQuery->where('entry_date', '<=', $endDate);
+        $waterCost = (float) $waterQuery->sum('total_amount');
+        $waterPaid = (float) $waterQuery->sum('paid_amount');
+
+        // Distribution / Withdrawals
+        $withdrawalQuery = PartnerTransaction::where('farm_id', $farmId)
+            ->where('transaction_type', 'withdraw');
+        if ($startDate) $withdrawalQuery->where('transaction_date', '>=', $startDate);
+        if ($endDate) $withdrawalQuery->where('transaction_date', '<=', $endDate);
+        $totalWithdrawals = (float) $withdrawalQuery->sum('amount');
+
+        $totalExpenses = $opExpenses + $inventoryCost + $waterCost;
         $totalSales = $salesQuery->sum('net_amount');
 
         $totalPaidExpenses = $expensesQuery->sum('paid_amount');
         $totalReceivedSales = $salesQuery->sum('received_amount');
+
+        $totalPaidEverything = $totalPaidExpenses + $waterPaid + $totalWithdrawals;
 
         // Breakdown by category — same filters as the main query
         $categoryQuery = Expense::where('expenses.farm_id', $farmId)
@@ -240,11 +223,10 @@ class ReportService
 
         $expensesByCategory = $categoryQuery->get();
 
-        // Inject Chick Purchase if applicable
-        if ($chickCost > 0) {
+        if ($waterCost > 0) {
             $expensesByCategory->push((object)[
-                'category' => 'شراء صوص',
-                'amount' => (float) $chickCost
+                'category' => 'صهاريج مياه',
+                'amount' => (float) $waterCost
             ]);
         }
 
@@ -256,12 +238,12 @@ class ReportService
             ],
             'cash_flow' => [
                 'total_received' => (float) $totalReceivedSales,
-                'total_paid' => (float) $totalPaidExpenses,
-                'balance' => (float) ($totalReceivedSales - $totalPaidExpenses),
+                'total_paid' => (float) $totalPaidEverything,
+                'balance' => (float) ($totalReceivedSales - $totalPaidEverything),
             ],
             'debts' => [
                 'receivables' => (float) ($totalSales - $totalReceivedSales),
-                'payables' => (float) ($totalExpenses - $totalPaidExpenses),
+                'payables'    => (float) (($opExpenses - $totalPaidExpenses) + ($waterCost - $waterPaid)),
             ],
             'expense_breakdown' => $expensesByCategory,
             'currency' => 'USD'

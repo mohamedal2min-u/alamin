@@ -1,4 +1,4 @@
-// frontend/src/components/layout/BottomNav.tsx
+﻿// frontend/src/components/layout/BottomNav.tsx
 'use client'
 
 import Link from 'next/link'
@@ -47,7 +47,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
         href={item.href}
         className={cn(
           'relative flex flex-col items-center justify-center gap-1 min-w-[56px] py-1.5 transition-all duration-200 active:scale-95',
-          isActive ? 'text-emerald-600' : 'text-slate-400'
+          isActive ? 'text-primary-600' : 'text-slate-400'
         )}
       >
         <item.icon 
@@ -59,12 +59,12 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
         />
         <span className={cn(
           'text-[10px] font-bold leading-none transition-colors duration-200',
-          isActive ? 'text-emerald-700' : 'text-slate-400'
+          isActive ? 'text-primary-700' : 'text-slate-400'
         )}>
           {item.label}
         </span>
         {isActive && (
-          <span className="absolute -top-0.5 h-[3px] w-6 rounded-full bg-emerald-500 transition-all duration-300" />
+          <span className="absolute -top-0.5 h-[3px] w-6 rounded-full bg-primary-500 transition-all duration-300" />
         )}
       </Link>
     )
@@ -101,7 +101,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
             className={cn(
               "flex h-[60px] w-[60px] items-center justify-center rounded-full border-4 shadow-xl transition-all active:scale-95",
               isHomeActive 
-                ? "border-emerald-500 bg-white dark:bg-slate-800 scale-110 -translate-y-1" 
+                ? "border-primary-500 bg-white dark:bg-slate-800 scale-110 -translate-y-1" 
                 : "border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700"
             )}
           >
@@ -115,7 +115,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
           </Link>
           <span className={cn(
             "text-[10px] font-black mt-1 transition-colors",
-            isHomeActive ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400"
+            isHomeActive ? "text-primary-700 dark:text-primary-400" : "text-slate-400"
           )}>
             الرئيسية
           </span>
@@ -130,3 +130,4 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     </nav>
   )
 }
+

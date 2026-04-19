@@ -228,6 +228,18 @@ body {
   }
 }
 
+/* ── Login Page Sparkle / Twinkle ─────────────────────────────── */
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.2) rotate(30deg); }
+  40%, 60% { opacity: 1; transform: scale(1) rotate(30deg); }
+}
+
+@keyframes logo-glow-pulse {
+  0%, 100% { opacity: 0.18; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(1.08); }
+}
+
 /* ── Custom Animations ─────────────────────────────────────────── */
 
 @keyframes progress-glow {

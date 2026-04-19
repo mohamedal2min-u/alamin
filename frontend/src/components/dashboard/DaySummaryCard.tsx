@@ -58,8 +58,8 @@ export function DaySummaryCard({ summary, loading }: Props) {
           value={formatNumber(mortalityTotal)} 
           unit="طير"
           icon={<Skull className="w-4 h-4" />}
-          color="text-rose-600" 
-          bgColor="bg-rose-50/30"
+          color={mortalityTotal === 0 ? "text-emerald-600" : "text-rose-600"} 
+          bgColor={mortalityTotal === 0 ? "bg-emerald-50/30" : "bg-rose-50/30"}
         />
         <SummaryKpi 
           label="استهلاك العلف" 

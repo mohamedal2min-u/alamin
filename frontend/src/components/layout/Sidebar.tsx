@@ -102,6 +102,17 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
+
+      {/* Footer / Credits */}
+      <div className="p-5 mt-auto border-t border-slate-50 dark:border-slate-700/40">
+        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed text-center Arabic-font uppercase tracking-wider">
+          جميع الحقوق محفوظة
+          <br />
+          تطبيق محاسبة ذكي
+          <br />
+          بتطوير <span className="text-primary-500/80">محمد الأمين</span>
+        </p>
+      </div>
     </aside>
   )
 }

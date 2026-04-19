@@ -18,9 +18,9 @@ export function FlockInfoCard({ flock }: Props) {
       : '0.0'
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
       {/* Header row - Name and Status */}
-      <div className="flex items-center justify-between px-5 py-4 bg-slate-50/50">
+      <div className="flex items-center justify-between px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-600">
             <Bird className="h-6 w-6" />
@@ -59,7 +59,7 @@ export function FlockInfoCard({ flock }: Props) {
       </div>
 
       {/* Secondary Stats Row */}
-      <div className="grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 px-2 py-3">
+      <div className="grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 dark:divide-slate-700 px-2 py-3">
         <div className="flex flex-col items-center py-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase mb-1">العدد الأولي</span>
           <div className="flex items-center gap-1.5">

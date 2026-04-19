@@ -102,7 +102,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
         </div>
       </div>
 
-      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between no-print">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between no-print">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary-600" />
           <h3 className="font-bold text-slate-800 text-sm">النظرة العامة اليومية</h3>
@@ -153,7 +153,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {visibleRecords.map((row) => (
               <tr key={row.date} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3 text-center font-bold text-slate-900 bg-slate-50/30">
@@ -202,7 +202,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
                 </td>
               </tr>
             ) : null}
-            <tr className="bg-primary-50/50 border-t-2 border-primary-100 font-black text-slate-900">
+            <tr className="bg-primary-50/50 dark:bg-slate-800 border-t-2 border-primary-100 dark:border-slate-700 font-black text-slate-900">
               <td colSpan={2} className="px-4 py-4 text-center text-primary-700">المجموع الإجمالي</td>
               <td className="px-4 py-4 text-center text-red-700 border-x border-primary-100/30">{formatNumber(totals.mortality)}</td>
               <td className="px-4 py-4 text-center text-emerald-800 border-x border-primary-100/30">{renderFeed(totals.feed)}</td>

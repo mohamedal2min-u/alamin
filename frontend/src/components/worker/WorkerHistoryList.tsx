@@ -40,7 +40,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
     return (
       <div className="space-y-2">
         {[1, 2].map(i => (
-          <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-slate-50" />
+          <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
         ))}
       </div>
     )
@@ -68,7 +68,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
       {todayDay && (
         <div 
           onClick={() => setSelectedDay(todayDay)}
-          className="group relative flex items-center bg-gradient-to-br from-primary-50 to-white border border-primary-200/60 p-4 rounded-[1.5rem] shadow-sm cursor-pointer active:scale-[0.98] transition-all overflow-hidden"
+          className="group relative flex items-center bg-primary-50/50 dark:bg-slate-800 border border-primary-200/60 dark:border-slate-700 p-4 rounded-[1.5rem] shadow-sm cursor-pointer active:scale-[0.98] transition-all overflow-hidden"
         >
           {/* Subtle decoration */}
           <div className="absolute -left-4 -top-4 opacity-5">
@@ -79,7 +79,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
             {/* Left: Progress Ring */}
             <div className="relative h-12 w-12 shrink-0">
               <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="16" fill="none" className="stroke-primary-100" strokeWidth="4" />
+                <circle cx="18" cy="18" r="16" fill="none" className="stroke-primary-100 dark:stroke-slate-700" strokeWidth="4" />
                 <circle 
                   cx="18" cy="18" r="16" fill="none" 
                   className={todayDay.stats.completion_rate === 100 ? "stroke-primary-500" : "stroke-emerald-400"}
@@ -125,7 +125,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
             <div 
               key={day.date}
               onClick={() => setSelectedDay(day)}
-              className="flex items-center justify-between border bg-white border-primary-50 p-3.5 rounded-[1.25rem] cursor-pointer active:scale-[0.98] transition-all hover:border-primary-100"
+              className="flex items-center justify-between border bg-white dark:bg-slate-800 border-primary-50 dark:border-slate-700 p-3.5 rounded-[1.25rem] cursor-pointer active:scale-[0.98] transition-all hover:border-primary-100 dark:hover:border-slate-600"
             >
               {/* Left: Info */}
               <div className="flex flex-col gap-1.5 min-w-0">
@@ -149,7 +149,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
               {/* Right: Completion Ring */}
               <div className="relative h-11 w-11 shrink-0">
                 <svg className="h-full w-full" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15" fill="none" className="stroke-slate-100" strokeWidth="3" />
+                  <circle cx="18" cy="18" r="15" fill="none" className="stroke-slate-100 dark:stroke-slate-700" strokeWidth="3" />
                   <circle 
                     cx="18" cy="18" r="15" fill="none" 
                     className={day.stats.completion_rate === 100 ? "stroke-primary-500" : "stroke-emerald-400"}
@@ -173,9 +173,9 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
           onClick={() => setExpanded(!expanded)}
           className="w-full py-2 flex items-center justify-center gap-2 touch-manipulation"
         >
-          <div className="h-px flex-1 bg-slate-100" />
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-100 shadow-sm">
-            <span className="text-[9px] font-black text-slate-500">
+          <div className="h-px flex-1 bg-slate-100 dark:bg-slate-700" />
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <span className="text-[9px] font-black text-slate-500 dark:text-slate-400">
               {expanded ? 'عرض أقل' : 'عرض السجل'}
             </span>
             <ChevronDown className={cn(
@@ -183,7 +183,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
               expanded && "rotate-180"
             )} />
           </div>
-          <div className="h-px flex-1 bg-slate-100" />
+          <div className="h-px flex-1 bg-slate-100 dark:bg-slate-700" />
         </button>
       )}
 

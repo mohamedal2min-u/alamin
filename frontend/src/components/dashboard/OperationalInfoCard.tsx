@@ -1,4 +1,4 @@
-﻿// frontend/src/components/dashboard/OperationalInfoCard.tsx
+// frontend/src/components/dashboard/OperationalInfoCard.tsx
 'use client'
 
 import { ThermometerSun, Wheat, Moon, Bookmark } from 'lucide-react'
@@ -24,16 +24,16 @@ export function OperationalInfoCard({ ageDays, birdCount }: Props) {
   const weight = formatWeight(targets.feedGoalKilos)
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-indigo-50/30 p-4 transition-all duration-300">
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-emerald-50/30 p-4 transition-all duration-300">
       {/* ── Header ── */}
-      <div className="mb-4 flex items-center justify-between px-1 border-b border-indigo-100/50 pb-3">
+      <div className="mb-4 flex items-center justify-between px-1 border-b border-emerald-100/50 pb-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
             <Bookmark className="h-3.5 w-3.5 fill-current opacity-70" />
           </div>
           <div>
-            <h3 className="text-[10px] font-black Arabic-font text-indigo-900 uppercase tracking-tight">دليل الإنتاجية (Ross 308)</h3>
-            <p className="text-[8px] font-medium text-indigo-400">بيانات استرشادية من شركة Aviagen</p>
+            <h3 className="text-[10px] font-black Arabic-font text-emerald-900 uppercase tracking-tight">دليل الإنتاجية (Ross 308)</h3>
+            <p className="text-[8px] font-medium text-emerald-400">بيانات استرشادية من شركة Aviagen</p>
           </div>
         </div>
       </div>
@@ -77,24 +77,24 @@ function GuidelineItem({
   label: string; value: string; unit: string; icon: React.ReactNode; subValue?: string
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl bg-white/60 p-3 text-center transition-all border border-indigo-50/50">
-      <div className="mb-2 flex items-center justify-center text-indigo-500 opacity-80">
+    <div className="flex flex-col items-center justify-center rounded-2xl bg-white/60 p-3 text-center transition-all border border-emerald-50/50">
+      <div className="mb-2 flex items-center justify-center text-emerald-500 opacity-80">
         {icon}
       </div>
 
-      <span className="mb-1 text-[8px] font-bold text-indigo-400 Arabic-font">
+      <span className="mb-1 text-[8px] font-bold text-emerald-400 Arabic-font">
         {label}
       </span>
 
       <div className="flex items-baseline gap-0.5">
-        <span className="text-base font-black tabular-nums text-indigo-900 leading-none">
+        <span className="text-base font-black tabular-nums text-emerald-900 leading-none">
           {value}
         </span>
-        <span className="text-[9px] font-bold text-indigo-600/60">{unit}</span>
+        <span className="text-[9px] font-bold text-emerald-600/60">{unit}</span>
       </div>
 
       {subValue && (
-        <span className="mt-1.5 text-[8px] font-bold text-indigo-400/80 Arabic-font leading-tight">
+        <span className="mt-1.5 text-[8px] font-bold text-emerald-400/80 Arabic-font leading-tight">
           {subValue}
         </span>
       )}

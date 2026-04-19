@@ -14,9 +14,9 @@ export function FlockSummaryCard({ currentFlock, mortalityRate }: FlockSummaryCa
   if (!currentFlock) return null
 
   return (
-    <div className="rounded-2xl bg-white border border-slate-100 overflow-hidden shadow-sm">
+    <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm">
       {/* Flock Identity Row */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-700">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50">
             <img src="/logo.png" alt="Logo" className="h-5 w-5 object-contain" />
@@ -38,7 +38,7 @@ export function FlockSummaryCard({ currentFlock, mortalityRate }: FlockSummaryCa
       </div>
 
       {/* Metrics — Simple 4-column row */}
-      <div className="grid grid-cols-4 divide-x divide-x-reverse divide-slate-50">
+      <div className="grid grid-cols-4 divide-x divide-x-reverse divide-slate-100 dark:divide-slate-700">
         <MetricCell 
           label="العمر" 
           value={currentFlock.current_age_days ?? '—'} 

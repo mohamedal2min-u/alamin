@@ -130,6 +130,27 @@
 /* Placeholder text */
 .dark ::placeholder { color: rgb(var(--text-placeholder)); }
 
+/* Opacity variants of slate backgrounds */
+.dark .bg-slate-50\/50       { background-color: rgb(15 23 42 / 0.6) !important; }
+.dark .bg-slate-50\/30       { background-color: rgb(15 23 42 / 0.35) !important; }
+.dark .bg-slate-50\/80       { background-color: rgb(15 23 42 / 0.85) !important; }
+
+/* Dividers */
+.dark .divide-slate-50 > * + *  { border-color: rgb(30 41 59) !important; }
+.dark .divide-slate-100 > * + * { border-color: rgb(30 41 59) !important; }
+
+/* Additional borders */
+.dark .border-slate-50       { border-color: rgb(30 41 59) !important; }
+.dark .border-primary-50     { border-color: rgb(30 41 59) !important; }
+.dark .border-primary-100    { border-color: rgb(51 65 85) !important; }
+
+/* Primary bg opacity variants */
+.dark .bg-primary-50\/50     { background-color: rgb(20 83 45 / 0.15) !important; }
+.dark .bg-primary-50\/30     { background-color: rgb(20 83 45 / 0.1) !important; }
+
+/* text-primary-950 */
+.dark .text-primary-950      { color: rgb(248 250 252) !important; }
+
 /* 🟢 Manual Utility Fallback (Diagnosis Fix) */
 .bg-primary-600 { background-color: var(--primary-600) !important; }
 .text-primary-600 { color: var(--primary-600) !important; }

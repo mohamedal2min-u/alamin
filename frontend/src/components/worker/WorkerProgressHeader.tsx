@@ -136,30 +136,29 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
 }) {
   const themes = {
     red: {
-      bg: 'bg-gradient-to-br from-rose-50 to-white',
-      border: 'border-rose-200/50',
-      iconBg: 'bg-rose-100 text-rose-500',
-      text: 'text-rose-600',
+      bg: 'bg-rose-50/60 dark:bg-slate-800',
+      border: 'border-rose-200/60 dark:border-rose-900/50',
+      iconBg: 'bg-rose-100 text-rose-500 dark:bg-rose-900/40 dark:text-rose-400',
+      text: 'text-rose-600 dark:text-rose-400',
     },
     emerald: {
-      bg: 'bg-gradient-to-br from-emerald-50 to-white',
-      border: 'border-emerald-200/50',
-      iconBg: 'bg-emerald-100 text-emerald-500',
-      text: 'text-emerald-600',
+      bg: 'bg-emerald-50/60 dark:bg-slate-800',
+      border: 'border-emerald-200/60 dark:border-emerald-900/50',
+      iconBg: 'bg-emerald-100 text-emerald-500 dark:bg-emerald-900/40 dark:text-emerald-400',
+      text: 'text-emerald-600 dark:text-emerald-400',
     },
     indigo: {
-      bg: 'bg-gradient-to-br from-indigo-50 to-white',
-      border: 'border-indigo-200/50',
-      iconBg: 'bg-indigo-100 text-indigo-500',
-      text: 'text-indigo-600',
+      bg: 'bg-indigo-50/60 dark:bg-slate-800',
+      border: 'border-indigo-200/60 dark:border-indigo-900/50',
+      iconBg: 'bg-indigo-100 text-indigo-500 dark:bg-indigo-900/40 dark:text-indigo-400',
+      text: 'text-indigo-600 dark:text-indigo-400',
     },
     green: {
-      bg: 'bg-gradient-to-br from-primary-50 to-white',
-      border: 'border-primary-200/50',
-      iconBg: 'bg-primary-100 text-primary-500',
-      text: 'text-primary-700',
+      bg: 'bg-primary-50/60 dark:bg-slate-800',
+      border: 'border-primary-200/60 dark:border-primary-900/50',
+      iconBg: 'bg-primary-100 text-primary-500 dark:bg-primary-900/40 dark:text-primary-400',
+      text: 'text-primary-700 dark:text-primary-400',
     },
-
   }
 
   const t = themes[color]
@@ -180,7 +179,7 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
         )}>
           {icon}
         </div>
-        <span className="text-[10px] font-extrabold text-slate-400">{label}</span>
+        <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400">{label}</span>
       </div>
       
       {/* Bottom: Value + Equation */}
@@ -188,7 +187,7 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
         {isLoading ? (
           <div className="h-3.5 w-12 bg-slate-100 rounded animate-pulse" />
         ) : (
-          <span className="text-[11px] font-bold text-slate-400 tabular-nums">{equation}</span>
+          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums">{equation}</span>
         )}
         <div className="flex items-baseline gap-1">
           {unit && <span className="text-xs font-bold text-slate-400">{unit}</span>}

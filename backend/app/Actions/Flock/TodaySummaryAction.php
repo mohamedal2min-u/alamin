@@ -77,7 +77,7 @@ class TodaySummaryAction
                 'entries' => $mortalities->map(fn ($m) => [
                     'quantity' => (int) $m->quantity,
                     'reason'   => $m->reason,
-                    'time'     => $m->created_at?->format('H:i'),
+                    'time'     => $m->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (int) $mortalities->sum('quantity'),
             ],
@@ -86,7 +86,7 @@ class TodaySummaryAction
                     'item_name'  => $f->item?->name,
                     'quantity'   => (float) $f->quantity,
                     'unit_label' => $f->unit_label ?? $f->item?->content_unit,
-                    'time'       => $f->created_at?->format('H:i'),
+                    'time'       => $f->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (float) $feedLogs->sum('quantity'),
             ],
@@ -95,7 +95,7 @@ class TodaySummaryAction
                     'item_name'  => $m->item?->name,
                     'quantity'   => (float) $m->quantity,
                     'unit_label' => $m->unit_label ?? $m->item?->content_unit,
-                    'time'       => $m->created_at?->format('H:i'),
+                    'time'       => $m->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (float) $medicineEntries->sum('quantity'),
             ],
@@ -103,15 +103,15 @@ class TodaySummaryAction
                 'entries' => $waterLogs->map(fn ($w) => [
                     'quantity'   => (float) $w->quantity,
                     'unit_label' => $w->unit_label ?? 'صهريج',
-                    'time'       => $w->created_at?->format('H:i'),
+                    'time'       => $w->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (float) $waterLogs->sum('quantity'),
             ],
             'expenses' => [
                 'entries' => $expenses->map(fn ($e) => [
-                    'type'         => $e->expense_type,
-                    'total_amount' => (float) $e->total_amount,
-                    'time'         => $e->created_at?->format('H:i'),
+                    'type'         => $e->expense_type ?? 'مصروف غير محدد',
+                    'total_amount' => (float) ($e->total_amount ?? 0),
+                    'time'         => $e->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (float) $expenses->sum('total_amount'),
             ],
@@ -119,7 +119,7 @@ class TodaySummaryAction
                 'entries' => $temperatures->map(fn ($t) => [
                     'time_of_day' => $t->time_of_day,
                     'temperature' => (float) $t->temperature,
-                    'time'        => $t->created_at?->format('H:i'),
+                    'time'        => $t->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
             ],
         ];

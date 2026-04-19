@@ -312,7 +312,7 @@ export default function FlockDetailPage({
       {/* Tabs */}
       <div>
         {/* Tab bar */}
-        <div className="border-b border-slate-200">
+        <div className="border-b border-slate-200 dark:border-slate-700">
           <nav className="-mb-px flex gap-0 overflow-x-auto">
             {TABS.map(({ key, label }) => (
               <button
@@ -322,7 +322,7 @@ export default function FlockDetailPage({
                   'whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition-colors',
                   activeTab === key
                     ? 'border-primary-600 text-primary-700'
-                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'
+                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-800'
                 )}
               >
                 {label}
@@ -332,7 +332,7 @@ export default function FlockDetailPage({
         </div>
 
         {/* Tab content */}
-        <div className="mt-0 rounded-b-xl rounded-tr-xl border border-t-0 border-slate-200 bg-white">
+        <div className="mt-0 rounded-b-xl rounded-tr-xl border border-t-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           {activeTab === 'overview' ? (
             <OverviewTab flockId={flockId} flockStatus={flock.status} flockName={flock.name} />
           ) : activeTab === 'feed' ? (

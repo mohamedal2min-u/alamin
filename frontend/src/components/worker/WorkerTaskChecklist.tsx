@@ -26,14 +26,14 @@ export function WorkerTaskChecklist({ summary, onTaskClick }: Props) {
   return (
     <button 
       onClick={onTaskClick ? () => onTaskClick('summary') : undefined}
-      className="w-full flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-slate-100 active:scale-[0.98] touch-manipulation focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all"
+      className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 active:scale-[0.98] touch-manipulation focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all"
       dir="rtl"
     >
       <div className="flex items-center gap-3.5">
         {/* Progress Ring */}
         <div className="relative h-12 w-12 shrink-0">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-            <circle cx="18" cy="18" r="15" fill="none" className="stroke-slate-100" strokeWidth="3" />
+            <circle cx="18" cy="18" r="15" fill="none" className="stroke-slate-100 dark:stroke-slate-700" strokeWidth="3" />
             <circle 
               cx="18" cy="18" r="15" fill="none"
               className={cn(

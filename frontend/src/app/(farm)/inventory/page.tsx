@@ -211,32 +211,52 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
           const isLow = item.minimum_stock > 0 && item.total_quantity <= item.minimum_stock
           return (
             <div key={item.id} className={cn(
-              "flex items-center justify-between px-5 py-3 transition-colors hover:bg-slate-50/80",
+              "flex flex-col gap-2.5 px-5 py-4 transition-colors hover:bg-slate-50/80",
               idx < items.length - 1 && "border-b border-slate-50"
             )}>
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-start justify-between gap-3 min-w-0">
                 <div className="flex-1 min-w-0">
-                  <span className="text-xs font-semibold text-slate-700 block truncate">{item.name}</span>
+                  <span className="text-sm font-bold text-slate-800 block truncate">{item.name}</span>
                   {item.minimum_stock > 0 && (
-                    <div className="mt-1.5 h-1 w-20 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="mt-2 h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden">
                       <div
                         className={cn(
                           "h-full rounded-full transition-all duration-500",
-                          isLow ? "bg-emerald-400" : "bg-emerald-500"
+                          isLow ? "bg-red-400" : "bg-emerald-500"
                         )}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
                   )}
                 </div>
+                
+                {/* Temporary Edit Button as requested */}
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    const newName = window.prompt('أدخل الاسم الجديد للصنف:', item.name)
+                    if (newName && newName.trim() !== item.name) {
+                      try {
+                        await inventoryApi.updateItemName(item.id, newName.trim())
+                        alert('تم تحديث الاسم بنجاح')
+                        window.location.reload()
+                      } catch (error: any) {
+                        alert(error?.response?.data?.message || 'حدث خطأ أثناء التحديث')
+                      }
+                    }
+                  }}
+                  className="text-[10px] font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
+                >
+                  تعديل
+                </button>
               </div>
-              <div className="flex flex-col items-end gap-1.5 min-w-[180px]">
-                <div className="flex w-full rounded-xl border border-slate-200/80 overflow-hidden shadow-sm">
-                  {/* Remaining Side */}
-                  <div className={cn(
-                    "flex-1 p-2 text-center flex flex-col justify-center",
-                    isLow ? "bg-red-50/80" : "bg-white"
-                  )}>
+
+              <div className="flex w-full rounded-xl border border-slate-200/80 overflow-hidden shadow-sm mt-1">
+                {/* Remaining Side */}
+                <div className={cn(
+                  "flex-1 p-2.5 text-center flex flex-col justify-center",
+                  isLow ? "bg-red-50/80" : "bg-white"
+                )}>
                     <span className={cn(
                       "text-[9px] font-extrabold mb-1",
                       isLow ? "text-red-500" : "text-slate-400"

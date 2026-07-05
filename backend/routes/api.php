@@ -86,6 +86,7 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::get('/overview',      [InventoryController::class, 'overview']);   // كل البيانات في طلب واحد
         Route::get('/items',         [InventoryController::class, 'items']);
         Route::post('/items',        [InventoryController::class, 'createItem']);
+        Route::put('/items/{item}',  [InventoryController::class, 'updateItem']);
         Route::get('/item-types',    [InventoryController::class, 'itemTypes']);
         Route::get('/stock',         [InventoryController::class, 'stock']);
         Route::get('/summary',       [InventoryController::class, 'summary']);

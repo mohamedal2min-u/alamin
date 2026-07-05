@@ -115,6 +115,30 @@ class InventoryController extends Controller
         ], 201);
     }
 
+    public function updateItem(Request $request, Item $item): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+        if ($item->farm_id !== $farmId) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        // Check unique name per farm excluding this item
+        if (Item::where('farm_id', $farmId)->where('name', $validated['name'])->where('id', '!=', $item->id)->exists()) {
+            return response()->json(['message' => 'يوجد صنف بهذا الاسم مسبقاً في المزرعة'], 422);
+        }
+
+        $item->update(['name' => $validated['name']]);
+
+        return response()->json([
+            'message' => 'تم تحديث اسم الصنف بنجاح',
+            'data'    => ['id' => $item->id],
+        ]);
+    }
+
     // ── GET /api/inventory/stock ──────────────────────────────────────────────
 
     public function stock(Request $request): JsonResponse

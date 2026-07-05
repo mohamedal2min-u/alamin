@@ -202,16 +202,11 @@ function LoginPageInner() {
             </h1>
 
             {/* Subtitle Badge */}
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-black/30 border border-white/[0.06] rounded-full mb-3">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-black/30 border border-white/[0.06] rounded-full">
               <span className="flex h-1 w-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
               <span className="text-[9px] font-bold text-slate-400 tracking-[0.08em] text-center uppercase">
                 Yasin Modern Digital
               </span>
-            </div>
-
-            {/* TESTING BANNER */}
-            <div className="w-full rounded-xl bg-red-500/20 border border-red-500/50 p-2 text-center animate-pulse">
-              <span className="text-red-400 font-bold text-sm">🚀 تجربة التحديثات المباشرة 🚀</span>
             </div>
           </div>
 

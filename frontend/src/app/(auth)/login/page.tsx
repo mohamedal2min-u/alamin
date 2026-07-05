@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,7 +15,7 @@ import type { Farm } from '@/types/farm'
 import type { FarmRole } from '@/types/auth'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { ShieldCheck, Sparkles, Server, Brain, Cpu, User, Lock, Eye, EyeOff, Phone, Mail, Home, MapPin, UserPlus } from 'lucide-react'
+import { ShieldCheck, Sparkles, Server, Brain, Cpu, User, Lock, Eye, EyeOff, Phone, Mail, Home, MapPin, UserPlus, RefreshCw } from 'lucide-react'
 
 // ── Local Utils (Fallback for build issues) ──────────────────────────────────
 function cn(...inputs: ClassValue[]) {
@@ -88,11 +88,36 @@ function LoginPageInner() {
   const [showRegPassword, setShowRegPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  // ── CAPTCHA State ─────────────────────────────────────────────────────────
+  const [captchaNum1, setCaptchaNum1] = useState(0)
+  const [captchaNum2, setCaptchaNum2] = useState(0)
+  const [captchaAnswer, setCaptchaAnswer] = useState('')
+  const [captchaError, setCaptchaError] = useState('')
+
+  useEffect(() => {
+    generateCaptcha()
+  }, [])
+
+  const generateCaptcha = () => {
+    setCaptchaNum1(Math.floor(Math.random() * 9) + 1)
+    setCaptchaNum2(Math.floor(Math.random() * 9) + 1)
+    setCaptchaAnswer('')
+    setCaptchaError('')
+  }
+
   // ── Login Form ────────────────────────────────────────────────────────────
   const loginForm = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
 
   const onLogin = async (data: LoginForm) => {
     setServerError(null)
+    setCaptchaError('')
+
+    if (parseInt(captchaAnswer) !== captchaNum1 + captchaNum2) {
+      setCaptchaError('إجابة التحقق الأمني غير صحيحة')
+      generateCaptcha()
+      return
+    }
+
     try {
       await login(data.login, data.password)
 
@@ -261,6 +286,43 @@ function LoginPageInner() {
                 error={loginForm.formState.errors.password?.message}
                 required
               />
+
+              {/* ── CAPTCHA ────────────────────────────────────────────── */}
+              <div className="flex flex-col gap-1.5 pt-1">
+                <label className="text-[11px] font-bold text-slate-300 px-1">التحقق الأمني (اجمع الرقمين) <span className="text-red-500">*</span></label>
+                <div className="flex gap-2">
+                  <div className="flex flex-1 items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2">
+                    <span className="text-lg font-bold text-emerald-400">{captchaNum1}</span>
+                    <span className="text-sm font-bold text-slate-400">+</span>
+                    <span className="text-lg font-bold text-amber-400">{captchaNum2}</span>
+                    <span className="text-sm font-bold text-slate-400">=</span>
+                  </div>
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      value={captchaAnswer}
+                      onChange={(e) => {
+                        setCaptchaAnswer(e.target.value)
+                        setCaptchaError('')
+                      }}
+                      className="w-full h-full rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2 text-center text-sm font-bold text-white outline-none transition-all focus:border-emerald-500/50 focus:bg-white/[0.04] focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="؟"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={generateCaptcha}
+                    className="flex shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] px-3 transition-all hover:bg-white/[0.06] hover:text-emerald-400 text-slate-400"
+                    title="تغيير الأرقام"
+                  >
+                    <RefreshCw size={18} />
+                  </button>
+                </div>
+                {captchaError && (
+                  <p className="text-[10px] font-medium text-red-400 px-1">{captchaError}</p>
+                )}
+              </div>
 
               {serverError && (
                 <div className="rounded-xl bg-red-500/10 px-3 py-2 text-[10px] font-medium text-red-400 border border-red-500/20">

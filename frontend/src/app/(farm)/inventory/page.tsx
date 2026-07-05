@@ -378,7 +378,15 @@ function AddItemForm({
           {/* Section: Basic Info */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="نوع الصنف" required>
-              <select value={form.item_type_id} onChange={set('item_type_id')} className={inputCls}>
+              <select value={form.item_type_id} onChange={(e) => {
+                const val = e.target.value;
+                const typeCode = itemTypes.find(t => String(t.id) === val)?.code;
+                if (typeCode === 'feed') {
+                  setForm(prev => ({ ...prev, item_type_id: val, input_unit: 'كيس', content_unit: 'كيلو', unit_value: '20' }));
+                } else {
+                  setForm(prev => ({ ...prev, item_type_id: val }));
+                }
+              }} className={inputCls}>
                 <option value="">-- اختر النوع --</option>
                 {itemTypes
                   .filter(t => t.code && TARGET_TYPE_CODES.includes(t.code))

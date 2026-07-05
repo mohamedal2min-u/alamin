@@ -382,7 +382,7 @@ function AddItemForm({
                 const val = e.target.value;
                 const typeCode = itemTypes.find(t => String(t.id) === val)?.code;
                 if (typeCode === 'feed') {
-                  setForm(prev => ({ ...prev, item_type_id: val, input_unit: 'كيس', content_unit: 'كيلو', unit_value: '20' }));
+                  setForm(prev => ({ ...prev, item_type_id: val, input_unit: 'كيس', content_unit: 'كيلو', unit_value: '50' }));
                 } else {
                   setForm(prev => ({ ...prev, item_type_id: val }));
                 }

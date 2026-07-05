@@ -305,7 +305,6 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                     )}
                   </div>
                 </div>
-              </div>
             </div>
           )
         })}

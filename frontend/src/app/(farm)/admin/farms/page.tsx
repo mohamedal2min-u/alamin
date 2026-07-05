@@ -677,7 +677,6 @@ export default function AdminFarmsPage() {
                       </td>
                     </tr>
                   )}
-                  )}
                 </Fragment>
               ))}
             </tbody>

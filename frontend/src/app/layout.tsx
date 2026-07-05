@@ -23,6 +23,7 @@ export const viewport: Viewport = {
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeApplier } from '@/components/layout/ThemeApplier'
 import { ToasterWithTheme } from '@/components/layout/ToasterWithTheme'
+import { PushNotificationHandler } from '@/components/layout/PushNotificationHandler'
 
 export default function RootLayout({
   children,
@@ -46,6 +47,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <ThemeApplier />
+          <PushNotificationHandler />
           {children}
           <ToasterWithTheme />
         </QueryProvider>

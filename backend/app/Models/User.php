@@ -22,6 +22,7 @@ class User extends Authenticatable
         'whatsapp',
         'password',
         'status',
+        'fcm_token',
         'avatar_path',
         'last_login_at',
         'email_verified_at',

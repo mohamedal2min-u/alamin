@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "381593467311",
+    "project_id": "alamin-1e1ca",
+    "storage_bucket": "alamin-1e1ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:381593467311:android:2308eac59cbd0d78b8975a",
+        "android_client_info": {
+          "package_name": "se.alamin.ch"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "381593467311-u1l1r7l8i2fh6ph7ep77t5sdb889fjqk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbNEhonT4ByDLj_pkBVXxwOW-5os0tW8Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "381593467311-u1l1r7l8i2fh6ph7ep77t5sdb889fjqk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

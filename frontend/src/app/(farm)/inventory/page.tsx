@@ -1309,7 +1309,7 @@ export default function InventoryPage() {
                 color="text-blue-700" 
               />
               <KpiCard label="مواد منخفضة"          value={String(summary.low_stock_count)}         sub={summary.low_stock_count > 0 ? 'تحتاج متابعة' : 'المخزون كافٍ'} icon={TrendingDown} color={summary.low_stock_count > 0 ? 'text-red-600' : 'text-emerald-600'} />
-              <KpiCard label="صهاريج الماء للفوج الحالي" value={formatNumber(summary.water_tanks_count)} sub={`التكلفة: ${formatNumber(summary.water_tanks_cost)} USD`} icon={Droplets} color="text-cyan-600" />
+              <KpiCard label="صهاريج الماء للفوج الحالي" value={formatNumber(summary.water_tanks_count || 0)} sub={`التكلفة: ${formatNumber(summary.water_tanks_cost || 0)} USD`} icon={Droplets} color="text-cyan-600" />
               <KpiCard label="إجمالي قيمة المخزون" value={formatNumber(summary.total_value)}       sub="USD"                                           icon={DollarSign} color="text-primary-700" />
             </div>
           )}

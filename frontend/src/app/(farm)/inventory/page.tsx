@@ -175,6 +175,7 @@ function MaterialCard({ title, items, color, icon: CardIcon, onEdit }: { title: 
         {(() => {
           const hasBags = items.some(i => i.unit_value > 1 && i.input_unit)
           if (hasBags) {
+            const firstInputUnit = items.find(i => i.unit_value > 1 && i.input_unit)?.input_unit || 'كيس'
             const totalBags = items.reduce((sum, i) => sum + (i.unit_value > 1 ? i.total_quantity / i.unit_value : 0), 0)
             const weightUnit = total >= 1000 && unit?.trim() === 'كيلو' ? 'طن' : unit
             const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace('.00', '') : formatNumber(total)
@@ -185,7 +186,7 @@ function MaterialCard({ title, items, color, icon: CardIcon, onEdit }: { title: 
                   {formatNumber(totalBags)}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <p className="text-[11px] font-semibold text-slate-400">كيس</p>
+                  <p className="text-[11px] font-semibold text-slate-400">{firstInputUnit}</p>
                   <span className={cn("text-[10px] font-bold bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5", color)}>
                     {displayWeight} {weightUnit}
                   </span>

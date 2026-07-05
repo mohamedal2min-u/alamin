@@ -12,6 +12,7 @@ export interface StockItem {
   minimum_stock: number
   total_quantity: number
   total_received?: number
+  notes?: string | null
 }
 
 export interface InventorySummary {

@@ -169,8 +169,38 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
 
       {/* Total */}
       <div className="px-5 pb-4">
-        <p className={cn("text-3xl font-black tabular-nums leading-none tracking-tight", color)}>{formatNumber(total)}</p>
-        <p className="text-[11px] font-semibold text-slate-400 mt-0.5">{unit}</p>
+        {(() => {
+          const hasBags = items.some(i => i.unit_value > 1 && i.input_unit)
+          if (hasBags) {
+            const totalBags = items.reduce((sum, i) => sum + (i.unit_value > 1 ? i.total_quantity / i.unit_value : 0), 0)
+            const weightUnit = total >= 1000 && unit === 'كيلو' ? 'طن' : unit
+            const displayWeight = total >= 1000 && unit === 'كيلو' ? (total / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(total)
+            
+            return (
+              <>
+                <p className={cn("text-3xl font-black tabular-nums leading-none tracking-tight", color)}>
+                  {formatNumber(totalBags)}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-[11px] font-semibold text-slate-400">كيس</p>
+                  <span className={cn("text-[10px] font-bold bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5", color)}>
+                    {displayWeight} {weightUnit}
+                  </span>
+                </div>
+              </>
+            )
+          }
+
+          const weightUnit = total >= 1000 && unit === 'كيلو' ? 'طن' : unit
+          const displayWeight = total >= 1000 && unit === 'كيلو' ? (total / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(total)
+
+          return (
+            <>
+              <p className={cn("text-3xl font-black tabular-nums leading-none tracking-tight", color)}>{displayWeight}</p>
+              <p className="text-[11px] font-semibold text-slate-400 mt-0.5">{weightUnit}</p>
+            </>
+          )
+        })()}
       </div>
 
       {/* Items List */}
@@ -199,12 +229,29 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                   )}
                 </div>
               </div>
-              <span className={cn(
-                "text-xs font-bold tabular-nums whitespace-nowrap",
+              <div className={cn(
+                "text-xs font-bold tabular-nums whitespace-nowrap text-left",
                 isLow ? "text-emerald-700" : "text-slate-700"
               )}>
-                {formatNumber(item.total_quantity)} {item.content_unit}
-              </span>
+                {item.unit_value > 1 ? (
+                  <>
+                    <div>{formatNumber(item.total_quantity / item.unit_value)} {item.input_unit || 'كيس'}</div>
+                    <div className="text-[10px] font-medium text-slate-400 mt-0.5">
+                      {item.content_unit === 'كيلو' && item.total_quantity >= 1000
+                        ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                        : `${formatNumber(item.total_quantity)} ${item.content_unit}`
+                      }
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {item.content_unit === 'كيلو' && item.total_quantity >= 1000
+                      ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                      : `${formatNumber(item.total_quantity)} ${item.content_unit}`
+                    }
+                  </>
+                )}
+              </div>
             </div>
           )
         })}

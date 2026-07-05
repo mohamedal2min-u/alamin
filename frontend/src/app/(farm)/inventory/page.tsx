@@ -142,7 +142,7 @@ function StockStatusBadge({ item }: { item: StockItem }) {
 
 // ── Material summary card ─────────────────────────────────────────────────────
 
-function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; items: StockItem[]; color: string; icon: typeof Package }) {
+function MaterialCard({ title, items, color, icon: CardIcon, onEdit }: { title: string; items: StockItem[]; color: string; icon: typeof Package; onEdit?: (item: StockItem) => void }) {
   if (items.length === 0) return null
   const total    = items.reduce((s, i) => s + i.total_quantity, 0)
   const unit     = items[0]?.content_unit ?? ''
@@ -231,24 +231,17 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                 </div>
                 
                 {/* Temporary Edit Button as requested */}
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation()
-                    const newName = window.prompt('أدخل الاسم الجديد للصنف:', item.name)
-                    if (newName && newName.trim() !== item.name) {
-                      try {
-                        await inventoryApi.updateItemName(item.id, newName.trim())
-                        alert('تم تحديث الاسم بنجاح')
-                        window.location.reload()
-                      } catch (error: any) {
-                        alert(error?.response?.data?.message || 'حدث خطأ أثناء التحديث')
-                      }
-                    }
-                  }}
-                  className="text-[10px] font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
-                >
-                  تعديل
-                </button>
+                {onEdit && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEdit(item)
+                    }}
+                    className="text-[10px] font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
+                  >
+                    تعديل
+                  </button>
+                )}
               </div>
 
               <div className="flex w-full rounded-xl border border-slate-200/80 overflow-hidden shadow-sm mt-1">
@@ -315,7 +308,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
 
 // ── Items table ───────────────────────────────────────────────────────────────
 
-function ItemsTable({ items }: { items: StockItem[] }) {
+function ItemsTable({ items, onEdit }: { items: StockItem[]; onEdit?: (item: StockItem) => void }) {
   const Section = ({ title, rows, color, icon: SectionIcon }: { title: string; rows: StockItem[]; color: string; icon: typeof Package }) => {
     if (rows.length === 0) return null
     const iconBg = color.replace('text-', 'bg-').replace(/-700$/, '-50')
@@ -357,7 +350,18 @@ function ItemsTable({ items }: { items: StockItem[] }) {
                       {item.minimum_stock > 0 ? `${formatNumber(item.minimum_stock)} ${item.content_unit}` : '—'}
                     </td>
                     <td className="px-4 py-3.5 text-slate-400 text-xs">{item.input_unit}</td>
-                    <td className="px-4 py-3.5"><StockStatusBadge item={item} /></td>
+                    <td className="px-4 py-3.5 flex items-center gap-2">
+                      <StockStatusBadge item={item} />
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(item)}
+                          className="rounded-lg bg-slate-100 p-1.5 text-slate-500 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                          title="تعديل"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 )
               })}
@@ -538,6 +542,127 @@ function AddItemForm({
             >
               <Plus className="h-4 w-4 transition-transform group-hover:rotate-90 duration-300" />
               {saving ? 'جارٍ الحفظ...' : 'إضافة الصنف'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Edit Item form Modal ─────────────────────────────────────────────────────────
+
+function EditItemModal({
+  item,
+  onClose,
+  onSuccess,
+}: {
+  item: StockItem
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [form, setForm] = useState({
+    name:          item.name,
+    input_unit:    item.input_unit || '',
+    unit_value:    item.unit_value.toString(),
+    content_unit:  item.content_unit,
+    minimum_stock: item.minimum_stock.toString(),
+    notes:         item.notes || '',
+  })
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, [k]: e.target.value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name || !form.input_unit || !form.unit_value || !form.content_unit) return setError('الرجاء إكمال جميع الحقول الإلزامية')
+    if (isNaN(parseFloat(form.unit_value)) || parseFloat(form.unit_value) <= 0) return setError('قيمة الوحدة يجب أن تكون رقماً أكبر من صفر')
+
+    setSaving(true)
+    setError(null)
+    try {
+      await inventoryApi.updateItem(item.id, {
+        name:          form.name,
+        input_unit:    form.input_unit,
+        unit_value:    parseFloat(form.unit_value),
+        content_unit:  form.content_unit,
+        minimum_stock: parseFloat(form.minimum_stock || '0'),
+        notes:         form.notes,
+      })
+      onSuccess()
+      onClose()
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'تعذّر تحديث الصنف')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-all">
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <h3 className="text-base font-bold text-slate-800">تعديل الصنف: {item.name}</h3>
+          <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {error && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />{error}
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="اسم الصنف" required>
+              <input value={form.name} onChange={set('name')} className={inputCls} />
+            </Field>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
+            <p className="mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">إعداد الوحدات</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="وحدة الإدخال" required>
+                <input value={form.input_unit} onChange={set('input_unit')} className={inputCls} />
+              </Field>
+              <Field label="قيمة الوحدة" required>
+                <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
+              </Field>
+              <Field label="وحدة المحتوى" required>
+                <input value={form.content_unit} onChange={set('content_unit')} className={inputCls} />
+              </Field>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="الحد الأدنى للمخزون">
+              <input type="number" min="0" step="0.01" value={form.minimum_stock} onChange={set('minimum_stock')} className={inputCls} />
+            </Field>
+            <Field label="ملاحظات">
+              <input value={form.notes} onChange={set('notes')} className={inputCls} />
+            </Field>
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-5 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-primary-600 px-6 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:bg-primary-700 shadow-md shadow-primary-200 disabled:opacity-50"
+            >
+              {saving ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}
             </button>
           </div>
         </form>
@@ -1083,6 +1208,7 @@ export default function InventoryPage() {
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
   const isReadOnly = useIsReadOnly()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [editingItem, setEditingItem] = useState<StockItem | null>(null)
 
   useEffect(() => {
     setPageTitle('المخزون')
@@ -1229,9 +1355,9 @@ export default function InventoryPage() {
           <div>
             {activeTab === 'overview' && (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <MaterialCard title="العلف"  items={feedItems}  color="text-emerald-700" icon={Package} />
-                <MaterialCard title="الدواء" items={medItems}   color="text-blue-700"  icon={Package} />
-                <MaterialCard title="أخرى"  items={otherItems} color="text-slate-600" icon={Package} />
+                <MaterialCard title="العلف"  items={feedItems}  color="text-emerald-700" icon={Package} onEdit={!isReadOnly ? setEditingItem : undefined} />
+                <MaterialCard title="الدواء" items={medItems}   color="text-blue-700"  icon={Package} onEdit={!isReadOnly ? setEditingItem : undefined} />
+                <MaterialCard title="أخرى"  items={otherItems} color="text-slate-600" icon={Package} onEdit={!isReadOnly ? setEditingItem : undefined} />
                 {feedItems.length === 0 && medItems.length === 0 && otherItems.length === 0 && (
                   <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
                     <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
@@ -1265,7 +1391,7 @@ export default function InventoryPage() {
                     </button>
                   )}
                 </div>
-              ) : <ItemsTable items={items} />
+              ) : <ItemsTable items={items} onEdit={!isReadOnly ? setEditingItem : undefined} />
             )}
 
             {activeTab === 'add-item' && (
@@ -1288,6 +1414,14 @@ export default function InventoryPage() {
 
             {activeTab === 'alerts' && <AlertsTab items={items} />}
           </div>
+          
+          {editingItem && (
+            <EditItemModal
+              item={editingItem}
+              onClose={() => setEditingItem(null)}
+              onSuccess={() => { loadData(); setEditingItem(null); }}
+            />
+          )}
         </>
       )}
     </div>

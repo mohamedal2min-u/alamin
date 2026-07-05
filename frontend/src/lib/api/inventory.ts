@@ -119,9 +119,9 @@ export const inventoryApi = {
       .post<{ message: string; data: { id: number } }>('/inventory/items', payload)
       .then((r) => r.data),
 
-  updateItemName: (itemId: number, name: string) =>
+  updateItem: (itemId: number, payload: Partial<CreateItemPayload>) =>
     apiClient
-      .put<{ message: string; data: { id: number } }>(`/inventory/items/${itemId}`, { name })
+      .put<{ message: string; data: { id: number } }>(`/inventory/items/${itemId}`, payload)
       .then((r) => r.data),
 
   stock: () =>

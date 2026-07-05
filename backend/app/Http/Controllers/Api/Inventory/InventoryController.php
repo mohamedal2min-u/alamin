@@ -123,7 +123,13 @@ class InventoryController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name'          => 'required|string|max:255',
+            'input_unit'    => 'required|string|max:50',
+            'unit_value'    => 'required|numeric|min:0.01',
+            'content_unit'  => 'required|string|max:50',
+            'minimum_stock' => 'nullable|numeric|min:0',
+            'default_cost'  => 'nullable|numeric|min:0',
+            'notes'         => 'nullable|string',
         ]);
 
         // Check unique name per farm excluding this item
@@ -131,10 +137,18 @@ class InventoryController extends Controller
             return response()->json(['message' => 'يوجد صنف بهذا الاسم مسبقاً في المزرعة'], 422);
         }
 
-        $item->update(['name' => $validated['name']]);
+        $item->update([
+            'name'          => $validated['name'],
+            'input_unit'    => $validated['input_unit'],
+            'unit_value'    => $validated['unit_value'],
+            'content_unit'  => $validated['content_unit'],
+            'minimum_stock' => $validated['minimum_stock'] ?? null,
+            'default_cost'  => $validated['default_cost'] ?? null,
+            'notes'         => $validated['notes'] ?? null,
+        ]);
 
         return response()->json([
-            'message' => 'تم تحديث اسم الصنف بنجاح',
+            'message' => 'تم تحديث بيانات الصنف بنجاح',
             'data'    => ['id' => $item->id],
         ]);
     }

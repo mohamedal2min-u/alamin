@@ -206,6 +206,13 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
       ring: 'focus:ring-emerald-500/10',
       shadow: 'shadow-emerald-500/20'
     },
+    water: { 
+      text: 'text-sky-600', 
+      bg: 'bg-sky-600', 
+      border: 'focus:border-sky-500', 
+      ring: 'focus:ring-sky-500/10',
+      shadow: 'shadow-sky-500/20'
+    },
   }
 
   const currentTheme = activeTab ? themes[activeTab] : themes.medicine

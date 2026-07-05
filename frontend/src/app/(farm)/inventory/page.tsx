@@ -268,14 +268,14 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                       {item.unit_value > 1 
                         ? `${formatNumber(item.total_quantity / item.unit_value)} ${item.input_unit || 'كيس'}`
                         : (item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
-                            ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                            ? `${(item.total_quantity / 1000).toFixed(2).replace('.00', '')} طن`
                             : `${formatNumber(item.total_quantity)} ${item.content_unit}`)
                       }
                     </span>
                     {item.unit_value > 1 && (
                       <span className={cn("text-[9px] font-semibold mt-1", isLow ? "text-red-400" : "text-slate-400")}>
                         {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
-                          ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                          ? `${(item.total_quantity / 1000).toFixed(2).replace('.00', '')} طن`
                           : `${formatNumber(item.total_quantity)} ${item.content_unit}`
                         }
                       </span>
@@ -291,14 +291,14 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                       {item.unit_value > 1 
                         ? `${formatNumber((item.total_received || 0) / item.unit_value)} ${item.input_unit || 'كيس'}`
                         : (item.content_unit?.trim() === 'كيلو' && (item.total_received || 0) >= 1000
-                            ? `${((item.total_received || 0) / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                            ? `${((item.total_received || 0) / 1000).toFixed(2).replace('.00', '')} طن`
                             : `${formatNumber(item.total_received || 0)} ${item.content_unit}`)
                       }
                     </span>
                     {item.unit_value > 1 && (
                       <span className="text-[9px] font-semibold text-slate-400 mt-1">
                         {item.content_unit?.trim() === 'كيلو' && (item.total_received || 0) >= 1000
-                          ? `${((item.total_received || 0) / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                          ? `${((item.total_received || 0) / 1000).toFixed(2).replace('.00', '')} طن`
                           : `${formatNumber(item.total_received || 0)} ${item.content_unit}`
                         }
                       </span>

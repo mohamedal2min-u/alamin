@@ -261,7 +261,7 @@ export default function AdminFarmsPage() {
 
       {/* Empty */}
       {!loading && !error && farms.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 py-20 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 py-20 text-center shadow-sm">
           <Building2 className="mb-4 h-12 w-12 text-slate-300" />
           <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">لا توجد مداجن بعد</h3>
           <p className="mt-1 text-sm text-slate-500">ابدأ بإنشاء أول مزرعة في النظام</p>
@@ -271,6 +271,39 @@ export default function AdminFarmsPage() {
               مزرعة جديدة
             </Link>
           </Button>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      {!loading && !error && farms.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+              <Building2 className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">إجمالي المزارع</p>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{farms.length}</h3>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+              <BadgeCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">المزارع النشطة</p>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{farms.filter(f => f.status === 'active').length}</h3>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">إجمالي الأعضاء</p>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{farms.reduce((acc, f) => acc + f.members_count, 0)}</h3>
+            </div>
+          </div>
         </div>
       )}
 

@@ -48,8 +48,8 @@ export function Header() {
       {/* Brand & Dynamic Title */}
       <div className="flex items-center gap-3 sm:gap-5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-primary-400 to-primary-600 text-white shrink-0 shadow-lg shadow-primary-950/20 border border-primary-400/30">
-            <ChickenLogo className="h-6.5 w-6.5 brightness-0 invert" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-[1.25rem] bg-white shrink-0 shadow-lg shadow-primary-950/20 border border-slate-100">
+            <ChickenLogo className="h-7 w-7" />
           </div>
           <div className="flex flex-col min-w-0 pr-0.5">
             <h1 className="text-lg sm:text-xl font-black tracking-tighter text-white leading-none truncate drop-shadow-sm">

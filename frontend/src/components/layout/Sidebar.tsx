@@ -51,8 +51,8 @@ export function Sidebar() {
 
       {/* Brand */}
       <div className="flex items-center gap-2.5 border-b border-slate-200/60 dark:border-slate-700/60 px-5" style={{ height: 'var(--header-height)' }}>
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 text-white shrink-0 shadow-sm">
-          <ChickenLogo className="h-4.5 w-4.5 brightness-0 invert" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shrink-0 shadow-sm border border-slate-100">
+          <ChickenLogo className="h-6 w-6" />
         </div>
         <span className="text-lg font-black tracking-tighter text-primary-950 dark:text-primary-100 leading-none">YMD</span>
       </div>

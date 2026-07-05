@@ -37,7 +37,7 @@ class GetDailySummaryAction
             ->whereBetween('entry_date', [$startDate, $endDate])
             ->get()
             ->groupBy(function($item) {
-                return $item->entry_date->toDateString();
+                return \Carbon\Carbon::parse($item->entry_date)->toDateString();
             });
 
         $expenses = Expense::where('flock_id', $flock->id)

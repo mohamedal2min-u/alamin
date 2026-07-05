@@ -174,8 +174,8 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
           const hasBags = items.some(i => i.unit_value > 1 && i.input_unit)
           if (hasBags) {
             const totalBags = items.reduce((sum, i) => sum + (i.unit_value > 1 ? i.total_quantity / i.unit_value : 0), 0)
-            const weightUnit = total >= 1000 && unit === 'كيلو' ? 'طن' : unit
-            const displayWeight = total >= 1000 && unit === 'كيلو' ? (total / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(total)
+            const weightUnit = total >= 1000 && unit?.trim() === 'كيلو' ? 'طن' : unit
+            const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(total)
             
             return (
               <>
@@ -192,8 +192,8 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
             )
           }
 
-          const weightUnit = total >= 1000 && unit === 'كيلو' ? 'طن' : unit
-          const displayWeight = total >= 1000 && unit === 'كيلو' ? (total / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(total)
+          const weightUnit = total >= 1000 && unit?.trim() === 'كيلو' ? 'طن' : unit
+          const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(total)
 
           return (
             <>
@@ -238,7 +238,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                   <>
                     <div>{formatNumber(item.total_quantity / item.unit_value)} {item.input_unit || 'كيس'}</div>
                     <div className="text-[10px] font-medium text-slate-400 mt-0.5">
-                      {item.content_unit === 'كيلو' && item.total_quantity >= 1000
+                      {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
                         ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
                         : `${formatNumber(item.total_quantity)} ${item.content_unit}`
                       }
@@ -246,7 +246,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                   </>
                 ) : (
                   <>
-                    {item.content_unit === 'كيلو' && item.total_quantity >= 1000
+                    {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
                       ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
                       : `${formatNumber(item.total_quantity)} ${item.content_unit}`
                     }
@@ -1114,15 +1114,15 @@ export default function InventoryPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <KpiCard 
                 label="رصيد العلف"           
-                value={summary.feed_quantity >= 1000 && summary.feed_unit === 'كيلو' ? (summary.feed_quantity / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(summary.feed_quantity)}     
-                sub={summary.feed_quantity >= 1000 && summary.feed_unit === 'كيلو' ? 'طن' : summary.feed_unit}                             
+                value={summary.feed_quantity >= 1000 && summary.feed_unit?.trim() === 'كيلو' ? (summary.feed_quantity / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(summary.feed_quantity)}     
+                sub={summary.feed_quantity >= 1000 && summary.feed_unit?.trim() === 'كيلو' ? 'طن' : summary.feed_unit}                             
                 icon={Package}    
                 color="text-emerald-700" 
               />
               <KpiCard 
                 label="رصيد الدواء"          
-                value={summary.medicine_quantity >= 1000 && summary.medicine_unit === 'كيلو' ? (summary.medicine_quantity / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(summary.medicine_quantity)} 
-                sub={summary.medicine_quantity >= 1000 && summary.medicine_unit === 'كيلو' ? 'طن' : summary.medicine_unit}                         
+                value={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? (summary.medicine_quantity / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(summary.medicine_quantity)} 
+                sub={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? 'طن' : summary.medicine_unit}                         
                 icon={Package}    
                 color="text-blue-700" 
               />

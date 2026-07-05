@@ -101,17 +101,15 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
     .replace(/-700$/, '-50')
     .replace(/-600$/, '-50')
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/50 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1" style={{ boxShadow: 'var(--shadow-card)' }}>
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/50 p-4 pb-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 min-h-[105px]" style={{ boxShadow: 'var(--shadow-card)' }}>
       <div className={cn("absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-40", bg)} />
-      <div className="relative flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{label}</p>
-          <p className={`mt-1.5 text-2xl font-black tabular-nums leading-none tracking-tight ${color}`}>{value}</p>
-          {sub && <p className="mt-1 text-[10px] font-semibold text-slate-400">{sub}</p>}
-        </div>
-        <div className={cn("rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110 shadow-sm", bg)}>
-          <Icon className={`h-5 w-5 ${color}`} />
-        </div>
+      <div className="relative z-10 w-full pr-1">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{label}</p>
+        <p className={`mt-1 text-2xl font-black tabular-nums leading-none tracking-tight ${color}`}>{value}</p>
+        {sub && <p className="mt-1 text-[10px] font-semibold text-slate-400 pl-8">{sub}</p>}
+      </div>
+      <div className={cn("absolute bottom-3 left-3 rounded-lg p-1.5 transition-transform duration-300 group-hover:scale-110 shadow-sm z-10", bg)}>
+        <Icon className={`h-4 w-4 ${color}`} />
       </div>
     </div>
   )

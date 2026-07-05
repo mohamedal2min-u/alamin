@@ -473,6 +473,8 @@ function AddShipmentForm({
     notes:             '',
     attachment:        null as File | null,
   })
+  const [bags, setBags] = useState('')
+  const [extraKg, setExtraKg] = useState('')
   const [lastEdited, setLastEdited] = useState<'price' | 'total'>('price')
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState<string | null>(null)
@@ -548,6 +550,8 @@ function AddShipmentForm({
       }
       await inventoryApi.addShipment(payload)
       setSuccess(true)
+      setBags('')
+      setExtraKg('')
       setForm({
         item_id: '',
         warehouse_id: warehouses.length === 1 ? String(warehouses[0].id) : '',
@@ -614,7 +618,16 @@ function AddShipmentForm({
           {/* Section: Source */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="الصنف" required>
-              <select value={form.item_id} onChange={set('item_id')} className={inputCls}>
+              <select
+                value={form.item_id}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setBags('')
+                  setExtraKg('')
+                  setForm(prev => ({ ...prev, item_id: val, original_quantity: '', total_amount: '', unit_price: '' }))
+                }}
+                className={inputCls}
+              >
                 <option value="">-- اختر الصنف --</option>
                 {stockItems.map(i => (
                   <option key={i.id} value={i.id}>{i.name}</option>
@@ -644,20 +657,77 @@ function AddShipmentForm({
               <input type="date" value={form.transaction_date} onChange={set('transaction_date')} className={inputCls} />
             </Field>
 
-            <Field label={`الكمية${selectedItem ? ` (${selectedItem.input_unit})` : ''}`} required>
-              <input
-                type="number" min="0.001" step="0.001"
-                value={form.original_quantity} onChange={set('original_quantity')}
-                placeholder="0"
-                className={inputCls}
-              />
-              {selectedItem && form.original_quantity && (
-                <p className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-primary-600">
-                  <ChevronLeft className="h-3 w-3" />
-                  = {formatNumber(Number(form.original_quantity) * selectedItem.unit_value)} {selectedItem.content_unit}
-                </p>
-              )}
-            </Field>
+            {selectedItem && selectedItem.unit_value > 1 ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label={`عدد الأكياس (${selectedItem.input_unit})`} required>
+                    <input
+                      type="number" min="0" step="1"
+                      value={bags}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setBags(v)
+                        const totalQty = (parseFloat(v || '0') + parseFloat(extraKg || '0') / selectedItem.unit_value).toFixed(3)
+                        setForm(prev => {
+                          const next = { ...prev, original_quantity: totalQty }
+                          if (next.unit_price && lastEdited === 'price') {
+                            next.total_amount = (parseFloat(totalQty) * parseFloat(next.unit_price)).toFixed(2)
+                          } else if (next.total_amount && lastEdited === 'total') {
+                            next.unit_price = (parseFloat(next.total_amount) / parseFloat(totalQty)).toFixed(2)
+                          }
+                          return next
+                        })
+                      }}
+                      placeholder="0"
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="وزن إضافي (كيلو)">
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={extraKg}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setExtraKg(v)
+                        const totalQty = (parseFloat(bags || '0') + parseFloat(v || '0') / selectedItem.unit_value).toFixed(3)
+                        setForm(prev => {
+                          const next = { ...prev, original_quantity: totalQty }
+                          if (next.unit_price && lastEdited === 'price') {
+                            next.total_amount = (parseFloat(totalQty) * parseFloat(next.unit_price)).toFixed(2)
+                          } else if (next.total_amount && lastEdited === 'total') {
+                            next.unit_price = (parseFloat(next.total_amount) / parseFloat(totalQty)).toFixed(2)
+                          }
+                          return next
+                        })
+                      }}
+                      placeholder="0.00"
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+                {(parseFloat(bags || '0') > 0 || parseFloat(extraKg || '0') > 0) && (
+                  <p className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-primary-600">
+                    <ChevronLeft className="h-3 w-3" />
+                    الإجمالي: {formatNumber(parseFloat(bags || '0') * selectedItem.unit_value + parseFloat(extraKg || '0'))} {selectedItem.content_unit}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <Field label={`الكمية${selectedItem ? ` (${selectedItem.input_unit})` : ''}`} required>
+                <input
+                  type="number" min="0.001" step="0.001"
+                  value={form.original_quantity} onChange={set('original_quantity')}
+                  placeholder="0"
+                  className={inputCls}
+                />
+                {selectedItem && form.original_quantity && (
+                  <p className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-primary-600">
+                    <ChevronLeft className="h-3 w-3" />
+                    = {formatNumber(Number(form.original_quantity) * selectedItem.unit_value)} {selectedItem.content_unit}
+                  </p>
+                )}
+              </Field>
+            )}
           </div>
 
           {/* Section: Financials */}

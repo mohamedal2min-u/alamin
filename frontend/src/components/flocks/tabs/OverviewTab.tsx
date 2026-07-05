@@ -171,35 +171,45 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
                 )}>
                   {renderFeed(row.feed)}
                 </td>
-                <td className={cn(
-                  "px-4 py-3 text-center font-bold",
-                  row.medicine > 0 ? "text-blue-700" : "text-slate-300"
-                )}>
+                <td className="px-4 py-3 text-center font-bold">
                   {row.medicine > 0 ? (
                     row.medicine_details && row.medicine_details.length > 0 ? (
-                      <div className="group relative inline-block cursor-help">
-                        <span className="border-b border-dashed border-blue-300 pb-0.5">
-                          {formatNumber(row.medicine)}
-                        </span>
-                        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-xs -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100">
-                          <div className="rounded-lg bg-slate-900 p-2 text-xs text-white shadow-xl">
-                            <div className="flex flex-col gap-1 text-right">
-                              {row.medicine_details.map((med, idx) => (
-                                <div key={idx} className="flex justify-between gap-4 border-b border-slate-700/50 pb-1 last:border-0 last:pb-0">
-                                  <span className="font-semibold">{med.name}</span>
-                                  <span className="text-blue-300">{formatNumber(med.quantity)} {med.unit}</span>
+                      <div className="flex flex-wrap items-center justify-center gap-1.5">
+                        {row.medicine_details.map((med, idx) => {
+                          const colors = [
+                            'text-blue-700 bg-blue-50 border-blue-200',
+                            'text-indigo-700 bg-indigo-50 border-indigo-200',
+                            'text-violet-700 bg-violet-50 border-violet-200',
+                            'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-200',
+                            'text-rose-700 bg-rose-50 border-rose-200',
+                          ]
+                          const color = colors[idx % colors.length]
+                          
+                          return (
+                            <div key={idx} className="group relative inline-flex items-center justify-center cursor-help" tabIndex={0}>
+                              <span className={cn("px-2 py-0.5 rounded-md border text-xs font-black shadow-sm", color)}>
+                                {formatNumber(med.quantity)}
+                              </span>
+                              
+                              <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[200px] -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                                <div className="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-xl">
+                                  <div className="flex flex-col text-center">
+                                    <span className="font-bold">{med.name}</span>
+                                    <span className="text-slate-300 mt-0.5">{formatNumber(med.quantity)} {med.unit}</span>
+                                  </div>
+                                  <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
                                 </div>
-                              ))}
+                              </div>
                             </div>
-                            {/* tooltip arrow */}
-                            <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                          </div>
-                        </div>
+                          )
+                        })}
                       </div>
                     ) : (
-                      formatNumber(row.medicine)
+                      <span className="text-blue-700">{formatNumber(row.medicine)}</span>
                     )
-                  ) : '—'}
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
                 </td>
                 <td className={cn(
                   "px-4 py-3 text-center font-bold",

@@ -175,7 +175,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
           if (hasBags) {
             const totalBags = items.reduce((sum, i) => sum + (i.unit_value > 1 ? i.total_quantity / i.unit_value : 0), 0)
             const weightUnit = total >= 1000 && unit?.trim() === 'كيلو' ? 'طن' : unit
-            const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(total)
+            const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace('.00', '') : formatNumber(total)
             
             return (
               <>
@@ -193,7 +193,7 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
           }
 
           const weightUnit = total >= 1000 && unit?.trim() === 'كيلو' ? 'طن' : unit
-          const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(total)
+          const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace('.00', '') : formatNumber(total)
 
           return (
             <>
@@ -1166,14 +1166,14 @@ export default function InventoryPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <KpiCard 
                 label="رصيد العلف"           
-                value={summary.feed_quantity >= 1000 && summary.feed_unit?.trim() === 'كيلو' ? (summary.feed_quantity / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(summary.feed_quantity)}     
+                value={summary.feed_quantity >= 1000 && summary.feed_unit?.trim() === 'كيلو' ? (summary.feed_quantity / 1000).toFixed(2).replace('.00', '') : formatNumber(summary.feed_quantity)}     
                 sub={summary.feed_quantity >= 1000 && summary.feed_unit?.trim() === 'كيلو' ? 'طن' : summary.feed_unit}                             
                 icon={Package}    
                 color="text-emerald-700" 
               />
               <KpiCard 
                 label="رصيد الدواء"          
-                value={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? (summary.medicine_quantity / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(summary.medicine_quantity)} 
+                value={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? (summary.medicine_quantity / 1000).toFixed(2).replace('.00', '') : formatNumber(summary.medicine_quantity)} 
                 sub={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? 'طن' : summary.medicine_unit}                         
                 icon={Package}    
                 color="text-blue-700" 

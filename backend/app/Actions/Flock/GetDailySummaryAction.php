@@ -32,11 +32,13 @@ class GetDailySummaryAction
             ->groupBy('entry_date')
             ->pluck('total', 'entry_date');
 
-        $medicines = FlockMedicine::where('flock_id', $flock->id)
+        $medicines = FlockMedicine::with('item')
+            ->where('flock_id', $flock->id)
             ->whereBetween('entry_date', [$startDate, $endDate])
-            ->select('entry_date', DB::raw('SUM(quantity) as total'))
-            ->groupBy('entry_date')
-            ->pluck('total', 'entry_date');
+            ->get()
+            ->groupBy(function($item) {
+                return $item->entry_date->toDateString();
+            });
 
         $expenses = Expense::where('flock_id', $flock->id)
             ->whereBetween('entry_date', [$startDate, $endDate])
@@ -55,12 +57,29 @@ class GetDailySummaryAction
             // Age in days relative to start_date
             $ageDays = $i + 1;
 
+            $dailyMeds = [];
+            $dayMedsTotal = 0;
+            if (isset($medicines[$dateStr])) {
+                $grouped = $medicines[$dateStr]->groupBy('item_id');
+                foreach ($grouped as $entries) {
+                    $first = $entries->first();
+                    $qty = $entries->sum('quantity');
+                    $dailyMeds[] = [
+                        'name' => $first->item ? $first->item->name : 'صنف غير معروف',
+                        'quantity' => (float) $qty,
+                        'unit' => $first->unit_label ?? 'عبوة'
+                    ];
+                    $dayMedsTotal += $qty;
+                }
+            }
+
             $summary[] = [
                 'day' => $ageDays,
                 'date' => $dateStr,
                 'mortality' => (int) ($mortalities[$dateStr] ?? 0),
                 'feed' => (float) ($feedLogs[$dateStr] ?? 0),
-                'medicine' => (float) ($medicines[$dateStr] ?? 0),
+                'medicine' => $dayMedsTotal,
+                'medicine_details' => $dailyMeds,
                 'expense' => (float) ($expenses[$dateStr] ?? 0),
             ];
         }

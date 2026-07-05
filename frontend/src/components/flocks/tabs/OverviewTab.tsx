@@ -13,6 +13,7 @@ interface DailySummaryItem {
   mortality: number
   feed: number
   medicine: number
+  medicine_details?: Array<{ name: string; quantity: number; unit: string }>
   expense: number
 }
 
@@ -80,11 +81,8 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
   // Helper for feed display
   const renderFeed = (val: number) => {
     if (val <= 0) return '—'
-    if (val >= 50) {
-      const bags = val / 50
-      return `${formatNumber(bags)} كيس`
-    }
-    return `${formatNumber(val)} كجم`
+    const bags = val / 50
+    return `${formatNumber(bags)} كيس`
   }
 
   return (
@@ -178,7 +176,31 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
                   "px-4 py-3 text-center font-bold",
                   row.medicine > 0 ? "text-blue-700" : "text-slate-300"
                 )}>
-                  {row.medicine > 0 ? formatNumber(row.medicine) : '—'}
+                  {row.medicine > 0 ? (
+                    row.medicine_details && row.medicine_details.length > 0 ? (
+                      <div className="group relative inline-block cursor-help">
+                        <span className="border-b border-dashed border-blue-300 pb-0.5">
+                          {formatNumber(row.medicine)}
+                        </span>
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-xs -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100">
+                          <div className="rounded-lg bg-slate-900 p-2 text-xs text-white shadow-xl">
+                            <div className="flex flex-col gap-1 text-right">
+                              {row.medicine_details.map((med, idx) => (
+                                <div key={idx} className="flex justify-between gap-4 border-b border-slate-700/50 pb-1 last:border-0 last:pb-0">
+                                  <span className="font-semibold">{med.name}</span>
+                                  <span className="text-blue-300">{formatNumber(med.quantity)} {med.unit}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {/* tooltip arrow */}
+                            <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      formatNumber(row.medicine)
+                    )
+                  ) : '—'}
                 </td>
                 <td className={cn(
                   "px-4 py-3 text-center font-bold",

@@ -115,7 +115,7 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
                 <div className="flex justify-between items-center p-4 rounded-2xl bg-primary-50 border border-primary-100">
                     <div className="flex items-center gap-2">
                         <Info className="w-4 h-4 text-primary-600" />
-                        <span className="text-xs font-bold text-primary-800">متوسط وزن الطير</span>
+                        <span className="text-xs font-bold text-primary-800">متوسط الوزن المباع للطير</span>
                     </div>
                     <span className="text-lg font-black text-primary-900">{data.sales_analytics.avg_bird_weight_kg} كغ</span>
                 </div>

@@ -230,45 +230,54 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                   )}
                 </div>
               </div>
-              <div className={cn(
-                "text-xs font-bold tabular-nums whitespace-nowrap text-left",
-                isLow ? "text-emerald-700" : "text-slate-700"
-              )}>
+              <div className="flex flex-col items-end gap-1.5 min-w-[140px]">
                 {item.unit_value > 1 ? (
                   <>
-                    <div>
-                      <span className="text-slate-400 font-normal ml-1">المتبقي:</span>
-                      {formatNumber(item.total_quantity / item.unit_value)} {item.input_unit || 'كيس'}
+                    <div className={cn("flex flex-col items-end justify-center w-full rounded-md px-2.5 py-1.5 border", isLow ? "bg-red-50 border-red-100/50" : "bg-emerald-50/50 border-emerald-100/50")}>
+                      <div className="flex items-center justify-between w-full gap-3">
+                        <span className={cn("text-[10px] font-medium", isLow ? "text-red-500" : "text-emerald-600/80")}>المتبقي</span>
+                        <span className={cn("text-xs font-bold tabular-nums", isLow ? "text-red-700" : "text-emerald-700")}>
+                          {formatNumber(item.total_quantity / item.unit_value)} {item.input_unit || 'كيس'}
+                        </span>
+                      </div>
+                      <div className={cn("text-[10px] font-medium mt-1.5 w-full text-left pt-1.5 border-t", isLow ? "text-red-600/70 border-red-100" : "text-emerald-600/70 border-emerald-100/50")}>
+                        {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
+                          ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                          : `${formatNumber(item.total_quantity)} ${item.content_unit}`
+                        }
+                      </div>
                     </div>
+
                     {!!item.total_received && (
-                      <div className="mt-0.5">
-                        <span className="text-slate-400 font-normal ml-1">الإجمالي:</span>
-                        {formatNumber(item.total_received / item.unit_value)} {item.input_unit || 'كيس'}
+                      <div className="flex items-center justify-between w-full rounded-md px-2.5 py-1.5 bg-slate-50 border border-slate-100/80">
+                        <span className="text-[10px] font-medium text-slate-500">الإجمالي</span>
+                        <span className="text-xs font-bold tabular-nums text-slate-700">
+                          {formatNumber(item.total_received / item.unit_value)} {item.input_unit || 'كيس'}
+                        </span>
                       </div>
                     )}
-                    <div className="text-[10px] font-medium text-slate-400 mt-1 pt-1 border-t border-slate-100/50">
-                      {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
-                        ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
-                        : `${formatNumber(item.total_quantity)} ${item.content_unit}`
-                      }
-                    </div>
                   </>
                 ) : (
                   <>
-                    <div>
-                      <span className="text-slate-400 font-normal ml-1">المتبقي:</span>
-                      {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
-                        ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
-                        : `${formatNumber(item.total_quantity)} ${item.content_unit}`
-                      }
-                    </div>
-                    {!!item.total_received && (
-                      <div className="mt-0.5">
-                        <span className="text-slate-400 font-normal ml-1">الإجمالي:</span>
-                        {item.content_unit?.trim() === 'كيلو' && item.total_received >= 1000
-                          ? `${(item.total_received / 1000).toFixed(2).replace(/\.00$/, '')} طن`
-                          : `${formatNumber(item.total_received)} ${item.content_unit}`
+                    <div className={cn("flex items-center justify-between w-full gap-3 rounded-md px-2.5 py-1.5 border", isLow ? "bg-red-50 border-red-100/50" : "bg-emerald-50/50 border-emerald-100/50")}>
+                      <span className={cn("text-[10px] font-medium", isLow ? "text-red-500" : "text-emerald-600/80")}>المتبقي</span>
+                      <span className={cn("text-xs font-bold tabular-nums", isLow ? "text-red-700" : "text-emerald-700")}>
+                        {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
+                          ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                          : `${formatNumber(item.total_quantity)} ${item.content_unit}`
                         }
+                      </span>
+                    </div>
+
+                    {!!item.total_received && (
+                      <div className="flex items-center justify-between w-full gap-3 rounded-md px-2.5 py-1.5 bg-slate-50 border border-slate-100/80">
+                        <span className="text-[10px] font-medium text-slate-500">الإجمالي</span>
+                        <span className="text-xs font-bold tabular-nums text-slate-700">
+                          {item.content_unit?.trim() === 'كيلو' && item.total_received >= 1000
+                            ? `${(item.total_received / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                            : `${formatNumber(item.total_received)} ${item.content_unit}`
+                          }
+                        </span>
                       </div>
                     )}
                   </>

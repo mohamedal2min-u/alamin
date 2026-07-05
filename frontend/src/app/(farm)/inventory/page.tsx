@@ -236,8 +236,17 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
               )}>
                 {item.unit_value > 1 ? (
                   <>
-                    <div>{formatNumber(item.total_quantity / item.unit_value)} {item.input_unit || 'كيس'}</div>
-                    <div className="text-[10px] font-medium text-slate-400 mt-0.5">
+                    <div>
+                      <span className="text-slate-400 font-normal ml-1">المتبقي:</span>
+                      {formatNumber(item.total_quantity / item.unit_value)} {item.input_unit || 'كيس'}
+                    </div>
+                    {!!item.total_received && (
+                      <div className="mt-0.5">
+                        <span className="text-slate-400 font-normal ml-1">الإجمالي:</span>
+                        {formatNumber(item.total_received / item.unit_value)} {item.input_unit || 'كيس'}
+                      </div>
+                    )}
+                    <div className="text-[10px] font-medium text-slate-400 mt-1 pt-1 border-t border-slate-100/50">
                       {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
                         ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
                         : `${formatNumber(item.total_quantity)} ${item.content_unit}`
@@ -246,10 +255,22 @@ function MaterialCard({ title, items, color, icon: CardIcon }: { title: string; 
                   </>
                 ) : (
                   <>
-                    {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
-                      ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
-                      : `${formatNumber(item.total_quantity)} ${item.content_unit}`
-                    }
+                    <div>
+                      <span className="text-slate-400 font-normal ml-1">المتبقي:</span>
+                      {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
+                        ? `${(item.total_quantity / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                        : `${formatNumber(item.total_quantity)} ${item.content_unit}`
+                      }
+                    </div>
+                    {!!item.total_received && (
+                      <div className="mt-0.5">
+                        <span className="text-slate-400 font-normal ml-1">الإجمالي:</span>
+                        {item.content_unit?.trim() === 'كيلو' && item.total_received >= 1000
+                          ? `${(item.total_received / 1000).toFixed(2).replace(/\.00$/, '')} طن`
+                          : `${formatNumber(item.total_received)} ${item.content_unit}`
+                        }
+                      </div>
+                    )}
                   </>
                 )}
               </div>

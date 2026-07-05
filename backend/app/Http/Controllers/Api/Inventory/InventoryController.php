@@ -125,6 +125,7 @@ class InventoryController extends Controller
             ->where('status', 'active')
             ->with(['itemType:id,code,name'])
             ->withSum('warehouseItems', 'current_quantity')
+            ->withSum(['inventoryTransactions as total_received' => fn($q) => $q->where('direction', 'in')], 'computed_quantity')
             ->orderBy('name')
             ->get();
 
@@ -139,6 +140,7 @@ class InventoryController extends Controller
                 'unit_value'     => (float) $item->unit_value,
                 'minimum_stock'  => (float) ($item->minimum_stock ?? 0),
                 'total_quantity' => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
+                'total_received' => (float) ($item->total_received ?? 0),
             ]),
         ]);
     }
@@ -155,6 +157,7 @@ class InventoryController extends Controller
             ->where('status', 'active')
             ->with(['itemType:id,code,name'])
             ->withSum('warehouseItems', 'current_quantity')
+            ->withSum(['inventoryTransactions as total_received' => fn($q) => $q->where('direction', 'in')], 'computed_quantity')
             ->orderBy('name')
             ->get();
 
@@ -168,6 +171,7 @@ class InventoryController extends Controller
             'unit_value'     => (float) $item->unit_value,
             'minimum_stock'  => (float) ($item->minimum_stock ?? 0),
             'total_quantity' => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
+            'total_received' => (float) ($item->total_received ?? 0),
         ]);
 
         // ── 2. Summary KPIs ───────────────────────────────────────────────────

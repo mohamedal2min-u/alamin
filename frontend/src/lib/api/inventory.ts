@@ -11,6 +11,7 @@ export interface StockItem {
   unit_value: number
   minimum_stock: number
   total_quantity: number
+  total_received?: number
 }
 
 export interface InventorySummary {

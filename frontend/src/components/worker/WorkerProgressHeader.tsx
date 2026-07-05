@@ -23,7 +23,7 @@ interface Props {
   isLoading?: boolean
   viewDate?: string
   role?: 'worker' | 'manager'
-  onStatClick: (type: 'mortality' | 'feed' | 'medicine' | 'remaining' | 'expense') => void
+  onStatClick: (type: 'mortality' | 'feed' | 'medicine' | 'remaining' | 'expense' | 'water') => void
 }
 
 export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role = 'worker', onStatClick }: Props) {

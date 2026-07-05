@@ -382,18 +382,6 @@ export default function AdminFarmsPage() {
                           مدير جديد
                         </button>
 
-                        {/* Delete farm */}
-                        <button
-                          onClick={() => {
-                            closePanel()
-                            setActivePanel({ type: 'delete', farmId: farm.id })
-                          }}
-                          title="حذف المزرعة"
-                          className="flex items-center gap-1 rounded-lg border border-red-200 dark:border-red-800 px-2.5 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-900/30"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          حذف
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -689,44 +677,6 @@ export default function AdminFarmsPage() {
                       </td>
                     </tr>
                   )}
-
-                  {/* ── Panel: Confirm delete ── */}
-                  {activePanel?.type === 'delete' && activePanel.farmId === farm.id && (
-                    <tr className="bg-red-50 dark:bg-red-900/20">
-                      <td colSpan={7} className="px-5 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50">
-                            <Trash2 className="h-5 w-5 text-red-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-bold text-red-800 dark:text-red-300">
-                              هل أنت متأكد من حذف &quot;{farm.name}&quot;؟
-                            </p>
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                              سيتم حذف المزرعة وجميع بياناتها بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.
-                            </p>
-                            {deleteError && <p className="mt-1 text-xs text-red-700">{deleteError}</p>}
-                          </div>
-                          <div className="flex gap-2 shrink-0">
-                            <button
-                              onClick={() => confirmDelete(farm.id)}
-                              disabled={deleteLoading}
-                              className="flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              {deleteLoading ? 'جارٍ الحذف...' : 'تأكيد الحذف'}
-                            </button>
-                            <button
-                              onClick={closePanel}
-                              className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                              إلغاء
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
                   )}
                 </Fragment>
               ))}

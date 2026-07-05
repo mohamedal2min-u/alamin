@@ -59,7 +59,7 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role
   return (
     <div className="space-y-3">
       {/* ── Quick Action Stat Grid ── */}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <StatBox
           label="نفوق اليوم"
           equation={getEq(summary?.mortalities?.entries)}
@@ -78,6 +78,8 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role
           isLoading={isLoading}
           onClick={() => onStatClick('feed')}
         />
+      </div>
+      <div className="grid grid-cols-3 gap-2.5">
         <StatBox
           label="أدوية / إضافات"
           equation={getEq(summary?.medicines?.entries)}
@@ -87,23 +89,33 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role
           isLoading={isLoading}
           onClick={() => onStatClick('medicine')}
         />
+        <StatBox
+          label="مياه"
+          equation={getEq(summary?.water?.entries)}
+          value={summary?.water?.total ?? 0}
+          unit="صهريج"
+          color="green"
+          icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a4 4 0 0 0 4-4c0-4-4-8-4-8s-4 4-4 8a4 4 0 0 0 4 4z"/></svg>}
+          isLoading={isLoading}
+          onClick={() => onStatClick('water')}
+        />
         {role === 'worker' ? (
           <StatBox
-            label="حرارة / مياه"
+            label="حرارة"
             equation={`${flock?.current_age_days ?? 0} يوم`}
             value={summary?.temperatures?.entries?.[0]?.temperature ?? 0}
             unit="°C"
-            color="green"
+            color="red"
             icon={<ThermometerSun className="h-5 w-5" />}
             isLoading={isLoading}
             onClick={() => onStatClick('remaining')}
           />
         ) : (
           <StatBox
-            label="المصروفات اليومية"
+            label="مصروفات"
             equation={`${summary?.expenses?.entries?.length ?? 0} حركة`}
             value={summary?.expenses?.total ?? 0}
-            color="green"
+            color="emerald"
             icon={<Receipt className="h-5 w-5" />}
             isLoading={isLoading}
             onClick={() => onStatClick('expense')}

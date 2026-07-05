@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { 
   AlertCircle, Skull, 
-  Wheat, Syringe, ThermometerSun, Receipt
+  Wheat, Syringe, ThermometerSun, Receipt, Droplets
 } from 'lucide-react'
 import { inventoryApi } from '@/lib/api/inventory'
 import { quickEntryApi } from '@/lib/api/quick-entry'
@@ -20,7 +20,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import type { InventoryItem } from '@/types/dashboard'
 import { toast } from 'sonner'
 
-type Tab = 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense'
+type Tab = 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | 'water'
 
 interface Props {
   flockId: number
@@ -37,6 +37,7 @@ const TABS: Record<Tab, { label: string; icon: React.ElementType }> = {
   medicine:  { label: 'دواء',   icon: Syringe },
   temp:      { label: 'حرارة',  icon: ThermometerSun },
   expense:   { label: 'مصروف', icon: Receipt },
+  water:     { label: 'مياه',   icon: Droplets },
 }
 
 export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate, onClose, onSuccess }: Props) {
@@ -71,6 +72,11 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
   const [expNotes, setExpNotes]   = useState('')
   const [expUnitHint, setExpUnitHint] = useState('كيس')
 
+  // Water
+  const [waterQty, setWaterQty]       = useState('')
+  const [waterPrice, setWaterPrice]   = useState('')
+  const [waterDriver, setWaterDriver] = useState('')
+
   const calculatedTotal = (activeTab === 'expense') 
     ? (Number(expQty) * Number(expPrice)) 
     : 0
@@ -88,6 +94,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
     setMedItemId(''); setMedQty('')
     setTempVal('')
     setExpType('bedding'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes(''); setExpUnitHint('كيس')
+    setWaterQty(''); setWaterPrice(''); setWaterDriver('')
     setError(null)
   }
 
@@ -138,6 +145,16 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
           description: expDescription || undefined,
           notes: expNotes || undefined,
           entry_date: date,
+        })
+      } else if (activeTab === 'water') {
+        if (!waterQty || Number(waterQty) <= 0) { setError('العدد مطلوب'); setLoading(false); return }
+        const price = Number(waterPrice)
+        const hasPrice = !isNaN(price) && price > 0
+        await quickEntryApi.logWater(flockId, {
+          quantity: Number(waterQty),
+          total_amount: hasPrice ? price * Number(waterQty) : 0,
+          notes: waterDriver || undefined,
+          entry_date: date
         })
       }
 
@@ -354,6 +371,28 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
             <FormField label="ملاحظات">
               <input type="text" value={expNotes} onChange={(e) => setExpNotes(e.target.value)} placeholder="اختياري..." className={dynamicInputClass} />
             </FormField>
+          </div>
+        )}
+
+        {activeTab === 'water' && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="العدد (صهريج)" required>
+                <NumericInput value={waterQty} onChange={setWaterQty} placeholder="1" min={1} step={0.5} className={dynamicInputClass} />
+              </FormField>
+              <FormField label="السعر للصهريج ($)">
+                <NumericInput value={waterPrice} onChange={setWaterPrice} placeholder="0.00" min={0} step={0.01} className={dynamicInputClass} />
+              </FormField>
+            </div>
+            <FormField label="اسم السائق / ملاحظات">
+              <input type="text" value={waterDriver} onChange={(e) => setWaterDriver(e.target.value)} placeholder="مثال: أبو محمد..." className={dynamicInputClass} />
+            </FormField>
+            {(Number(waterQty) > 0 && Number(waterPrice) > 0) && (
+              <div className="flex items-center gap-3 rounded-[1.25rem] px-4 py-3 text-[11px] font-bold border bg-sky-50/50 border-sky-100/50 text-sky-700">
+                <div className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                الإجمالي: {(Number(waterQty) * Number(waterPrice)).toFixed(2)} $
+              </div>
+            )}
           </div>
         )}
 

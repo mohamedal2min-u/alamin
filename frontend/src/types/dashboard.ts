@@ -22,6 +22,13 @@ export interface TodayFeedEntry {
   time?: string
 }
 
+export interface TodayWaterEntry {
+  quantity: number
+  unit_label: string
+  worker_name?: string
+  time?: string
+}
+
 export interface TodayExpenseEntry {
   type: string
   total_amount: number
@@ -44,12 +51,7 @@ export interface TodaySummary {
     total: number
   }
   water: {
-    entries: {
-      quantity: number
-      unit_label: string
-      worker_name?: string
-      time?: string
-    }[]
+    entries: TodayWaterEntry[]
     total: number
   }
   expenses: {

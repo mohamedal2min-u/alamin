@@ -22,6 +22,13 @@ export interface ExpensePayload {
   notes?: string
 }
 
+export interface WaterLogPayload {
+  quantity: number
+  total_amount?: number
+  notes?: string
+  entry_date: string
+}
+
 export const quickEntryApi = {
   logFeed: (flockId: number, payload: FeedLogPayload) =>
     apiClient
@@ -36,5 +43,10 @@ export const quickEntryApi = {
   logExpense: (flockId: number, payload: ExpensePayload) =>
     apiClient
       .post<{ message: string }>(`/flocks/${flockId}/expenses`, payload)
+      .then((r) => r.data),
+
+  logWater: (flockId: number, payload: WaterLogPayload) =>
+    apiClient
+      .post<{ message: string }>(`/flocks/${flockId}/water-logs`, payload)
       .then((r) => r.data),
 }

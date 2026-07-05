@@ -1,14 +1,15 @@
 'use client'
 
-import { X, Skull, Wheat, Syringe, Receipt, FileText } from 'lucide-react'
+import { X, Skull, Wheat, Syringe, Receipt, FileText, Droplets } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type {
   TodayMortalityEntry,
   TodayFeedEntry,
   TodayExpenseEntry,
+  TodayWaterEntry,
 } from '@/types/dashboard'
 
-export type DayEntryType = 'mortality' | 'feed' | 'medicine' | 'expense'
+export type DayEntryType = 'mortality' | 'feed' | 'medicine' | 'expense' | 'water'
 
 interface Props {
   type: DayEntryType | null
@@ -18,6 +19,7 @@ interface Props {
     feed:        { entries: TodayFeedEntry[];      total: number }
     medicines:   { entries: TodayFeedEntry[];      total: number }
     expenses:    { entries: TodayExpenseEntry[];   total: number }
+    water:       { entries: TodayWaterEntry[];     total: number }
   }
   onClose: () => void
 }
@@ -62,6 +64,14 @@ const CONFIG: Record<DayEntryType, {
     totalLabel: 'إجمالي المصاريف',
     unit: '$',
   },
+  water: {
+    label: 'استهلاك المياه',
+    icon: Droplets,
+    color: 'text-sky-600',
+    iconBg: 'bg-sky-50',
+    totalLabel: 'إجمالي الصهاريج',
+    unit: 'صهريج',
+  },
 }
 
 const EXPENSE_TYPE_LABELS: Record<string, string> = {
@@ -86,12 +96,14 @@ export function DayEntriesModal({ type, date, summary, onClose }: Props) {
     type === 'mortality' ? summary.mortalities.entries :
     type === 'feed'      ? summary.feed.entries :
     type === 'medicine'  ? summary.medicines.entries :
+    type === 'water'     ? summary.water.entries :
                            summary.expenses.entries
 
   const total =
     type === 'mortality' ? summary.mortalities.total :
     type === 'feed'      ? summary.feed.total :
     type === 'medicine'  ? summary.medicines.total :
+    type === 'water'     ? summary.water.total :
                            summary.expenses.total
 
   return (
@@ -173,6 +185,15 @@ export function DayEntriesModal({ type, date, summary, onClose }: Props) {
                       </>
                     )}
 
+                    {/* Water */}
+                    {type === 'water' && (
+                      <>
+                        <p className="text-sm font-bold text-slate-800">
+                          {(entry as TodayWaterEntry).quantity} صهريج
+                        </p>
+                      </>
+                    )}
+
                     {/* Expense */}
                     {type === 'expense' && (
                       <>
@@ -201,6 +222,8 @@ export function DayEntriesModal({ type, date, summary, onClose }: Props) {
                       ? `$${Number((entry as TodayExpenseEntry).total_amount).toFixed(2)}`
                       : type === 'mortality'
                       ? `${(entry as TodayMortalityEntry).quantity}`
+                      : type === 'water'
+                      ? `${(entry as TodayWaterEntry).quantity}`
                       : `${(entry as TodayFeedEntry).quantity}`}
                   </div>
                 </div>

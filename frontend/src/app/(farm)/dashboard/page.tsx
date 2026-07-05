@@ -23,9 +23,9 @@ export default function DashboardPage() {
   const [activating, setActivating] = useState(false)
   const [activateError, setActivateError] = useState<string | null>(null)
 
-  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | null>(null)
+  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | 'water' | null>(null)
   const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
-  const [detailType, setDetailType] = useState<DayEntryType | null>(null)
+  const [detailType, setDetailType] = useState<DayEntryType | 'water' | null>(null)
 
   const getTodayISO = () => {
     const now = new Date()
@@ -122,17 +122,17 @@ export default function DashboardPage() {
     }
   }
 
-  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense', extra?: Record<string, unknown>) => {
+  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | 'water', extra?: Record<string, unknown>) => {
     setEntryExtra(extra ?? null)
     setActiveEntryTab(type)
   }
 
-  const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining' | 'expense') => {
+  const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining' | 'expense' | 'water') => {
     if (type === 'remaining') return
     if (isReadOnly) {
-      setDetailType(type as DayEntryType)
+      setDetailType(type as DayEntryType | 'water')
     } else {
-      setActiveEntryTab(type as 'mortality' | 'feed' | 'medicine' | 'expense')
+      setActiveEntryTab(type as 'mortality' | 'feed' | 'medicine' | 'expense' | 'water')
     }
   }
 

@@ -19,6 +19,8 @@ import {
   Bell,
   BarChart3,
   ChevronLeft,
+  Edit3,
+  X,
 } from 'lucide-react'
 import {
   inventoryApi,

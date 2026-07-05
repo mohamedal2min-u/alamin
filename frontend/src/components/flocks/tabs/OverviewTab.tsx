@@ -81,8 +81,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
   // Helper for feed display
   const renderFeed = (val: number) => {
     if (val <= 0) return '—'
-    const bags = val / 50
-    return `${formatNumber(bags)} كيس`
+    return `${formatNumber(val)} كيس`
   }
 
   return (

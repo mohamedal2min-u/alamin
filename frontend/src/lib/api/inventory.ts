@@ -23,6 +23,8 @@ export interface InventorySummary {
   low_stock_count: number
   last_shipment_date: string | null
   total_value: number
+  water_tanks_count: number
+  water_tanks_cost: number
 }
 
 export interface Warehouse {

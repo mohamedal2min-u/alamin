@@ -241,6 +241,16 @@ class InventoryController extends Controller
             ? \Carbon\Carbon::parse($lastShipmentRaw)->toDateString()
             : null;
 
+        // صهاريج الماء للفوج الحالي
+        $activeFlock = \App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->first();
+        $waterTanksCount = 0;
+        $waterTanksCost = 0.0;
+        
+        if ($activeFlock) {
+            $waterTanksCount = (float) \App\Models\FlockWaterLog::where('flock_id', $activeFlock->id)->sum('quantity');
+            $waterTanksCost = (float) \App\Models\FlockWaterLog::where('flock_id', $activeFlock->id)->sum('total_amount');
+        }
+
         $summary = [
             'feed_quantity'      => $feedQty,
             'feed_unit'          => $feedUnit,
@@ -248,6 +258,8 @@ class InventoryController extends Controller
             'medicine_unit'      => $medUnit,
             'low_stock_count'    => $lowCount,
             'last_shipment_date' => $lastShipmentDate,
+            'water_tanks_count'  => $waterTanksCount,
+            'water_tanks_cost'   => $waterTanksCost,
             'total_value'        => $totalValue,
         ];
 

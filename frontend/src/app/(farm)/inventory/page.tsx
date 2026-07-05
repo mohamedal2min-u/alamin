@@ -98,14 +98,15 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
     .replace(/-700$/, '-50')
     .replace(/-600$/, '-50')
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5" style={{ boxShadow: 'var(--shadow-card)' }}>
-      <div className="flex items-start justify-between">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/50 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1" style={{ boxShadow: 'var(--shadow-card)' }}>
+      <div className={cn("absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-40", bg)} />
+      <div className="relative flex items-start justify-between">
         <div className="min-w-0">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{label}</p>
           <p className={`mt-1.5 text-2xl font-black tabular-nums leading-none tracking-tight ${color}`}>{value}</p>
           {sub && <p className="mt-1 text-[10px] font-semibold text-slate-400">{sub}</p>}
         </div>
-        <div className={cn("rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110", bg)}>
+        <div className={cn("rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110 shadow-sm", bg)}>
           <Icon className={`h-5 w-5 ${color}`} />
         </div>
       </div>
@@ -1111,8 +1112,20 @@ export default function InventoryPage() {
           {/* KPI Cards */}
           {summary && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <KpiCard label="رصيد العلف"           value={formatNumber(summary.feed_quantity)}     sub={summary.feed_unit}                             icon={Package}    color="text-emerald-700" />
-              <KpiCard label="رصيد الدواء"          value={formatNumber(summary.medicine_quantity)} sub={summary.medicine_unit}                         icon={Package}    color="text-blue-700" />
+              <KpiCard 
+                label="رصيد العلف"           
+                value={summary.feed_quantity >= 1000 && summary.feed_unit === 'كيلو' ? (summary.feed_quantity / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(summary.feed_quantity)}     
+                sub={summary.feed_quantity >= 1000 && summary.feed_unit === 'كيلو' ? 'طن' : summary.feed_unit}                             
+                icon={Package}    
+                color="text-emerald-700" 
+              />
+              <KpiCard 
+                label="رصيد الدواء"          
+                value={summary.medicine_quantity >= 1000 && summary.medicine_unit === 'كيلو' ? (summary.medicine_quantity / 1000).toFixed(2).replace(/\.00$/, '') : formatNumber(summary.medicine_quantity)} 
+                sub={summary.medicine_quantity >= 1000 && summary.medicine_unit === 'كيلو' ? 'طن' : summary.medicine_unit}                         
+                icon={Package}    
+                color="text-blue-700" 
+              />
               <KpiCard label="مواد منخفضة"          value={String(summary.low_stock_count)}         sub={summary.low_stock_count > 0 ? 'تحتاج متابعة' : 'المخزون كافٍ'} icon={TrendingDown} color={summary.low_stock_count > 0 ? 'text-red-600' : 'text-emerald-600'} />
               <KpiCard label="آخر حمولة"            value={summary.last_shipment_date ? formatDate(summary.last_shipment_date) : '—'}                  icon={Truck}      color="text-slate-600" />
               <KpiCard label="إجمالي قيمة المخزون" value={formatNumber(summary.total_value)}       sub="USD"                                           icon={DollarSign} color="text-primary-700" />

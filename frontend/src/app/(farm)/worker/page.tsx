@@ -1,4 +1,4 @@
-﻿// frontend/src/app/(farm)/worker/page.tsx
+// frontend/src/app/(farm)/worker/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -19,7 +19,7 @@ export default function WorkerPage() {
   const { currentFarm, activeFlock: cachedFlock, setActiveFlock } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
 
-  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | null>(null)
+  const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | 'water' | null>(null)
   const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
 
   const getTodayISO = () => {
@@ -101,18 +101,22 @@ export default function WorkerPage() {
     refetchHistory()
   }
 
-  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense', extra?: Record<string, unknown>) => {
+  const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | 'water', extra?: Record<string, unknown>) => {
     setEntryExtra(extra ?? null)
     setActiveEntryTab(type)
   }
 
-  const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining' | 'expense') => {
+  const handleStatClick = (type: 'feed' | 'medicine' | 'mortality' | 'remaining' | 'expense' | 'water') => {
     if (type === 'remaining') {
       handleTaskClick('temp')
       return
     }
     if (type === 'expense') {
       handleTaskClick('expense')
+      return
+    }
+    if (type === 'water') {
+      handleTaskClick('water' as any)
       return
     }
     handleTaskClick(type)

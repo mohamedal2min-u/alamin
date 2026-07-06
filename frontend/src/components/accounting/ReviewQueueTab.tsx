@@ -47,7 +47,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
 
   const { mutate: updateItem, isPending: isUpdating } = useMutation({
     mutationFn: ({ type, id, payload }: {
-      type: 'expense' | 'sale' | 'inventory_transaction'
+      type: 'expense' | 'sale' | 'inventory_transaction' | 'water_log'
       id: number
       payload: { paid_amount?: number; unit_price?: number }
     }) => accountingApi.updateReviewItem(type, id, payload),

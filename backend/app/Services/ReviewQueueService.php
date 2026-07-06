@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Expense;
 use App\Models\Sale;
+use App\Models\InventoryTransaction;
 
 class ReviewQueueService
 {
@@ -78,6 +79,19 @@ class ReviewQueueService
 
             $row = $this->normalizeExpense($record->load(['flock', 'expenseCategory']));
 
+        } elseif ($type === 'inventory_transaction') {
+            $record = InventoryTransaction::where('farm_id', $farmId)->findOrFail($recordId);
+
+            if (array_key_exists('unit_price', $data)) {
+                $record->unit_price = $data['unit_price'];
+                if ($record->original_quantity !== null && $data['unit_price'] !== null) {
+                    $record->total_amount = $record->original_quantity * $data['unit_price'];
+                }
+            }
+
+            $record->save();
+
+            $row = $this->normalizeInventoryTransaction($record->load(['flock', 'item']));
         } else {
             $record = Sale::where('farm_id', $farmId)->findOrFail($recordId);
 
@@ -119,6 +133,16 @@ class ReviewQueueService
                 $q->where('flock_id', $flockId);
             }
             $rows = $rows->concat($q->get()->map(fn ($s) => $this->normalizeSale($s)));
+        }
+
+        if ($type === 'all' || $type === 'inventory_transaction') {
+            $q = InventoryTransaction::with(['flock', 'item'])
+                ->where('farm_id', $farmId)
+                ->where('transaction_type', 'consumption');
+            if ($flockId) {
+                $q->where('flock_id', $flockId);
+            }
+            $rows = $rows->concat($q->get()->map(fn ($t) => $this->normalizeInventoryTransaction($t)));
         }
 
         return $rows;
@@ -166,6 +190,27 @@ class ReviewQueueService
         ];
     }
 
+    private function normalizeInventoryTransaction(InventoryTransaction $t): array
+    {
+        return [
+            'id'               => 'inventory_transaction-' . $t->id,
+            'type'             => 'inventory_transaction',
+            'record_id'        => $t->id,
+            'flock_id'         => $t->flock_id,
+            'flock_name'       => $t->flock?->name,
+            'flock_status'     => $t->flock?->status,
+            'entry_date'       => $t->transaction_date?->toDateString(),
+            'description'      => 'استهلاك ' . ($t->item?->name ?? 'مخزون'),
+            'total_amount'     => (float) ($t->total_amount ?? 0),
+            'paid_amount'      => (float) ($t->total_amount ?? 0),
+            'remaining_amount' => 0,
+            'payment_status'   => 'paid',
+            'unit_price'       => $t->unit_price !== null ? (float) $t->unit_price : null,
+            'quantity'         => $t->original_quantity !== null ? (float) $t->original_quantity : null,
+            'review_reasons'   => [],
+        ];
+    }
+
     private function attachReasons(array $row): array
     {
         $reasons = [];
@@ -180,8 +225,8 @@ class ReviewQueueService
         }
 
         // ── Missing price (Business Rule — نهائي) ────────────────────────────
-        // Conditions 1+2: expense with no quantity or no unit_price
-        $missingPrice = $row['type'] === 'expense'
+        // Conditions 1+2: expense or inventory with no quantity or no unit_price
+        $missingPrice = ($row['type'] === 'expense' || $row['type'] === 'inventory_transaction')
             && (
                 empty($row['quantity'])        // quantity = 0 or null
                 || $row['unit_price'] === null

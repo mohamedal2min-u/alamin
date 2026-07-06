@@ -176,7 +176,18 @@ class UpdateFlockAction
             ->where('net_amount', '<=', 0)
             ->count();
 
-        $blockingCount = $unpaidExpenses + $unpaidSales + $missingPriceExpenses + $missingPriceSales;
+        $missingPriceInventory = \App\Models\InventoryTransaction::where('flock_id', $flock->id)
+            ->where('transaction_type', 'consumption')
+            ->where(function ($q): void {
+                $q->whereNull('original_quantity')
+                  ->orWhere('original_quantity', '<=', 0)
+                  ->orWhereNull('unit_price')
+                  ->orWhere('unit_price', '<=', 0)
+                  ->orWhere('total_amount', '<=', 0);
+            })
+            ->count();
+
+        $blockingCount = $unpaidExpenses + $unpaidSales + $missingPriceExpenses + $missingPriceSales + $missingPriceInventory;
 
         if ($blockingCount > 0) {
             throw new \Exception(

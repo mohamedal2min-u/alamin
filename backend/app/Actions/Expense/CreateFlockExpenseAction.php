@@ -39,7 +39,7 @@ class CreateFlockExpenseAction
         // Auto-detect payment status based on whether a price was actually given
         $hasPrice = $totalAmount > 0;
         $paidAmount    = $hasPrice ? $totalAmount : 0;
-        $paymentStatus = $hasPrice ? 'paid' : 'unpaid';
+        $paymentStatus = $hasPrice ? 'paid' : 'debt';
 
         return Expense::create([
             'farm_id'             => $flock->farm_id,

@@ -12,7 +12,7 @@ interface DailySummaryItem {
   date: string
   mortality: number
   feed: number
-  medicine: number
+  medicine_cost: number
   medicine_details?: Array<{ name: string; quantity: number; unit: string }>
   expense: number
 }
@@ -72,10 +72,10 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
     (acc, curr) => ({
       mortality: acc.mortality + curr.mortality,
       feed: acc.feed + curr.feed,
-      medicine: acc.medicine + curr.medicine,
+      medicine_cost: acc.medicine_cost + (curr.medicine_cost || 0),
       expense: acc.expense + curr.expense,
     }),
-    { mortality: 0, feed: 0, medicine: 0, expense: 0 }
+    { mortality: 0, feed: 0, medicine_cost: 0, expense: 0 }
   )
 
   // Helper for feed display
@@ -172,41 +172,42 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
                   {renderFeed(row.feed)}
                 </td>
                 <td className="px-4 py-3 text-center font-bold">
-                  {row.medicine > 0 ? (
-                    row.medicine_details && row.medicine_details.length > 0 ? (
-                      <div className="flex flex-wrap items-center justify-center gap-1.5">
-                        {row.medicine_details.map((med, idx) => {
-                          const colors = [
-                            'text-blue-700 bg-blue-50 border-blue-200',
-                            'text-indigo-700 bg-indigo-50 border-indigo-200',
-                            'text-violet-700 bg-violet-50 border-violet-200',
-                            'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-200',
-                            'text-rose-700 bg-rose-50 border-rose-200',
-                          ]
-                          const color = colors[idx % colors.length]
-                          
-                          return (
-                            <div key={idx} className="group relative inline-flex items-center justify-center cursor-help" tabIndex={0}>
-                              <span className={cn("px-2 py-0.5 rounded-md border text-xs font-black shadow-sm", color)}>
-                                {formatNumber(med.quantity)}
-                              </span>
-                              
-                              <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[200px] -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-                                <div className="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-xl">
-                                  <div className="flex flex-col text-center">
-                                    <span className="font-bold">{med.name}</span>
-                                    <span className="text-slate-300 mt-0.5">{formatNumber(med.quantity)} {med.unit}</span>
+                  {row.medicine_cost > 0 || (row.medicine_details && row.medicine_details.length > 0) ? (
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <span className="text-blue-700">${formatNumber(row.medicine_cost)}</span>
+                      {row.medicine_details && row.medicine_details.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                          {row.medicine_details.map((med, idx) => {
+                            const colors = [
+                              'text-blue-700 bg-blue-50 border-blue-200',
+                              'text-indigo-700 bg-indigo-50 border-indigo-200',
+                              'text-violet-700 bg-violet-50 border-violet-200',
+                              'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-200',
+                              'text-rose-700 bg-rose-50 border-rose-200',
+                            ]
+                            const color = colors[idx % colors.length]
+                            
+                            return (
+                              <div key={idx} className="group relative inline-flex items-center justify-center cursor-help" tabIndex={0}>
+                                <span className={cn("px-2 py-0.5 rounded-md border text-[10px] font-black shadow-sm", color)}>
+                                  {formatNumber(med.quantity)}
+                                </span>
+                                
+                                <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[200px] -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                                  <div className="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-xl">
+                                    <div className="flex flex-col text-center">
+                                      <span className="font-bold">{med.name}</span>
+                                      <span className="text-slate-300 mt-0.5">{formatNumber(med.quantity)} {med.unit}</span>
+                                    </div>
+                                    <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
                                   </div>
-                                  <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
                                 </div>
                               </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <span className="text-blue-700">{formatNumber(row.medicine)}</span>
-                    )
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-slate-300">—</span>
                   )}
@@ -237,7 +238,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
               <td colSpan={2} className="px-4 py-4 text-center text-primary-700">المجموع الإجمالي</td>
               <td className="px-4 py-4 text-center text-red-700 border-x border-primary-100/30">{formatNumber(totals.mortality)}</td>
               <td className="px-4 py-4 text-center text-emerald-800 border-x border-primary-100/30">{renderFeed(totals.feed)}</td>
-              <td className="px-4 py-4 text-center text-blue-800 border-x border-primary-100/30">{formatNumber(totals.medicine)}</td>
+              <td className="px-4 py-4 text-center text-blue-800 border-x border-primary-100/30">${formatNumber(totals.medicine_cost)}</td>
               <td className="px-4 py-4 text-center text-emerald-700 border-x border-primary-100/30">${formatNumber(totals.expense)}</td>
             </tr>
           </tfoot>

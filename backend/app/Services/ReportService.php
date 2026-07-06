@@ -99,8 +99,8 @@ class ReportService
         $totalWeightSold = (float) ($salesDetails->total_weight ?? 0);
         $avgBirdWeight = $birdsSold > 0 ? round($totalWeightSold / $birdsSold, 2) : 0;
 
-        // Specific expenses by common category names if available
-        $medicineExpenses = $flock->expenses()
+        // Specific expenses by common category names if available + inventory medicine consumption
+        $directMedicineExpenses = $flock->expenses()
             ->join('expense_categories', 'expenses.expense_category_id', '=', 'expense_categories.id')
             ->where(function($q) {
                 $q->where('expense_categories.name', 'like', '%دواء%')
@@ -108,6 +108,16 @@ class ReportService
                   ->orWhere('expense_categories.name', 'like', '%Medicine%');
             })
             ->sum('total_amount');
+
+        $inventoryMedicineCost = (float) DB::table('inventory_transactions')
+            ->where('flock_id', $flockId)
+            ->where('farm_id', $farmId)
+            ->where('direction', 'out')
+            ->where('transaction_type', 'consumption')
+            ->where('source_module', 'flock_medicine')
+            ->sum('total_amount');
+
+        $medicineExpenses = $directMedicineExpenses + $inventoryMedicineCost;
 
         $mortalityRate = $flock->initial_count > 0 
             ? round(($mortalityCount / $flock->initial_count) * 100, 2) 
@@ -118,7 +128,7 @@ class ReportService
         if ($ageDays === null) {
             $startDate = Carbon::parse($flock->start_date);
             $endDate = $flock->close_date ? Carbon::parse($flock->close_date) : Carbon::now();
-            $ageDays = $startDate->diffInDays($endDate);
+            $ageDays = $startDate->diffInDays($endDate) + 1;
         }
 
         return [

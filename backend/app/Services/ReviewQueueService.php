@@ -173,7 +173,7 @@ class ReviewQueueService
         // ── Payment status ────────────────────────────────────────────────────
         if ($row['payment_status'] === null) {
             $reasons[] = 'missing_payment_status';
-        } elseif ($row['payment_status'] === 'unpaid') {
+        } elseif (in_array($row['payment_status'], ['unpaid', 'debt'])) {
             $reasons[] = 'unpaid';
         } elseif ($row['payment_status'] === 'partial') {
             $reasons[] = 'partial_payment';
@@ -193,8 +193,8 @@ class ReviewQueueService
             $missingPrice = true;
         }
 
-        // Don't flag missing_price for fully-paid records — payment resolves the financial concern.
-        if ($missingPrice && $row['payment_status'] !== 'paid') {
+        // Always flag missing_price so the user knows they need to enter the cost, even if they marked it as paid
+        if ($missingPrice) {
             $reasons[] = 'missing_price';
         }
 
@@ -205,11 +205,11 @@ class ReviewQueueService
 
         // ── Blocking flock closure ────────────────────────────────────────────
         // Active flock + unpaid/partial, OR missing_price on an unpaid/partial record.
-        // Fully-paid records never block closure even if unit_price details are missing.
+        // Active flock + unpaid/partial/debt, OR missing_price (on any record).
         $isBlockingClosure = $row['flock_status'] === 'active'
             && (
-                in_array($row['payment_status'], ['unpaid', 'partial'])
-                || ($missingPrice && $row['payment_status'] !== 'paid')
+                in_array($row['payment_status'], ['unpaid', 'partial', 'debt'])
+                || $missingPrice
             );
 
         if ($isBlockingClosure) {

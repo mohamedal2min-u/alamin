@@ -154,16 +154,15 @@ class UpdateFlockAction
     private function assertNoBlockingRecords(Flock $flock): void
     {
         $unpaidExpenses = $flock->expenses()
-            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->whereIn('payment_status', ['unpaid', 'partial', 'debt'])
             ->count();
 
         $unpaidSales = $flock->sales()
-            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->whereIn('payment_status', ['unpaid', 'partial', 'debt'])
             ->count();
 
-        // Fully-paid expenses are resolved regardless of missing unit_price/quantity details.
+        // All expenses (even paid ones) block if missing unit_price/quantity details
         $missingPriceExpenses = $flock->expenses()
-            ->where('payment_status', '!=', 'paid')
             ->where(function ($q): void {
                 $q->whereNull('quantity')
                   ->orWhere('quantity', '<=', 0)

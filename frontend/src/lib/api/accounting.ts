@@ -49,7 +49,7 @@ export interface ReviewQueueResponse {
 }
 
 export interface ReviewQueueFilters {
-  type?: 'expense' | 'sale' | 'inventory_transaction' | 'all'
+  type?: 'expense' | 'sale' | 'inventory_transaction' | 'water_log' | 'all'
   reason?: ReviewReason
   flock_id?: number | string
   page?: number
@@ -89,7 +89,7 @@ export const accountingApi = {
   },
 
   updateReviewItem: async (
-    type: 'expense' | 'sale' | 'inventory_transaction',
+    type: 'expense' | 'sale' | 'inventory_transaction' | 'water_log',
     id: number,
     payload: { paid_amount?: number; unit_price?: number }
   ): Promise<ReviewItem> => {

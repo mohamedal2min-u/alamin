@@ -237,6 +237,7 @@ class ReviewQueueService
             'payment_status'   => $e->payment_status,
             'unit_price'       => $e->unit_price !== null ? (float) $e->unit_price : null,
             'quantity'         => $e->quantity !== null ? (float) $e->quantity : null,
+            'quantity_unit'    => null,
             'review_reasons'   => [],
         ];
     }
@@ -258,12 +259,24 @@ class ReviewQueueService
             'payment_status'   => $s->payment_status,
             'unit_price'       => null,
             'quantity'         => null,
+            'quantity_unit'    => null,
             'review_reasons'   => [],
         ];
     }
 
     private function normalizeInventoryTransaction(InventoryTransaction $t): array
     {
+        $unit = $t->item?->input_unit;
+        // Map common english units to arabic if necessary
+        $unitMap = [
+            'bag' => 'كيس',
+            'kg' => 'كغ',
+            'liter' => 'لتر',
+            'bottle' => 'عبوة',
+            'piece' => 'قطعة',
+        ];
+        $mappedUnit = $unit ? ($unitMap[strtolower($unit)] ?? $unit) : null;
+
         return [
             'id'               => 'inventory_transaction-' . $t->id,
             'type'             => 'inventory_transaction',
@@ -279,6 +292,7 @@ class ReviewQueueService
             'payment_status'   => 'paid',
             'unit_price'       => $t->unit_price !== null ? (float) $t->unit_price : null,
             'quantity'         => $t->original_quantity !== null ? (float) $t->original_quantity : null,
+            'quantity_unit'    => $mappedUnit,
             'review_reasons'   => [],
         ];
     }

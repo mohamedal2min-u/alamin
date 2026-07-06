@@ -19,7 +19,7 @@ export type ReviewReason =
 
 export interface ReviewItem {
   id: string
-  type: 'expense' | 'sale' | 'inventory_transaction'
+  type: 'expense' | 'sale' | 'inventory_transaction' | 'water_log'
   record_id: number
   flock_id: number | null
   flock_name: string | null

@@ -85,7 +85,7 @@ class CreateShipmentAction
                     ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
                 );
 
-                $debtStatus = $missingPrice ? 'debt' : ($paidAmount > 0 ? 'partial' : 'unpaid');
+                $debtStatus = $missingPrice ? 'debt' : ($paidAmount > 0 ? 'partial' : 'debt');
 
                 Expense::create([
                     'farm_id'                       => $farmId,

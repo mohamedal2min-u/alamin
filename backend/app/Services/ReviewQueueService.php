@@ -368,8 +368,8 @@ class ReviewQueueService
         }
 
         // ── Missing price (Business Rule — نهائي) ────────────────────────────
-        // Conditions 1+2: expense or inventory with no quantity or no unit_price
-        $missingPrice = ($row['type'] === 'expense' || $row['type'] === 'inventory_transaction')
+        // Conditions 1+2: expense, inventory, or water_log with no quantity or no unit_price
+        $missingPrice = in_array($row['type'], ['expense', 'inventory_transaction', 'water_log'])
             && (
                 empty($row['quantity'])        // quantity = 0 or null
                 || $row['unit_price'] === null

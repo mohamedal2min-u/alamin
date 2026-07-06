@@ -49,6 +49,7 @@ class CreateMedicineLogAction
                     'transaction_type'  => 'consumption',
                     'direction'         => 'out',
                     'source_module'     => 'flock_medicine',
+                    'original_quantity' => $data['quantity'],
                     'computed_quantity' => $realQty,
                     'unit_price'        => $avgCost > 0 ? $avgCost : null,
                     'total_amount'      => $consumptionCost > 0 ? $consumptionCost : null,

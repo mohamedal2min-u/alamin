@@ -194,6 +194,7 @@ class ReviewQueueService
             foreach ($grouped as $group) {
                 $first = $group->first();
                 $totalOriginalQuantity = $group->sum('original_quantity');
+                $totalComputedQuantity = $group->sum('computed_quantity');
                 $totalAmount = $group->sum('total_amount');
                 
                 $virtual = new InventoryTransaction();
@@ -206,6 +207,7 @@ class ReviewQueueService
                 // For simplicity, just use the first date.
                 $virtual->transaction_date = $first->transaction_date; 
                 $virtual->original_quantity = $totalOriginalQuantity;
+                $virtual->computed_quantity = $totalComputedQuantity;
                 $virtual->total_amount = $totalAmount;
                 
                 $hasPrice = ($first->unit_price > 0 && $first->total_amount > 0);
@@ -293,6 +295,8 @@ class ReviewQueueService
             'unit_price'       => $t->unit_price !== null ? (float) $t->unit_price : null,
             'quantity'         => $t->original_quantity !== null ? (float) $t->original_quantity : null,
             'quantity_unit'    => $mappedUnit,
+            'computed_quantity'=> $t->computed_quantity !== null ? (float) $t->computed_quantity : null,
+            'item_type'        => $t->item?->type,
             'review_reasons'   => [],
         ];
     }

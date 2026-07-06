@@ -43,7 +43,7 @@ class ExpenseController extends Controller
             'unit_price'          => 'nullable|numeric|min:0',
             'total_amount'        => 'required|numeric|min:0',
             'paid_amount'         => 'nullable|numeric|min:0',
-            'payment_status'      => 'nullable|in:paid,partial,unpaid',
+            'payment_status'      => 'nullable|in:paid,partial,unpaid,debt',
             'description'         => 'nullable|string|max:255',
             'notes'               => 'nullable|string|max:5000',
             'expense_type'        => 'nullable|string|max:50',
@@ -64,17 +64,17 @@ class ExpenseController extends Controller
 
         // Auto-detect payment status if not provided
         if (isset($validated['payment_status'])) {
-            $paymentStatus = $validated['payment_status'];
+            $paymentStatus = $validated['payment_status'] === 'unpaid' ? 'debt' : $validated['payment_status'];
         } elseif ($totalAmount <= 0) {
             // No price = debt/unpaid
-            $paymentStatus = 'unpaid';
+            $paymentStatus = 'debt';
             $paidAmount = 0;
         } elseif ($paidAmount >= $totalAmount) {
             $paymentStatus = 'paid';
         } elseif ($paidAmount > 0) {
             $paymentStatus = 'partial';
         } else {
-            $paymentStatus = 'unpaid';
+            $paymentStatus = 'debt';
         }
 
         $expense = Expense::create([

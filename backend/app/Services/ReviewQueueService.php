@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\InventoryTransaction;
+use App\Models\FlockWaterLog;
 
 class ReviewQueueService
 {
@@ -78,6 +79,28 @@ class ReviewQueueService
             $record->save();
 
             $row = $this->normalizeExpense($record->load(['flock', 'expenseCategory']));
+
+        } elseif ($type === 'water_log') {
+            $record = FlockWaterLog::where('farm_id', $farmId)->findOrFail($recordId);
+
+            if (array_key_exists('unit_price', $data)) {
+                if ($record->quantity !== null && $data['unit_price'] !== null) {
+                    $record->total_amount = $record->quantity * $data['unit_price'];
+                }
+            }
+
+            if (array_key_exists('paid_amount', $data)) {
+                $record->paid_amount = $data['paid_amount'];
+            }
+
+            $record->payment_status = $this->derivePaymentStatus(
+                (float) ($record->total_amount ?? 0),
+                (float) ($record->paid_amount ?? 0)
+            );
+
+            $record->save();
+
+            $row = $this->normalizeWaterLog($record->load('flock'));
 
         } elseif ($type === 'inventory_transaction') {
             $firstRecord = InventoryTransaction::where('farm_id', $farmId)->findOrFail($recordId);
@@ -176,6 +199,14 @@ class ReviewQueueService
             $rows = $rows->concat($q->get()->map(fn ($s) => $this->normalizeSale($s)));
         }
 
+        if ($type === 'all' || $type === 'water_log') {
+            $q = FlockWaterLog::with('flock')->where('farm_id', $farmId);
+            if ($flockId) {
+                $q->where('flock_id', $flockId);
+            }
+            $rows = $rows->concat($q->get()->map(fn ($w) => $this->normalizeWaterLog($w)));
+        }
+
         if ($type === 'all' || $type === 'inventory_transaction') {
             $q = InventoryTransaction::with(['flock', 'item.itemType'])
                 ->where('farm_id', $farmId)
@@ -262,6 +293,28 @@ class ReviewQueueService
             'unit_price'       => null,
             'quantity'         => null,
             'quantity_unit'    => null,
+            'review_reasons'   => [],
+        ];
+    }
+
+    private function normalizeWaterLog(FlockWaterLog $w): array
+    {
+        return [
+            'id'               => 'water_log-' . $w->id,
+            'type'             => 'water_log',
+            'record_id'        => $w->id,
+            'flock_id'         => $w->flock_id,
+            'flock_name'       => $w->flock?->name,
+            'flock_status'     => $w->flock?->status,
+            'entry_date'       => $w->entry_date?->toDateString(),
+            'description'      => 'استهلاك ماء - ' . $w->notes,
+            'total_amount'     => (float) ($w->total_amount ?? 0),
+            'paid_amount'      => (float) ($w->paid_amount ?? 0),
+            'remaining_amount' => max(0, (float) (($w->total_amount ?? 0) - ($w->paid_amount ?? 0))),
+            'payment_status'   => $w->payment_status ?? 'unpaid',
+            'unit_price'       => ($w->quantity > 0 && $w->total_amount > 0) ? ($w->total_amount / $w->quantity) : null,
+            'quantity'         => $w->quantity !== null ? (float) $w->quantity : null,
+            'quantity_unit'    => $w->unit_label,
             'review_reasons'   => [],
         ];
     }

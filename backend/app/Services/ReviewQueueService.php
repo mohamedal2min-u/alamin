@@ -110,7 +110,7 @@ class ReviewQueueService
             }
 
             // Return the newly updated group
-            $groupRecords = InventoryTransaction::with(['flock', 'item'])
+            $groupRecords = InventoryTransaction::with(['flock', 'item.itemType'])
                 ->where('farm_id', $farmId)
                 ->where('flock_id', $firstRecord->flock_id)
                 ->where('item_id', $firstRecord->item_id)
@@ -177,7 +177,7 @@ class ReviewQueueService
         }
 
         if ($type === 'all' || $type === 'inventory_transaction') {
-            $q = InventoryTransaction::with(['flock', 'item'])
+            $q = InventoryTransaction::with(['flock', 'item.itemType'])
                 ->where('farm_id', $farmId)
                 ->where('transaction_type', 'consumption');
             if ($flockId) {
@@ -296,7 +296,7 @@ class ReviewQueueService
             'quantity'         => $t->original_quantity !== null ? (float) $t->original_quantity : null,
             'quantity_unit'    => $mappedUnit,
             'computed_quantity'=> $t->computed_quantity !== null ? (float) $t->computed_quantity : null,
-            'item_type'        => $t->item?->type,
+            'item_type'        => $t->item?->itemType?->code,
             'review_reasons'   => [],
         ];
     }

@@ -76,14 +76,16 @@ class CreateShipmentAction
                 'updated_by'        => $userId,
             ]);
 
-            // إنشاء سجل دين في المصاريف إذا كان هناك مبلغ غير مدفوع
-            if ($remaining > 0 && $totalAmount > 0) {
+            $missingPrice = $totalAmount === null || $totalAmount <= 0;
+
+            // إنشاء سجل دين في المصاريف إذا كان هناك مبلغ غير مدفوع أو إذا كان السعر مفقود/صفري
+            if ($remaining > 0 || $missingPrice) {
                 $category = ExpenseCategory::firstOrCreate(
                     ['name' => 'شراء مخزون', 'farm_id' => null],
                     ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
                 );
 
-                $debtStatus = $paidAmount > 0 ? 'partial' : 'unpaid';
+                $debtStatus = $missingPrice ? 'debt' : ($paidAmount > 0 ? 'partial' : 'unpaid');
 
                 Expense::create([
                     'farm_id'                       => $farmId,
@@ -93,9 +95,9 @@ class CreateShipmentAction
                     'description'                   => 'دين شراء: ' . $item->name . ($data['supplier_name'] ? ' — ' . $data['supplier_name'] : ''),
                     'quantity'                      => $originalQty,
                     'unit_price'                    => $data['unit_price'] ?? null,
-                    'total_amount'                  => $totalAmount,
-                    'paid_amount'                   => min($paidAmount, $totalAmount),
-                    'remaining_amount'              => $remaining,
+                    'total_amount'                  => $totalAmount ?? 0,
+                    'paid_amount'                   => min($paidAmount, $totalAmount ?? 0),
+                    'remaining_amount'              => $missingPrice ? 0 : $remaining,
                     'payment_status'                => $debtStatus,
                     'reference_no'                  => $data['invoice_no'] ?? null,
                     'linked_inventory_transaction_id' => $transaction->id,

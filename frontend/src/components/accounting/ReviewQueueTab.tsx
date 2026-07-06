@@ -276,7 +276,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
                     disabled={item.type === 'inventory_transaction'}
                   />
                 </div>
-                {(item.type === 'expense' || item.type === 'inventory_transaction') && (
+                {(item.type === 'expense' || item.type === 'inventory_transaction' || item.type === 'water_log') && (
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-slate-500">سعر الوحدة</label>
                     <Input

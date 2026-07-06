@@ -80,18 +80,59 @@ class ReviewQueueService
             $row = $this->normalizeExpense($record->load(['flock', 'expenseCategory']));
 
         } elseif ($type === 'inventory_transaction') {
-            $record = InventoryTransaction::where('farm_id', $farmId)->findOrFail($recordId);
+            $firstRecord = InventoryTransaction::where('farm_id', $farmId)->findOrFail($recordId);
 
-            if (array_key_exists('unit_price', $data)) {
-                $record->unit_price = $data['unit_price'];
-                if ($record->original_quantity !== null && $data['unit_price'] !== null) {
-                    $record->total_amount = $record->original_quantity * $data['unit_price'];
-                }
+            // Find all unpriced consumptions for this item in this flock
+            $records = InventoryTransaction::where('farm_id', $farmId)
+                ->where('flock_id', $firstRecord->flock_id)
+                ->where('item_id', $firstRecord->item_id)
+                ->where('transaction_type', 'consumption')
+                ->where(function ($q) {
+                    $q->whereNull('unit_price')
+                      ->orWhere('unit_price', '<=', 0)
+                      ->orWhere('total_amount', '<=', 0);
+                })
+                ->get();
+
+            // Ensure the first record itself is included just in case
+            if (!$records->contains('id', $firstRecord->id)) {
+                $records->push($firstRecord);
             }
 
-            $record->save();
+            foreach ($records as $record) {
+                if (array_key_exists('unit_price', $data)) {
+                    $record->unit_price = $data['unit_price'];
+                    if ($record->original_quantity !== null && $data['unit_price'] !== null) {
+                        $record->total_amount = $record->original_quantity * $data['unit_price'];
+                    }
+                }
+                $record->save();
+            }
 
-            $row = $this->normalizeInventoryTransaction($record->load(['flock', 'item']));
+            // Return the newly updated group
+            $groupRecords = InventoryTransaction::with(['flock', 'item'])
+                ->where('farm_id', $farmId)
+                ->where('flock_id', $firstRecord->flock_id)
+                ->where('item_id', $firstRecord->item_id)
+                ->where('transaction_type', 'consumption')
+                ->whereIn('id', $records->pluck('id'))
+                ->get();
+
+            $totalOriginalQuantity = $groupRecords->sum('original_quantity');
+            $totalAmount = $groupRecords->sum('total_amount');
+
+            $virtual = new InventoryTransaction();
+            $virtual->id = $firstRecord->id;
+            $virtual->flock_id = $firstRecord->flock_id;
+            $virtual->item_id = $firstRecord->item_id;
+            $virtual->flock = $firstRecord->flock;
+            $virtual->item = $firstRecord->item;
+            $virtual->transaction_date = $firstRecord->transaction_date;
+            $virtual->original_quantity = $totalOriginalQuantity;
+            $virtual->total_amount = $totalAmount;
+            $virtual->unit_price = $totalOriginalQuantity > 0 ? ($totalAmount / $totalOriginalQuantity) : 0;
+
+            $row = $this->normalizeInventoryTransaction($virtual);
         } else {
             $record = Sale::where('farm_id', $farmId)->findOrFail($recordId);
 
@@ -142,7 +183,38 @@ class ReviewQueueService
             if ($flockId) {
                 $q->where('flock_id', $flockId);
             }
-            $rows = $rows->concat($q->get()->map(fn ($t) => $this->normalizeInventoryTransaction($t)));
+            
+            $transactions = $q->get();
+            
+            $grouped = $transactions->groupBy(function ($t) {
+                $hasPrice = ($t->unit_price > 0 && $t->total_amount > 0) ? 'priced' : 'unpriced';
+                return $t->flock_id . '_' . $t->item_id . '_' . $hasPrice;
+            });
+            
+            foreach ($grouped as $group) {
+                $first = $group->first();
+                $totalOriginalQuantity = $group->sum('original_quantity');
+                $totalAmount = $group->sum('total_amount');
+                
+                $virtual = new InventoryTransaction();
+                $virtual->id = $first->id;
+                $virtual->flock_id = $first->flock_id;
+                $virtual->item_id = $first->item_id;
+                $virtual->flock = $first->flock;
+                $virtual->item = $first->item;
+                // Show the date range if multiple, or just first date.
+                // For simplicity, just use the first date.
+                $virtual->transaction_date = $first->transaction_date; 
+                $virtual->original_quantity = $totalOriginalQuantity;
+                $virtual->total_amount = $totalAmount;
+                
+                $hasPrice = ($first->unit_price > 0 && $first->total_amount > 0);
+                $virtual->unit_price = $hasPrice && $totalOriginalQuantity > 0 
+                    ? ($totalAmount / $totalOriginalQuantity) 
+                    : 0;
+                
+                $rows->push($this->normalizeInventoryTransaction($virtual));
+            }
         }
 
         return $rows;

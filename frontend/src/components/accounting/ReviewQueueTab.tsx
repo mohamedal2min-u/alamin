@@ -298,7 +298,14 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
             ) : (
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
                 {item.quantity != null && (
-                  <span>الكمية: <strong className="text-slate-700">{formatNumber(item.quantity)} {item.quantity_unit || ''}</strong></span>
+                  <span>
+                    الكمية: <strong className="text-slate-700">{formatNumber(item.quantity)} {item.quantity_unit || ''}</strong>
+                    {item.item_type === 'feed' && item.computed_quantity != null && (
+                      <span className="mr-2 text-slate-500">
+                        (الوزن الإجمالي: {item.computed_quantity >= 1000 ? `${formatNumber(item.computed_quantity / 1000)} طن` : `${formatNumber(item.computed_quantity)} كغ`})
+                      </span>
+                    )}
+                  </span>
                 )}
                 <span>الإجمالي: <strong className="text-slate-700">{formatNumber(item.total_amount)}</strong></span>
                 <span>المدفوع: <strong className="text-slate-700">{formatNumber(item.paid_amount)}</strong></span>

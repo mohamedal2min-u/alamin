@@ -32,6 +32,7 @@ export interface ReviewItem {
   payment_status: 'paid' | 'partial' | 'unpaid' | null
   unit_price: number | null
   quantity: number | null
+  quantity_unit?: string | null
   review_reasons: ReviewReason[]
 }
 

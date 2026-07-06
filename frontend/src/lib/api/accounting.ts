@@ -19,7 +19,7 @@ export type ReviewReason =
 
 export interface ReviewItem {
   id: string
-  type: 'expense' | 'sale'
+  type: 'expense' | 'sale' | 'inventory_transaction'
   record_id: number
   flock_id: number | null
   flock_name: string | null
@@ -46,7 +46,7 @@ export interface ReviewQueueResponse {
 }
 
 export interface ReviewQueueFilters {
-  type?: 'expense' | 'sale' | 'all'
+  type?: 'expense' | 'sale' | 'inventory_transaction' | 'all'
   reason?: ReviewReason
   flock_id?: number | string
   page?: number
@@ -86,7 +86,7 @@ export const accountingApi = {
   },
 
   updateReviewItem: async (
-    type: 'expense' | 'sale',
+    type: 'expense' | 'sale' | 'inventory_transaction',
     id: number,
     payload: { paid_amount?: number; unit_price?: number }
   ): Promise<ReviewItem> => {

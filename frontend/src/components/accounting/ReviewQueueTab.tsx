@@ -47,7 +47,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
 
   const { mutate: updateItem, isPending: isUpdating } = useMutation({
     mutationFn: ({ type, id, payload }: {
-      type: 'expense' | 'sale'
+      type: 'expense' | 'sale' | 'inventory_transaction'
       id: number
       payload: { paid_amount?: number; unit_price?: number }
     }) => accountingApi.updateReviewItem(type, id, payload),
@@ -65,7 +65,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
     if (editValues.paid_amount !== undefined && editValues.paid_amount !== '') {
       payload.paid_amount = parseFloat(editValues.paid_amount)
     }
-    if (editValues.unit_price !== undefined && editValues.unit_price !== '' && item.type === 'expense') {
+    if (editValues.unit_price !== undefined && editValues.unit_price !== '' && (item.type === 'expense' || item.type === 'inventory_transaction')) {
       payload.unit_price = parseFloat(editValues.unit_price)
     }
     updateItem({ type: item.type, id: item.record_id, payload })
@@ -87,7 +87,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
 
       {/* ── Type + Reason Filters ─────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-2">
-        {(['all', 'expense', 'sale'] as const).map((t) => (
+        {(['all', 'expense', 'sale', 'inventory_transaction'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setFilters((f) => ({ ...f, type: t, page: 1 }))}
@@ -97,7 +97,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
                 : 'bg-white text-slate-600 border-slate-200 hover:border-primary-400'
             }`}
           >
-            {t === 'all' ? 'الكل' : t === 'expense' ? 'المصروفات' : 'المبيعات'}
+            {t === 'all' ? 'الكل' : t === 'expense' ? 'المصروفات' : t === 'sale' ? 'المبيعات' : 'الاستهلاكات'}
           </button>
         ))}
 
@@ -243,7 +243,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-slate-800 text-sm">{item.description}</span>
               <span className="text-xs text-slate-400">
-                {item.type === 'expense' ? 'مصروف' : 'بيع'} • {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
+                {item.type === 'expense' ? 'مصروف' : item.type === 'sale' ? 'بيع' : 'استهلاك'} • {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
               </span>
             </div>
 
@@ -273,9 +273,10 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
                     value={editValues.paid_amount ?? ''}
                     onChange={(e) => onEditChange({ ...editValues, paid_amount: e.target.value })}
                     className="h-8 w-28 text-sm"
+                    disabled={item.type === 'inventory_transaction'}
                   />
                 </div>
-                {item.type === 'expense' && (
+                {(item.type === 'expense' || item.type === 'inventory_transaction') && (
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-slate-500">سعر الوحدة</label>
                     <Input

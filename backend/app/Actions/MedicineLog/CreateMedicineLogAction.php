@@ -23,18 +23,57 @@ class CreateMedicineLogAction
             $item    = \App\Models\Item::findOrFail($data['item_id']);
             $realQty = $data['quantity'] * ($item->unit_value ?? 1);
 
-            // ── lockForUpdate يمنع race condition عند الطلبات المتزامنة ───────
-            $warehouseItem = WarehouseItem::where('item_id', $data['item_id'])
-                ->whereHas('warehouse', fn ($q) => $q->where('farm_id', $flock->farm_id)->where('is_active', true))
-                ->lockForUpdate()
-                ->first();
-
-            // ── الـ warehouse اختياري: إذا لم يوجد نسجل بدون حركة مخزون ────
+            $warehouse = \App\Models\Warehouse::where('farm_id', $flock->farm_id)->where('is_active', true)->first();
             $txnId = null;
 
-            if ($warehouseItem) {
+            if ($warehouse) {
+                // Find or create WarehouseItem
+                $warehouseItem = WarehouseItem::firstOrCreate(
+                    ['warehouse_id' => $warehouse->id, 'item_id' => $data['item_id']],
+                    ['farm_id' => $flock->farm_id, 'current_quantity' => 0, 'average_cost' => $item->default_cost ?? 0, 'created_by' => $userId, 'updated_by' => $userId]
+                );
+
                 if ($warehouseItem->current_quantity < $realQty) {
-                    throw new \Exception('المخزون غير كافٍ لسحب هذه الكمية', 422);
+                    $shortage = $realQty - $warehouseItem->current_quantity;
+                    $avgCost = (float)($warehouseItem->average_cost ?? 0);
+                    $totalCost = $avgCost * $shortage;
+                    
+                    $purchaseTxn = InventoryTransaction::create([
+                        'farm_id'           => $flock->farm_id,
+                        'warehouse_id'      => $warehouse->id,
+                        'item_id'           => $data['item_id'],
+                        'transaction_date'  => $data['entry_date'] ?? now()->toDateString(),
+                        'transaction_type'  => 'purchase',
+                        'direction'         => 'in',
+                        'source_module'     => 'auto_purchase',
+                        'original_quantity' => $shortage / ($item->unit_value ?? 1),
+                        'computed_quantity' => $shortage,
+                        'unit_price'        => $avgCost > 0 ? $avgCost : null,
+                        'total_amount'      => $totalCost > 0 ? $totalCost : null,
+                        'created_by'        => $userId,
+                        'updated_by'        => $userId,
+                    ]);
+                    
+                    \App\Models\Expense::create([
+                        'farm_id' => $flock->farm_id,
+                        'flock_id' => $flock->id,
+                        'expense_category_id' => 17, // شراء مخزون
+                        'entry_date' => $data['entry_date'] ?? now()->toDateString(),
+                        'expense_type' => 'flock',
+                        'quantity' => $shortage,
+                        'unit_price' => $avgCost > 0 ? $avgCost : 0,
+                        'total_amount' => $totalCost > 0 ? $totalCost : 0,
+                        'paid_amount' => 0,
+                        'remaining_amount' => $totalCost > 0 ? $totalCost : 0,
+                        'payment_status' => 'unpaid',
+                        'description' => 'دين شراء تلقائي: ' . $item->name,
+                        'linked_inventory_transaction_id' => $purchaseTxn->id,
+                        'worker_id' => $userId,
+                        'created_by' => $userId,
+                        'updated_by' => $userId,
+                    ]);
+                    
+                    $warehouseItem->increment('current_quantity', $shortage);
                 }
 
                 $avgCost         = (float) ($warehouseItem->average_cost ?? 0);
@@ -42,10 +81,10 @@ class CreateMedicineLogAction
 
                 $txn = InventoryTransaction::create([
                     'farm_id'           => $flock->farm_id,
-                    'warehouse_id'      => $warehouseItem->warehouse_id,
+                    'warehouse_id'      => $warehouse->id,
                     'item_id'           => $data['item_id'],
                     'flock_id'          => $flock->id,
-                    'transaction_date'  => now()->toDateString(),
+                    'transaction_date'  => $data['entry_date'] ?? now()->toDateString(),
                     'transaction_type'  => 'consumption',
                     'direction'         => 'out',
                     'source_module'     => 'flock_medicine',

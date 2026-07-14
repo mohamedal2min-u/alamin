@@ -21,6 +21,9 @@ class CreateShipmentAction
             $totalAmount = isset($data['total_amount']) ? (float) $data['total_amount'] : null;
             $paidAmount  = (float) ($data['paid_amount'] ?? 0);
 
+            // Auto-assign active flock since everything loaded is for the open flock
+            $flockId = $data['flock_id'] ?? \App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->value('id');
+
             // Auto-determine payment_status from amounts (no 'partial' from frontend)
             $remaining     = ($totalAmount !== null) ? max(0, $totalAmount - $paidAmount) : 0;
             $paymentStatus = match (true) {
@@ -55,7 +58,7 @@ class CreateShipmentAction
 
             $transaction = InventoryTransaction::create([
                 'farm_id'           => $farmId,
-                'flock_id'          => $data['flock_id'] ?? null,
+                'flock_id'          => $flockId,
                 'warehouse_id'      => $data['warehouse_id'],
                 'item_id'           => $data['item_id'],
                 'transaction_date'  => $data['transaction_date'],
@@ -89,7 +92,7 @@ class CreateShipmentAction
 
                 Expense::create([
                     'farm_id'                       => $farmId,
-                    'flock_id'                      => $data['flock_id'] ?? null,
+                    'flock_id'                      => $flockId,
                     'expense_category_id'           => $category->id,
                     'entry_date'                    => $data['transaction_date'],
                     'description'                   => 'دين شراء: ' . $item->name . (!empty($data['supplier_name']) ? ' — ' . $data['supplier_name'] : ''),

@@ -102,61 +102,8 @@ class ReviewQueueService
 
             $row = $this->normalizeWaterLog($record->load('flock'));
 
-        } elseif ($type === 'inventory_transaction') {
-            $firstRecord = InventoryTransaction::where('farm_id', $farmId)->findOrFail($recordId);
 
-            // Find all unpriced consumptions for this item in this flock
-            $records = InventoryTransaction::where('farm_id', $farmId)
-                ->where('flock_id', $firstRecord->flock_id)
-                ->where('item_id', $firstRecord->item_id)
-                ->where('transaction_type', 'consumption')
-                ->where(function ($q) {
-                    $q->whereNull('unit_price')
-                      ->orWhere('unit_price', '<=', 0)
-                      ->orWhere('total_amount', '<=', 0);
-                })
-                ->get();
-
-            // Ensure the first record itself is included just in case
-            if (!$records->contains('id', $firstRecord->id)) {
-                $records->push($firstRecord);
-            }
-
-            foreach ($records as $record) {
-                if (array_key_exists('unit_price', $data)) {
-                    $record->unit_price = $data['unit_price'];
-                    if ($record->original_quantity !== null && $data['unit_price'] !== null) {
-                        $record->total_amount = $record->original_quantity * $data['unit_price'];
-                    }
-                }
-                $record->save();
-            }
-
-            // Return the newly updated group
-            $groupRecords = InventoryTransaction::with(['flock', 'item.itemType'])
-                ->where('farm_id', $farmId)
-                ->where('flock_id', $firstRecord->flock_id)
-                ->where('item_id', $firstRecord->item_id)
-                ->where('transaction_type', 'consumption')
-                ->whereIn('id', $records->pluck('id'))
-                ->get();
-
-            $totalOriginalQuantity = $groupRecords->sum('original_quantity');
-            $totalAmount = $groupRecords->sum('total_amount');
-
-            $virtual = new InventoryTransaction();
-            $virtual->id = $firstRecord->id;
-            $virtual->flock_id = $firstRecord->flock_id;
-            $virtual->item_id = $firstRecord->item_id;
-            $virtual->flock = $firstRecord->flock;
-            $virtual->item = $firstRecord->item;
-            $virtual->transaction_date = $firstRecord->transaction_date;
-            $virtual->original_quantity = $totalOriginalQuantity;
-            $virtual->total_amount = $totalAmount;
-            $virtual->unit_price = $totalOriginalQuantity > 0 ? ($totalAmount / $totalOriginalQuantity) : 0;
-
-            $row = $this->normalizeInventoryTransaction($virtual);
-        } else {
+        } elseif ($type === 'sale') {
             $record = Sale::where('farm_id', $farmId)->findOrFail($recordId);
 
             if (array_key_exists('paid_amount', $data)) {
@@ -172,6 +119,8 @@ class ReviewQueueService
             $record->save();
 
             $row = $this->normalizeSale($record->load('flock'));
+        } else {
+            abort(400, "Invalid type");
         }
 
         return $this->attachReasons($row);
@@ -207,48 +156,7 @@ class ReviewQueueService
             $rows = $rows->concat($q->get()->map(fn ($w) => $this->normalizeWaterLog($w)));
         }
 
-        if ($type === 'all' || $type === 'inventory_transaction') {
-            $q = InventoryTransaction::with(['flock', 'item.itemType'])
-                ->where('farm_id', $farmId)
-                ->where('transaction_type', 'consumption');
-            if ($flockId) {
-                $q->where('flock_id', $flockId);
-            }
-            
-            $transactions = $q->get();
-            
-            $grouped = $transactions->groupBy(function ($t) {
-                $hasPrice = ($t->unit_price > 0 && $t->total_amount > 0) ? 'priced' : 'unpriced';
-                return $t->flock_id . '_' . $t->item_id . '_' . $hasPrice;
-            });
-            
-            foreach ($grouped as $group) {
-                $first = $group->first();
-                $totalOriginalQuantity = $group->sum('original_quantity');
-                $totalComputedQuantity = $group->sum('computed_quantity');
-                $totalAmount = $group->sum('total_amount');
-                
-                $virtual = new InventoryTransaction();
-                $virtual->id = $first->id;
-                $virtual->flock_id = $first->flock_id;
-                $virtual->item_id = $first->item_id;
-                $virtual->flock = $first->flock;
-                $virtual->item = $first->item;
-                // Show the date range if multiple, or just first date.
-                // For simplicity, just use the first date.
-                $virtual->transaction_date = $first->transaction_date; 
-                $virtual->original_quantity = $totalOriginalQuantity;
-                $virtual->computed_quantity = $totalComputedQuantity;
-                $virtual->total_amount = $totalAmount;
-                
-                $hasPrice = ($first->unit_price > 0 && $first->total_amount > 0);
-                $virtual->unit_price = $hasPrice && $totalOriginalQuantity > 0 
-                    ? ($totalAmount / $totalOriginalQuantity) 
-                    : 0;
-                
-                $rows->push($this->normalizeInventoryTransaction($virtual));
-            }
-        }
+
 
         return $rows;
     }
@@ -319,40 +227,6 @@ class ReviewQueueService
         ];
     }
 
-    private function normalizeInventoryTransaction(InventoryTransaction $t): array
-    {
-        $unit = $t->item?->input_unit;
-        // Map common english units to arabic if necessary
-        $unitMap = [
-            'bag' => 'كيس',
-            'kg' => 'كغ',
-            'liter' => 'لتر',
-            'bottle' => 'عبوة',
-            'piece' => 'قطعة',
-        ];
-        $mappedUnit = $unit ? ($unitMap[strtolower($unit)] ?? $unit) : null;
-
-        return [
-            'id'               => 'inventory_transaction-' . $t->id,
-            'type'             => 'inventory_transaction',
-            'record_id'        => $t->id,
-            'flock_id'         => $t->flock_id,
-            'flock_name'       => $t->flock?->name,
-            'flock_status'     => $t->flock?->status,
-            'entry_date'       => $t->transaction_date?->toDateString(),
-            'description'      => 'استهلاك ' . ($t->item?->name ?? 'مخزون'),
-            'total_amount'     => (float) ($t->total_amount ?? 0),
-            'paid_amount'      => (float) ($t->total_amount ?? 0),
-            'remaining_amount' => 0,
-            'payment_status'   => 'paid',
-            'unit_price'       => $t->unit_price !== null ? (float) $t->unit_price : null,
-            'quantity'         => $t->original_quantity !== null ? (float) $t->original_quantity : null,
-            'quantity_unit'    => $mappedUnit,
-            'computed_quantity'=> $t->computed_quantity !== null ? (float) $t->computed_quantity : null,
-            'item_type'        => $t->item?->itemType?->code,
-            'review_reasons'   => [],
-        ];
-    }
 
     private function attachReasons(array $row): array
     {
@@ -368,8 +242,8 @@ class ReviewQueueService
         }
 
         // ── Missing price (Business Rule — نهائي) ────────────────────────────
-        // Conditions 1+2: expense, inventory, or water_log with no quantity or no unit_price
-        $missingPrice = in_array($row['type'], ['expense', 'inventory_transaction', 'water_log'])
+        // Condition 1: expense or water_log with no quantity or no unit_price
+        $missingPrice = in_array($row['type'], ['expense', 'water_log'])
             && (
                 empty($row['quantity'])        // quantity = 0 or null
                 || $row['unit_price'] === null

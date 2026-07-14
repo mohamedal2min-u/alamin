@@ -35,7 +35,7 @@ class ReviewQueueController extends Controller
         string $type,
         int $id
     ): JsonResponse {
-        if (! in_array($type, ['expense', 'sale', 'inventory_transaction', 'water_log'])) {
+        if (! in_array($type, ['expense', 'sale', 'water_log'])) {
             return response()->json(['message' => 'النوع غير صالح'], 422);
         }
 

@@ -163,6 +163,7 @@ class ReviewQueueService
 
     private function normalizeExpense(Expense $e): array
     {
+        $categoryName = $e->expenseCategory?->name ?? 'مصروف';
         return [
             'id'               => 'expense-' . $e->id,
             'type'             => 'expense',
@@ -180,6 +181,7 @@ class ReviewQueueService
             'quantity'         => $e->quantity !== null ? (float) $e->quantity : null,
             'quantity_unit'    => null,
             'review_reasons'   => [],
+            'category_name'    => $categoryName,
         ];
     }
 
@@ -202,6 +204,7 @@ class ReviewQueueService
             'quantity'         => null,
             'quantity_unit'    => null,
             'review_reasons'   => [],
+            'category_name'    => 'بيع',
         ];
     }
 
@@ -224,6 +227,7 @@ class ReviewQueueService
             'quantity'         => $w->quantity !== null ? (float) $w->quantity : null,
             'quantity_unit'    => $w->unit_label,
             'review_reasons'   => [],
+            'category_name'    => 'ماء',
         ];
     }
 

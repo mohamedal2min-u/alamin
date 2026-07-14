@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { formatNumber } from '@/lib/utils'
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Wheat, Droplets, Pill, ShoppingCart, Package, Layers } from 'lucide-react'
 
 // ── Badge color map — single source of truth ──────────────────────────────────
 const REASON_COLORS: Record<ReviewReason, string> = {
@@ -122,15 +122,38 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
           </button>
         ))}
 
-        {(filters.reason || filters.filter) && (
+        {(filters.reason || filters.filter || filters.category) && (
           <button
-            onClick={() => setFilters((f) => ({ ...f, reason: undefined, filter: undefined, page: 1 }))}
+            onClick={() => setFilters((f) => ({ ...f, reason: undefined, filter: undefined, category: undefined, page: 1 }))}
             className="text-xs text-slate-400 underline self-center"
           >
             مسح الفلتر
           </button>
         )}
       </div>
+
+      {/* ── Category Filter Cards ────────────────────────────────────────── */}
+      {summary && summary.category_breakdown && summary.category_breakdown.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {summary.category_breakdown.map((cat) => (
+            <CategoryCard
+              key={cat.code}
+              code={cat.code}
+              name={cat.name}
+              count={cat.count}
+              remainingAmount={cat.remaining_amount}
+              isActive={filters.category === cat.code}
+              onClick={() =>
+                setFilters((f) => ({
+                  ...f,
+                  category: f.category === cat.code ? undefined : cat.code,
+                  page: 1,
+                }))
+              }
+            />
+          ))}
+        </div>
+      )}
 
       {/* ── List ──────────────────────────────────────────────────────────── */}
       {isLoading ? (
@@ -243,7 +266,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-slate-800 text-sm">{item.description}</span>
               <span className="text-xs text-slate-400">
-                {item.category_name ?? (item.type === 'expense' ? 'مصروف' : item.type === 'sale' ? 'بيع' : 'استهلاك')} • {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
+                {item.type === 'expense' ? 'مصروف' : item.type === 'sale' ? 'بيع' : 'استهلاك'} • {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
               </span>
             </div>
 
@@ -326,6 +349,66 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// ── Category Card ─────────────────────────────────────────────────────────────
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  feed:     Wheat,
+  water:    Droplets,
+  medicine: Pill,
+  sales:    ShoppingCart,
+}
+
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string; icon: string; activeBg: string }> = {
+  feed:     { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   icon: 'text-amber-500',   activeBg: 'bg-amber-100' },
+  medicine: { bg: 'bg-teal-50',    border: 'border-teal-200',    text: 'text-teal-800',    icon: 'text-teal-500',    activeBg: 'bg-teal-100' },
+  water:    { bg: 'bg-sky-50',     border: 'border-sky-200',     text: 'text-sky-800',     icon: 'text-sky-500',     activeBg: 'bg-sky-100' },
+  sales:    { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', icon: 'text-emerald-500', activeBg: 'bg-emerald-100' },
+}
+
+const DEFAULT_CAT_COLOR = { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700', icon: 'text-slate-400', activeBg: 'bg-slate-100' }
+
+function CategoryCard({
+  code,
+  name,
+  count,
+  remainingAmount,
+  isActive,
+  onClick,
+}: {
+  code: string
+  name: string
+  count: number
+  remainingAmount: number
+  isActive: boolean
+  onClick: () => void
+}) {
+  const Icon = CATEGORY_ICONS[code] ?? Layers
+  const colors = CATEGORY_COLORS[code] ?? DEFAULT_CAT_COLOR
+
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-xl border-2 p-3 text-right transition-all duration-200 ${
+        isActive
+          ? `${colors.activeBg} ${colors.border} ring-2 ring-offset-1 ring-primary-300 scale-[1.02]`
+          : `${colors.bg} ${colors.border} hover:scale-[1.01] hover:shadow-sm`
+      }`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <Icon className={`h-5 w-5 ${colors.icon}`} />
+        <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 ${colors.bg} ${colors.text}`}>
+          {count} سجل
+        </span>
+      </div>
+      <div className={`text-sm font-bold ${colors.text}`}>{name}</div>
+      {remainingAmount > 0 && (
+        <div className="text-[11px] text-red-500 mt-1 font-medium">
+          متبقي: {formatNumber(remainingAmount)}
+        </div>
+      )}
+    </button>
   )
 }
 

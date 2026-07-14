@@ -1,5 +1,13 @@
 import { apiClient } from './client'
 
+export interface CategoryBreakdown {
+  code: string
+  name: string
+  count: number
+  total_amount: number
+  remaining_amount: number
+}
+
 export interface ReviewSummary {
   unpaid_count: number
   partial_payment_count: number
@@ -7,6 +15,7 @@ export interface ReviewSummary {
   missing_payment_status_count: number
   inconsistent_financial_state_count: number
   blocking_flock_closure_count: number
+  category_breakdown: CategoryBreakdown[]
 }
 
 export type ReviewReason =
@@ -36,6 +45,7 @@ export interface ReviewItem {
   computed_quantity?: number | null
   item_type?: string | null
   category_name?: string | null
+  category_code?: string | null
   review_reasons: ReviewReason[]
 }
 
@@ -56,6 +66,7 @@ export interface ReviewQueueFilters {
   page?: number
   per_page?: number
   filter?: string
+  category?: string
 }
 
 // Single source of truth for Arabic badge labels
@@ -82,6 +93,8 @@ export const accountingApi = {
     } else if (filters.reason) {
       params.set('reason', filters.reason)
     }
+
+    if (filters.category) params.set('category', filters.category)
 
     const { data } = await apiClient.get<ReviewQueueResponse>(
       `/accounting/review-queue?${params.toString()}`

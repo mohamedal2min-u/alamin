@@ -35,6 +35,13 @@ class ReviewQueueService
 
         $summary = $this->buildSummary($rows);
 
+        // Filter by category if requested
+        $category = $filters['category'] ?? null;
+        if ($category) {
+            $rows = $rows->filter(fn ($row) => ($row['category_code'] ?? null) === $category);
+            $rows = $rows->values();
+        }
+
         // Manual pagination after reason-filtering so summary always reflects full filtered set
         $total     = $rows->count();
         $offset    = ($page - 1) * $perPage;
@@ -133,7 +140,7 @@ class ReviewQueueService
         $rows = collect();
 
         if ($type === 'all' || $type === 'expense') {
-            $q = Expense::with(['flock', 'expenseCategory', 'linkedInventoryTransaction.item.itemType'])->where('farm_id', $farmId);
+            $q = Expense::with(['flock', 'expenseCategory'])->where('farm_id', $farmId);
             if ($flockId) {
                 $q->where('flock_id', $flockId);
             }
@@ -163,14 +170,6 @@ class ReviewQueueService
 
     private function normalizeExpense(Expense $e): array
     {
-        $categoryName = $e->expenseCategory?->name ?? 'مصروف';
-        
-        if ($e->linkedInventoryTransaction && $e->linkedInventoryTransaction->item && $e->linkedInventoryTransaction->item->itemType) {
-            $categoryName = 'قسم ' . $e->linkedInventoryTransaction->item->itemType->name;
-        } elseif (str_contains($e->description, 'كتاكيت')) {
-            $categoryName = 'قسم الكتاكيت';
-        }
-
         return [
             'id'               => 'expense-' . $e->id,
             'type'             => 'expense',
@@ -180,6 +179,8 @@ class ReviewQueueService
             'flock_status'     => $e->flock?->status,
             'entry_date'       => $e->entry_date?->toDateString(),
             'description'      => $e->description ?: ($e->expenseCategory?->name ?? $e->description),
+            'category_name'    => $e->expenseCategory?->name,
+            'category_code'    => $e->expenseCategory?->code,
             'total_amount'     => (float) $e->total_amount,
             'paid_amount'      => (float) ($e->paid_amount ?? 0),
             'remaining_amount' => (float) ($e->remaining_amount ?? $e->total_amount),
@@ -188,7 +189,6 @@ class ReviewQueueService
             'quantity'         => $e->quantity !== null ? (float) $e->quantity : null,
             'quantity_unit'    => null,
             'review_reasons'   => [],
-            'category_name'    => $categoryName,
         ];
     }
 
@@ -203,6 +203,8 @@ class ReviewQueueService
             'flock_status'     => $s->flock?->status,
             'entry_date'       => $s->sale_date?->toDateString(),
             'description'      => $s->buyer_name ?? 'بيع',
+            'category_name'    => 'مبيعات',
+            'category_code'    => 'sales',
             'total_amount'     => (float) $s->net_amount,
             'paid_amount'      => (float) ($s->received_amount ?? 0),
             'remaining_amount' => (float) ($s->remaining_amount ?? $s->net_amount),
@@ -211,7 +213,6 @@ class ReviewQueueService
             'quantity'         => null,
             'quantity_unit'    => null,
             'review_reasons'   => [],
-            'category_name'    => 'بيع',
         ];
     }
 
@@ -226,6 +227,8 @@ class ReviewQueueService
             'flock_status'     => $w->flock?->status,
             'entry_date'       => $w->entry_date?->toDateString(),
             'description'      => 'استهلاك ماء - ' . $w->notes,
+            'category_name'    => 'ماء',
+            'category_code'    => 'water',
             'total_amount'     => (float) ($w->total_amount ?? 0),
             'paid_amount'      => (float) ($w->paid_amount ?? 0),
             'remaining_amount' => max(0, (float) (($w->total_amount ?? 0) - ($w->paid_amount ?? 0))),
@@ -234,7 +237,6 @@ class ReviewQueueService
             'quantity'         => $w->quantity !== null ? (float) $w->quantity : null,
             'quantity_unit'    => $w->unit_label,
             'review_reasons'   => [],
-            'category_name'    => 'قسم الماء',
         ];
     }
 
@@ -318,6 +320,27 @@ class ReviewQueueService
                 };
             }
         }
+
+        // Category breakdown for filter cards
+        $categoryBreakdown = [];
+        foreach ($qualifyingRows as $row) {
+            $code = $row['category_code'] ?? 'other';
+            $name = $row['category_name'] ?? 'أخرى';
+            if (!isset($categoryBreakdown[$code])) {
+                $categoryBreakdown[$code] = [
+                    'code'             => $code,
+                    'name'             => $name,
+                    'count'            => 0,
+                    'total_amount'     => 0,
+                    'remaining_amount' => 0,
+                ];
+            }
+            $categoryBreakdown[$code]['count']++;
+            $categoryBreakdown[$code]['total_amount']     += $row['total_amount'];
+            $categoryBreakdown[$code]['remaining_amount'] += $row['remaining_amount'];
+        }
+
+        $summary['category_breakdown'] = array_values($categoryBreakdown);
 
         return $summary;
     }

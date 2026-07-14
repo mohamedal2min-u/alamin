@@ -19,7 +19,7 @@ class ReviewQueueController extends Controller
     public function index(Request $request): JsonResponse
     {
         $farmId  = $request->attributes->get('farm_id');
-        $filters = $request->only(['type', 'reason', 'flock_id', 'page', 'per_page']);
+        $filters = $request->only(['type', 'reason', 'flock_id', 'page', 'per_page', 'category']);
 
         $result = $this->service->getQueue($farmId, $filters);
 

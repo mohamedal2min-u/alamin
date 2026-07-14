@@ -30,37 +30,36 @@ class CreateFeedLogAction
                 ->lockForUpdate()
                 ->first();
 
-            // ── الـ warehouse اختياري: إذا لم يوجد نسجل بدون حركة مخزون ────
-            $txnId = null;
-
-            if ($warehouseItem) {
-                if ($warehouseItem->current_quantity < $realQty) {
-                    throw new \Exception('المخزون غير كافٍ لسحب هذه الكمية', 422);
-                }
-
-                $avgCost         = (float) ($warehouseItem->average_cost ?? 0);
-                $consumptionCost = $avgCost * $realQty;
-
-                $txn = InventoryTransaction::create([
-                    'farm_id'           => $flock->farm_id,
-                    'warehouse_id'      => $warehouseItem->warehouse_id,
-                    'item_id'           => $data['item_id'],
-                    'flock_id'          => $flock->id,
-                    'transaction_date'  => now()->toDateString(),
-                    'transaction_type'  => 'consumption',
-                    'direction'         => 'out',
-                    'source_module'     => 'flock_feed',
-                    'original_quantity' => $data['quantity'],
-                    'computed_quantity' => $realQty,
-                    'unit_price'        => $avgCost > 0 ? $avgCost : null,
-                    'total_amount'      => $consumptionCost > 0 ? $consumptionCost : null,
-                    'created_by'        => $userId,
-                    'updated_by'        => $userId,
-                ]);
-
-                $warehouseItem->decrement('current_quantity', $realQty);
-                $txnId = $txn->id;
+            if (!$warehouseItem) {
+                throw new \Exception('الصنف غير متوفر في المخزون', 422);
             }
+
+            if ($warehouseItem->current_quantity < $realQty) {
+                throw new \Exception('المخزون غير كافٍ لسحب هذه الكمية', 422);
+            }
+
+            $avgCost         = (float) ($warehouseItem->average_cost ?? 0);
+            $consumptionCost = $avgCost * $realQty;
+
+            $txn = InventoryTransaction::create([
+                'farm_id'           => $flock->farm_id,
+                'warehouse_id'      => $warehouseItem->warehouse_id,
+                'item_id'           => $data['item_id'],
+                'flock_id'          => $flock->id,
+                'transaction_date'  => now()->toDateString(),
+                'transaction_type'  => 'consumption',
+                'direction'         => 'out',
+                'source_module'     => 'flock_feed',
+                'original_quantity' => $data['quantity'],
+                'computed_quantity' => $realQty,
+                'unit_price'        => $avgCost > 0 ? $avgCost : null,
+                'total_amount'      => $consumptionCost > 0 ? $consumptionCost : null,
+                'created_by'        => $userId,
+                'updated_by'        => $userId,
+            ]);
+
+            $warehouseItem->decrement('current_quantity', $realQty);
+            $txnId = $txn->id;
 
             return FlockFeedLog::create([
                 'farm_id'                  => $flock->farm_id,

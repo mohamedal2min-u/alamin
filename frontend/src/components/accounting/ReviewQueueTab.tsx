@@ -243,7 +243,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-slate-800 text-sm">{item.description}</span>
               <span className="text-xs text-slate-400">
-                [FRONTEND_TEST] {item.category_name ?? (item.type === 'expense' ? 'مصروف' : item.type === 'sale' ? 'بيع' : 'استهلاك')} • {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
+                {item.category_name ?? (item.type === 'expense' ? 'مصروف' : item.type === 'sale' ? 'بيع' : 'استهلاك')} • {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
               </span>
             </div>
 

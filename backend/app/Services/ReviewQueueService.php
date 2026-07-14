@@ -133,7 +133,7 @@ class ReviewQueueService
         $rows = collect();
 
         if ($type === 'all' || $type === 'expense') {
-            $q = Expense::with(['flock', 'expenseCategory'])->where('farm_id', $farmId);
+            $q = Expense::with(['flock', 'expenseCategory', 'linkedInventoryTransaction.item.itemType'])->where('farm_id', $farmId);
             if ($flockId) {
                 $q->where('flock_id', $flockId);
             }
@@ -164,6 +164,13 @@ class ReviewQueueService
     private function normalizeExpense(Expense $e): array
     {
         $categoryName = $e->expenseCategory?->name ?? 'مصروف';
+        
+        if ($e->linkedInventoryTransaction && $e->linkedInventoryTransaction->item && $e->linkedInventoryTransaction->item->itemType) {
+            $categoryName = 'قسم ' . $e->linkedInventoryTransaction->item->itemType->name;
+        } elseif (str_contains($e->description, 'كتاكيت')) {
+            $categoryName = 'قسم الكتاكيت';
+        }
+
         return [
             'id'               => 'expense-' . $e->id,
             'type'             => 'expense',
@@ -227,7 +234,7 @@ class ReviewQueueService
             'quantity'         => $w->quantity !== null ? (float) $w->quantity : null,
             'quantity_unit'    => $w->unit_label,
             'review_reasons'   => [],
-            'category_name'    => 'ماء',
+            'category_name'    => 'قسم الماء',
         ];
     }
 

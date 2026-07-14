@@ -464,11 +464,13 @@ class InventoryController extends Controller
 
         $validated = $request->validate([
             'item_id'           => ['required', 'integer', "exists:items,id,farm_id,{$farmId},status,active"],
+            'flock_id'          => ['nullable', 'integer', "exists:flocks,id,farm_id,{$farmId}"],
             'warehouse_id'      => ['required', 'integer', "exists:warehouses,id,farm_id,{$farmId},is_active,1"],
             'transaction_date'  => ['required', 'date_format:Y-m-d'],
             'original_quantity' => ['required', 'numeric', 'min:0.001'],
             'unit_price'        => ['nullable', 'numeric', 'min:0'],
             'total_amount'      => ['nullable', 'numeric', 'min:0'],
+            'paid_amount'       => ['nullable', 'numeric', 'min:0'],
             'payment_status'    => ['nullable', 'in:paid,unpaid,partial'],
             'supplier_name'     => ['nullable', 'string', 'max:255'],
             'invoice_no'        => ['nullable', 'string', 'max:100'],

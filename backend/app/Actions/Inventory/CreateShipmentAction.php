@@ -92,7 +92,7 @@ class CreateShipmentAction
                     'flock_id'                      => $data['flock_id'] ?? null,
                     'expense_category_id'           => $category->id,
                     'entry_date'                    => $data['transaction_date'],
-                    'description'                   => 'دين شراء: ' . $item->name . ($data['supplier_name'] ? ' — ' . $data['supplier_name'] : ''),
+                    'description'                   => 'دين شراء: ' . $item->name . (!empty($data['supplier_name']) ? ' — ' . $data['supplier_name'] : ''),
                     'quantity'                      => $originalQty,
                     'unit_price'                    => $data['unit_price'] ?? null,
                     'total_amount'                  => $totalAmount ?? 0,

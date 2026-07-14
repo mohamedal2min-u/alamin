@@ -179,7 +179,7 @@ class ReviewQueueService
             'flock_name'       => $e->flock?->name,
             'flock_status'     => $e->flock?->status,
             'entry_date'       => $e->entry_date?->toDateString(),
-            'description'      => $e->description ?: ($e->expenseCategory?->name ?? $e->description),
+            'description'      => '[TEST] ' . ($e->description ?: ($e->expenseCategory?->name ?? $e->description)),
             'total_amount'     => (float) $e->total_amount,
             'paid_amount'      => (float) ($e->paid_amount ?? 0),
             'remaining_amount' => (float) ($e->remaining_amount ?? $e->total_amount),

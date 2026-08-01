@@ -6,23 +6,17 @@ const HOST = '82.29.181.61'
 const PASS = 'a550055A!'
 
 const BACKEND_CMDS = [
-  'cd /home/alamin-api/app && git fetch origin && git reset --hard origin/main',
-  'cd /home/alamin-api/app/backend && php artisan config:cache',
-  'cd /home/alamin-api/app/backend && php artisan route:cache',
-  'cd /home/alamin-api/app/backend && php fix_categories.php',
-  'cd /home/alamin-api/app/backend && php artisan app:fix-debts',
+  `cd /home/alamin-api/app/backend && php artisan tinker --execute="foreach(App\\Models\\Item::all() as \\$i) { echo \\$i->name . ' : ' . \\$i->category . \\"\\n\\"; }"`,
 ]
 
 function runSSH(user, commands) {
   return new Promise((resolve) => {
     const conn = new Client()
     conn.on('ready', () => {
-      console.log(`\n🔗 Connected as ${user}\n`)
       let i = 0
       function next() {
         if (i >= commands.length) { conn.end(); resolve(); return }
         const cmd = commands[i++]
-        console.log(`>>> ${cmd}`)
         conn.exec(cmd, (err, stream) => {
           if (err) { console.error(err); next(); return }
           stream.on('data', d => process.stdout.write(d.toString()))
@@ -35,6 +29,4 @@ function runSSH(user, commands) {
   })
 }
 
-console.log('🔧 Running fixes on Backend...')
 await runSSH('alamin-api', BACKEND_CMDS)
-console.log('✅ Backend fixes done!')

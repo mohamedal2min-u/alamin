@@ -40,7 +40,7 @@ foreach ($expenses as $expense) {
     
     if ($item) {
         $updated = false;
-        if ($item->category === 'feed') {
+        if ($item->itemType?->code === 'feed') {
             if ($expense->expense_category_id !== $feedCat->id) {
                 $expense->expense_category_id = $feedCat->id;
                 $updated = true;
@@ -49,7 +49,7 @@ foreach ($expenses as $expense) {
                 $expense->description = 'دين شراء تلقائي: ' . $itemName;
                 $updated = true;
             }
-        } elseif ($item->category === 'medicine') {
+        } elseif ($item->itemType?->code === 'medicine') {
             if ($expense->expense_category_id !== $medCat->id) {
                 $expense->expense_category_id = $medCat->id;
                 $updated = true;
@@ -75,11 +75,14 @@ echo "Fixed categories for {$fixed} auto-purchases.\n";
 // Let's also check the missing "علف مرحلة ثانية"
 $feed2 = Item::where('name', 'LIKE', '%مرحلة ثانية%')->orWhere('name', 'LIKE', '%مرحله ثانيه%')->first();
 if ($feed2) {
-    echo "Found stage 2 feed: {$feed2->name} (category: {$feed2->category}, active: {$feed2->is_active})\n";
+    echo "Found stage 2 feed: {$feed2->name} (category code: {$feed2->itemType?->code}, active: {$feed2->is_active})\n";
 } else {
     echo "Stage 2 feed NOT FOUND in database. Creating it...\n";
+    
+    $feedType = \App\Models\ItemType::where('code', 'feed')->first();
     Item::create([
         'farm_id' => $flock->farm_id,
+        'item_type_id' => $feedType ? $feedType->id : null,
         'category' => 'feed',
         'name' => 'علف مرحلة ثانية',
         'input_unit' => 'kg',

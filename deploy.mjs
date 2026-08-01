@@ -20,9 +20,10 @@ const BACKEND_CMDS = [
 ]
 
 const FRONTEND_CMDS = [
-  'cd /home/maa/app && git fetch origin && git reset --hard origin/main',
-  'cd /home/maa/app/frontend && npm install --production=false',
-  'cd /home/maa/app/frontend && npm run build',
+  'cd /home/maa/htdocs/ch.alamin.se && git fetch origin && git reset --hard origin/main',
+  'cd /home/maa/htdocs/ch.alamin.se/frontend && npm install --production=false',
+  'cd /home/maa/htdocs/ch.alamin.se/frontend && rm -rf .next',
+  'cd /home/maa/htdocs/ch.alamin.se/frontend && npm run build',
   'pm2 restart alamin-frontend',
 ]
 

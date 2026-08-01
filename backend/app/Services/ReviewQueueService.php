@@ -278,14 +278,8 @@ class ReviewQueueService
             $reasons[] = 'inconsistent_financial_state';
         }
 
-        // ── Blocking flock closure ────────────────────────────────────────────
-        // Active flock + unpaid/partial, OR missing_price on an unpaid/partial record.
-        // Active flock + unpaid/partial/debt, OR missing_price (on any record).
-        $isBlockingClosure = $row['flock_status'] === 'active'
-            && (
-                in_array($row['payment_status'], ['unpaid', 'partial', 'debt'])
-                || $missingPrice
-            );
+        // Blocking flock closure: only block if price is missing
+        $isBlockingClosure = $row['flock_status'] === 'active' && $missingPrice;
 
         if ($isBlockingClosure) {
             $reasons[] = 'blocking_flock_closure';

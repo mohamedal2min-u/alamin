@@ -278,8 +278,8 @@ function QuickEntryForm({
         quantity: qty,
         unit_price: hasPrice ? price : null,
         total_amount: hasPrice ? total : 0,
-        paid_amount: hasPrice ? total : 0,
-        payment_status: hasPrice ? 'paid' : 'unpaid',
+        paid_amount: 0,
+        payment_status: 'unpaid',
         description: preset.label,
       }
       await expensesApi.create(payload)
@@ -365,7 +365,7 @@ function QuickEntryForm({
           إلغاء
         </Button>
         <Button type="submit" size="sm" loading={saving}>
-          {hasPrice ? 'تسجيل' : 'تسجيل كذمم'}
+          تسجيل المصروف
         </Button>
       </div>
     </form>
@@ -430,8 +430,8 @@ function CustomExpenseForm({
         quantity: qty,
         unit_price: hasPrice ? price : null,
         total_amount: hasPrice ? total : 0,
-        paid_amount: hasPrice ? total : 0,
-        payment_status: hasPrice ? 'paid' : 'unpaid',
+        paid_amount: 0,
+        payment_status: 'unpaid',
         description: description.trim(),
         notes: notes.trim() || undefined,
       }
@@ -569,7 +569,7 @@ function CustomExpenseForm({
           إلغاء
         </Button>
         <Button type="submit" size="sm" loading={saving}>
-          {hasPrice ? 'تسجيل المصروف' : 'تسجيل كذمم'}
+          تسجيل المصروف
         </Button>
       </div>
     </form>

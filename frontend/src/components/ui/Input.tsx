@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+import { cn, toEnglishDigits } from '@/lib/utils'
 import { forwardRef, type InputHTMLAttributes, useState, useEffect, useRef } from 'react'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -34,6 +34,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      let val = e.target.value
+      const englishVal = toEnglishDigits(val)
+      if (val !== englishVal) {
+        e.target.value = englishVal
+      }
       setHasValue(e.target.value.length > 0)
       onChange?.(e)
     }

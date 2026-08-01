@@ -27,11 +27,6 @@ const schema = z.object({
     (v) => Number(v),
     z.number({ invalid_type_error: 'المبلغ يجب أن يكون رقماً' }).min(0.01, 'المبلغ يجب أن يكون أكبر من صفر')
   ),
-  paid_amount: z.preprocess(
-    (v) => v === '' || v === undefined || v === null ? undefined : Number(v),
-    z.number().min(0).optional()
-  ),
-  payment_status: z.enum(['paid', 'partial', 'unpaid']).default('paid'),
   description:  z.string().max(255).optional().or(z.literal('')),
   notes:        z.string().max(5000).optional().or(z.literal('')),
 })
@@ -89,19 +84,11 @@ export default function ExpensesPage() {
     resolver: zodResolver(schema),
     defaultValues: {
       entry_date:     new Date().toISOString().split('T')[0],
-      payment_status: 'paid',
     },
   })
 
-  const paymentStatus = watch('payment_status')
-  const totalAmountVal = watch('total_amount')
-  const paidAmountVal  = watch('paid_amount')
-  const showPaidHint   =
-    paymentStatus === 'unpaid' ||
-    (paymentStatus === 'partial' && (!paidAmountVal || paidAmountVal <= 0 || paidAmountVal !== Number(totalAmountVal)))
-
   const handleCancel = () => {
-    reset({ entry_date: new Date().toISOString().split('T')[0], payment_status: 'paid' })
+    reset({ entry_date: new Date().toISOString().split('T')[0] })
     setShowForm(false)
   }
 
@@ -113,8 +100,8 @@ export default function ExpensesPage() {
         entry_date:          data.entry_date,
         quantity:            1,
         total_amount:        data.total_amount,
-        paid_amount:         data.payment_status === 'partial' ? (data.paid_amount ?? 0) : undefined,
-        payment_status:      data.payment_status,
+        paid_amount:         0,
+        payment_status:      'unpaid',
         description:         data.description || undefined,
         notes:               data.notes || undefined,
       })
@@ -193,20 +180,12 @@ export default function ExpensesPage() {
             />
           </div>
 
-          {(paymentStatus === 'partial' || paymentStatus === 'unpaid') && (
-            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-              {paymentStatus === 'partial'
-                ? 'أدخل القيمة الإجمالية للمصروف في "المبلغ الكامل"، ثم أدخل ما تم دفعه فعلياً في "المبلغ المدفوع".'
-                : 'أدخل القيمة الإجمالية للمصروف — سيُسجَّل كذمة كاملة حتى يتم تسديدها لاحقاً.'}
-            </p>
-          )}
-
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* Amount */}
             <Input
               {...register('total_amount')}
               id="exp_total_amount"
-              label={paymentStatus === 'partial' ? 'المبلغ الكامل (USD)' : 'المبلغ (USD)'}
+              label="المبلغ (USD)"
               type="number"
               step="0.01"
               min="0.01"
@@ -214,45 +193,15 @@ export default function ExpensesPage() {
               error={errors.total_amount?.message}
               required
             />
-
-            {/* Payment status */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700">حالة الدفع</label>
-              <select
-                {...register('payment_status')}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              >
-                <option value="paid">مدفوع بالكامل</option>
-                <option value="partial">مدفوع جزئياً</option>
-                <option value="unpaid">غير مدفوع (ذمم)</option>
-              </select>
-            </div>
           </div>
 
-          {/* Paid amount — only when partial */}
-          {paymentStatus === 'partial' && (
-            <Input
-              {...register('paid_amount')}
-              id="exp_paid_amount"
-              label="المبلغ المدفوع (USD)"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              error={errors.paid_amount?.message}
-            />
-          )}
-
-          {/* Review queue hint — shown for unpaid, or partial with amount != total */}
-          {showPaidHint && (
-            <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700">
-              <ClipboardList className="h-3.5 w-3.5 shrink-0" />
-              سيُضاف هذا المصروف تلقائياً إلى{' '}
-              <Link href="/accounting?tab=review" className="underline font-semibold hover:text-emerald-900">
-                قائمة الذمم والمراجعة
-              </Link>
-            </p>
-          )}
+          <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700">
+            <ClipboardList className="h-3.5 w-3.5 shrink-0" />
+            سيُضاف هذا المصروف تلقائياً إلى{' '}
+            <Link href="/accounting?tab=review" className="underline font-semibold hover:text-emerald-900">
+              قائمة الذمم والمراجعة
+            </Link>
+          </p>
 
           {/* Description */}
           <Input

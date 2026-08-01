@@ -1,1 +1,1 @@
-echo json_encode(App\Models\ExpenseCategory::find(17)->toArray());
+echo Expense::where("description", "like", "دين شراء قديم:%")->delete() . " expenses deleted.\n";

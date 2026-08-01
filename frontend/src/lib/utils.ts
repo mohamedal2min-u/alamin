@@ -21,3 +21,16 @@ export function formatDate(dateStr: string): string {
 export function formatNumber(n: number): string {
   return new Intl.NumberFormat('en-US').format(n)
 }
+
+export function toEnglishDigits(str: string): string {
+  if (!str) return str;
+  const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  
+  let res = str;
+  for (let i = 0; i < 10; i++) {
+    res = res.replaceAll(arabicNumbers[i], i.toString());
+    res = res.replaceAll(persianNumbers[i], i.toString());
+  }
+  return res;
+}

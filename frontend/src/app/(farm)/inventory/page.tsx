@@ -37,7 +37,7 @@ import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
 import { useIsReadOnly } from '@/lib/roles'
-import { formatNumber, formatDate, cn } from '@/lib/utils'
+import { formatNumber, formatDate, cn, toEnglishDigits } from '@/lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -416,7 +416,7 @@ function AddItemForm({
   const [success,  setSuccess]  = useState(false)
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(prev => ({ ...prev, [k]: e.target.value }))
+    setForm(prev => ({ ...prev, [k]: toEnglishDigits(e.target.value) }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -575,7 +575,7 @@ function EditItemModal({
   const [error,   setError]   = useState<string | null>(null)
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, [k]: e.target.value }))
+    setForm(prev => ({ ...prev, [k]: toEnglishDigits(e.target.value) }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -708,7 +708,7 @@ function AddShipmentForm({
   const [success, setSuccess] = useState(false)
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const val = e.target.value
+    const val = toEnglishDigits(e.target.value)
     setForm(prev => {
       const next = { ...prev, [k]: val }
 
@@ -892,7 +892,7 @@ function AddShipmentForm({
                       type="number" min="0" step="1"
                       value={bags}
                       onChange={(e) => {
-                        const v = e.target.value
+                        const v = toEnglishDigits(e.target.value)
                         setBags(v)
                         const totalQty = (parseFloat(v || '0') + parseFloat(extraKg || '0') / selectedItem.unit_value).toFixed(3)
                         setForm(prev => {
@@ -914,7 +914,7 @@ function AddShipmentForm({
                       type="number" min="0" step="0.01"
                       value={extraKg}
                       onChange={(e) => {
-                        const v = e.target.value
+                        const v = toEnglishDigits(e.target.value)
                         setExtraKg(v)
                         const totalQty = (parseFloat(bags || '0') + parseFloat(v || '0') / selectedItem.unit_value).toFixed(3)
                         setForm(prev => {

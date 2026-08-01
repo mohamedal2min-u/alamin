@@ -19,30 +19,11 @@ function interpolate(x: number, x0: number, x1: number, y0: number, y1: number):
 }
 
 /**
- * Ross 308 (2023) Performance Objectives: Daily Feed Intake (grams/bird/day)
+ * Custom Performance Objectives: Daily Feed Intake (grams/bird/day)
+ * Formula: ageDays * 5
  */
 export function getTargetFeedPerBird(ageDays: number): number {
-  const points = [
-    { age: 0, grams: 13 },
-    { age: 1, grams: 13 },
-    { age: 2, grams: 17 },
-    { age: 3, grams: 20 },
-    { age: 4, grams: 24 },
-    { age: 5, grams: 28 },
-    { age: 6, grams: 31 },
-    { age: 7, grams: 34 },
-    { age: 14, grams: 75 },
-    { age: 21, grams: 121 },
-    { age: 28, grams: 168 },
-    { age: 35, grams: 205 },
-    { age: 42, grams: 242 },
-  ]
-  for (let i = 0; i < points.length - 1; i++) {
-    if (ageDays >= points[i].age && ageDays <= points[i + 1].age) {
-      return interpolate(ageDays, points[i].age, points[i + 1].age, points[i].grams, points[i + 1].grams)
-    }
-  }
-  return ageDays > 42 ? 245 : 13
+  return ageDays * 5
 }
 
 /**

@@ -53,7 +53,7 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
             <ShieldCheck className="h-3.5 w-3.5 text-primary-600" />
-            <span className="text-[10px] font-black text-slate-500 uppercase">Ross 2026 | مباشر</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase">النظام المخصص | مباشر</span>
           </div>
           <div className="flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-[11px] font-black border border-primary-100 shadow-sm">
             <span>اليوم</span>

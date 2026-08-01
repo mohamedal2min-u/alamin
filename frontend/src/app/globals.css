@@ -164,12 +164,16 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+  background-color: rgb(var(--bg-surface));
 }
 
 /* Force English numerals everywhere */
 body {
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
+  overscroll-behavior-y: none;
+  background-color: rgb(var(--bg-surface));
 }
 
 /* ── Skeleton Pulse ────────────────────────────────────────────── */

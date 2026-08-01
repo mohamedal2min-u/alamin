@@ -55,10 +55,11 @@ class CreateFeedLogAction
                         'updated_by'        => $userId,
                     ]);
                     
+                    $feedCat = \App\Models\ExpenseCategory::where('code', 'feed')->first();
                     \App\Models\Expense::create([
                         'farm_id' => $flock->farm_id,
                         'flock_id' => $flock->id,
-                        'expense_category_id' => 17, // شراء مخزون
+                        'expense_category_id' => $feedCat ? $feedCat->id : 17,
                         'entry_date' => $data['entry_date'] ?? now()->toDateString(),
                         'expense_type' => 'flock',
                         'quantity' => $shortage,

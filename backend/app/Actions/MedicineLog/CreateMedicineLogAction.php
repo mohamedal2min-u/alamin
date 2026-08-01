@@ -54,10 +54,11 @@ class CreateMedicineLogAction
                         'updated_by'        => $userId,
                     ]);
                     
+                    $medCat = \App\Models\ExpenseCategory::where('code', 'medicine')->first();
                     \App\Models\Expense::create([
                         'farm_id' => $flock->farm_id,
                         'flock_id' => $flock->id,
-                        'expense_category_id' => 17, // شراء مخزون
+                        'expense_category_id' => $medCat ? $medCat->id : 17,
                         'entry_date' => $data['entry_date'] ?? now()->toDateString(),
                         'expense_type' => 'flock',
                         'quantity' => $shortage,

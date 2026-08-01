@@ -48,13 +48,18 @@ class FixDebts extends Command
 
             // 1. Convert to unpaid
             if (\Schema::hasColumn($table, 'payment_status')) {
+                $updateData = [
+                    'payment_status' => 'unpaid',
+                    'paid_amount' => 0
+                ];
+                if (\Schema::hasColumn($table, 'remaining_amount')) {
+                    $updateData['remaining_amount'] = DB::raw('total_amount');
+                }
+                
                 $count = DB::table($table)
                     ->where('flock_id', $flock->id)
                     ->where('payment_status', '!=', 'unpaid')
-                    ->update([
-                        'payment_status' => 'unpaid',
-                        'paid_amount' => 0
-                    ]);
+                    ->update($updateData);
                 $this->info("Updated {$count} records in {$table} to unpaid.");
             }
 

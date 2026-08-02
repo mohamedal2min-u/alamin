@@ -37,7 +37,13 @@ class CreateMedicineLogAction
                     $shortage = $realQty - $warehouseItem->current_quantity;
                     $avgCost = (float)($warehouseItem->average_cost ?? 0);
                     $totalCost = $avgCost * $shortage;
-                    
+
+                    // Keep quantity/unit_price expressed in the item's input unit (e.g. boxes),
+                    // matching manual shipments — average_cost/shortage above are per computed unit.
+                    $unitValue           = $item->unit_value ?: 1;
+                    $shortageInputQty    = $shortage / $unitValue;
+                    $avgCostPerInputUnit = $avgCost * $unitValue;
+
                     $purchaseTxn = InventoryTransaction::create([
                         'farm_id'           => $flock->farm_id,
                         'warehouse_id'      => $warehouse->id,
@@ -46,14 +52,14 @@ class CreateMedicineLogAction
                         'transaction_type'  => 'purchase',
                         'direction'         => 'in',
                         'source_module'     => 'auto_purchase',
-                        'original_quantity' => $shortage / ($item->unit_value ?? 1),
+                        'original_quantity' => $shortageInputQty,
                         'computed_quantity' => $shortage,
-                        'unit_price'        => $avgCost > 0 ? $avgCost : null,
+                        'unit_price'        => $avgCost > 0 ? $avgCostPerInputUnit : null,
                         'total_amount'      => $totalCost > 0 ? $totalCost : null,
                         'created_by'        => $userId,
                         'updated_by'        => $userId,
                     ]);
-                    
+
                     $medCat = \App\Models\ExpenseCategory::where('code', 'medicine')->first();
                     \App\Models\Expense::create([
                         'farm_id' => $flock->farm_id,
@@ -61,8 +67,8 @@ class CreateMedicineLogAction
                         'expense_category_id' => $medCat ? $medCat->id : 17,
                         'entry_date' => $data['entry_date'] ?? now()->toDateString(),
                         'expense_type' => 'flock',
-                        'quantity' => $shortage,
-                        'unit_price' => $avgCost > 0 ? $avgCost : 0,
+                        'quantity' => $shortageInputQty,
+                        'unit_price' => $avgCost > 0 ? $avgCostPerInputUnit : 0,
                         'total_amount' => $totalCost > 0 ? $totalCost : 0,
                         'paid_amount' => 0,
                         'remaining_amount' => $totalCost > 0 ? $totalCost : 0,
@@ -73,7 +79,7 @@ class CreateMedicineLogAction
                         'created_by' => $userId,
                         'updated_by' => $userId,
                     ]);
-                    
+
                     $warehouseItem->increment('current_quantity', $shortage);
                 }
 

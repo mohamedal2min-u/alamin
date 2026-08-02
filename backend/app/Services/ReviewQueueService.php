@@ -158,7 +158,7 @@ class ReviewQueueService
         $rows = collect();
 
         if ($type === 'all' || $type === 'expense') {
-            $q = Expense::with(['flock', 'expenseCategory'])->where('farm_id', $farmId);
+            $q = Expense::with(['flock', 'expenseCategory', 'linkedInventoryTransaction.item.itemType'])->where('farm_id', $farmId);
             if ($flockId) {
                 $q->where('flock_id', $flockId);
             }
@@ -188,6 +188,8 @@ class ReviewQueueService
 
     private function normalizeExpense(Expense $e): array
     {
+        $linkedItem = $e->linkedInventoryTransaction?->item;
+
         return [
             'id'               => 'expense-' . $e->id,
             'type'             => 'expense',
@@ -205,7 +207,11 @@ class ReviewQueueService
             'payment_status'   => $e->payment_status,
             'unit_price'       => $e->unit_price !== null ? (float) $e->unit_price : null,
             'quantity'         => $e->quantity !== null ? (float) $e->quantity : null,
-            'quantity_unit'    => null,
+            'quantity_unit'    => $linkedItem?->input_unit,
+            'computed_quantity' => $e->linkedInventoryTransaction?->computed_quantity !== null
+                ? (float) $e->linkedInventoryTransaction->computed_quantity
+                : null,
+            'item_type'        => $linkedItem?->itemType?->code,
             'review_reasons'   => [],
         ];
     }
@@ -351,6 +357,10 @@ class ReviewQueueService
             $categoryBreakdown[$code]['total_amount']     += $row['total_amount'];
             $categoryBreakdown[$code]['remaining_amount'] += $row['remaining_amount'];
         }
+
+        // Real money owed first, then busiest category, so the cards read most-urgent-first
+        usort($categoryBreakdown, fn (array $a, array $b): int => $b['remaining_amount'] <=> $a['remaining_amount']
+            ?: $b['count'] <=> $a['count']);
 
         $summary['category_breakdown'] = array_values($categoryBreakdown);
 

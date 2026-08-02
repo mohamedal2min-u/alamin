@@ -1281,9 +1281,9 @@ export default function InventoryPage() {
   })
 
   const { data: txData } = useQuery({
-    queryKey: ['inventory-transactions', currentFarm?.id, activeFlockId],
-    queryFn: () => inventoryApi.transactions(activeFlockId),
-    enabled: !!currentFarm && activeFlockId !== undefined,
+    queryKey: ['inventory-transactions', currentFarm?.id],
+    queryFn: () => inventoryApi.transactions(),
+    enabled: !!currentFarm,
     staleTime: 30_000,
   })
 

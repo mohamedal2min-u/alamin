@@ -38,6 +38,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<{ paid_amount?: string; unit_price?: string }>({})
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['accounting', 'review-queue', filters],
@@ -55,6 +56,13 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
       qc.invalidateQueries({ queryKey: ['accounting', 'review-queue'] })
       setEditingId(null)
       setEditValues({})
+      setSaveError(null)
+    },
+    onError: (error: unknown) => {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? 'تعذر حفظ التعديل، حاول مرة أخرى'
+      setSaveError(message)
     },
   })
 
@@ -65,7 +73,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
     if (editValues.paid_amount !== undefined && editValues.paid_amount !== '') {
       payload.paid_amount = parseFloat(editValues.paid_amount)
     }
-    if (editValues.unit_price !== undefined && editValues.unit_price !== '' && item.type === 'expense') {
+    if (editValues.unit_price !== undefined && editValues.unit_price !== '' && (item.type === 'expense' || item.type === 'water_log')) {
       payload.unit_price = parseFloat(editValues.unit_price)
     }
     updateItem({ type: item.type, id: item.record_id, payload })
@@ -180,15 +188,17 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
               isEditing={editingId === item.id}
               isUpdating={isUpdating && editingId === item.id}
               editValues={editValues}
+              error={editingId === item.id ? saveError : null}
               onEdit={() => {
                 setEditingId(item.id)
+                setSaveError(null)
                 setEditValues({
                   paid_amount: String(item.paid_amount ?? 0),
                   unit_price: item.unit_price != null ? String(item.unit_price) : '',
                 })
               }}
-              onCancel={() => { setEditingId(null); setEditValues({}) }}
-              onSave={() => handleSave(item)}
+              onCancel={() => { setEditingId(null); setEditValues({}); setSaveError(null) }}
+              onSave={() => { setSaveError(null); handleSave(item) }}
               onEditChange={setEditValues}
             />
           ))}
@@ -248,13 +258,14 @@ interface ReviewRowProps {
   isEditing: boolean
   isUpdating: boolean
   editValues: { paid_amount?: string; unit_price?: string }
+  error?: string | null
   onEdit: () => void
   onCancel: () => void
   onSave: () => void
   onEditChange: (v: { paid_amount?: string; unit_price?: string }) => void
 }
 
-function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, onSave, onEditChange }: ReviewRowProps) {
+function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onCancel, onSave, onEditChange }: ReviewRowProps) {
   const hasBlocking = item.review_reasons.includes('blocking_flock_closure')
 
   return (
@@ -317,6 +328,9 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, onEdit, onCancel, 
                   </Button>
                   <Button size="sm" variant="outline" onClick={onCancel}>إلغاء</Button>
                 </div>
+                {error && (
+                  <span className="w-full text-xs text-red-600">{error}</span>
+                )}
               </div>
             ) : (
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">

@@ -42,6 +42,24 @@ class ReviewQueueService
             $rows = $rows->values();
         }
 
+        // Surface the most actionable rows first: real outstanding balances before
+        // price-pending placeholders, flock-closure blockers before routine items,
+        // oldest-pending within the same priority.
+        $rows = $rows->sort(function (array $a, array $b): int {
+            $remainingCmp = $b['remaining_amount'] <=> $a['remaining_amount'];
+            if ($remainingCmp !== 0) {
+                return $remainingCmp;
+            }
+
+            $blockingA = in_array('blocking_flock_closure', $a['review_reasons'], true) ? 0 : 1;
+            $blockingB = in_array('blocking_flock_closure', $b['review_reasons'], true) ? 0 : 1;
+            if ($blockingA !== $blockingB) {
+                return $blockingA <=> $blockingB;
+            }
+
+            return ($a['entry_date'] ?? '') <=> ($b['entry_date'] ?? '');
+        })->values();
+
         // Manual pagination after reason-filtering so summary always reflects full filtered set
         $total     = $rows->count();
         $offset    = ($page - 1) * $perPage;

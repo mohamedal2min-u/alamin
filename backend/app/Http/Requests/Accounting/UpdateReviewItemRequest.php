@@ -19,7 +19,7 @@ class UpdateReviewItemRequest extends FormRequest
             'paid_amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
         ];
 
-        if ($type === 'expense') {
+        if ($type === 'expense' || $type === 'water_log') {
             $rules['unit_price'] = ['sometimes', 'nullable', 'numeric', 'min:0'];
         }
 

@@ -1057,28 +1057,65 @@ function AddShipmentForm({
 // ── Movements table ───────────────────────────────────────────────────────────
 
 function MovementsTable({ transactions }: { transactions: InventoryTransaction[] }) {
-  if (transactions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-          <Layers className="h-7 w-7 text-slate-300" />
-        </div>
-        <p className="font-bold text-slate-600">لا توجد حركات مسجّلة</p>
-        <p className="mt-1 text-xs text-slate-400">أضف حمولة جديدة لبدء تتبع الحركات</p>
-      </div>
-    )
-  }
+  const [directionFilter, setDirectionFilter] = useState<'all' | 'in' | 'out'>('all')
+  const [categoryFilter, setCategoryFilter]   = useState<string>('all')
+
+  const categories = Array.from(
+    new Map(
+      transactions
+        .filter(tx => tx.item_type_code)
+        .map(tx => [tx.item_type_code as string, tx.item_type_name ?? TYPE_LABEL[tx.item_type_code as string] ?? tx.item_type_code as string])
+    ).entries()
+  )
+
+  const filtered = transactions.filter(tx =>
+    (directionFilter === 'all' || tx.direction === directionFilter) &&
+    (categoryFilter === 'all' || tx.item_type_code === categoryFilter)
+  )
+
+  const chipCls = (active: boolean) =>
+    `rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+      active
+        ? 'bg-primary-600 text-white border-primary-600'
+        : 'bg-white text-slate-600 border-slate-200 hover:border-primary-400'
+    }`
+
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {([['all', 'الكل'], ['in', 'وارد'], ['out', 'صادر']] as const).map(([val, label]) => (
+          <button key={val} onClick={() => setDirectionFilter(val)} className={chipCls(directionFilter === val)}>
+            {label}
+          </button>
+        ))}
+        <span className="mx-1 w-px self-stretch bg-slate-200" />
+        <button onClick={() => setCategoryFilter('all')} className={chipCls(categoryFilter === 'all')}>الكل</button>
+        {categories.map(([code, label]) => (
+          <button key={code} onClick={() => setCategoryFilter(code)} className={chipCls(categoryFilter === code)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+            <Layers className="h-7 w-7 text-slate-300" />
+          </div>
+          <p className="font-bold text-slate-600">{transactions.length === 0 ? 'لا توجد حركات مسجّلة' : 'لا توجد حركات مطابقة للفلتر'}</p>
+          {transactions.length === 0 && <p className="mt-1 text-xs text-slate-400">أضف حمولة جديدة لبدء تتبع الحركات</p>}
+        </div>
+      ) : (
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
       <table className="w-full min-w-[1100px] text-xs">
         <thead>
           <tr className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50/90 backdrop-blur text-right text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {['التاريخ','الصنف','نوع الحركة','الاتجاه','الكمية الأصلية','الكمية المحسوبة','السعر','الإجمالي','حالة الدفع','المورد','رقم الفاتورة','المرجع','الفوج','المستخدم','الملاحظات']
+            {['التاريخ','الصنف','الفئة','نوع الحركة','الاتجاه','الكمية الأصلية','الكمية المحسوبة','السعر','الإجمالي','حالة الدفع','المورد','رقم الفاتورة','المرجع','الفوج','المستخدم','الملاحظات']
               .map(h => <th key={h} className="px-3 py-3.5 whitespace-nowrap">{h}</th>)}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-50">
-          {transactions.map(tx => {
+          {filtered.map(tx => {
             const dir     = DIRECTION_CONFIG[tx.direction]
             const DirIcon = dir?.icon ?? ArrowDownCircle
             const payment = tx.payment_status ? PAYMENT_STATUS_LABEL[tx.payment_status] : null
@@ -1086,6 +1123,7 @@ function MovementsTable({ transactions }: { transactions: InventoryTransaction[]
               <tr key={tx.id} className="transition-colors duration-150 hover:bg-slate-50/60">
                 <td className="px-3 py-3 text-slate-500 whitespace-nowrap font-mono text-[10px]">{formatDate(tx.transaction_date)}</td>
                 <td className="px-3 py-3 font-semibold text-slate-800 whitespace-nowrap">{tx.item_name ?? '—'}</td>
+                <td className="px-3 py-3 text-slate-500 whitespace-nowrap">{tx.item_type_name ?? (tx.item_type_code ? (TYPE_LABEL[tx.item_type_code] ?? tx.item_type_code) : '—')}</td>
                 <td className="px-3 py-3 text-slate-500 whitespace-nowrap">{TX_TYPE_LABEL[tx.transaction_type] ?? tx.transaction_type}</td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   {dir ? (
@@ -1112,6 +1150,8 @@ function MovementsTable({ transactions }: { transactions: InventoryTransaction[]
           })}
         </tbody>
       </table>
+      </div>
+      )}
     </div>
   )
 }

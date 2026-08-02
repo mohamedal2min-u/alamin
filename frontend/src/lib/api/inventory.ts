@@ -44,6 +44,8 @@ export interface InventoryTransaction {
   id: number
   transaction_date: string
   item_name: string | null
+  item_type_code: string | null
+  item_type_name: string | null
   transaction_type: string
   direction: string
   original_quantity: number

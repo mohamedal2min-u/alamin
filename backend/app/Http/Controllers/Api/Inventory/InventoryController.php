@@ -419,7 +419,8 @@ class InventoryController extends Controller
         $txns = InventoryTransaction::where('farm_id', $farmId)
             ->when($flockId, fn ($q) => $q->where('flock_id', (int) $flockId))
             ->with([
-                'item:id,name,input_unit,content_unit,unit_value',
+                'item:id,name,input_unit,content_unit,unit_value,item_type_id',
+                'item.itemType:id,name,code',
                 'flock:id,name',
                 'warehouse:id,name',
                 'createdByUser:id,name',
@@ -434,6 +435,8 @@ class InventoryController extends Controller
                 'id'                => $t->id,
                 'transaction_date'  => $t->transaction_date->toDateString(),
                 'item_name'         => $t->item?->name,
+                'item_type_code'    => $t->item?->itemType?->code,
+                'item_type_name'    => $t->item?->itemType?->name,
                 'transaction_type'  => $t->transaction_type,
                 'direction'         => $t->direction,
                 'original_quantity' => (float) $t->original_quantity,

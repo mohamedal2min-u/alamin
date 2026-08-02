@@ -60,10 +60,11 @@ class TodaySummaryAction
             ->whereDate('entry_date', $today)
             ->get(['quantity', 'unit_label', 'created_at']);
 
-        // Exclude system categories (chick purchase, inventory purchase) — not operational daily expenses
+        // Exclude the two one-off capital categories (chick purchase, inventory purchase) —
+        // they're the only categories with no code, so that's what identifies them here.
         $expenses = Expense::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)
-            ->whereHas('expenseCategory', fn ($q) => $q->where('is_system', false))
+            ->whereHas('expenseCategory', fn ($q) => $q->whereNotNull('code'))
             ->get(['expense_type', 'total_amount', 'created_at']);
 
         $temperatures = \App\Models\FlockTemperatureLog::where('flock_id', $flock->id)

@@ -20,6 +20,7 @@ export interface ExpensePayload {
   entry_date: string
   description?: string
   notes?: string
+  item_id?: number
 }
 
 export interface WaterLogPayload {

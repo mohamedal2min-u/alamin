@@ -10,8 +10,6 @@ class StoreFlockExpenseRequest extends FormRequest
 
     public function rules(): array
     {
-        $farmId = $this->attributes->get('farm_id');
-
         return [
             'expense_type' => ['required', 'string', 'in:water,bedding,farm_wash,disinfectant,other'],
             'quantity'     => ['required', 'numeric', 'min:0.001'],
@@ -20,7 +18,6 @@ class StoreFlockExpenseRequest extends FormRequest
             'entry_date'   => ['nullable', 'date_format:Y-m-d'],
             'description'  => ['nullable', 'string', 'max:255'],
             'notes'        => ['nullable', 'string', 'max:5000'],
-            'item_id'      => ['nullable', 'integer', "exists:items,id,farm_id,{$farmId}"],
         ];
     }
 

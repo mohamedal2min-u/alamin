@@ -71,8 +71,6 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
   const [expDescription, setExpDescription] = useState('')
   const [expNotes, setExpNotes]   = useState('')
   const [expUnitHint, setExpUnitHint] = useState('كيس')
-  const [expItems, setExpItems]   = useState<InventoryItem[]>([])
-  const [expItemId, setExpItemId] = useState('')
 
   // Water
   const [waterQty, setWaterQty]       = useState('')
@@ -87,7 +85,6 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
     setError(null)
     if (activeTab === 'feed') inventoryApi.items('feed').then((res) => setFeedItems(res.data))
     if (activeTab === 'medicine') inventoryApi.items('medicine').then((res) => setMedItems(res.data))
-    if (activeTab === 'expense') inventoryApi.items().then((res) => setExpItems(res.data))
     if (activeTab === 'temp' && initialExtra?.time) setTempTime(initialExtra.time as 'morning' | 'afternoon' | 'evening')
   }, [activeTab, initialExtra])
 
@@ -96,7 +93,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
     setFeedItemId(''); setFeedQty(''); setFeedBags(''); setFeedExtraKg('')
     setMedItemId(''); setMedQty('')
     setTempVal('')
-    setExpType('bedding'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes(''); setExpUnitHint('كيس'); setExpItemId('')
+    setExpType('bedding'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes(''); setExpUnitHint('كيس')
     setWaterQty(''); setWaterPrice(''); setWaterDriver('')
     setError(null)
   }
@@ -140,7 +137,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
         const qty = Number(expQty)
         const price = Number(expPrice)
         const hasPrice = !isNaN(price) && price > 0
-        await quickEntryApi.logExpense(flockId, {
+        await quickEntryApi.logExpense(flockId, { 
           expense_type: expType,
           quantity: qty,
           unit_price: hasPrice ? price : undefined,
@@ -148,7 +145,6 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
           description: expDescription || undefined,
           notes: expNotes || undefined,
           entry_date: date,
-          item_id: expItemId ? Number(expItemId) : undefined,
         })
       } else if (activeTab === 'water') {
         if (!waterQty || Number(waterQty) <= 0) { setError('العدد مطلوب'); setLoading(false); return }
@@ -348,22 +344,9 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
 
             {/* Custom description (only for 'other') */}
             {expType === 'other' && (
-              <>
-                <FormField label="وصف المصروف" required>
-                  <input type="text" value={expDescription} onChange={(e) => setExpDescription(e.target.value)} placeholder="مثال: إصلاح سقف..." className={dynamicInputClass} />
-                </FormField>
-                <FormField label="ربط بصنف من المخزون (اختياري)">
-                  <SelectInput
-                    value={expItemId}
-                    onChange={setExpItemId}
-                    options={expItems.map((i) => ({ value: String(i.id), label: i.name }))}
-                    placeholder="بدون ربط"
-                    emptyMessage="لا توجد أصناف بالمخزون"
-                    className={dynamicInputClass}
-                  />
-                  <p className="mt-1 px-1 text-[10px] font-medium text-primary-400">لو كان هذا شراء مادة مخزّنة، اربطها بصنفها ليُحدَّث المخزون تلقائياً</p>
-                </FormField>
-              </>
+              <FormField label="وصف المصروف" required>
+                <input type="text" value={expDescription} onChange={(e) => setExpDescription(e.target.value)} placeholder="مثال: إصلاح سقف..." className={dynamicInputClass} />
+              </FormField>
             )}
 
             {/* Quantity + Unit Price */}

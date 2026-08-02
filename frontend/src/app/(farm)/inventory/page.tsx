@@ -962,7 +962,8 @@ function AddShipmentForm({
             const total  = parseFloat(form.total_amount)  || 0
             const paid   = parseFloat(form.paid_amount)   || 0
             const remaining = form.payment_status === 'unpaid' ? total : Math.max(0, total - paid)
-            const showDebtHint = total > 0 && remaining > 0
+            const missingPrice = !form.total_amount || total <= 0
+            const showDebtHint = missingPrice || remaining > 0
             return (
               <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
                 <p className="mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">البيانات المالية</p>
@@ -994,7 +995,9 @@ function AddShipmentForm({
 
                 {showDebtHint && (
                   <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600 font-medium">
-                    المبلغ غير المدفوع: <span className="font-black">{remaining.toFixed(2)} USD</span> — سيُرحَّل إلى الذمم والمراجعة تلقائياً.
+                    {missingPrice
+                      ? 'السعر غير محدد — سيُسجَّل كدين وسيُرحَّل إلى الذمم والمراجعة تلقائياً.'
+                      : <>المبلغ غير المدفوع: <span className="font-black">{remaining.toFixed(2)} USD</span> — سيُرحَّل إلى الذمم والمراجعة تلقائياً.</>}
                   </div>
                 )}
               </div>

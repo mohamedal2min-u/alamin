@@ -27,7 +27,7 @@ class CreateShipmentAction
             // Auto-determine payment_status from amounts (no 'partial' from frontend)
             $remaining     = ($totalAmount !== null) ? max(0, $totalAmount - $paidAmount) : 0;
             $paymentStatus = match (true) {
-                $totalAmount === null || $totalAmount <= 0 => 'paid',
+                $totalAmount === null || $totalAmount <= 0 => 'unpaid',
                 $paidAmount >= $totalAmount               => 'paid',
                 $paidAmount > 0                           => 'partial',
                 default                                   => 'unpaid',
@@ -83,10 +83,11 @@ class CreateShipmentAction
 
             // إنشاء سجل دين في المصاريف إذا كان هناك مبلغ غير مدفوع أو إذا كان السعر مفقود/صفري
             if ($remaining > 0 || $missingPrice) {
-                $category = ExpenseCategory::firstOrCreate(
-                    ['name' => 'شراء مخزون', 'farm_id' => null],
-                    ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
-                );
+                $category = ExpenseCategory::where('code', $item->itemType?->code)->whereNull('farm_id')->first()
+                    ?? ExpenseCategory::firstOrCreate(
+                        ['name' => 'شراء مخزون', 'farm_id' => null],
+                        ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
+                    );
 
                 $debtStatus = $missingPrice ? 'unpaid' : ($paidAmount > 0 ? 'partial' : 'unpaid');
 

@@ -64,17 +64,17 @@ class ExpenseController extends Controller
 
         // Auto-detect payment status if not provided
         if (isset($validated['payment_status'])) {
-            $paymentStatus = $validated['payment_status'] === 'unpaid' ? 'debt' : $validated['payment_status'];
+            $paymentStatus = $validated['payment_status'] === 'debt' ? 'unpaid' : $validated['payment_status'];
         } elseif ($totalAmount <= 0) {
-            // No price = debt/unpaid
-            $paymentStatus = 'debt';
+            // No price = unpaid
+            $paymentStatus = 'unpaid';
             $paidAmount = 0;
         } elseif ($paidAmount >= $totalAmount) {
             $paymentStatus = 'paid';
         } elseif ($paidAmount > 0) {
             $paymentStatus = 'partial';
         } else {
-            $paymentStatus = 'debt';
+            $paymentStatus = 'unpaid';
         }
 
         $expense = Expense::create([

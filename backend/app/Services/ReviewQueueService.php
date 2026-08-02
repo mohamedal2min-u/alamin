@@ -36,10 +36,10 @@ class ReviewQueueService
 
         $summary = $this->buildSummary($rows);
 
-        // Filter by category if requested
+        // Filter by category if requested (must match the same fallback key used in buildSummary)
         $category = $filters['category'] ?? null;
         if ($category) {
-            $rows = $rows->filter(fn ($row) => ($row['category_code'] ?? null) === $category);
+            $rows = $rows->filter(fn ($row) => ($row['category_code'] ?? 'uncategorized') === $category);
             $rows = $rows->values();
         }
 
@@ -362,9 +362,11 @@ class ReviewQueueService
         }
 
         // Category breakdown for filter cards
+        // NOTE: fallback key must not collide with a real ExpenseCategory code (e.g. 'other'
+        // is a legitimate category code), otherwise unrelated uncategorized rows merge into it.
         $categoryBreakdown = [];
         foreach ($qualifyingRows as $row) {
-            $code = $row['category_code'] ?? 'other';
+            $code = $row['category_code'] ?? 'uncategorized';
             $name = $row['category_name'] ?? 'أخرى';
             if (!isset($categoryBreakdown[$code])) {
                 $categoryBreakdown[$code] = [

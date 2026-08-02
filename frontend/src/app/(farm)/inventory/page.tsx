@@ -6,7 +6,6 @@ import {
   Package,
   AlertTriangle,
   AlertCircle,
-  TrendingDown,
   Truck,
   DollarSign,
   Layers,
@@ -1342,7 +1341,7 @@ export default function InventoryPage() {
         <>
           {/* KPI Cards */}
           {summary && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <KpiCard
                 label="رصيد العلف"
                 value={formatWeight(summary.feed_quantity, summary.feed_unit)}
@@ -1357,16 +1356,7 @@ export default function InventoryPage() {
                 icon={DollarSign}
                 color="text-amber-700"
               />
-              <KpiCard
-                label="رصيد الدواء"
-                value={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? (summary.medicine_quantity / 1000).toFixed(2).replace('.00', '') : formatNumber(summary.medicine_quantity)}
-                sub={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? 'طن' : summary.medicine_unit}
-                icon={Package}
-                color="text-blue-700"
-              />
-              <KpiCard label="مواد منخفضة"          value={String(summary.low_stock_count)}         sub={summary.low_stock_count > 0 ? 'تحتاج متابعة' : 'المخزون كافٍ'} icon={TrendingDown} color={summary.low_stock_count > 0 ? 'text-red-600' : 'text-emerald-600'} />
               <KpiCard label="صهاريج الماء للفوج الحالي" value={formatNumber(summary.water_tanks_count || 0)} sub={`التكلفة: ${formatNumber(summary.water_tanks_cost || 0)} USD`} icon={Droplets} color="text-cyan-600" />
-              <KpiCard label="إجمالي قيمة المخزون" value={formatNumber(summary.total_value)}       sub="USD"                                           icon={DollarSign} color="text-primary-700" />
             </div>
           )}
 

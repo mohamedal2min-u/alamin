@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Expense;
+use App\Models\Item;
 use App\Models\Sale;
 use App\Models\InventoryTransaction;
 use App\Models\FlockWaterLog;
@@ -188,7 +189,8 @@ class ReviewQueueService
 
     private function normalizeExpense(Expense $e): array
     {
-        $linkedItem = $e->linkedInventoryTransaction?->item;
+        $linkedItem = $e->linkedInventoryTransaction?->item
+            ?? $this->resolveItemFromDescription($e->farm_id, $e->description);
 
         return [
             'id'               => 'expense-' . $e->id,
@@ -238,6 +240,26 @@ class ReviewQueueService
             'quantity_unit'    => null,
             'review_reasons'   => [],
         ];
+    }
+
+    /**
+     * Fallback for old debt expenses that predate linked_inventory_transaction_id:
+     * recover the item (and its unit) from the "دين شراء[ تلقائي]: {item}" description text.
+     */
+    private function resolveItemFromDescription(int $farmId, ?string $description): ?Item
+    {
+        if (! $description || ! str_starts_with($description, 'دين شراء')) {
+            return null;
+        }
+
+        $itemName = preg_replace('/^دين شراء(?: تلقائي)?:\s*/u', '', $description);
+        $itemName = trim(explode(' — ', $itemName)[0]);
+
+        if ($itemName === '') {
+            return null;
+        }
+
+        return Item::where('farm_id', $farmId)->where('name', $itemName)->first();
     }
 
     private function normalizeWaterLog(FlockWaterLog $w): array

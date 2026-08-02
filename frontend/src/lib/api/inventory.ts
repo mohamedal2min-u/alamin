@@ -18,6 +18,7 @@ export interface StockItem {
 export interface InventorySummary {
   feed_quantity: number
   feed_unit: string
+  feed_total_received: number
   medicine_quantity: number
   medicine_unit: string
   low_stock_count: number
@@ -25,6 +26,8 @@ export interface InventorySummary {
   total_value: number
   water_tanks_count: number
   water_tanks_cost: number
+  today_expenses_total: number
+  all_expenses_total: number
 }
 
 export interface Warehouse {

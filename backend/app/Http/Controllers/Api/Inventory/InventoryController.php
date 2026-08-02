@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Inventory;
 
 use App\Actions\Inventory\CreateShipmentAction;
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
 use App\Models\InventoryTransaction;
 use App\Models\Item;
 use App\Models\ItemType;
@@ -217,10 +218,17 @@ class InventoryController extends Controller
         $feedStock  = $stock->filter(fn ($s) => $s['type_code'] === 'feed');
         $medStock   = $stock->filter(fn ($s) => $s['type_code'] === 'medicine');
 
-        $feedQty  = (float) $feedStock->sum('total_quantity');
-        $feedUnit = $feedStock->first()['content_unit'] ?? '';
+        $feedQty          = (float) $feedStock->sum('total_quantity');
+        $feedUnit         = $feedStock->first()['content_unit'] ?? '';
+        $feedTotalReceived = (float) $feedStock->sum('total_received');
         $medQty   = (float) $medStock->sum('total_quantity');
         $medUnit  = $medStock->first()['content_unit'] ?? '';
+
+        // إجمالي المصاريف — اليوم مقابل كل الأوقات
+        $todayExpensesTotal = (float) Expense::where('farm_id', $farmId)
+            ->whereDate('entry_date', now())
+            ->sum('total_amount');
+        $allExpensesTotal = (float) Expense::where('farm_id', $farmId)->sum('total_amount');
 
         // قيمة المخزون الإجمالية — استعلام تجميعي واحد
         $totalValue = (float) (WarehouseItem::where('farm_id', $farmId)
@@ -252,15 +260,18 @@ class InventoryController extends Controller
         }
 
         $summary = [
-            'feed_quantity'      => $feedQty,
-            'feed_unit'          => $feedUnit,
-            'medicine_quantity'  => $medQty,
-            'medicine_unit'      => $medUnit,
-            'low_stock_count'    => $lowCount,
-            'last_shipment_date' => $lastShipmentDate,
-            'water_tanks_count'  => $waterTanksCount,
-            'water_tanks_cost'   => $waterTanksCost,
-            'total_value'        => $totalValue,
+            'feed_quantity'        => $feedQty,
+            'feed_unit'            => $feedUnit,
+            'feed_total_received'  => $feedTotalReceived,
+            'medicine_quantity'    => $medQty,
+            'medicine_unit'        => $medUnit,
+            'low_stock_count'      => $lowCount,
+            'last_shipment_date'   => $lastShipmentDate,
+            'water_tanks_count'    => $waterTanksCount,
+            'water_tanks_cost'     => $waterTanksCost,
+            'total_value'          => $totalValue,
+            'today_expenses_total' => $todayExpensesTotal,
+            'all_expenses_total'   => $allExpensesTotal,
         ];
 
         // ── 3. Warehouses ─────────────────────────────────────────────────────

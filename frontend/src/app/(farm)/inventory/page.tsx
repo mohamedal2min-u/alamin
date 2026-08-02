@@ -74,6 +74,14 @@ type Tab = 'overview' | 'items' | 'add-item' | 'add-shipment' | 'movements' | 'a
 
 const today = new Date().toISOString().slice(0, 10)
 
+// ── Weight formatter: switches to tons above 1000 kg ───────────────────────────
+function formatWeight(qty: number, unit: string): string {
+  if (qty >= 1000 && unit?.trim() === 'كيلو') {
+    return `${(qty / 1000).toFixed(2).replace('.00', '')} طن`
+  }
+  return `${formatNumber(qty)} ${unit}`
+}
+
 // ── Reusable field wrapper ────────────────────────────────────────────────────
 
 function Field({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
@@ -1334,20 +1342,27 @@ export default function InventoryPage() {
         <>
           {/* KPI Cards */}
           {summary && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <KpiCard 
-                label="رصيد العلف"           
-                value={summary.feed_quantity >= 1000 && summary.feed_unit?.trim() === 'كيلو' ? (summary.feed_quantity / 1000).toFixed(2).replace('.00', '') : formatNumber(summary.feed_quantity)}     
-                sub={summary.feed_quantity >= 1000 && summary.feed_unit?.trim() === 'كيلو' ? 'طن' : summary.feed_unit}                             
-                icon={Package}    
-                color="text-emerald-700" 
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <KpiCard
+                label="رصيد العلف"
+                value={formatWeight(summary.feed_quantity, summary.feed_unit)}
+                sub={`من إجمالي ${formatWeight(summary.feed_total_received, summary.feed_unit)}`}
+                icon={Package}
+                color="text-emerald-700"
               />
-              <KpiCard 
-                label="رصيد الدواء"          
-                value={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? (summary.medicine_quantity / 1000).toFixed(2).replace('.00', '') : formatNumber(summary.medicine_quantity)} 
-                sub={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? 'طن' : summary.medicine_unit}                         
-                icon={Package}    
-                color="text-blue-700" 
+              <KpiCard
+                label="مجموع المصاريف اليومية"
+                value={`${formatNumber(summary.today_expenses_total)} USD`}
+                sub={`الإجمالي الكلي: ${formatNumber(summary.all_expenses_total)} USD`}
+                icon={DollarSign}
+                color="text-amber-700"
+              />
+              <KpiCard
+                label="رصيد الدواء"
+                value={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? (summary.medicine_quantity / 1000).toFixed(2).replace('.00', '') : formatNumber(summary.medicine_quantity)}
+                sub={summary.medicine_quantity >= 1000 && summary.medicine_unit?.trim() === 'كيلو' ? 'طن' : summary.medicine_unit}
+                icon={Package}
+                color="text-blue-700"
               />
               <KpiCard label="مواد منخفضة"          value={String(summary.low_stock_count)}         sub={summary.low_stock_count > 0 ? 'تحتاج متابعة' : 'المخزون كافٍ'} icon={TrendingDown} color={summary.low_stock_count > 0 ? 'text-red-600' : 'text-emerald-600'} />
               <KpiCard label="صهاريج الماء للفوج الحالي" value={formatNumber(summary.water_tanks_count || 0)} sub={`التكلفة: ${formatNumber(summary.water_tanks_cost || 0)} USD`} icon={Droplets} color="text-cyan-600" />

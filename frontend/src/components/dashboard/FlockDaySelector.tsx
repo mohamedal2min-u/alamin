@@ -77,27 +77,27 @@ export function FlockDaySelector({ startDate, selectedDate, onSelectDate, maxDat
               key={d.date}
               data-selected={isSelected}
               onClick={() => onSelectDate(d.date)}
-              className={\`flex-shrink-0 flex flex-col items-center justify-center min-w-[72px] h-16 rounded-xl transition-all snap-center \${
+              className={`flex-shrink-0 flex flex-col items-center justify-center min-w-[72px] h-16 rounded-xl transition-all snap-center ${
                 isSelected 
                   ? 'bg-primary-500 text-white shadow-md shadow-primary-500/20 ring-2 ring-primary-500/20' 
                   : 'bg-slate-50/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }\`}
+              }`}
             >
-              <span className={\`text-[10px] font-bold mb-1 \${isSelected ? 'text-primary-100' : 'text-slate-400'}\`}>
+              <span className={`text-[10px] font-bold mb-1 ${isSelected ? 'text-primary-100' : 'text-slate-400'}`}>
                 اليوم {d.dayIndex}
               </span>
-              <span className={\`text-sm font-black tracking-tight font-mono\`}>
+              <span className={`text-sm font-black tracking-tight font-mono`}>
                 {d.formatted}
               </span>
             </button>
           )
         })}
       </div>
-      <style dangerouslySetInnerHTML={{__html: \`
+      <style dangerouslySetInnerHTML={{__html: `
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
-      \`}} />
+      `}} />
     </div>
   )
 }

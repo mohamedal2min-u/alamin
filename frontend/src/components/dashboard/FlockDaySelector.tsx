@@ -63,23 +63,20 @@ export function FlockDaySelector({ startDate, selectedDate, onSelectDate, maxDat
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm relative overflow-hidden" dir="rtl">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-           <p className="text-[11px] text-slate-400 font-bold mb-1">عمر الفوج</p>
-           <div className="flex items-baseline gap-1">
-             <span className="text-primary-600 font-black text-2xl">اليوم {dates[dragIndex].dayIndex}</span>
-           </div>
+    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-xl shadow-sm relative overflow-hidden" dir="rtl">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-2">
+           <span className="text-[10px] text-slate-400 font-bold">عمر الفوج:</span>
+           <span className="text-primary-600 font-black text-base">اليوم {dates[dragIndex].dayIndex}</span>
         </div>
-        <div className="text-left">
-           <p className="text-[11px] text-slate-400 font-bold mb-1">تاريخ اليوم</p>
-           <p className="text-slate-700 dark:text-slate-200 font-bold text-lg" dir="ltr">{dates[dragIndex].formatted}</p>
+        <div className="flex items-center gap-2">
+           <span className="text-slate-700 dark:text-slate-200 font-bold text-sm" dir="ltr">{dates[dragIndex].formatted}</span>
         </div>
       </div>
       
-      <div className="relative w-full h-8 flex items-center">
+      <div className="relative w-full h-5 flex items-center">
         {/* Custom Track Background */}
-        <div className="absolute top-1/2 left-0 right-0 h-2.5 -translate-y-1/2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden pointer-events-none">
+        <div className="absolute top-1/2 left-0 right-0 h-1.5 -translate-y-1/2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden pointer-events-none">
           {/* Custom Track Fill */}
           <div 
             className="absolute top-0 bottom-0 right-0 bg-primary-500 transition-all duration-75 ease-out"
@@ -105,13 +102,13 @@ export function FlockDaySelector({ startDate, selectedDate, onSelectDate, maxDat
         input[type=range]::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 28px;
-          height: 28px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           background: white;
-          border: 6px solid #22c55e;
+          border: 4px solid #22c55e;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+          box-shadow: 0 1px 4px rgba(34, 197, 94, 0.4);
           position: relative;
           z-index: 30;
           transition: transform 0.1s;
@@ -120,13 +117,13 @@ export function FlockDaySelector({ startDate, selectedDate, onSelectDate, maxDat
           transform: scale(1.15);
         }
         input[type=range]::-moz-range-thumb {
-          width: 28px;
-          height: 28px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           background: white;
-          border: 6px solid #22c55e;
+          border: 4px solid #22c55e;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+          box-shadow: 0 1px 4px rgba(34, 197, 94, 0.4);
           transition: transform 0.1s;
         }
         input[type=range]::-moz-range-thumb:active {

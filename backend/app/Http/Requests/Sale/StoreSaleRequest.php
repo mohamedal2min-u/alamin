@@ -24,7 +24,7 @@ class StoreSaleRequest extends FormRequest
             'items'                  => ['required', 'array', 'min:1'],
             'items.*.birds_count'    => ['required', 'integer', 'min:1'],
             'items.*.total_weight_kg' => ['required', 'numeric', 'min:0.001'],
-            'items.*.unit_price_per_kg' => ['required', 'numeric', 'min:0.001'],
+            'items.*.unit_price_per_kg' => ['nullable', 'numeric', 'min:0.001'],
             'items.*.notes'          => ['nullable', 'string', 'max:5000'],
         ];
     }
@@ -40,7 +40,6 @@ class StoreSaleRequest extends FormRequest
             'items.*.birds_count.min'          => 'عدد الطيور يجب أن يكون أكبر من صفر',
             'items.*.total_weight_kg.required' => 'الوزن الكلي مطلوب',
             'items.*.total_weight_kg.min'      => 'الوزن الكلي يجب أن يكون أكبر من صفر',
-            'items.*.unit_price_per_kg.required' => 'سعر الكيلو مطلوب',
             'items.*.unit_price_per_kg.min'    => 'سعر الكيلو يجب أن يكون أكبر من صفر',
         ];
     }

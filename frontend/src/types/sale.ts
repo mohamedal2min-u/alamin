@@ -38,7 +38,7 @@ export interface Sale {
 export interface CreateSaleItemPayload {
   birds_count: number
   total_weight_kg: number
-  unit_price_per_kg: number
+  unit_price_per_kg?: number
   notes?: string
 }
 

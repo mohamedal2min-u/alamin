@@ -25,15 +25,20 @@ class CreateSaleAction
             $receivedAmount  = (float) ($data['received_amount'] ?? 0);
 
             // ── حساب المبالغ من السطور ────────────────────────────────────────
-            $grossAmount = 0.0;
-            $saleLines   = [];
+            $grossAmount     = 0.0;
+            $saleLines       = [];
+            $hasMissingPrice = false;
 
             foreach ($data['items'] as $item) {
                 $birdsCount      = (int) $item['birds_count'];
                 $totalWeightKg   = (float) $item['total_weight_kg'];
-                $unitPricePerKg  = (float) $item['unit_price_per_kg'];
+                $unitPricePerKg  = isset($item['unit_price_per_kg']) ? (float) $item['unit_price_per_kg'] : null;
                 $avgWeightKg     = $birdsCount > 0 ? round($totalWeightKg / $birdsCount, 3) : null;
-                $lineTotal       = round($totalWeightKg * $unitPricePerKg, 2);
+                $lineTotal       = $unitPricePerKg !== null ? round($totalWeightKg * $unitPricePerKg, 2) : 0.0;
+
+                if ($unitPricePerKg === null) {
+                    $hasMissingPrice = true;
+                }
 
                 $grossAmount += $lineTotal;
 
@@ -61,10 +66,13 @@ class CreateSaleAction
 
             $remainingAmount = round($netAmount - $receivedAmount, 2);
 
+            // سعر غير محدد لأي سطر لا يعني "مدفوع بالكامل" حتى لو كان الصافي صفراً —
+            // يبقى ديناً بانتظار تحديد السعر لاحقاً عبر قائمة المراجعة.
             $paymentStatus = match (true) {
-                $remainingAmount <= 0           => 'paid',
-                $receivedAmount > 0             => 'partial',
-                default                         => 'debt',
+                $hasMissingPrice && $netAmount <= 0 => 'debt',
+                $remainingAmount <= 0                => 'paid',
+                $receivedAmount > 0                  => 'partial',
+                default                               => 'debt',
             };
 
             // ── إنشاء سجل البيع ───────────────────────────────────────────────

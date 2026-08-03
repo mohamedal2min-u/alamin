@@ -130,21 +130,45 @@ class ReviewQueueService
 
 
         } elseif ($type === 'sale') {
-            $record = Sale::where('farm_id', $farmId)->findOrFail($recordId);
+            $record = Sale::where('farm_id', $farmId)->with('saleItems')->findOrFail($recordId);
+
+            // سعر الكيلو المُدخَل هنا يُطبَّق على سطور البيع التي لم يُحدَّد لها سعر بعد،
+            // ثم يُعاد حساب إجمالي/صافي البيعة من السطور المحدَّثة.
+            if (array_key_exists('unit_price', $data) && $data['unit_price'] !== null) {
+                foreach ($record->saleItems as $saleItem) {
+                    if ($saleItem->unit_price_per_kg === null || (float) $saleItem->unit_price_per_kg <= 0) {
+                        $saleItem->unit_price_per_kg = $data['unit_price'];
+                        $saleItem->line_total        = round($saleItem->total_weight_kg * $data['unit_price'], 2);
+                        $saleItem->save();
+                    }
+                }
+
+                $record->gross_amount = $record->saleItems()->sum('line_total');
+                $record->net_amount   = max(0, round($record->gross_amount - $record->discount_amount, 2));
+            }
 
             if (array_key_exists('paid_amount', $data)) {
                 $record->received_amount = $data['paid_amount'];
             }
 
-            $record->remaining_amount = max(0, $record->net_amount - $record->received_amount);
-            $record->payment_status   = $this->derivePaymentStatus(
-                (float) $record->net_amount,
-                (float) $record->received_amount
-            );
+            $netAmount = (float) $record->net_amount;
+            $received  = (float) $record->received_amount;
+            $remaining = max(0, round($netAmount - $received, 2));
+
+            $record->remaining_amount = $remaining;
+            // Sales only allow 'paid' | 'partial' | 'debt' (never 'unpaid' — see sales table
+            // CHECK constraint), and a still-unpriced sale (net_amount = 0) must not read as
+            // "paid" just because there's nothing owed yet.
+            $record->payment_status = match (true) {
+                $netAmount <= 0 => 'debt',
+                $remaining <= 0 => 'paid',
+                $received > 0   => 'partial',
+                default          => 'debt',
+            };
 
             $record->save();
 
-            $row = $this->normalizeSale($record->load('flock'));
+            $row = $this->normalizeSale($record->load(['flock', 'saleItems']));
         } else {
             abort(400, "Invalid type");
         }
@@ -167,7 +191,7 @@ class ReviewQueueService
         }
 
         if ($type === 'all' || $type === 'sale') {
-            $q = Sale::with('flock')->where('farm_id', $farmId);
+            $q = Sale::with(['flock', 'saleItems'])->where('farm_id', $farmId);
             if ($flockId) {
                 $q->where('flock_id', $flockId);
             }
@@ -220,6 +244,9 @@ class ReviewQueueService
 
     private function normalizeSale(Sale $s): array
     {
+        $totalWeight = $s->saleItems->sum('total_weight_kg');
+        $avgPrice    = $totalWeight > 0 ? round((float) $s->gross_amount / $totalWeight, 2) : null;
+
         return [
             'id'               => 'sale-' . $s->id,
             'type'             => 'sale',
@@ -235,9 +262,9 @@ class ReviewQueueService
             'paid_amount'      => (float) ($s->received_amount ?? 0),
             'remaining_amount' => (float) ($s->remaining_amount ?? $s->net_amount),
             'payment_status'   => $s->payment_status,
-            'unit_price'       => null,
-            'quantity'         => null,
-            'quantity_unit'    => null,
+            'unit_price'       => $avgPrice,
+            'quantity'         => $totalWeight > 0 ? (float) $totalWeight : null,
+            'quantity_unit'    => 'كغ',
             'review_reasons'   => [],
         ];
     }

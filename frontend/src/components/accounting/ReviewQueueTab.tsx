@@ -73,7 +73,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
     if (editValues.paid_amount !== undefined && editValues.paid_amount !== '') {
       payload.paid_amount = parseFloat(editValues.paid_amount)
     }
-    if (editValues.unit_price !== undefined && editValues.unit_price !== '' && (item.type === 'expense' || item.type === 'water_log')) {
+    if (editValues.unit_price !== undefined && editValues.unit_price !== '' && (item.type === 'expense' || item.type === 'water_log' || item.type === 'sale')) {
       payload.unit_price = parseFloat(editValues.unit_price)
     }
     updateItem({ type: item.type, id: item.record_id, payload })
@@ -310,9 +310,9 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                     disabled={false}
                   />
                 </div>
-                {(item.type === 'expense' || item.type === 'water_log') && (
+                {(item.type === 'expense' || item.type === 'water_log' || item.type === 'sale') && (
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-slate-500">سعر الوحدة</label>
+                    <label className="text-xs text-slate-500">{item.type === 'sale' ? 'سعر الكيلو' : 'سعر الوحدة'}</label>
                     <Input
                       type="number"
                       min={0}

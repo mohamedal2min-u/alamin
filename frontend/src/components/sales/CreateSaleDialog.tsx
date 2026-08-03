@@ -16,7 +16,11 @@ import type { Sale } from '@/types/sale'
 const itemSchema = z.object({
   birds_count:       z.number({ invalid_type_error: 'يجب إدخال رقم' }).int().min(1, 'عدد الطيور يجب أن يكون أكبر من 0'),
   total_weight_kg:   z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'الوزن يجب أن يكون أكبر من 0'),
-  unit_price_per_kg: z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'السعر يجب أن يكون أكبر من 0'),
+  // اختياري — إن تُرك فارغاً تُسجَّل البيعة كدين وتُرحَّل إلى الذمم لتحديد السعر لاحقاً.
+  unit_price_per_kg: z.preprocess(
+    (val) => (typeof val === 'number' && Number.isNaN(val)) ? undefined : val,
+    z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'السعر يجب أن يكون أكبر من 0').optional()
+  ),
   notes:             z.string().max(5000).optional().or(z.literal('')),
 })
 
@@ -94,7 +98,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
         items: data.items.map((it) => ({
           birds_count:       it.birds_count,
           total_weight_kg:   it.total_weight_kg,
-          unit_price_per_kg: it.unit_price_per_kg,
+          unit_price_per_kg: it.unit_price_per_kg ?? undefined,
           notes:             it.notes || undefined,
         })),
       })
@@ -213,15 +217,18 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
                       type="number"
                       step="0.01"
                       min={0.001}
-                      placeholder="مثال: 15.00"
+                      placeholder="اختياري"
                       error={errors.items?.[idx]?.unit_price_per_kg?.message}
-                      required
                     />
                   </div>
 
-                  {lineTotal > 0 && (
+                  {lineTotal > 0 ? (
                     <p className="text-end text-xs font-semibold text-slate-600">
                       إجمالي السطر: <span className="tabular-nums">{formatCurrency(lineTotal)}</span>
+                    </p>
+                  ) : watchedItems[idx]?.total_weight_kg > 0 && !watchedItems[idx]?.unit_price_per_kg && (
+                    <p className="text-end text-xs font-semibold text-amber-600">
+                      السعر غير محدد — ستُسجَّل البيعة كدين وتُرحَّل إلى الذمم والمراجعة لتحديد السعر لاحقاً.
                     </p>
                   )}
                 </div>

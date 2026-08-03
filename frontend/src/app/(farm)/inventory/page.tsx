@@ -1306,12 +1306,14 @@ export default function InventoryPage() {
   const medItems   = items.filter(i => i.type_code === 'medicine')
   const otherItems = items.filter(i => i.type_code !== 'feed' && i.type_code !== 'medicine')
 
-  const tabs: { id: Tab; label: string; badge?: number; icon: typeof Eye; isAction?: boolean }[] = [
+  const tabs: { id: Tab; label: string; badge?: number; icon: typeof Eye; isAction?: boolean; isPrimary?: boolean }[] = [
     { id: 'overview',     label: 'نظرة عامة',  icon: Eye },
+    ...(!isReadOnly ? [
+      { id: 'add-shipment' as Tab, label: 'حمولة جديدة', icon: Truck, isAction: true, isPrimary: true },
+    ] : []),
     { id: 'items',        label: 'الأصناف',     icon: ListChecks,  badge: items.length },
     ...(!isReadOnly ? [
       { id: 'add-item'     as Tab, label: 'صنف جديد',    icon: Plus,  isAction: true },
-      { id: 'add-shipment' as Tab, label: 'حمولة جديدة', icon: Truck, isAction: true },
     ] : []),
     { id: 'movements',    label: 'الحركات',     icon: BarChart3,   badge: transactions.length },
     { id: 'alerts',       label: 'التنبيهات',   icon: Bell,        badge: lowItems.length || undefined },
@@ -1362,7 +1364,7 @@ export default function InventoryPage() {
 
           {/* Tab Navigation */}
           <div className="rounded-2xl border border-slate-200/60 bg-white p-1.5" style={{ boxShadow: 'var(--shadow-card)' }}>
-            <nav className="flex flex-wrap gap-1">
+            <nav className="flex overflow-x-auto no-scrollbar gap-2 pb-0.5">
               {tabs.map(tab => {
                 const isActive = activeTab === tab.id
                 return (
@@ -1370,26 +1372,27 @@ export default function InventoryPage() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all duration-200",
+                      "flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-all duration-200 whitespace-nowrap flex-shrink-0",
                       isActive
-                        ? tab.isAction
-                          ? "bg-primary-600 text-white shadow-md shadow-primary-200"
+                        ? tab.isPrimary
+                          ? "bg-primary-600 text-white shadow-md shadow-primary-200 ring-2 ring-primary-100 ring-offset-1"
                           : "bg-slate-900 text-white shadow-md"
-                        : tab.isAction
-                          ? "text-primary-600 hover:bg-primary-50"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                        : tab.isPrimary
+                          ? "bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-100/50"
+                          : tab.isAction
+                            ? "text-primary-600 hover:bg-primary-50"
+                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                     )}
                   >
-                    <tab.icon className={cn("h-3.5 w-3.5", isActive && "shrink-0")} />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                    <span className="sm:hidden">{tab.id === 'add-item' ? 'صنف' : tab.id === 'add-shipment' ? 'حمولة' : tab.label}</span>
+                    <tab.icon className={cn("h-4 w-4", isActive && "shrink-0")} />
+                    <span>{tab.label}</span>
                     {tab.badge != null && tab.badge > 0 && (
                       <span className={cn(
-                        "rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none",
+                        "rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none mr-1",
                         isActive
                           ? "bg-white/20 text-white"
                           : tab.id === 'alerts'
-                            ? "bg-emerald-100 text-emerald-700"
+                            ? "bg-red-100 text-red-700"
                             : "bg-slate-100 text-slate-500"
                       )}>
                         {tab.badge}

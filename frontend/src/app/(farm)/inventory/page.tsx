@@ -235,6 +235,13 @@ function ItemsTable({ items, onEdit, categoryFilter = 'all', onCategoryFilterCha
   const Section = ({ title, rows, color, icon: SectionIcon }: { title: string; rows: StockItem[]; color: string; icon: typeof Package }) => {
     if (rows.length === 0) return null
     const iconBg = color.replace('text-', 'bg-').replace(/-700$/, '-50')
+
+    const formatAmount = (qty: number, item: StockItem) => {
+      if (item.unit_value > 1) return `${formatNumber(qty / item.unit_value)} ${item.input_unit || 'كيس'}`
+      if (item.content_unit?.trim() === 'كيلو' && qty >= 1000) return `${(qty / 1000).toFixed(2).replace('.00', '')} طن`
+      return `${formatNumber(qty)} ${item.content_unit}`
+    }
+
     return (
       <section>
         <div className="mb-3 flex items-center gap-2">
@@ -244,52 +251,64 @@ function ItemsTable({ items, onEdit, categoryFilter = 'all', onCategoryFilterCha
           <h3 className={cn("text-xs font-bold uppercase tracking-wider", color)}>{title}</h3>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{rows.length}</span>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 text-right text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                <th className="px-4 py-3">الصنف</th>
-                <th className="px-4 py-3">الكمية الحالية</th>
-                <th className="px-4 py-3">الحد الأدنى</th>
-                <th className="px-4 py-3">وحدة الإدخال</th>
-                <th className="px-4 py-3">الحالة</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {rows.map(item => {
-                const isLow = item.minimum_stock > 0 && item.total_quantity <= item.minimum_stock
-                return (
-                  <tr key={item.id} className={cn("transition-colors duration-150 hover:bg-slate-50/60", isLow && 'bg-emerald-50/30')}>
-                    <td className="px-4 py-3.5 font-semibold text-slate-800">{item.name}</td>
-                    <td className="px-4 py-3.5 tabular-nums">
-                      <div className="flex items-center gap-1.5">
-                        {isLow && <AlertTriangle className="h-3 w-3 text-emerald-500 shrink-0" />}
-                        <span className={cn("font-semibold", isLow ? 'text-emerald-700' : 'text-slate-700')}>
-                          {formatNumber(item.total_quantity)} {item.content_unit}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-400 tabular-nums text-xs">
-                      {item.minimum_stock > 0 ? `${formatNumber(item.minimum_stock)} ${item.content_unit}` : '—'}
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-400 text-xs">{item.input_unit}</td>
-                    <td className="px-4 py-3.5 flex items-center gap-2">
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map(item => {
+            const isLow = item.minimum_stock > 0 && item.total_quantity <= item.minimum_stock
+            const pct   = item.minimum_stock > 0 ? Math.min((item.total_quantity / item.minimum_stock) * 100, 100) : 100
+            return (
+              <div key={item.id} className="rounded-2xl border border-slate-200/60 bg-white p-4" style={{ boxShadow: 'var(--shadow-card)' }}>
+                {/* Header: name + status + edit */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-bold text-slate-800 block truncate">{item.name}</span>
+                    <div className="mt-1.5 flex items-center gap-2">
                       <StockStatusBadge item={item} />
-                      {onEdit && (
-                        <button
-                          onClick={() => onEdit(item)}
-                          className="rounded-lg bg-slate-100 p-1.5 text-slate-500 hover:bg-primary-50 hover:text-primary-600 transition-colors"
-                          title="تعديل"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </button>
+                      {item.minimum_stock > 0 && (
+                        <span className="text-[9px] font-semibold text-slate-400">
+                          الحد الأدنى: {formatNumber(item.minimum_stock)} {item.content_unit}
+                        </span>
                       )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                    </div>
+                    {item.minimum_stock > 0 && (
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-500", isLow ? "bg-red-400" : "bg-emerald-500")}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(item)}
+                      className="rounded-lg bg-slate-100 p-1.5 text-slate-500 hover:bg-primary-50 hover:text-primary-600 transition-colors shrink-0"
+                      title="تعديل"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Remaining / Total split */}
+                <div className="flex w-full rounded-xl border border-slate-200/80 overflow-hidden shadow-sm">
+                  <div className={cn("flex-1 p-2.5 text-center flex flex-col justify-center", isLow ? "bg-red-50/80" : "bg-white")}>
+                    <span className={cn("text-[9px] font-extrabold mb-1", isLow ? "text-red-500" : "text-slate-400")}>المتبقي</span>
+                    <span className={cn("text-[13px] font-black tabular-nums leading-none", isLow ? "text-red-600" : "text-emerald-600")}>
+                      {formatAmount(item.total_quantity, item)}
+                    </span>
+                  </div>
+                  <div className="w-[1px] bg-slate-100" />
+                  <div className="flex-1 p-2.5 text-center bg-slate-50/80 flex flex-col justify-center">
+                    <span className="text-[9px] font-extrabold text-slate-400 mb-1">الإجمالي</span>
+                    <span className="text-[13px] font-black tabular-nums leading-none text-slate-700">
+                      {formatAmount(item.total_received || 0, item)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </section>
     )

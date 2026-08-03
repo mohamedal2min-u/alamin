@@ -10,7 +10,7 @@ import { medicineLogsApi } from '@/lib/api/medicineLogs'
 import { inventoryApi } from '@/lib/api/inventory'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { formatDate, formatNumber } from '@/lib/utils'
+import { formatDate, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import type { MedicineLog } from '@/types/medicineLog'
 import type { InventoryItem } from '@/types/dashboard'
 import type { FlockStatus } from '@/types/flock'
@@ -62,12 +62,12 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       item_id:    undefined as unknown as number,
-      entry_date: new Date().toISOString().split('T')[0],
+      entry_date: getTodayLocalISO(),
     },
   })
 
   const handleCancel = () => {
-    reset({ item_id: undefined as unknown as number, entry_date: new Date().toISOString().split('T')[0] })
+    reset({ item_id: undefined as unknown as number, entry_date: getTodayLocalISO() })
     setServerError(null)
     setShowForm(false)
   }
@@ -188,7 +188,7 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
               id="medicine_entry_date"
               label="تاريخ الإدخال"
               type="date"
-              max={new Date().toISOString().split('T')[0]}
+              max={getTodayLocalISO()}
               error={errors.entry_date?.message}
               required
             />

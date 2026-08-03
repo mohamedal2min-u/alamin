@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { flocksApi } from '@/lib/api/flocks'
 import type { Flock } from '@/types/flock'
+import { formatCurrency } from '@/lib/utils'
 
 const editFlockSchema = z.object({
   name: z.string().min(2, 'اسم الفوج يجب أن يكون حرفين على الأقل').max(190),
@@ -105,7 +106,7 @@ export function EditFlockModal({ flock, isOpen, onClose, onSuccess }: EditFlockM
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500">إجمالي الاستثمار المحسوب:</span>
               <span className="text-base font-black text-indigo-700 tabular-nums">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalInvestment)}
+                {formatCurrency(totalInvestment)}
               </span>
             </div>
           </div>

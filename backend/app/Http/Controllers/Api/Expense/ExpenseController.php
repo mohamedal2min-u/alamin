@@ -62,10 +62,10 @@ class ExpenseController extends Controller
         $totalAmount   = (float) $validated['total_amount'];
         $paidAmount    = isset($validated['paid_amount']) ? (float) $validated['paid_amount'] : $totalAmount;
 
-        // Auto-detect payment status if not provided
-        if (isset($validated['payment_status'])) {
-            $paymentStatus = $validated['payment_status'] === 'debt' ? 'unpaid' : $validated['payment_status'];
-        } elseif ($totalAmount <= 0) {
+        // payment_status is always derived server-side from the amounts — never trusted
+        // from the client — so it can never disagree with paid_amount/total_amount
+        // (a client-supplied status used to be able to hide a real debt from every report).
+        if ($totalAmount <= 0) {
             // No price = unpaid
             $paymentStatus = 'unpaid';
             $paidAmount = 0;

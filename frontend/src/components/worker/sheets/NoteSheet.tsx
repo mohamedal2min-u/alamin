@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { quickEntryApi } from '@/lib/api/quick-entry'
+import { getTodayLocalISO } from '@/lib/utils'
 
 interface NoteSheetProps {
   isOpen: boolean
@@ -36,7 +37,7 @@ export function NoteSheet({
         expense_type: 'other',
         quantity: 1,
         total_amount: 0,
-        entry_date: new Date().toISOString().split('T')[0],
+        entry_date: getTodayLocalISO(),
         notes: `ملاحظة العامل: ${note}`,
       })
       onSaved(note)

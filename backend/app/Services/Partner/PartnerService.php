@@ -52,12 +52,13 @@ class PartnerService
             $expectedAdminShare = 0;
         }
 
-        // 3. Sync the share record
+        // 3. Sync the share record (locked: every caller runs inside a DB transaction, so this
+        // serializes concurrent callers touching the same admin share row instead of racing).
         $adminShareRecord = FarmPartnerShare::where([
             'partner_id' => $adminPartner->id,
             'farm_id'    => $farmId,
             'is_active'  => true,
-        ])->first();
+        ])->lockForUpdate()->first();
 
         if (!$adminShareRecord) {
             $adminPartner->shares()->create([

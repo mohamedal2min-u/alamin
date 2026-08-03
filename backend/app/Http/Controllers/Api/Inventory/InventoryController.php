@@ -317,8 +317,10 @@ class InventoryController extends Controller
                 'direction'         => $t->direction,
                 'original_quantity' => (float) $t->original_quantity,
                 'computed_quantity' => (float) $t->computed_quantity,
-                'input_unit'        => $t->item?->input_unit,
-                'content_unit'      => $t->item?->content_unit,
+                // Prefer the unit snapshotted on the transaction itself; only rows written before
+                // this snapshot existed fall back to the item's current (possibly since-changed) unit.
+                'input_unit'        => $t->input_unit ?? $t->item?->input_unit,
+                'content_unit'      => $t->content_unit ?? $t->item?->content_unit,
                 'unit_price'        => $t->unit_price !== null ? (float) $t->unit_price : null,
                 'total_amount'      => $t->total_amount !== null ? (float) $t->total_amount : null,
                 'payment_status'    => $t->payment_status,
@@ -452,8 +454,10 @@ class InventoryController extends Controller
                 'direction'         => $t->direction,
                 'original_quantity' => (float) $t->original_quantity,
                 'computed_quantity' => (float) $t->computed_quantity,
-                'input_unit'        => $t->item?->input_unit,
-                'content_unit'      => $t->item?->content_unit,
+                // Prefer the unit snapshotted on the transaction itself; only rows written before
+                // this snapshot existed fall back to the item's current (possibly since-changed) unit.
+                'input_unit'        => $t->input_unit ?? $t->item?->input_unit,
+                'content_unit'      => $t->content_unit ?? $t->item?->content_unit,
                 'unit_price'        => $t->unit_price !== null ? (float) $t->unit_price : null,
                 'total_amount'      => $t->total_amount !== null ? (float) $t->total_amount : null,
                 'payment_status'    => $t->payment_status,

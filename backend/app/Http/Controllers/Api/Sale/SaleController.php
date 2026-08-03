@@ -113,7 +113,15 @@ class SaleController extends Controller
             return response()->json(['message' => 'سجل البيع غير موجود'], 404);
         }
 
-        $sale = $this->updatePaymentAction->execute($sale, $userId, $request->validated());
+        try {
+            $sale = $this->updatePaymentAction->execute($sale, $userId, $request->validated());
+        } catch (\Exception $e) {
+            $code = (int) $e->getCode();
+            return response()->json(
+                ['message' => $e->getMessage()],
+                $code >= 400 && $code < 600 ? $code : 422
+            );
+        }
 
         return response()->json([
             'message' => 'تم تحديث حالة الدفع بنجاح',

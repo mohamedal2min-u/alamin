@@ -62,10 +62,12 @@ class UpdateFlockAction
                 // ======= Profit/Loss Distribution on Closure =======
                 if ($data['status'] === 'closed') {
                     $totalSales = $flock->sales()->sum('net_amount');
-                    
-                    // 1. Operational Expenses (manual entry)
-                    $opExpenses = $flock->expenses()->sum('total_amount');
-                    
+
+                    // 1. Operational Expenses (manual entry). Purchase-debt expenses (linked to an
+                    // inventory purchase) are excluded — their cost is already counted below via
+                    // $inventoryCost once the stock is consumed; counting both would double it.
+                    $opExpenses = $flock->expenses()->whereNull('linked_inventory_transaction_id')->sum('total_amount');
+
                     // 2. Chick Cost (initial investment)
                     $chickCost = (float) $flock->total_chick_cost;
                     
@@ -89,27 +91,53 @@ class UpdateFlockAction
                         ->where('is_active', true)
                         ->get();
 
-                    foreach ($activeShares as $share) {
-                        $percent = (float) $share->share_percent;
-                        if ($percent > 0) {
-                            $partnerAmount = $amountToDistribute * ($percent / 100);
-                            \App\Models\PartnerTransaction::create([
-                                'farm_id' => $flock->farm_id,
-                                'partner_id' => $share->partner_id,
-                                'flock_id' => $flock->id,
-                                'transaction_date' => $data['close_date'] ?? now()->toDateString(),
-                                'transaction_type' => $transactionType,
-                                'amount' => $partnerAmount,
-                                'description' => ($transactionType === 'profit' ? 'أرباح' : 'خسائر') . ' الفوج: ' . $flock->name,
-                                'created_by' => $userId,
-                                'metadata' => [
-                                    'applied_share_percent' => $percent,
-                                    'flock_total_net' => $netProfit,
-                                    'flock_total_sales' => $totalSales,
-                                    'flock_total_expenses' => $totalExpenses
-                                ]
-                            ]);
+                    // Only enforce the 100% check if this farm actually uses the partner-shares
+                    // feature (some active share exists). Farms that never set up partners at all
+                    // keep their original behavior of skipping distribution entirely — we only
+                    // want to block closure for the actual bug case: shares exist but don't sum to
+                    // 100%, which used to silently distribute only part of the profit/loss and
+                    // leave the rest with no accounting record anywhere.
+                    if ($activeShares->isNotEmpty()) {
+                        $sharesTotal = round((float) $activeShares->sum('share_percent'), 2);
+                        if (abs($sharesTotal - 100.0) > 0.01) {
+                            throw new \Exception(
+                                "لا يمكن إغلاق الفوج — مجموع نسب حصص الشركاء الفعالة ({$sharesTotal}%) لا يساوي 100%. راجع صفحة الشركاء أولاً.",
+                                422
+                            );
                         }
+                    }
+
+                    $payableShares = $activeShares->filter(fn ($s) => (float) $s->share_percent > 0)->values();
+                    $shareCount = $payableShares->count();
+                    $distributed = 0.0;
+
+                    foreach ($payableShares as $index => $share) {
+                        $percent = (float) $share->share_percent;
+
+                        // Round every partner's cut to the cent; the last partner absorbs whatever
+                        // rounding remainder is left so the sum of all cuts always equals
+                        // $amountToDistribute exactly (no pennies silently created or lost).
+                        $partnerAmount = ($index === $shareCount - 1)
+                            ? round($amountToDistribute - $distributed, 2)
+                            : round($amountToDistribute * ($percent / 100), 2);
+                        $distributed += $partnerAmount;
+
+                        \App\Models\PartnerTransaction::create([
+                            'farm_id' => $flock->farm_id,
+                            'partner_id' => $share->partner_id,
+                            'flock_id' => $flock->id,
+                            'transaction_date' => $data['close_date'] ?? now()->toDateString(),
+                            'transaction_type' => $transactionType,
+                            'amount' => $partnerAmount,
+                            'description' => ($transactionType === 'profit' ? 'أرباح' : 'خسائر') . ' الفوج: ' . $flock->name,
+                            'created_by' => $userId,
+                            'metadata' => [
+                                'applied_share_percent' => $percent,
+                                'flock_total_net' => $netProfit,
+                                'flock_total_sales' => $totalSales,
+                                'flock_total_expenses' => $totalExpenses
+                            ]
+                        ]);
                     }
                 }
                 // ======= Stock Carry-Over / Settlement on Closure =======
@@ -153,12 +181,16 @@ class UpdateFlockAction
      */
     private function assertNoBlockingRecords(Flock $flock): void
     {
+        // Expenses only ever write 'unpaid'/'partial'/'paid' (the legacy 'debt' value was
+        // normalized away — see 2026_04_18_000525_normalize_expenses_payment_status.php).
         $unpaidExpenses = $flock->expenses()
-            ->whereIn('payment_status', ['unpaid', 'partial', 'debt'])
+            ->whereIn('payment_status', ['unpaid', 'partial'])
             ->count();
 
+        // Sales use 'debt' (not 'unpaid') as their unpaid value — see CreateSaleAction/
+        // UpdateSalePaymentAction and the chk_sales_payment_status CHECK constraint.
         $unpaidSales = $flock->sales()
-            ->whereIn('payment_status', ['unpaid', 'partial', 'debt'])
+            ->whereIn('payment_status', ['debt', 'partial'])
             ->count();
 
         // All expenses (even paid ones) block if missing unit_price/quantity details

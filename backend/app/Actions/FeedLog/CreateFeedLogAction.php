@@ -28,11 +28,14 @@ class CreateFeedLogAction
             $txnId = null;
 
             if ($warehouse) {
-                // Find or create WarehouseItem
+                // Find or create WarehouseItem, then re-fetch under a row lock so concurrent
+                // feed/medicine/shipment writes for the same item can't read a stale
+                // current_quantity/average_cost and lose each other's updates.
                 $warehouseItem = WarehouseItem::firstOrCreate(
                     ['warehouse_id' => $warehouse->id, 'item_id' => $data['item_id']],
                     ['farm_id' => $flock->farm_id, 'current_quantity' => 0, 'average_cost' => $item->default_cost ?? 0, 'created_by' => $userId, 'updated_by' => $userId]
                 );
+                $warehouseItem = WarehouseItem::where('id', $warehouseItem->id)->lockForUpdate()->first();
 
                 if ($warehouseItem->current_quantity < $realQty) {
                     $shortage = $realQty - $warehouseItem->current_quantity;
@@ -56,16 +59,21 @@ class CreateFeedLogAction
                         'original_quantity' => $shortageInputQty,
                         'computed_quantity' => $shortage,
                         'unit_price'        => $avgCost > 0 ? $avgCostPerInputUnit : null,
+                        'input_unit'        => $item->input_unit,
+                        'content_unit'      => $item->content_unit,
                         'total_amount'      => $totalCost > 0 ? $totalCost : null,
                         'created_by'        => $userId,
                         'updated_by'        => $userId,
                     ]);
 
-                    $feedCat = \App\Models\ExpenseCategory::where('code', 'feed')->first();
+                    $feedCat = \App\Models\ExpenseCategory::firstOrCreate(
+                        ['code' => 'feed', 'farm_id' => null],
+                        ['name' => 'علف', 'is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
+                    );
                     \App\Models\Expense::create([
                         'farm_id' => $flock->farm_id,
                         'flock_id' => $flock->id,
-                        'expense_category_id' => $feedCat ? $feedCat->id : 17,
+                        'expense_category_id' => $feedCat->id,
                         'entry_date' => $data['entry_date'] ?? now()->toDateString(),
                         'expense_type' => 'flock',
                         'quantity' => $shortageInputQty,
@@ -99,6 +107,8 @@ class CreateFeedLogAction
                     'original_quantity' => $data['quantity'],
                     'computed_quantity' => $realQty,
                     'unit_price'        => $avgCost > 0 ? $avgCost : null,
+                    'input_unit'        => $item->input_unit,
+                    'content_unit'      => $item->content_unit,
                     'total_amount'      => $consumptionCost > 0 ? $consumptionCost : null,
                     'created_by'        => $userId,
                     'updated_by'        => $userId,

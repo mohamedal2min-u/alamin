@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/Card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { AccountingSummary } from "@/lib/api/reports"
+import { formatCurrency } from "@/lib/utils"
 
 interface AccountingReportTabProps {
   data: AccountingSummary | null
@@ -21,19 +22,19 @@ export const AccountingReportTab = ({ data, isLoading }: AccountingReportTabProp
         <Card className="p-4 border-slate-100 shadow-sm border-r-4 border-r-primary-500">
           <span className="text-xs text-slate-500">التدفق النقدي (المحصل)</span>
           <div className="text-xl font-black text-primary-600 mt-1">
-            {data.cash_flow.total_received.toLocaleString()} <small className="text-[10px] font-normal">USD</small>
+            {formatCurrency(data.cash_flow.total_received)}
           </div>
         </Card>
         <Card className="p-4 border-slate-100 shadow-sm border-r-4 border-r-rose-500">
           <span className="text-xs text-slate-500">التدفق النقدي (المدفوع)</span>
           <div className="text-xl font-black text-rose-600 mt-1">
-            {data.cash_flow.total_paid.toLocaleString()} <small className="text-[10px] font-normal">USD</small>
+            {formatCurrency(data.cash_flow.total_paid)}
           </div>
         </Card>
         <Card className="p-4 border-slate-100 shadow-sm border-r-4 border-r-blue-500">
           <span className="text-xs text-slate-500">الرصيد النقدي الحالي</span>
           <div className={`text-xl font-black mt-1 ${data.cash_flow.balance >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>
-            {data.cash_flow.balance.toLocaleString()} <small className="text-[10px] font-normal">USD</small>
+            {formatCurrency(data.cash_flow.balance)}
           </div>
         </Card>
       </div>
@@ -51,7 +52,7 @@ export const AccountingReportTab = ({ data, isLoading }: AccountingReportTabProp
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} fontSize={10} />
                   <YAxis dataKey="category" type="category" width={110} fontSize={10} tick={{ fill: '#64748b' }} />
-                  <Tooltip formatter={(v: any) => [`${Number(v || 0).toLocaleString()} USD`, 'المبلغ']} />
+                  <Tooltip formatter={(v: any) => [formatCurrency(Number(v || 0)), 'المبلغ']} />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                     {data.expense_breakdown.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -76,7 +77,7 @@ export const AccountingReportTab = ({ data, isLoading }: AccountingReportTabProp
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="font-medium text-slate-500">مستحقات لنا (ديون المبيعات)</span>
-                      <span className="font-bold text-primary-600">{data.debts.receivables.toLocaleString()} USD</span>
+                      <span className="font-bold text-primary-600">{formatCurrency(data.debts.receivables)}</span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-2">
                       <div className="bg-primary-500 h-2 rounded-full transition-all duration-500" style={{ width: `${recPct}%` }} />
@@ -85,7 +86,7 @@ export const AccountingReportTab = ({ data, isLoading }: AccountingReportTabProp
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="font-medium text-slate-500">مستحقات علينا (ديون الموردين)</span>
-                      <span className="font-bold text-rose-600">{data.debts.payables.toLocaleString()} USD</span>
+                      <span className="font-bold text-rose-600">{formatCurrency(data.debts.payables)}</span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-2">
                       <div className="bg-rose-500 h-2 rounded-full transition-all duration-500" style={{ width: `${payPct}%` }} />

@@ -9,7 +9,7 @@ import {
 import { inventoryApi } from '@/lib/api/inventory'
 import { quickEntryApi } from '@/lib/api/quick-entry'
 import { mortalitiesApi } from '@/lib/api/mortalities'
-import { cn, formatNumber } from '@/lib/utils'
+import { cn, formatNumber, formatCurrency } from '@/lib/utils'
 import { Dialog } from '@/components/ui/Dialog'
 import type { InventoryItem } from '@/types/dashboard'
 
@@ -284,7 +284,7 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
                       : 'bg-emerald-50 border-emerald-100 text-emerald-700'
                   )}>
                     {Number(expPrice) > 0
-                      ? `الإجمالي: ${(Number(expQty) * Number(expPrice)).toFixed(2)} $`
+                      ? `الإجمالي: ${formatCurrency(Number(expQty) * Number(expPrice))}`
                       : 'بدون سعر — سيتم التسجيل كـ ذمم'}
                   </div>
                 )}

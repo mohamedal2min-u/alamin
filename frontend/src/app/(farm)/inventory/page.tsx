@@ -36,7 +36,7 @@ import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
 import { useIsReadOnly } from '@/lib/roles'
-import { formatNumber, formatDate, cn, toEnglishDigits } from '@/lib/utils'
+import { formatNumber, formatDate, cn, toEnglishDigits, formatCurrency } from '@/lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -1004,7 +1004,7 @@ function AddShipmentForm({
                   <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600 font-medium">
                     {missingPrice
                       ? 'السعر غير محدد — سيُسجَّل كدين وسيُرحَّل إلى الذمم والمراجعة تلقائياً.'
-                      : <>المبلغ غير المدفوع: <span className="font-black">{remaining.toFixed(2)} USD</span> — سيُرحَّل إلى الذمم والمراجعة تلقائياً.</>}
+                      : <>المبلغ غير المدفوع: <span className="font-black">{formatCurrency(remaining)}</span> — سيُرحَّل إلى الذمم والمراجعة تلقائياً.</>}
                   </div>
                 )}
               </div>
@@ -1141,8 +1141,8 @@ function MovementsTable({ transactions }: { transactions: InventoryTransaction[]
                 </td>
                 <td className="px-3 py-3 tabular-nums text-slate-700 whitespace-nowrap">{formatNumber(tx.original_quantity)} {tx.input_unit}</td>
                 <td className="px-3 py-3 tabular-nums text-slate-700 whitespace-nowrap">{formatNumber(tx.computed_quantity)} {tx.content_unit}</td>
-                <td className="px-3 py-3 tabular-nums text-slate-700 whitespace-nowrap">{tx.unit_price != null ? `${formatNumber(tx.unit_price)} USD` : '—'}</td>
-                <td className={`px-3 py-3 tabular-nums font-semibold whitespace-nowrap ${dir?.amountCls ?? 'text-slate-800'}`}>{tx.total_amount != null ? `${formatNumber(tx.total_amount)} USD` : '—'}</td>
+                <td className="px-3 py-3 tabular-nums text-slate-700 whitespace-nowrap">{tx.unit_price != null ? formatCurrency(tx.unit_price) : '—'}</td>
+                <td className={`px-3 py-3 tabular-nums font-semibold whitespace-nowrap ${dir?.amountCls ?? 'text-slate-800'}`}>{tx.total_amount != null ? formatCurrency(tx.total_amount) : '—'}</td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   {payment ? <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${payment.color}`}>{payment.label}</span> : '—'}
                 </td>
@@ -1351,12 +1351,12 @@ export default function InventoryPage() {
               />
               <KpiCard
                 label="مجموع المصاريف اليومية"
-                value={`${formatNumber(summary.today_expenses_total)} USD`}
-                sub={`الإجمالي الكلي: ${formatNumber(summary.all_expenses_total)} USD`}
+                value={formatCurrency(summary.today_expenses_total)}
+                sub={`الإجمالي الكلي: ${formatCurrency(summary.all_expenses_total)}`}
                 icon={DollarSign}
                 color="text-amber-700"
               />
-              <KpiCard label="صهاريج الماء للفوج الحالي" value={formatNumber(summary.water_tanks_count || 0)} sub={`التكلفة: ${formatNumber(summary.water_tanks_cost || 0)} USD`} icon={Droplets} color="text-cyan-600" />
+              <KpiCard label="صهاريج الماء للفوج الحالي" value={formatNumber(summary.water_tanks_count || 0)} sub={`التكلفة: ${formatCurrency(summary.water_tanks_cost || 0)}`} icon={Droplets} color="text-cyan-600" />
             </div>
           )}
 

@@ -16,7 +16,11 @@ class ShowFlockAction
         $flock = Flock::where('id', $flockId)
             ->where('farm_id', $farmId)
             ->withSum('mortalities', 'quantity')
-            ->withSum('expenses', 'total_amount')
+            ->withSum(['expenses as expenses_sum_total_amount' => function ($query) {
+                // Purchase-debt expenses (linked to an inventory purchase) are excluded — their
+                // cost is already counted via inventory_consumption_sum once the stock is consumed.
+                $query->whereNull('linked_inventory_transaction_id');
+            }], 'total_amount')
             ->withSum('waterLogs', 'total_amount')
             ->withSum(['inventoryTransactions as inventory_consumption_sum' => function ($query) {
                 $query->where('direction', 'out')->where('transaction_type', 'consumption');

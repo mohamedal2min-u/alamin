@@ -17,6 +17,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 import { Dialog } from '@/components/ui/Dialog'
+import { formatCurrency } from '@/lib/utils'
 import type { InventoryItem } from '@/types/dashboard'
 import { toast } from 'sonner'
 
@@ -369,7 +370,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
               )}>
                 <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', Number(expPrice) > 0 ? 'bg-primary-500' : 'bg-emerald-500')} />
                 {Number(expPrice) > 0
-                  ? `الإجمالي: ${(Number(expQty) * Number(expPrice)).toFixed(2)} $`
+                  ? `الإجمالي: ${formatCurrency(Number(expQty) * Number(expPrice))}`
                   : <>بدون سعر — سيُضاف إلى{' '}<Link href="/accounting?tab=review" className="underline hover:opacity-80">الذمم والمراجعة</Link></>}
               </div>
             )}
@@ -397,7 +398,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
             {(Number(waterQty) > 0 && Number(waterPrice) > 0) && (
               <div className="flex items-center gap-3 rounded-[1.25rem] px-4 py-3 text-[11px] font-bold border bg-sky-50/50 border-sky-100/50 text-sky-700">
                 <div className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
-                الإجمالي: {(Number(waterQty) * Number(waterPrice)).toFixed(2)} $
+                الإجمالي: {formatCurrency(Number(waterQty) * Number(waterPrice))}
               </div>
             )}
           </div>

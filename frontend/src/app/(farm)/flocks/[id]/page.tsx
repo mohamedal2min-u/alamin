@@ -18,7 +18,7 @@ import { WaterTab } from '@/components/flocks/tabs/WaterTab'
 import { NotesTab } from '@/components/flocks/tabs/NotesTab'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import { EditFlockModal } from '@/components/flocks/EditFlockModal'
-import { formatDate, formatNumber, cn } from '@/lib/utils'
+import { formatDate, formatNumber, cn, formatCurrency } from '@/lib/utils'
 import { useIsReadOnly } from '@/lib/roles'
 import type { Flock } from '@/types/flock'
 
@@ -243,7 +243,7 @@ export default function FlockDetailPage({
             </div>
             <p className="text-xl font-black text-primary-700">
               {flock.total_expenses 
-                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(flock.total_expenses)
+                ? formatCurrency(flock.total_expenses)
                 : '—'}
             </p>
           </CardContent>

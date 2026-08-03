@@ -7,7 +7,7 @@ import type { ReviewItem, ReviewReason, ReviewQueueFilters } from '@/lib/api/acc
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, formatCurrency } from '@/lib/utils'
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Wheat, Droplets, Pill, ShoppingCart, Package, Layers } from 'lucide-react'
 
 // ── Badge color map — single source of truth ──────────────────────────────────
@@ -344,9 +344,9 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                     )}
                   </span>
                 )}
-                <span>الإجمالي: <strong className="text-slate-700">{formatNumber(item.total_amount)}</strong></span>
-                <span>المدفوع: <strong className="text-slate-700">{formatNumber(item.paid_amount)}</strong></span>
-                <span>المتبقي: <strong className="text-red-600">{formatNumber(item.remaining_amount)}</strong></span>
+                <span>الإجمالي: <strong className="text-slate-700">{formatCurrency(item.total_amount)}</strong></span>
+                <span>المدفوع: <strong className="text-slate-700">{formatCurrency(item.paid_amount)}</strong></span>
+                <span>المتبقي: <strong className="text-red-600">{formatCurrency(item.remaining_amount)}</strong></span>
               </div>
             )}
           </div>
@@ -419,7 +419,7 @@ function CategoryCard({
       <div className={`text-sm font-bold ${colors.text}`}>{name}</div>
       {remainingAmount > 0 && (
         <div className="text-[11px] text-red-500 mt-1 font-medium">
-          متبقي: {formatNumber(remainingAmount)}
+          متبقي: {formatCurrency(remainingAmount)}
         </div>
       )}
     </button>

@@ -33,11 +33,12 @@ class CreateShipmentAction
                 default                                   => 'unpaid',
             };
 
-            // أضف للمستودع
+            // أضف للمستودع — أعد الجلب بقفل صف لمنع فقد التحديثات عند تزامن عمليات على نفس الصنف
             $warehouseItem = WarehouseItem::firstOrCreate(
                 ['warehouse_id' => $data['warehouse_id'], 'item_id' => $data['item_id'], 'farm_id' => $farmId],
                 ['current_quantity' => 0, 'status' => 'active']
             );
+            $warehouseItem = WarehouseItem::where('id', $warehouseItem->id)->lockForUpdate()->first();
 
             $unitValue      = max((float) $item->unit_value, 0.000001);
             $newCostPerBase = isset($data['unit_price'])
@@ -68,6 +69,10 @@ class CreateShipmentAction
                 'original_quantity' => $originalQty,
                 'computed_quantity' => $computedQty,
                 'unit_price'        => $data['unit_price'] ?? null,
+                // Snapshot the item's units as of now — editing the item's units later must not
+                // silently relabel this historical transaction.
+                'input_unit'        => $item->input_unit,
+                'content_unit'      => $item->content_unit,
                 'total_amount'      => $totalAmount,
                 'paid_amount'       => min($paidAmount, $totalAmount ?? $paidAmount),
                 'payment_status'    => $paymentStatus,

@@ -4,7 +4,7 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/lib/api/reports'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { formatDate, formatNumber } from '@/lib/utils'
+import { formatDate, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import { AlertCircle, FileText, TrendingUp, Bird, Wheat, Pill, DollarSign, Printer } from 'lucide-react'
 
 interface DailySummaryItem {
@@ -34,7 +34,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
   const allRecords: DailySummaryItem[] = data?.data ?? []
   
   // Filter for past days or today only (safety measure)
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = getTodayLocalISO()
   const filteredRecords = allRecords.filter(r => r.date <= todayStr)
   
   const visibleRecords = filteredRecords.slice(0, visibleCount)

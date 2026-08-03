@@ -5,6 +5,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { workerApi } from '@/lib/api/worker'
+import { getTodayLocalISO } from '@/lib/utils'
 
 interface TemperatureSheetProps {
   isOpen: boolean
@@ -37,7 +38,7 @@ export function TemperatureSheet({
     try {
       const tempNum = parseFloat(temperature)
       await workerApi.logTemperature(flockId, {
-        log_date: new Date().toISOString().split('T')[0],
+        log_date: getTodayLocalISO(),
         time_of_day: timeOfDay,
         temperature: tempNum,
       })

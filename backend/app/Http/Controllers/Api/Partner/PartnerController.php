@@ -90,7 +90,9 @@ class PartnerController extends Controller
             // 1. Ensure admin partner exists and has enough share
             $partnerService = app(\App\Services\Partner\PartnerService::class);
             $adminPartner   = $partnerService->ensureManagerPartnerExists($farmId);
-            $adminShareRecord = $adminPartner->shares()->where('is_active', true)->first();
+            // Lock the admin's share row so two concurrent "create partner" requests can't both
+            // read the same admin balance and both deduct from it (lost update).
+            $adminShareRecord = $adminPartner->shares()->where('is_active', true)->lockForUpdate()->first();
             $adminShare = $adminShareRecord ? $adminShareRecord->share_percent : 0;
 
             // if ($sharePercent > 0 && \App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->exists()) {
@@ -195,6 +197,11 @@ class PartnerController extends Controller
         ]);
 
         return DB::transaction(function () use ($partner, $validated, $farmId, $creatorUserId) {
+            // Lock this partner's row for the duration of the transaction so two concurrent
+            // requests updating the same partner's share can't both read "no active share yet"
+            // and both insert one — which would pay that partner's profit/loss share twice.
+            $partner = Partner::where('id', $partner->id)->lockForUpdate()->firstOrFail();
+
             // Override status based on share percent
             if (isset($validated['share_percent'])) {
                 $validated['status'] = floatval($validated['share_percent']) <= 0 ? 'inactive' : 'active';
@@ -219,7 +226,9 @@ class PartnerController extends Controller
             // Handle Share Updates
             if (isset($validated['share_percent'])) {
                 $newShare = floatval($validated['share_percent']);
-                $partnerShareRecord = $partner->shares()->where('is_active', true)->first();
+                // $partner itself is already locked above, but this row may not exist yet on the
+                // first share assignment — the $partner-row lock is what actually serializes that case.
+                $partnerShareRecord = $partner->shares()->where('is_active', true)->lockForUpdate()->first();
                 $currentShare = $partnerShareRecord ? floatval($partnerShareRecord->share_percent) : 0;
                 
                 $shareDifference = $newShare - $currentShare; // if positive, we need more from admin
@@ -233,7 +242,7 @@ class PartnerController extends Controller
                     
                     // Don't modify if this IS the admin
                     if ($adminPartner->id !== $partner->id) {
-                        $adminShareRecord = $adminPartner->shares()->where('is_active', true)->first();
+                        $adminShareRecord = $adminPartner->shares()->where('is_active', true)->lockForUpdate()->first();
                         $adminShare = floatval($adminShareRecord->share_percent);
                         
                         if ($adminShare - $shareDifference < 0) {
@@ -303,13 +312,13 @@ class PartnerController extends Controller
             }
 
             // Revert share to admin
-            $partnerShareRecord = $partner->shares()->where('is_active', true)->first();
+            $partnerShareRecord = $partner->shares()->where('is_active', true)->lockForUpdate()->first();
             if ($partnerShareRecord && $partnerShareRecord->share_percent > 0) {
                 // if (\App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->exists()) {
                 //     abort(422, 'لا يمكن حذف شريك (لديه حصة نشطة) أثناء وجود فوج نشط. يرجى إغلاق الفوج أولاً.');
                 // }
-                
-                $adminShareRecord = $adminPartner->shares()->where('is_active', true)->first();
+
+                $adminShareRecord = $adminPartner->shares()->where('is_active', true)->lockForUpdate()->first();
                 $adminShareRecord->update([
                     'share_percent' => floatval($adminShareRecord->share_percent) + floatval($partnerShareRecord->share_percent),
                     'updated_by' => $creatorUserId

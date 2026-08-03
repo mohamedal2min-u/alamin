@@ -12,6 +12,11 @@ class UpdateSalePaymentAction
     public function execute(Sale $sale, int $userId, array $data): Sale
     {
         $receivedAmount  = (float) $data['received_amount'];
+
+        if ($receivedAmount > (float) $sale->net_amount) {
+            throw new \Exception('المبلغ المستلم أكبر من صافي قيمة البيع — لا يمكن أن تتجاوز الدفعة المبلغ المستحق', 422);
+        }
+
         $remainingAmount = round($sale->net_amount - $receivedAmount, 2);
 
         $paymentStatus = match (true) {

@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { mortalitiesApi } from '@/lib/api/mortalities'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { formatDate } from '@/lib/utils'
+import { formatDate, getTodayLocalISO } from '@/lib/utils'
 import { useState } from 'react'
 import type { FlockStatus } from '@/types/flock'
 import type { Mortality } from '@/types/mortality'
@@ -48,7 +48,7 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { entry_date: new Date().toISOString().split('T')[0] },
+    defaultValues: { entry_date: getTodayLocalISO()},
   })
 
   const onSubmit = async (data: FormData) => {
@@ -60,7 +60,7 @@ export function MortalitiesTab({ flockId, flockStatus }: MortalitiesTabProps) {
         reason:     data.reason || undefined,
         notes:      data.notes  || undefined,
       })
-      reset({ entry_date: new Date().toISOString().split('T')[0] })
+      reset({ entry_date: getTodayLocalISO()})
       setShowForm(false)
       queryClient.invalidateQueries({ queryKey: ['mortalities', flockId] })
     } catch (err: unknown) {

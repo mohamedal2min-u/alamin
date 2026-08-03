@@ -1,7 +1,7 @@
 'use client'
 
 import { X, Skull, Wheat, Syringe, Receipt, FileText, Droplets } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import type {
   TodayMortalityEntry,
   TodayFeedEntry,
@@ -141,7 +141,7 @@ export function DayEntriesModal({ type, date, summary, onClose }: Props) {
           <span className="text-xs font-bold text-slate-400">{cfg.totalLabel}</span>
           <span className={cn('text-xl font-black tabular-nums', cfg.color)}>
             {type === 'expense'
-              ? `$${Number(total).toFixed(2)}`
+              ? formatCurrency(Number(total))
               : `${total} ${cfg.unit}`}
           </span>
         </div>
@@ -219,7 +219,7 @@ export function DayEntriesModal({ type, date, summary, onClose }: Props) {
                     cfg.iconBg, cfg.color
                   )}>
                     {type === 'expense'
-                      ? `$${Number((entry as TodayExpenseEntry).total_amount).toFixed(2)}`
+                      ? formatCurrency(Number((entry as TodayExpenseEntry).total_amount))
                       : type === 'mortality'
                       ? `${(entry as TodayMortalityEntry).quantity}`
                       : type === 'water'

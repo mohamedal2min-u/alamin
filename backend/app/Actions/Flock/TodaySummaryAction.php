@@ -61,9 +61,13 @@ class TodaySummaryAction
             ->get(['quantity', 'unit_label', 'created_at']);
 
         // Exclude the two one-off capital categories (chick purchase, inventory purchase) —
-        // they're the only categories with no code, so that's what identifies them here.
+        // they're the only categories with no code, so that's what identifies them here — and
+        // purchase-debt expenses linked to an inventory purchase (feed/medicine shipments or
+        // shortage auto-purchases), whose cost already shows up in the feed/medicine/water
+        // totals above once the stock is consumed, to avoid double-counting it here too.
         $expenses = Expense::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)
+            ->whereNull('linked_inventory_transaction_id')
             ->whereHas('expenseCategory', fn ($q) => $q->whereNotNull('code'))
             ->get(['expense_type', 'total_amount', 'created_at']);
 

@@ -8,7 +8,7 @@ import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { PaymentStatusBadge } from '@/components/sales/PaymentStatusBadge'
 import { UpdatePaymentDialog } from '@/components/sales/UpdatePaymentDialog'
-import { formatDate, formatNumber } from '@/lib/utils'
+import { formatDate, formatNumber, formatCurrency } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
 import type { Flock } from '@/types/flock'
 
@@ -93,9 +93,9 @@ export default function SalesPage() {
       {/* Summary cards */}
       {!loading && !error && sales.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <SummaryCard label="إجمالي الصافي"   value={formatNumber(Number(totalNet.toFixed(2)))} />
-          <SummaryCard label="إجمالي المستلم"  value={formatNumber(Number(totalReceived.toFixed(2)))} accent="emerald" />
-          <SummaryCard label="إجمالي المتبقي"  value={formatNumber(Number(totalRemaining.toFixed(2)))} accent={totalRemaining > 0 ? 'red' : 'slate'} />
+          <SummaryCard label="إجمالي الصافي"   value={formatCurrency(totalNet)} />
+          <SummaryCard label="إجمالي المستلم"  value={formatCurrency(totalReceived)} accent="emerald" />
+          <SummaryCard label="إجمالي المتبقي"  value={formatCurrency(totalRemaining)} accent={totalRemaining > 0 ? 'red' : 'slate'} />
         </div>
       )}
 
@@ -138,10 +138,10 @@ export default function SalesPage() {
                     <td className="px-5 py-3 font-medium text-slate-800">{sale.buyer_name ?? '—'}</td>
                     <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(totalBirds)}</td>
                     <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(Number(totalWeight.toFixed(1)))}</td>
-                    <td className="px-5 py-3 tabular-nums font-semibold text-slate-900">{formatNumber(Number(sale.net_amount))}</td>
-                    <td className="px-5 py-3 tabular-nums text-primary-700 font-medium">{formatNumber(Number(sale.received_amount))}</td>
+                    <td className="px-5 py-3 tabular-nums font-semibold text-slate-900">{formatCurrency(Number(sale.net_amount))}</td>
+                    <td className="px-5 py-3 tabular-nums text-primary-700 font-medium">{formatCurrency(Number(sale.received_amount))}</td>
                     <td className={`px-5 py-3 tabular-nums font-medium ${sale.remaining_amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                      {formatNumber(Number(sale.remaining_amount))}
+                      {formatCurrency(Number(sale.remaining_amount))}
                     </td>
                     <td className="px-5 py-3">
                       <PaymentStatusBadge status={sale.payment_status} />

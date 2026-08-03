@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/Input'
 import { flocksApi } from '@/lib/api/flocks'
 import { inventoryApi } from '@/lib/api/inventory'
 import { accountingApi } from '@/lib/api/accounting'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, getTodayLocalISO } from '@/lib/utils'
 import type { Flock } from '@/types/flock'
 
 const schema = z.object({
@@ -66,12 +66,12 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      close_date: new Date().toISOString().split('T')[0],
+      close_date: getTodayLocalISO(),
     },
   })
 
   const handleClose = () => {
-    reset({ close_date: new Date().toISOString().split('T')[0] })
+    reset({ close_date: getTodayLocalISO() })
     setServerError(null)
     setStockAction(null)
     onClose()
@@ -242,7 +242,7 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
           id="close_date"
           label="تاريخ الإغلاق"
           type="date"
-          max={new Date().toISOString().split('T')[0]}
+          max={getTodayLocalISO()}
           error={errors.close_date?.message}
           required
         />

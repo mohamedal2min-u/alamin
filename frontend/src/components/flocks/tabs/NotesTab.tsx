@@ -8,7 +8,7 @@ import { Plus, StickyNote, AlertCircle } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { flockNotesApi } from '@/lib/api/flockNotes'
 import { Button } from '@/components/ui/Button'
-import { formatDate, cn } from '@/lib/utils'
+import { formatDate, cn, getTodayLocalISO } from '@/lib/utils'
 import type { FlockNote, NoteType } from '@/types/flockNote'
 import type { FlockStatus } from '@/types/flock'
 
@@ -63,12 +63,12 @@ export function NotesTab({ flockId, flockStatus }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       note_type:  'general',
-      entry_date: new Date().toISOString().split('T')[0],
+      entry_date: getTodayLocalISO(),
     },
   })
 
   const handleCancel = () => {
-    reset({ note_type: 'general', entry_date: new Date().toISOString().split('T')[0] })
+    reset({ note_type: 'general', entry_date: getTodayLocalISO() })
     setServerError(null)
     setShowForm(false)
   }
@@ -157,7 +157,7 @@ export function NotesTab({ flockId, flockStatus }: Props) {
                 {...register('entry_date')}
                 id="note_entry_date"
                 type="date"
-                max={new Date().toISOString().split('T')[0]}
+                max={getTodayLocalISO()}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
               />
               {errors.entry_date && (

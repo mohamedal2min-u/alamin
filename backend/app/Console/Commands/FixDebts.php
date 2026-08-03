@@ -13,7 +13,7 @@ class FixDebts extends Command
      *
      * @var string
      */
-    protected $signature = 'app:fix-debts';
+    protected $signature = 'app:fix-debts {--force : Actually write the changes. Without this flag the command only reports what it WOULD change.}';
 
     /**
      * The console command description.
@@ -35,6 +35,14 @@ class FixDebts extends Command
 
         $this->info("Active flock ID: " . $flock->id);
 
+        $force = (bool) $this->option('force');
+        if (! $force) {
+            $this->warn("Dry-run mode (no --force): reporting what WOULD change without writing anything.");
+            $this->warn("This command force-resets payment_status/paid_amount to unpaid/0 for EVERY matching row,");
+            $this->warn("including rows that are already legitimately paid/partial — re-run with --force only");
+            $this->warn("after confirming the reported rows are actually corrupted, not real payment history.");
+        }
+
         $tables = [
             'expenses',
             'water_logs',
@@ -48,19 +56,25 @@ class FixDebts extends Command
 
             // 1. Convert to unpaid
             if (\Schema::hasColumn($table, 'payment_status')) {
-                $updateData = [
-                    'payment_status' => 'unpaid',
-                    'paid_amount' => 0
-                ];
-                if (\Schema::hasColumn($table, 'remaining_amount')) {
-                    $updateData['remaining_amount'] = DB::raw('total_amount');
-                }
-                
-                $count = DB::table($table)
+                $matching = DB::table($table)
                     ->where('flock_id', $flock->id)
-                    ->where('payment_status', '!=', 'unpaid')
-                    ->update($updateData);
-                $this->info("Updated {$count} records in {$table} to unpaid.");
+                    ->where('payment_status', '!=', 'unpaid');
+
+                if ($force) {
+                    $updateData = [
+                        'payment_status' => 'unpaid',
+                        'paid_amount' => 0
+                    ];
+                    if (\Schema::hasColumn($table, 'remaining_amount')) {
+                        $updateData['remaining_amount'] = DB::raw('total_amount');
+                    }
+
+                    $count = $matching->update($updateData);
+                    $this->info("Updated {$count} records in {$table} to unpaid.");
+                } else {
+                    $count = $matching->count();
+                    $this->info("Would update {$count} records in {$table} to unpaid (dry-run).");
+                }
             }
 
             // 2. Fix arabic digits
@@ -78,16 +92,18 @@ class FixDebts extends Command
                 }
 
                 if (!empty($updates)) {
-                    DB::table($table)->where('id', $record->id)->update($updates);
+                    if ($force) {
+                        DB::table($table)->where('id', $record->id)->update($updates);
+                    }
                     $fixed++;
                 }
             }
             if ($fixed > 0) {
-                $this->info("Fixed Arabic digits in {$fixed} records of {$table}.");
+                $this->info(($force ? "Fixed" : "Would fix") . " Arabic digits in {$fixed} records of {$table}.");
             }
         }
 
-        $this->info("Done fixing debts.");
+        $this->info($force ? "Done fixing debts." : "Dry-run complete. Re-run with --force to apply.");
     }
 
     private function toEnglishDigits($str) {

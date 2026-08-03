@@ -9,7 +9,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { salesApi } from '@/lib/api/sales'
-import { formatNumber } from '@/lib/utils'
+import { formatCurrency, getTodayLocalISO } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      sale_date:       new Date().toISOString().split('T')[0],
+      sale_date:       getTodayLocalISO(),
       discount_amount: 0,
       received_amount: 0,
       items: [{ birds_count: undefined as unknown as number, total_weight_kg: undefined as unknown as number, unit_price_per_kg: undefined as unknown as number }],
@@ -221,7 +221,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
 
                   {lineTotal > 0 && (
                     <p className="text-end text-xs font-semibold text-slate-600">
-                      إجمالي السطر: <span className="tabular-nums">{formatNumber(Number(lineTotal.toFixed(2)))}</span>
+                      إجمالي السطر: <span className="tabular-nums">{formatCurrency(lineTotal)}</span>
                     </p>
                   )}
                 </div>
@@ -259,27 +259,27 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm space-y-1.5">
             <div className="flex justify-between text-slate-500">
               <span>الإجمالي قبل الخصم</span>
-              <span className="tabular-nums">{formatNumber(Number(gross.toFixed(2)))}</span>
+              <span className="tabular-nums">{formatCurrency(gross)}</span>
             </div>
             {watchDiscount > 0 && (
               <div className="flex justify-between text-emerald-700">
                 <span>الخصم</span>
-                <span className="tabular-nums">- {formatNumber(Number(watchDiscount.toFixed(2)))}</span>
+                <span className="tabular-nums">- {formatCurrency(watchDiscount)}</span>
               </div>
             )}
             <div className="flex justify-between border-t border-slate-100 pt-1.5 font-semibold text-slate-900">
               <span>الصافي</span>
-              <span className="tabular-nums">{formatNumber(Number(net.toFixed(2)))}</span>
+              <span className="tabular-nums">{formatCurrency(net)}</span>
             </div>
             {watchReceived > 0 && (
               <div className="flex justify-between text-primary-700">
                 <span>المستلم</span>
-                <span className="tabular-nums">{formatNumber(Number(watchReceived.toFixed(2)))}</span>
+                <span className="tabular-nums">{formatCurrency(watchReceived)}</span>
               </div>
             )}
             <div className={`flex justify-between font-semibold ${remaining > 0 ? 'text-red-600' : 'text-primary-700'}`}>
               <span>المتبقي</span>
-              <span className="tabular-nums">{formatNumber(Number(remaining.toFixed(2)))}</span>
+              <span className="tabular-nums">{formatCurrency(remaining)}</span>
             </div>
           </div>
         )}

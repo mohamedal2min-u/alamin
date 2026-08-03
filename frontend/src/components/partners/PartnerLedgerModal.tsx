@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
+import { getTodayLocalISO, formatCurrency } from '@/lib/utils'
 
 interface PartnerLedgerModalProps {
   isOpen: boolean
@@ -25,8 +26,19 @@ const TRANSACTION_CONFIG: Record<string, { label: string; color: string; bgColor
   withdraw:   { label: 'سحب رصيد',     color: 'text-rose-600',    bgColor: 'bg-rose-50',     icon: ArrowUpRight,   sign: '-' },
   profit:     { label: 'أرباح فوج',    color: 'text-sky-600',     bgColor: 'bg-sky-50',      icon: TrendingUp,     sign: '+' },
   loss:       { label: 'خسائر فوج',    color: 'text-emerald-600',  bgColor: 'bg-emerald-50',   icon: TrendingDown,   sign: '-' },
-  settlement: { label: 'تسوية',        color: 'text-slate-600',   bgColor: 'bg-slate-50',    icon: Scale,          sign: '' },
+  // تسوية تنقص الرصيد الصافي (تُعامل مثل سحب).
+  settlement: { label: 'تسوية',        color: 'text-rose-600',    bgColor: 'bg-rose-50',    icon: Scale,          sign: '-' },
+  // "تعديل" ليس له اتجاه ثابت (تصحيح يدوي قد يزيد أو ينقص) — يُعرض بلا إشارة ولا يُحتسب ضمن الرصيد.
   adjustment: { label: 'تعديل',        color: 'text-indigo-600',  bgColor: 'bg-indigo-50',   icon: Scale,          sign: '' },
+}
+
+// الأنواع التي تُحتسب ضمن الرصيد الصافي، مع إشارتها. 'adjustment' مستثنى عمداً لعدم وجود اتجاه ثابت له.
+const BALANCE_SIGN: Record<string, 1 | -1> = {
+  deposit: 1,
+  profit: 1,
+  withdraw: -1,
+  loss: -1,
+  settlement: -1,
 }
 
 export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerModalProps) => {
@@ -38,7 +50,7 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
     transaction_type: 'deposit' as 'deposit' | 'withdraw' | 'settlement',
     amount: '',
     description: '',
-    transaction_date: new Date().toISOString().split('T')[0]
+    transaction_date: getTodayLocalISO()
   })
   
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -58,7 +70,7 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
         transaction_type: 'deposit',
         amount: '',
         description: '',
-        transaction_date: new Date().toISOString().split('T')[0]
+        transaction_date: getTodayLocalISO()
       })
       setSuccessMsg('تم تسجيل العملية المالية بنجاح ✓')
       setTimeout(() => setSuccessMsg(''), 4000)
@@ -90,10 +102,8 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
 
   // Calculate balances
   const balance = transactions.reduce((acc: number, t: PartnerTransaction) => {
-    const amount = Number(t.amount)
-    if (['deposit', 'profit'].includes(t.transaction_type)) return acc + amount
-    if (['withdraw', 'loss'].includes(t.transaction_type)) return acc - amount
-    return acc
+    const sign = BALANCE_SIGN[t.transaction_type]
+    return sign ? acc + sign * Number(t.amount) : acc
   }, 0)
 
   const totalDeposits = transactions
@@ -191,19 +201,19 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
                 <div className="bg-slate-900 rounded-xl p-4 text-white">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">الرصيد الصافي</p>
                   <p className={`text-xl sm:text-2xl font-black font-mono ${balance >= 0 ? 'text-primary-400' : 'text-rose-400'}`}>
-                    ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    {formatCurrency(balance)}
                   </p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-xl p-4">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">إجمالي الإيداع</p>
                   <p className="text-xl font-black text-primary-600 font-mono">
-                    ${totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    {formatCurrency(totalDeposits)}
                   </p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-xl p-4">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">إجمالي السحب</p>
                   <p className="text-xl font-black text-rose-600 font-mono">
-                    ${totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    {formatCurrency(totalWithdrawals)}
                   </p>
                 </div>
               </div>
@@ -213,7 +223,7 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
                 <h2 className="text-xl font-black">كشف حساب مالي</h2>
                 <p className="text-sm font-bold mt-1">الشريك: {partner.name}</p>
                 <p className="text-xs text-slate-500 mt-1">تاريخ الاستخراج: {format(new Date(), 'dd MMMM yyyy', { locale: ar })}</p>
-                <p className="text-sm font-bold mt-2">الرصيد الصافي: ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                <p className="text-sm font-bold mt-2">الرصيد الصافي: {formatCurrency(balance)}</p>
               </div>
 
               {/* Transactions */}
@@ -249,9 +259,9 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
                             <p className="text-[11px] text-slate-400 truncate">{t.description || t.transaction_date}</p>
                           </div>
                           <p className={`font-mono font-bold text-sm shrink-0 ${
-                            ['deposit', 'profit'].includes(t.transaction_type) ? 'text-primary-600' : 'text-rose-600'
+                            BALANCE_SIGN[t.transaction_type] === 1 ? 'text-primary-600' : BALANCE_SIGN[t.transaction_type] === -1 ? 'text-rose-600' : config.color
                           }`}>
-                            {config.sign}{Number(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            {config.sign}{formatCurrency(Number(t.amount))}
                           </p>
                         </div>
                       )
@@ -291,9 +301,9 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
                               </td>
                               <td className="px-4 py-3 text-slate-600 text-xs max-w-[200px] truncate">{t.description || '-'}</td>
                               <td className={`px-4 py-3 font-mono font-bold text-left ${
-                                ['deposit', 'profit'].includes(t.transaction_type) ? 'text-primary-600' : 'text-rose-600'
+                                BALANCE_SIGN[t.transaction_type] === 1 ? 'text-primary-600' : BALANCE_SIGN[t.transaction_type] === -1 ? 'text-rose-600' : config.color
                               }`}>
-                                {config.sign}{Number(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                {config.sign}{formatCurrency(Number(t.amount))}
                               </td>
                             </tr>
                           )

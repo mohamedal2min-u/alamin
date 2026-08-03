@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { FlockReport } from "@/lib/api/reports"
 import { CalendarDays, Skull, TrendingUp, DollarSign, Scale, Utensils, Info } from "lucide-react"
+import { formatCurrency } from "@/lib/utils"
 
 interface FlockReportTabProps {
   data: FlockReport | null
@@ -134,25 +135,25 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
             <div className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">إجمالي المبيعات</span>
-                    <span className="font-bold text-primary-600">$ {data.financial.total_sales.toLocaleString()}</span>
+                    <span className="font-bold text-primary-600">{formatCurrency(data.financial.total_sales)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">تكلفة العلف</span>
-                    <span className="font-bold text-emerald-700">$ {data.performance.feed_cost.toLocaleString()}</span>
+                    <span className="font-bold text-emerald-700">{formatCurrency(data.performance.feed_cost)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">تكلفة الدواء</span>
-                    <span className="font-bold text-slate-700">$ {data.performance.total_medicine_cost.toLocaleString()}</span>
+                    <span className="font-bold text-slate-700">{formatCurrency(data.performance.total_medicine_cost)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs border-b border-dashed pb-2">
                     <span className="text-slate-500">مصاريف أخرى</span>
                     <span className="font-bold text-slate-700">
-                      $ {Math.max(0, data.financial.total_expenses - data.performance.feed_cost - data.performance.total_medicine_cost).toLocaleString()}
+                      {formatCurrency(Math.max(0, data.financial.total_expenses - data.performance.feed_cost - data.performance.total_medicine_cost))}
                     </span>
                 </div>
                 <div className="flex justify-between items-center py-2">
                     <span className="text-xs font-bold text-slate-900">إجمالي المصروفات</span>
-                    <span className="text-sm font-black text-rose-600">$ {data.financial.total_expenses.toLocaleString()}</span>
+                    <span className="text-sm font-black text-rose-600">{formatCurrency(data.financial.total_expenses)}</span>
                 </div>
             </div>
 
@@ -167,7 +168,7 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
                 <span className={`text-2xl font-black ${
                     data.financial.is_profitable ? 'text-primary-700' : 'text-rose-700'
                 }`}>
-                    {Math.abs(data.financial.profit_loss).toLocaleString()} $
+                    {formatCurrency(Math.abs(data.financial.profit_loss))}
                 </span>
             </div>
         </Card>

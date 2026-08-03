@@ -49,11 +49,13 @@ class FixShipmentDebtCategories extends Command
                 continue;
             }
 
-            $correctCategory = ExpenseCategory::where('code', $code)->whereNull('farm_id')->first();
-
-            if (! $correctCategory) {
-                continue;
-            }
+            // Auto-create the target category if it's missing instead of silently skipping —
+            // previously this left every feed/medicine shipment debt stuck under the generic
+            // category forever whenever the real category hadn't been seeded yet.
+            $correctCategory = ExpenseCategory::firstOrCreate(
+                ['code' => $code, 'farm_id' => null],
+                ['name' => $item?->itemType?->name ?? $code, 'is_system' => true, 'is_active' => true]
+            );
 
             $expense->expense_category_id = $correctCategory->id;
             $expense->save();

@@ -13,14 +13,26 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
+import { formatCurrency } from '@/lib/utils'
 
 const TRANSACTION_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any; sign: '+' | '-' | '' }> = {
   deposit:    { label: 'إيداع نقدي',  color: 'text-primary-600', bgColor: 'bg-primary-50',  icon: ArrowDownLeft,  sign: '+' },
   withdraw:   { label: 'سحب رصيد',    color: 'text-rose-600',    bgColor: 'bg-rose-50',     icon: ArrowUpRight,   sign: '-' },
   profit:     { label: 'أرباح فوج',   color: 'text-sky-600',     bgColor: 'bg-sky-50',      icon: TrendingUp,     sign: '+' },
   loss:       { label: 'خسائر فوج',   color: 'text-emerald-600',  bgColor: 'bg-emerald-50',   icon: TrendingDown,   sign: '-' },
-  settlement: { label: 'تسوية',       color: 'text-slate-600',   bgColor: 'bg-slate-50',    icon: Scale,          sign: '' },
+  // تسوية تنقص الرصيد الصافي (تُعامل مثل سحب).
+  settlement: { label: 'تسوية',       color: 'text-rose-600',    bgColor: 'bg-rose-50',    icon: Scale,          sign: '-' },
+  // "تعديل" ليس له اتجاه ثابت (تصحيح يدوي قد يزيد أو ينقص) — يُعرض بلا إشارة ولا يُحتسب ضمن الرصيد.
   adjustment: { label: 'تعديل',       color: 'text-indigo-600',  bgColor: 'bg-indigo-50',   icon: Scale,          sign: '' },
+}
+
+// الأنواع التي تُحتسب ضمن الرصيد الصافي، مع إشارتها. 'adjustment' مستثنى عمداً لعدم وجود اتجاه ثابت له.
+const BALANCE_SIGN: Record<string, 1 | -1> = {
+  deposit: 1,
+  profit: 1,
+  withdraw: -1,
+  loss: -1,
+  settlement: -1,
 }
 
 export default function MyWalletPage() {
@@ -52,10 +64,8 @@ export default function MyWalletPage() {
   })
 
   const balance = transactions.reduce((acc: number, t: PartnerTransaction) => {
-    const amount = Number(t.amount)
-    if (['deposit', 'profit'].includes(t.transaction_type)) return acc + amount
-    if (['withdraw', 'loss'].includes(t.transaction_type)) return acc - amount
-    return acc
+    const sign = BALANCE_SIGN[t.transaction_type]
+    return sign ? acc + sign * Number(t.amount) : acc
   }, 0)
 
   const totalDeposits = transactions
@@ -63,7 +73,7 @@ export default function MyWalletPage() {
     .reduce((s: number, t: PartnerTransaction) => s + Number(t.amount), 0)
 
   const totalWithdrawals = transactions
-    .filter((t: PartnerTransaction) => ['withdraw', 'loss'].includes(t.transaction_type))
+    .filter((t: PartnerTransaction) => ['withdraw', 'loss', 'settlement'].includes(t.transaction_type))
     .reduce((s: number, t: PartnerTransaction) => s + Number(t.amount), 0)
 
   return (
@@ -95,19 +105,19 @@ export default function MyWalletPage() {
           <div className="bg-slate-900 rounded-2xl p-4 text-white col-span-3 sm:col-span-1">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">الرصيد الصافي</p>
             <p className={`text-2xl font-black font-mono ${balance >= 0 ? 'text-primary-400' : 'text-rose-400'}`}>
-              ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              {formatCurrency(balance)}
             </p>
           </div>
           <div className="bg-white border border-slate-100 rounded-2xl p-4 col-span-3 sm:col-span-1" style={{ boxShadow: 'var(--shadow-card)' }}>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">إجمالي الوارد</p>
             <p className="text-xl font-black text-primary-600 font-mono">
-              ${totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              {formatCurrency(totalDeposits)}
             </p>
           </div>
           <div className="bg-white border border-slate-100 rounded-2xl p-4 col-span-3 sm:col-span-1" style={{ boxShadow: 'var(--shadow-card)' }}>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">إجمالي الصادر</p>
             <p className="text-xl font-black text-rose-600 font-mono">
-              ${totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              {formatCurrency(totalWithdrawals)}
             </p>
           </div>
         </div>
@@ -156,8 +166,8 @@ export default function MyWalletPage() {
                       <p className={`text-xs font-bold ${config.color}`}>{config.label}</p>
                       <p className="text-[11px] text-slate-400 truncate">{t.description || t.transaction_date}</p>
                     </div>
-                    <p className={`font-mono font-bold text-sm shrink-0 ${['deposit', 'profit'].includes(t.transaction_type) ? 'text-primary-600' : 'text-rose-600'}`}>
-                      {config.sign}{Number(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    <p className={`font-mono font-bold text-sm shrink-0 ${BALANCE_SIGN[t.transaction_type] === 1 ? 'text-primary-600' : BALANCE_SIGN[t.transaction_type] === -1 ? 'text-rose-600' : config.color}`}>
+                      {config.sign}{formatCurrency(Number(t.amount))}
                     </p>
                   </div>
                 )
@@ -189,8 +199,8 @@ export default function MyWalletPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3 text-slate-600 text-xs max-w-[200px] truncate">{t.description || '-'}</td>
-                        <td className={`px-5 py-3 font-mono font-bold text-left ${['deposit', 'profit'].includes(t.transaction_type) ? 'text-primary-600' : 'text-rose-600'}`}>
-                          {config.sign}{Number(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        <td className={`px-5 py-3 font-mono font-bold text-left ${BALANCE_SIGN[t.transaction_type] === 1 ? 'text-primary-600' : BALANCE_SIGN[t.transaction_type] === -1 ? 'text-rose-600' : config.color}`}>
+                          {config.sign}{formatCurrency(Number(t.amount))}
                         </td>
                       </tr>
                     )
@@ -202,7 +212,7 @@ export default function MyWalletPage() {
             {/* Print header */}
             <div className="hidden print:block px-5 py-4 border-t border-slate-200 mt-4">
               <p className="text-xs text-slate-500">تاريخ الاستخراج: {format(new Date(), 'dd MMMM yyyy', { locale: ar })}</p>
-              <p className="text-sm font-bold mt-1">الرصيد الصافي: ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+              <p className="text-sm font-bold mt-1">الرصيد الصافي: {formatCurrency(balance)}</p>
             </div>
           </>
         )}

@@ -43,8 +43,15 @@ class GetDailySummaryAction
                 return \Carbon\Carbon::parse($item->entry_date)->toDateString();
             });
 
+        // Exclude the two one-off capital categories (chick purchase, generic inventory purchase —
+        // the only categories with no code) and purchase-debt expenses linked to an inventory
+        // purchase (their cost is already counted below via $dayFeedCost/$dayMedsCost once the
+        // stock is consumed) — matches TodaySummaryAction's filtering so the "today" tile and this
+        // daily-trend view never disagree on the same day's number.
         $expenses = Expense::where('flock_id', $flock->id)
             ->whereBetween('entry_date', [$startDate, $endDate])
+            ->whereNull('linked_inventory_transaction_id')
+            ->whereHas('expenseCategory', fn ($q) => $q->whereNotNull('code'))
             ->select('entry_date', DB::raw('SUM(total_amount) as total'))
             ->groupBy('entry_date')
             ->pluck('total', 'entry_date');

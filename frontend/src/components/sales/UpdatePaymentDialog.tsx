@@ -8,7 +8,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { salesApi } from '@/lib/api/sales'
-import { formatNumber } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
 
 const schema = z.object({
@@ -79,12 +79,12 @@ export function UpdatePaymentDialog({ sale, isOpen, onClose, onSuccess }: Props)
           <div className="flex justify-between text-slate-600">
             <span>الصافي</span>
             <span className="tabular-nums font-semibold text-slate-900">
-              {formatNumber(sale.net_amount)}
+              {formatCurrency(sale.net_amount)}
             </span>
           </div>
           <div className="flex justify-between text-slate-600">
             <span>المستلم الحالي</span>
-            <span className="tabular-nums">{formatNumber(sale.received_amount)}</span>
+            <span className="tabular-nums">{formatCurrency(sale.received_amount)}</span>
           </div>
         </div>
 
@@ -105,7 +105,7 @@ export function UpdatePaymentDialog({ sale, isOpen, onClose, onSuccess }: Props)
           <div className="flex justify-between text-slate-600">
             <span>المتبقي بعد التحديث</span>
             <span className={`tabular-nums font-semibold ${remaining > 0 ? 'text-red-600' : 'text-primary-700'}`}>
-              {formatNumber(Number(remaining.toFixed(2)))}
+              {formatCurrency(remaining)}
             </span>
           </div>
           <div className="flex justify-between text-slate-600">

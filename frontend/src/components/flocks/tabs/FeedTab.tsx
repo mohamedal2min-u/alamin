@@ -10,7 +10,7 @@ import { feedLogsApi } from '@/lib/api/feedLogs'
 import { inventoryApi } from '@/lib/api/inventory'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { formatDate, formatNumber } from '@/lib/utils'
+import { formatDate, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import type { FeedLog } from '@/types/feedLog'
 import type { InventoryItem } from '@/types/dashboard'
 import type { FlockStatus } from '@/types/flock'
@@ -67,7 +67,7 @@ export function FeedTab({ flockId, flockStatus }: Props) {
     defaultValues: {
       item_id:    undefined as unknown as number,
       quantity:   0,
-      entry_date: new Date().toISOString().split('T')[0],
+      entry_date: getTodayLocalISO(),
     },
   })
 
@@ -76,7 +76,7 @@ export function FeedTab({ flockId, flockStatus }: Props) {
   const isUnitBased = selectedItem && selectedItem.unit_value > 1
 
   const handleCancel = () => {
-    reset({ item_id: undefined as unknown as number, entry_date: new Date().toISOString().split('T')[0] })
+    reset({ item_id: undefined as unknown as number, entry_date: getTodayLocalISO() })
     setServerError(null)
     setBags(0)
     setExtraKg(0)
@@ -252,7 +252,7 @@ export function FeedTab({ flockId, flockStatus }: Props) {
               id="feed_entry_date"
               label="تاريخ الإدخال"
               type="date"
-              max={new Date().toISOString().split('T')[0]}
+              max={getTodayLocalISO()}
               error={errors.entry_date?.message}
               required
             />

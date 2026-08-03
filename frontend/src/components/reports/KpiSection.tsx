@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/Card"
 import { TrendingUp, TrendingDown, Package, Activity, Layers, DollarSign } from "lucide-react"
 import { type SummaryKpis } from "@/lib/api/reports"
+import { formatCurrency } from "@/lib/utils"
 
 interface KpiSectionProps {
   data: SummaryKpis | null
@@ -43,11 +44,8 @@ export const KpiSection = ({ data, isLoading }: KpiSectionProps) => {
           </div>
           <div className="mt-2">
             <span className="text-sm sm:text-lg font-bold text-slate-900 leading-none tabular-nums">
-              {item.isMoney ? item.value.toLocaleString() : item.value}
+              {item.isMoney ? formatCurrency(item.value) : item.value}
             </span>
-            {item.isMoney && (
-              <span className="text-[10px] mr-1 text-slate-400 font-medium">USD</span>
-            )}
           </div>
         </Card>
       ))}

@@ -5,6 +5,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { mortalitiesApi } from '@/lib/api/mortalities'
+import { getTodayLocalISO } from '@/lib/utils'
 
 interface MortalitySheetProps {
   isOpen: boolean
@@ -39,7 +40,7 @@ export function MortalitySheet({
       }
       
       await mortalitiesApi.create(flockId, {
-        entry_date: new Date().toISOString().split('T')[0],
+        entry_date: getTodayLocalISO(),
         quantity: qtyNum,
         reason: 'تسجيل الوردية - الياسين',
       })

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { flocksApi } from '@/lib/api/flocks'
+import { getTodayLocalISO, formatCurrency } from '@/lib/utils'
 
 // ── Validation ────────────────────────────────────────────────────────────────
 const createFlockSchema = z.object({
@@ -55,7 +56,7 @@ export default function CreateFlockPage() {
   } = useForm<CreateFlockForm>({
     resolver: zodResolver(createFlockSchema),
     defaultValues: {
-      start_date: new Date().toISOString().split('T')[0],
+      start_date: getTodayLocalISO(),
       initial_count: 0,
       chick_unit_price: '',
       chick_paid_amount: '',
@@ -173,7 +174,7 @@ export default function CreateFlockPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-400">إجمالي تكلفة الشراء التقديرية:</span>
                   <span className="text-lg font-black text-primary-700 dark:text-primary-400">
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalInvestment)}
+                    {formatCurrency(totalInvestment)}
                   </span>
                 </div>
               </div>

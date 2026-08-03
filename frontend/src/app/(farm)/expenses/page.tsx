@@ -12,7 +12,7 @@ import { expensesApi, type ExpenseItem, type ExpenseCategory } from '@/lib/api/e
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useIsReadOnly } from '@/lib/roles'
-import { formatDate, formatNumber } from '@/lib/utils'
+import { formatDate, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
@@ -83,12 +83,12 @@ export default function ExpensesPage() {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      entry_date:     new Date().toISOString().split('T')[0],
+      entry_date:     getTodayLocalISO(),
     },
   })
 
   const handleCancel = () => {
-    reset({ entry_date: new Date().toISOString().split('T')[0] })
+    reset({ entry_date: getTodayLocalISO() })
     setShowForm(false)
   }
 
@@ -174,7 +174,7 @@ export default function ExpensesPage() {
               id="exp_entry_date"
               label="تاريخ المصروف"
               type="date"
-              max={new Date().toISOString().split('T')[0]}
+              max={getTodayLocalISO()}
               error={errors.entry_date?.message}
               required
             />

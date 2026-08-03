@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { waterLogsApi } from '@/lib/api/waterLogs'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { formatDate, formatNumber } from '@/lib/utils'
+import { formatDate, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import type { WaterLog } from '@/types/waterLog'
 import type { FlockStatus } from '@/types/flock'
 
@@ -73,14 +73,14 @@ export function WaterTab({ flockId, flockStatus }: Props) {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      entry_date: new Date().toISOString().split('T')[0],
+      entry_date: getTodayLocalISO(),
       unit_label: 'صهريج',
       payment_status: 'paid',
     },
   })
 
   const handleCancel = () => {
-    reset({ entry_date: new Date().toISOString().split('T')[0], unit_label: 'صهريج', payment_status: 'paid' })
+    reset({ entry_date: getTodayLocalISO(), unit_label: 'صهريج', payment_status: 'paid' })
     setServerError(null)
     setShowForm(false)
   }
@@ -211,7 +211,7 @@ export function WaterTab({ flockId, flockStatus }: Props) {
               id="water_entry_date"
               label="تاريخ الإدخال"
               type="date"
-              max={new Date().toISOString().split('T')[0]}
+              max={getTodayLocalISO()}
               error={errors.entry_date?.message}
               required
             />

@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { ChevronDown, Bird, Wheat, Pill, Activity, Receipt } from 'lucide-react'
 import { HistoryDetailDialog } from './HistoryDetailDialog'
-import { cn } from '@/lib/utils'
+import { cn, getTodayLocalISO } from '@/lib/utils'
 
 interface HistoryDay {
   date: string
@@ -30,7 +30,7 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
   const [expanded, setExpanded] = useState(false)
   const [selectedDay, setSelectedDay] = useState<HistoryDay | null>(null)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getTodayLocalISO()
   const todayDay = history.find(day => day.date === today)
   const historyData = history.filter(day => day.date !== today)
   

@@ -49,7 +49,16 @@ class CreateSaleAction
                 ];
             }
 
+            if ($discountAmount > $grossAmount) {
+                throw new \Exception('مبلغ الخصم أكبر من إجمالي قيمة البيع', 422);
+            }
+
             $netAmount       = round($grossAmount - $discountAmount, 2);
+
+            if ($receivedAmount > $netAmount) {
+                throw new \Exception('المبلغ المستلم أكبر من صافي قيمة البيع — لا يمكن أن تتجاوز الدفعة المبلغ المستحق', 422);
+            }
+
             $remainingAmount = round($netAmount - $receivedAmount, 2);
 
             $paymentStatus = match (true) {

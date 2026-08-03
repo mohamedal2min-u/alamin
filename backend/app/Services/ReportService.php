@@ -24,9 +24,12 @@ class ReportService
         $activeFlock = Flock::where('farm_id', $farmId)->where('status', 'active')->first();
         
         $totalSales = Sale::where('farm_id', $farmId)->sum('net_amount');
-        
-        // $opExpenses includes "شراء كتاكيت" expense records — do NOT add total_chick_cost separately
-        $opExpenses = Expense::where('farm_id', $farmId)->sum('total_amount');
+
+        // $opExpenses includes "شراء كتاكيت" expense records — do NOT add total_chick_cost separately.
+        // Purchase-debt expenses (linked_inventory_transaction_id set, from shipments/auto-purchases)
+        // are excluded here: their cost is already counted once the stock is consumed via
+        // inventoryConsumptionCost() below, so including them too would double the cost.
+        $opExpenses = Expense::where('farm_id', $farmId)->whereNull('linked_inventory_transaction_id')->sum('total_amount');
         $inventoryCost = $this->inventoryConsumptionCost($farmId);
         $waterCost = FlockWaterLog::where('farm_id', $farmId)->sum('total_amount');
 
@@ -80,9 +83,11 @@ class ReportService
             ->sum('total_amount');
 
         $totalSales = $flock->sales()->sum('net_amount');
-        
-        // $opExpenses includes "شراء كتاكيت" expense record — do NOT add total_chick_cost separately
-        $opExpenses = $flock->expenses()->sum('total_amount');
+
+        // $opExpenses includes "شراء كتاكيت" expense record — do NOT add total_chick_cost separately.
+        // Purchase-debt expenses (linked_inventory_transaction_id set) are excluded: their cost is
+        // already counted via inventoryConsumptionCost() once the stock is consumed.
+        $opExpenses = $flock->expenses()->whereNull('linked_inventory_transaction_id')->sum('total_amount');
         $inventoryCost = $this->inventoryConsumptionCost($farmId, $flockId);
         $waterCost = FlockWaterLog::where('flock_id', $flockId)->sum('total_amount');
 
@@ -188,8 +193,13 @@ class ReportService
             $salesQuery->where('sale_date', '<=', $endDate);
         }
 
-        // opExpenses includes "شراء كتاكيت" expenses — do NOT add chickCost separately to avoid double-counting
-        $opExpenses = $expensesQuery->sum('total_amount');
+        // opExpensesAll = every expense (incl. purchase-debt liabilities) — used for payables/cash-flow.
+        // opExpenses = same, minus purchase-debt expenses (linked_inventory_transaction_id set) — used
+        // for the P&L total, since their cost is already counted once via inventoryConsumptionCost()
+        // when the stock is actually consumed. Including both would double the cost.
+        // opExpenses also includes "شراء كتاكيت" expenses — do NOT add chickCost separately.
+        $opExpensesAll = (clone $expensesQuery)->sum('total_amount');
+        $opExpenses = (clone $expensesQuery)->whereNull('linked_inventory_transaction_id')->sum('total_amount');
         $inventoryCost = $this->inventoryConsumptionCost($farmId, $flockId, $startDate, $endDate);
 
         // Water Costs
@@ -215,8 +225,11 @@ class ReportService
 
         $totalPaidEverything = $totalPaidExpenses + $waterPaid + $totalWithdrawals;
 
-        // Breakdown by category — same filters as the main query
+        // Breakdown by category — same filters as the main query. Purchase-debt expenses are
+        // excluded here too (see $opExpenses above), and their cost is represented instead by the
+        // "استهلاك المخزون" line below, so the breakdown always sums to summary.total_expenses.
         $categoryQuery = Expense::where('expenses.farm_id', $farmId)
+            ->whereNull('expenses.linked_inventory_transaction_id')
             ->join('expense_categories', 'expenses.expense_category_id', '=', 'expense_categories.id')
             ->select('expense_categories.name as category', DB::raw('SUM(total_amount) as amount'))
             ->groupBy('expense_categories.name');
@@ -232,6 +245,13 @@ class ReportService
         }
 
         $expensesByCategory = $categoryQuery->get();
+
+        if ($inventoryCost > 0) {
+            $expensesByCategory->push((object)[
+                'category' => 'استهلاك المخزون (علف/دواء)',
+                'amount' => (float) $inventoryCost
+            ]);
+        }
 
         if ($waterCost > 0) {
             $expensesByCategory->push((object)[
@@ -253,7 +273,7 @@ class ReportService
             ],
             'debts' => [
                 'receivables' => (float) ($totalSales - $totalReceivedSales),
-                'payables'    => (float) (($opExpenses - $totalPaidExpenses) + ($waterCost - $waterPaid)),
+                'payables'    => (float) (($opExpensesAll - $totalPaidExpenses) + ($waterCost - $waterPaid)),
             ],
             'expense_breakdown' => $expensesByCategory,
             'currency' => 'USD'

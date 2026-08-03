@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { inventoryApi } from '@/lib/api/inventory'
 import { quickEntryApi } from '@/lib/api/quick-entry'
 import type { InventoryItem } from '@/types/dashboard'
+import { getTodayLocalISO } from '@/lib/utils'
 
 interface FeedSheetProps {
   isOpen: boolean
@@ -75,7 +76,7 @@ export function FeedSheet({
       }
       
       await quickEntryApi.logFeed(flockId, {
-        entry_date: new Date().toISOString().split('T')[0],
+        entry_date: getTodayLocalISO(),
         item_id: Number(itemId),
         quantity: qtyNum,
       })

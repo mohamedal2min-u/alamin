@@ -7,7 +7,7 @@ import {
   Wallet, AlertCircle, Plus, Layers, CircleDollarSign,
   AlertTriangle, CheckCircle, ChevronDown, ChevronUp,
 } from 'lucide-react'
-import { formatDate, formatNumber, cn } from '@/lib/utils'
+import { formatDate, formatNumber, cn, getTodayLocalISO } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import type { FlockStatus } from '@/types/flock'
@@ -35,10 +35,11 @@ const PAYMENT_BADGE: Record<string, { label: string; color: string }> = {
   paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
   partial: { label: 'جزئي',      color: 'bg-emerald-100 text-emerald-700' },
   unpaid:  { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
+  // Legacy value some old records may still carry — same treatment as 'unpaid'.
   debt:    { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
 }
 
-const today = new Date().toISOString().split('T')[0]
+const today = getTodayLocalISO()
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -579,8 +580,10 @@ function CustomExpenseForm({
 // ── Expense Row ──────────────────────────────────────────────────────────────
 
 function ExpenseRow({ expense }: { expense: ExpenseItem }) {
-  const statusObj = PAYMENT_BADGE[expense.payment_status] ?? PAYMENT_BADGE.paid
   const isDebt = expense.payment_status === 'unpaid' || expense.payment_status === 'debt'
+  // Unknown/unmapped statuses must never fall back to the "paid" (green) badge — that would
+  // contradict isDebt above and show a debt as paid. Fall back to the unpaid badge instead.
+  const statusObj = PAYMENT_BADGE[expense.payment_status] ?? PAYMENT_BADGE.unpaid
   const name = expense.description || expense.category_name || expense.expense_type || 'مصروف'
 
   return (

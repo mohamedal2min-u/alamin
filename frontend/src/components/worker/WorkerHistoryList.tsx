@@ -106,12 +106,11 @@ export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'wo
             {/* Right: Title & Live Badge */}
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               <h4 className="text-[13px] font-black text-primary-950">ملخص اليوم</h4>
-              <div className="flex items-center gap-1.5 bg-primary-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black shadow-sm">
-                <span className="relative flex h-1.5 w-1.5">
+              <div className="flex items-center justify-center bg-primary-500 p-1.5 rounded-full shadow-sm">
+                <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                 </span>
-                <span>مباشر</span>
               </div>
             </div>
           </div>

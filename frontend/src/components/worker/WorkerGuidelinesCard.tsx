@@ -18,8 +18,10 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
   const { data: weather } = useQuery({
     queryKey: ['weather-kansafra'],
     queryFn: async () => {
-      // إحداثيات قرية كنصفرة كما حددها المستخدم عبر خرائط جوجل
-      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.66057&longitude=36.50465&current_weather=true')
+      // إحداثيات قرية كنصفرة كما حددها المستخدم عبر خرائط جوجل.
+      // نموذج ECMWF (الأوروبي) أقرب بشكل ملحوظ للطقس الفعلي بهذه المنطقة
+      // من النموذج الافتراضي (best_match)، الذي كان يعطي فرقاً بـ٣ درجات تقريباً.
+      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.66057&longitude=36.50465&current_weather=true&models=ecmwf_ifs025')
       return res.json()
     },
     staleTime: 15 * 60_000,

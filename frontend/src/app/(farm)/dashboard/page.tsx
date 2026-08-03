@@ -13,6 +13,7 @@ import { WorkerTaskChecklist } from '@/components/worker/WorkerTaskChecklist'
 import { WorkerHistoryList } from '@/components/worker/WorkerHistoryList'
 import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
 import { DayEntriesModal, type DayEntryType } from '@/components/dashboard/DayEntriesModal'
+import { FlockDaySelector } from '@/components/dashboard/FlockDaySelector'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
@@ -206,31 +207,12 @@ export default function DashboardPage() {
           {isActive && (
             <div className="space-y-4">
               {/* Date Selector */}
-              <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl shadow-sm">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400">
-                    <Calendar className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 mb-0.5">عرض بيانات يوم</p>
-                    <input 
-                      type="date" 
-                      value={viewDate}
-                      max={getTodayISO()}
-                      onChange={(e) => setViewDate(e.target.value)}
-                      className="bg-transparent text-sm font-black text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
-                    />
-                  </div>
-                </div>
-                {viewDate !== getTodayISO() && (
-                  <button 
-                    onClick={() => setViewDate(getTodayISO())}
-                    className="text-[10px] font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-500/10 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
-                  >
-                    العودة لليوم
-                  </button>
-                )}
-              </div>
+              <FlockDaySelector
+                startDate={currentFlock.start_date.slice(0, 10)}
+                selectedDate={viewDate}
+                onSelectDate={setViewDate}
+                maxDate={getTodayISO()}
+              />
 
               {/* Stat Grid Header */}
               <WorkerProgressHeader 

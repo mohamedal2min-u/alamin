@@ -1,4 +1,4 @@
-﻿// frontend/src/components/layout/BottomNav.tsx
+// frontend/src/components/layout/BottomNav.tsx
 'use client'
 
 import Link from 'next/link'
@@ -35,8 +35,8 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
 
   const regularItems = [
     { label: 'الوردية',  href: '/worker',    icon: ClipboardList },
-    { label: 'الأفواج',  href: '/flocks',    icon: Bird },
     { label: 'المخزون',  href: '/inventory', icon: Package },
+    { label: 'الأفواج',  href: '/flocks',    icon: Bird },
   ].filter(item => allowedHrefs.includes(item.href) && item.href !== homeHref)
 
   const renderItem = (item: { label: string, href: string, icon: any }) => {

@@ -150,16 +150,28 @@ function StockStatusBadge({ item }: { item: StockItem }) {
 
 // ── Material summary card ─────────────────────────────────────────────────────
 
-function MaterialCard({ title, items, color, icon: CardIcon, onEdit }: { title: string; items: StockItem[]; color: string; icon: typeof Package; onEdit?: (item: StockItem) => void }) {
+function MaterialCard({ title, items, color, icon: CardIcon, onOpen }: { title: string; items: StockItem[]; color: string; icon: typeof Package; onOpen: () => void }) {
   if (items.length === 0) return null
   const total    = items.reduce((s, i) => s + i.total_quantity, 0)
   const unit     = items[0]?.content_unit ?? ''
   const lowCount = items.filter(i => i.minimum_stock > 0 && i.total_quantity <= i.minimum_stock).length
   const iconBg = color.replace('text-', 'bg-').replace(/-700$/, '-50').replace(/-600$/, '-50')
+
+  const hasBags = items.some(i => i.unit_value > 1 && i.input_unit)
+  const firstInputUnit = items.find(i => i.unit_value > 1 && i.input_unit)?.input_unit || 'كيس'
+  const totalBags = items.reduce((sum, i) => sum + (i.unit_value > 1 ? i.total_quantity / i.unit_value : 0), 0)
+  const weightUnit = total >= 1000 && unit?.trim() === 'كيلو' ? 'طن' : unit
+  const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace('.00', '') : formatNumber(total)
+
   return (
-    <div className="group rounded-2xl border border-slate-200/60 bg-white transition-all duration-300 hover:shadow-md" style={{ boxShadow: 'var(--shadow-card)' }}>
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group w-full text-right rounded-2xl border border-slate-200/60 bg-white p-5 transition-all duration-300 hover:shadow-md hover:border-primary-200 active:scale-[0.99]"
+      style={{ boxShadow: 'var(--shadow-card)' }}
+    >
       {/* Card Header */}
-      <div className="flex items-center justify-between p-5 pb-3">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className={cn("rounded-xl p-2", iconBg)}>
             <CardIcon className={cn("h-4 w-4", color)} />
@@ -169,155 +181,57 @@ function MaterialCard({ title, items, color, icon: CardIcon, onEdit }: { title: 
             <p className="text-[10px] text-slate-400 font-medium">{items.length} صنف</p>
           </div>
         </div>
-        {lowCount > 0 && (
-          <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-600 border border-emerald-100">
-            <AlertTriangle className="h-3 w-3" />{lowCount} منخفض
-          </span>
-        )}
+        <span className="rounded-full bg-slate-50 border border-slate-100 px-2.5 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+          ملخص
+        </span>
       </div>
 
-      {/* Total */}
-      <div className="px-5 pb-4">
-        {(() => {
-          const hasBags = items.some(i => i.unit_value > 1 && i.input_unit)
-          if (hasBags) {
-            const firstInputUnit = items.find(i => i.unit_value > 1 && i.input_unit)?.input_unit || 'كيس'
-            const totalBags = items.reduce((sum, i) => sum + (i.unit_value > 1 ? i.total_quantity / i.unit_value : 0), 0)
-            const weightUnit = total >= 1000 && unit?.trim() === 'كيلو' ? 'طن' : unit
-            const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace('.00', '') : formatNumber(total)
-            
-            return (
-              <>
-                <p className={cn("text-3xl font-black tabular-nums leading-none tracking-tight", color)}>
-                  {formatNumber(totalBags)}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-[11px] font-semibold text-slate-400">{firstInputUnit}</p>
-                  <span className={cn("text-[10px] font-bold bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5", color)}>
-                    {displayWeight} {weightUnit}
-                  </span>
-                </div>
-              </>
-            )
-          }
-
-          const weightUnit = total >= 1000 && unit?.trim() === 'كيلو' ? 'طن' : unit
-          const displayWeight = total >= 1000 && unit?.trim() === 'كيلو' ? (total / 1000).toFixed(2).replace('.00', '') : formatNumber(total)
-
-          return (
+      {/* Total + Details link */}
+      <div className="flex items-end justify-between">
+        <div>
+          {hasBags ? (
+            <>
+              <p className={cn("text-3xl font-black tabular-nums leading-none tracking-tight", color)}>
+                {formatNumber(totalBags)}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-[11px] font-semibold text-slate-400">{firstInputUnit}</p>
+                <span className={cn("text-[10px] font-bold bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5", color)}>
+                  {displayWeight} {weightUnit}
+                </span>
+              </div>
+            </>
+          ) : (
             <>
               <p className={cn("text-3xl font-black tabular-nums leading-none tracking-tight", color)}>{displayWeight}</p>
               <p className="text-[11px] font-semibold text-slate-400 mt-0.5">{weightUnit}</p>
             </>
-          )
-        })()}
-      </div>
+          )}
+        </div>
 
-      {/* Items List */}
-      <div className="border-t border-slate-100">
-        {items.map((item, idx) => {
-          const pct = item.minimum_stock > 0 ? Math.min((item.total_quantity / item.minimum_stock) * 100, 100) : 100
-          const isLow = item.minimum_stock > 0 && item.total_quantity <= item.minimum_stock
-          return (
-            <div key={item.id} className={cn(
-              "flex flex-col gap-2.5 px-5 py-4 transition-colors hover:bg-slate-50/80",
-              idx < items.length - 1 && "border-b border-slate-50"
-            )}>
-              <div className="flex items-start justify-between gap-3 min-w-0">
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-bold text-slate-800 block truncate">{item.name}</span>
-                  {item.minimum_stock > 0 && (
-                    <div className="mt-2 h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all duration-500",
-                          isLow ? "bg-red-400" : "bg-emerald-500"
-                        )}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-                
-                {/* Temporary Edit Button as requested */}
-                {onEdit && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEdit(item)
-                    }}
-                    className="text-[10px] font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
-                  >
-                    تعديل
-                  </button>
-                )}
-              </div>
-
-              <div className="flex w-full rounded-xl border border-slate-200/80 overflow-hidden shadow-sm mt-1">
-                {/* Remaining Side */}
-                <div className={cn(
-                  "flex-1 p-2.5 text-center flex flex-col justify-center",
-                  isLow ? "bg-red-50/80" : "bg-white"
-                )}>
-                    <span className={cn(
-                      "text-[9px] font-extrabold mb-1",
-                      isLow ? "text-red-500" : "text-slate-400"
-                    )}>المتبقي</span>
-                    <span className={cn(
-                      "text-[13px] font-black tabular-nums leading-none",
-                      isLow ? "text-red-600" : "text-emerald-600"
-                    )}>
-                      {item.unit_value > 1 
-                        ? `${formatNumber(item.total_quantity / item.unit_value)} ${item.input_unit || 'كيس'}`
-                        : (item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
-                            ? `${(item.total_quantity / 1000).toFixed(2).replace('.00', '')} طن`
-                            : `${formatNumber(item.total_quantity)} ${item.content_unit}`)
-                      }
-                    </span>
-                    {item.unit_value > 1 && (
-                      <span className={cn("text-[9px] font-semibold mt-1", isLow ? "text-red-400" : "text-slate-400")}>
-                        {item.content_unit?.trim() === 'كيلو' && item.total_quantity >= 1000
-                          ? `${(item.total_quantity / 1000).toFixed(2).replace('.00', '')} طن`
-                          : `${formatNumber(item.total_quantity)} ${item.content_unit}`
-                        }
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="w-[1px] bg-slate-100" />
-                  
-                  {/* Total Side */}
-                  <div className="flex-1 p-2 text-center bg-slate-50/80 flex flex-col justify-center">
-                    <span className="text-[9px] font-extrabold text-slate-400 mb-1">الإجمالي</span>
-                    <span className="text-[13px] font-black tabular-nums leading-none text-slate-700">
-                      {item.unit_value > 1 
-                        ? `${formatNumber((item.total_received || 0) / item.unit_value)} ${item.input_unit || 'كيس'}`
-                        : (item.content_unit?.trim() === 'كيلو' && (item.total_received || 0) >= 1000
-                            ? `${((item.total_received || 0) / 1000).toFixed(2).replace('.00', '')} طن`
-                            : `${formatNumber(item.total_received || 0)} ${item.content_unit}`)
-                      }
-                    </span>
-                    {item.unit_value > 1 && (
-                      <span className="text-[9px] font-semibold text-slate-400 mt-1">
-                        {item.content_unit?.trim() === 'كيلو' && (item.total_received || 0) >= 1000
-                          ? `${((item.total_received || 0) / 1000).toFixed(2).replace('.00', '')} طن`
-                          : `${formatNumber(item.total_received || 0)} ${item.content_unit}`
-                        }
-                      </span>
-                    )}
-                  </div>
-                </div>
-            </div>
-          )
-        })}
+        <div className="flex items-center gap-2">
+          {lowCount > 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-600 border border-emerald-100">
+              <AlertTriangle className="h-3 w-3" />{lowCount} منخفض
+            </span>
+          )}
+          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-slate-50 text-slate-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
+            <ChevronLeft className="h-4 w-4" />
+          </span>
+        </div>
       </div>
-    </div>
+    </button>
   )
 }
 
 // ── Items table ───────────────────────────────────────────────────────────────
 
-function ItemsTable({ items, onEdit }: { items: StockItem[]; onEdit?: (item: StockItem) => void }) {
+function ItemsTable({ items, onEdit, categoryFilter = 'all', onCategoryFilterChange }: {
+  items: StockItem[]
+  onEdit?: (item: StockItem) => void
+  categoryFilter?: string
+  onCategoryFilterChange?: (value: string) => void
+}) {
   const Section = ({ title, rows, color, icon: SectionIcon }: { title: string; rows: StockItem[]; color: string; icon: typeof Package }) => {
     if (rows.length === 0) return null
     const iconBg = color.replace('text-', 'bg-').replace(/-700$/, '-50')
@@ -383,11 +297,36 @@ function ItemsTable({ items, onEdit }: { items: StockItem[]; onEdit?: (item: Sto
   const feedItems  = items.filter(i => i.type_code === 'feed')
   const medItems   = items.filter(i => i.type_code === 'medicine')
   const otherItems = items.filter(i => i.type_code !== 'feed' && i.type_code !== 'medicine')
+
+  const chipCls = (active: boolean) =>
+    `rounded-full px-3 py-1.5 text-xs font-bold border transition-colors ${
+      active
+        ? 'bg-primary-600 text-white border-primary-600'
+        : 'bg-white text-slate-600 border-slate-200 hover:border-primary-400'
+    }`
+
+  const categories: { key: string; label: string; rows: StockItem[] }[] = [
+    { key: 'feed',     label: 'العلف',  rows: feedItems },
+    { key: 'medicine', label: 'الدواء', rows: medItems },
+    { key: 'other',    label: 'أخرى',   rows: otherItems },
+  ]
+
   return (
     <div className="space-y-6">
-      <Section title="العلف"  rows={feedItems}  color="text-emerald-700" icon={Package} />
-      <Section title="الدواء" rows={medItems}   color="text-blue-700"  icon={Package} />
-      <Section title="أخرى"  rows={otherItems} color="text-slate-600" icon={Package} />
+      {onCategoryFilterChange && (
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => onCategoryFilterChange('all')} className={chipCls(categoryFilter === 'all')}>الكل</button>
+          {categories.filter(c => c.rows.length > 0).map(c => (
+            <button key={c.key} onClick={() => onCategoryFilterChange(c.key)} className={chipCls(categoryFilter === c.key)}>
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(categoryFilter === 'all' || categoryFilter === 'feed')     && <Section title="العلف"  rows={feedItems}  color="text-emerald-700" icon={Package} />}
+      {(categoryFilter === 'all' || categoryFilter === 'medicine') && <Section title="الدواء" rows={medItems}   color="text-blue-700"  icon={Package} />}
+      {(categoryFilter === 'all' || categoryFilter === 'other')    && <Section title="أخرى"  rows={otherItems} color="text-slate-600" icon={Package} />}
     </div>
   )
 }
@@ -1260,6 +1199,12 @@ export default function InventoryPage() {
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
   const isReadOnly = useIsReadOnly()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [itemsCategoryFilter, setItemsCategoryFilter] = useState<string>('all')
+
+  const openCategory = (category: string) => {
+    setItemsCategoryFilter(category)
+    setActiveTab('items')
+  }
   const [editingItem, setEditingItem] = useState<StockItem | null>(null)
 
   useEffect(() => {
@@ -1408,9 +1353,9 @@ export default function InventoryPage() {
           <div>
             {activeTab === 'overview' && (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <MaterialCard title="العلف"  items={feedItems}  color="text-emerald-700" icon={Package} onEdit={!isReadOnly ? setEditingItem : undefined} />
-                <MaterialCard title="الدواء" items={medItems}   color="text-blue-700"  icon={Package} onEdit={!isReadOnly ? setEditingItem : undefined} />
-                <MaterialCard title="أخرى"  items={otherItems} color="text-slate-600" icon={Package} onEdit={!isReadOnly ? setEditingItem : undefined} />
+                <MaterialCard title="العلف"  items={feedItems}  color="text-emerald-700" icon={Package} onOpen={() => openCategory('feed')} />
+                <MaterialCard title="الدواء" items={medItems}   color="text-blue-700"  icon={Package} onOpen={() => openCategory('medicine')} />
+                <MaterialCard title="أخرى"  items={otherItems} color="text-slate-600" icon={Package} onOpen={() => openCategory('other')} />
                 {feedItems.length === 0 && medItems.length === 0 && otherItems.length === 0 && (
                   <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
                     <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
@@ -1444,7 +1389,14 @@ export default function InventoryPage() {
                     </button>
                   )}
                 </div>
-              ) : <ItemsTable items={items} onEdit={!isReadOnly ? setEditingItem : undefined} />
+              ) : (
+                <ItemsTable
+                  items={items}
+                  onEdit={!isReadOnly ? setEditingItem : undefined}
+                  categoryFilter={itemsCategoryFilter}
+                  onCategoryFilterChange={setItemsCategoryFilter}
+                />
+              )
             )}
 
             {activeTab === 'add-item' && (

@@ -143,7 +143,7 @@ export default function WorkersPage() {
                 <div className="flex items-center gap-3 text-slate-600">
                   <DollarSign className="h-4 w-4 text-slate-400 shrink-0" />
                   <span className="text-xs font-bold text-slate-900">
-                    {worker.salary?.toLocaleString() ?? 'غير محدد'}
+                    {worker.salary?.toLocaleString('en-US') ?? 'غير محدد'}
                     <span className="text-[10px] text-slate-500 font-normal mr-1">USD/شهرياً</span>
                   </span>
                 </div>

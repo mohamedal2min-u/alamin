@@ -846,7 +846,7 @@ function AddShipmentForm({
           {/* Section: Quantity */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="التاريخ" required>
-              <input type="date" value={form.transaction_date} onChange={set('transaction_date')} className={inputCls} />
+              <input type="date" lang="en" value={form.transaction_date} onChange={set('transaction_date')} className={inputCls} />
             </Field>
 
             {selectedItem && selectedItem.unit_value > 1 ? (

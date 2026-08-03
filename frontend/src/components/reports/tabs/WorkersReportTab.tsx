@@ -51,7 +51,7 @@ export const WorkersReportTab = ({ data, isLoading }: WorkersReportTabProps) => 
               <div className="bg-emerald-50 p-2 rounded-lg">
                 <span className="text-[9px] text-emerald-400 block">إجمالي المقبوضات</span>
                 <span className="text-xs font-black text-emerald-700 mt-0.5">
-                    {Number(worker.total_payments).toLocaleString()} {data.currency}
+                    {Number(worker.total_payments).toLocaleString('en-US')} {data.currency}
                 </span>
               </div>
             </div>

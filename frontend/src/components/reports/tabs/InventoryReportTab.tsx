@@ -26,7 +26,7 @@ export const InventoryReportTab = ({ data, isLoading }: InventoryReportTabProps)
               <span className="text-[10px] text-slate-500 font-medium block leading-none">{stock.type}</span>
               <h4 className="text-sm font-bold text-slate-900 mt-1">{stock.name}</h4>
               <div className="mt-1 flex items-baseline gap-1">
-                <span className="text-lg font-black text-slate-900">{Number(stock.current_quantity).toLocaleString()}</span>
+                <span className="text-lg font-black text-slate-900">{Number(stock.current_quantity).toLocaleString('en-US')}</span>
                 <span className="text-[10px] text-slate-500 font-normal">{stock.content_unit}</span>
               </div>
             </div>
@@ -62,7 +62,7 @@ export const InventoryReportTab = ({ data, isLoading }: InventoryReportTabProps)
                     </Badge>
                   </td>
                   <td className="py-3 text-left text-xs font-bold text-slate-900">
-                    {Number(move.quantity).toLocaleString()} {move.content_unit}
+                    {Number(move.quantity).toLocaleString('en-US')} {move.content_unit}
                   </td>
                 </tr>
               ))}

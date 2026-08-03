@@ -97,7 +97,7 @@ export default function RegistrationRequestsPage() {
                   <td className="px-4 py-3 text-slate-600">{req.farm_name || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{req.location || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">
-                    {new Date(req.created_at).toLocaleDateString('ar')}
+                    {new Date(req.created_at).toLocaleDateString('ar', { numberingSystem: 'latn' })}
                   </td>
                   <td className="px-4 py-3 text-center">
                     {req.status === 'pending' && (

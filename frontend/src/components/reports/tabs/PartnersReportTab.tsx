@@ -72,7 +72,7 @@ export const PartnersReportTab = ({ data, isLoading }: PartnersReportTabProps) =
                     </Badge>
                   </td>
                   <td className={`py-3 text-left text-xs font-bold ${tx.transaction_type === 'deposit' ? 'text-primary-600' : 'text-rose-600'}`}>
-                    {tx.transaction_type === 'deposit' ? '+' : '-'}{Number(tx.amount).toLocaleString()} {data.currency}
+                    {tx.transaction_type === 'deposit' ? '+' : '-'}{Number(tx.amount).toLocaleString('en-US')} {data.currency}
                   </td>
                 </tr>
               ))}

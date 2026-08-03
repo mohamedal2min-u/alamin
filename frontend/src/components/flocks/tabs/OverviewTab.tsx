@@ -94,7 +94,7 @@ export function OverviewTab({ flockId, flockName }: OverviewTabProps) {
             <p className="text-sm text-slate-500 mt-1">تقرير النظرة العامة اليومية للأفواج</p>
           </div>
           <div className="text-left text-xs text-slate-400">
-            تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}
+            تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG', { numberingSystem: 'latn' })}
           </div>
         </div>
       </div>

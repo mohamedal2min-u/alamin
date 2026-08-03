@@ -157,6 +157,7 @@ export function NotesTab({ flockId, flockStatus }: Props) {
                 {...register('entry_date')}
                 id="note_entry_date"
                 type="date"
+                lang="en"
                 max={getTodayLocalISO()}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
               />

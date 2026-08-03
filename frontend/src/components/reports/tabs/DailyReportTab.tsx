@@ -38,7 +38,7 @@ export const DailyReportTab = ({ data, isLoading }: DailyReportTabProps) => {
             <div>
               <p className="text-[10px] text-slate-500 font-medium">{stat.label}</p>
               <h4 className="text-sm font-black text-slate-900 mt-0.5">
-                {stat.currency ? Number(stat.value).toLocaleString() : stat.value}
+                {stat.currency ? Number(stat.value).toLocaleString('en-US') : stat.value}
                 {stat.unit && <span className="text-[10px] font-normal mr-1">{stat.unit}</span>}
                 {stat.currency && <span className="text-[10px] font-normal mr-1">{data.currency}</span>}
               </h4>
@@ -74,7 +74,7 @@ export const DailyReportTab = ({ data, isLoading }: DailyReportTabProps) => {
                   <p className="text-[10px] text-slate-500 mt-1">{event.detail}</p>
                 </div>
                 <div className={`text-xs font-black ${event.type === 'sale' ? 'text-primary-600' : 'text-slate-900'}`}>
-                    {event.type === 'sale' ? '+' : ''}{Number(event.amount).toLocaleString()} {data.currency}
+                    {event.type === 'sale' ? '+' : ''}{Number(event.amount).toLocaleString('en-US')} {data.currency}
                 </div>
               </div>
             </div>

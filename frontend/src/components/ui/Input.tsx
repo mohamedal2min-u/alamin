@@ -9,7 +9,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, id, required, startIcon, endIcon, onFocus, onBlur, onChange, ...props }, ref) => {
+  ({ className, label, error, id, required, startIcon, endIcon, onFocus, onBlur, onChange, lang = 'en', ...props }, ref) => {
     const [isFocused, setIsFocused] = useState(false)
     const [hasValue, setHasValue] = useState(false)
     const localRef = useRef<HTMLInputElement>(null)
@@ -75,6 +75,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               else if (ref) (ref as any).current = node
             }}
             id={id}
+            // lang="en" forces native date/number widgets (calendar picker digits, spinners)
+            // to render Western Arabic-Indic numerals — the page itself stays lang="ar"/RTL.
+            lang={lang}
             onFocus={handleFocus}
             onBlur={handleBlur}
             onChange={handleChange}

@@ -110,7 +110,7 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
                         <Scale className="w-4 h-4 text-blue-500" />
                         <span className="text-xs text-slate-600">الوزن الكلي المباع</span>
                     </div>
-                    <span className="text-sm font-black text-slate-900">{data.sales_analytics.total_weight_kg.toLocaleString()} كغ</span>
+                    <span className="text-sm font-black text-slate-900">{data.sales_analytics.total_weight_kg.toLocaleString('en-US')} كغ</span>
                 </div>
 
                 <div className="flex justify-between items-center p-4 rounded-2xl bg-primary-50 border border-primary-100">
@@ -186,8 +186,8 @@ export const FlockReportTab = ({ data, isLoading }: FlockReportTabProps) => {
 
 function FeedConsumptionBadge({ kg, bags }: { kg: number; bags: number }) {
   const weightLabel = kg >= 1000
-    ? `${(kg / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} طن`
-    : `${kg.toLocaleString()} كغ`
+    ? `${(kg / 1000).toLocaleString('en-US', { maximumFractionDigits: 2 })} طن`
+    : `${kg.toLocaleString('en-US')} كغ`
 
   return (
     <div className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100">
@@ -195,7 +195,7 @@ function FeedConsumptionBadge({ kg, bags }: { kg: number; bags: number }) {
       <div className="flex flex-col leading-tight">
         <span className="text-[10px] font-bold text-emerald-800">استهلاك العلف</span>
         {bags > 0 && (
-          <span className="text-xs font-black text-emerald-900">{bags.toLocaleString()} كيس</span>
+          <span className="text-xs font-black text-emerald-900">{bags.toLocaleString('en-US')} كيس</span>
         )}
         <span className="text-[10px] text-emerald-700">{weightLabel}</span>
       </div>
@@ -208,7 +208,7 @@ function StatItem({ label, value, sub, color = "text-slate-900" }: any) {
         <div className="p-2 rounded-xl bg-slate-50/50 border border-slate-100 flex flex-col">
             <span className="text-[9px] text-slate-400 font-bold mb-0.5">{label}</span>
             <div className="flex items-baseline gap-1">
-                <span className={`text-sm font-black ${color}`}>{value.toLocaleString()}</span>
+                <span className={`text-sm font-black ${color}`}>{value.toLocaleString('en-US')}</span>
                 {sub && <span className="text-[8px] font-bold text-slate-400">{sub}</span>}
             </div>
         </div>

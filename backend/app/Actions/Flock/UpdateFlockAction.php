@@ -28,6 +28,44 @@ class UpdateFlockAction
             
             if (isset($data['chick_unit_price']) || isset($data['initial_count'])) {
                 $data['total_chick_cost'] = ($unitPrice !== null && $initialCount !== null) ? ($unitPrice * $initialCount) : null;
+                
+                // Sync the "شراء كتاكيت" expense record
+                $category = \App\Models\ExpenseCategory::firstOrCreate(
+                    ['name' => 'شراء كتاكيت', 'farm_id' => null],
+                    ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
+                );
+                
+                $expense = \App\Models\Expense::where('flock_id', $flock->id)->where('expense_category_id', $category->id)->first();
+                
+                if ($data['total_chick_cost'] > 0) {
+                    if ($expense) {
+                        $expense->update([
+                            'quantity'         => $initialCount,
+                            'unit_price'       => $unitPrice,
+                            'total_amount'     => $data['total_chick_cost'],
+                            'remaining_amount' => max(0, $data['total_chick_cost'] - $expense->paid_amount),
+                            'updated_by'       => $userId,
+                        ]);
+                    } else {
+                        \App\Models\Expense::create([
+                            'farm_id'             => $flock->farm_id,
+                            'flock_id'            => $flock->id,
+                            'expense_category_id' => $category->id,
+                            'entry_date'          => $flock->start_date,
+                            'description'         => 'تكلفة شراء كتاكيت — ' . $flock->name,
+                            'quantity'            => $initialCount,
+                            'unit_price'          => $unitPrice,
+                            'total_amount'        => $data['total_chick_cost'],
+                            'paid_amount'         => 0,
+                            'remaining_amount'    => $data['total_chick_cost'],
+                            'payment_status'      => 'unpaid',
+                            'created_by'          => $userId,
+                            'updated_by'          => $userId,
+                        ]);
+                    }
+                } elseif ($expense) {
+                    $expense->delete();
+                }
             }
 
             // ── التحقق من الانتقال الإذا تغيّرت الحالة ─────────────────────

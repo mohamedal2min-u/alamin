@@ -35,9 +35,19 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
       icon: Thermometer,
       gradient: 'from-primary-500 to-primary-700',
       extraContent: currentTemp !== undefined ? (
-        <div className="absolute top-3 left-3 z-20 flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm border border-white/20">
-          <CloudSun className="h-3 w-3 text-white" />
-          <span className="text-[10px] font-black text-white tabular-nums" dir="ltr">{currentTemp}°</span>
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm border border-white/20">
+          <div className="flex items-center gap-1">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+            </span>
+            <span className="text-[9px] font-black text-white uppercase tracking-wider">Live</span>
+          </div>
+          <div className="w-px h-3 bg-white/30" />
+          <div className="flex items-center gap-1">
+            <CloudSun className="h-3 w-3 text-white" />
+            <span className="text-[10px] font-black text-white tabular-nums" dir="ltr">{currentTemp}°</span>
+          </div>
         </div>
       ) : null
     },

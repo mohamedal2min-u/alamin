@@ -5,7 +5,10 @@ export interface SaleItem {
   sale_id: number
   flock_id: number
   birds_count: number
-  total_weight_kg: number
+  total_weight_kg: number       // الوزن الصافي (بعد طرح وزن الأقفاص) — المستخدم في التسعير
+  crates_count: number | null
+  crate_weight_kg: number | null
+  gross_weight_kg: number | null // الوزن القائم كما يُقرأ من الميزان (يشمل الأقفاص)
   avg_weight_kg: number | null
   unit_price_per_kg: number | null
   line_total: number
@@ -38,6 +41,9 @@ export interface Sale {
 export interface CreateSaleItemPayload {
   birds_count: number
   total_weight_kg: number
+  crates_count?: number
+  crate_weight_kg?: number
+  gross_weight_kg?: number
   unit_price_per_kg?: number
   notes?: string
 }

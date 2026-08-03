@@ -24,6 +24,9 @@ class StoreSaleRequest extends FormRequest
             'items'                  => ['required', 'array', 'min:1'],
             'items.*.birds_count'    => ['required', 'integer', 'min:1'],
             'items.*.total_weight_kg' => ['required', 'numeric', 'min:0.001'],
+            'items.*.crates_count'   => ['nullable', 'integer', 'min:0'],
+            'items.*.crate_weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'items.*.gross_weight_kg' => ['nullable', 'numeric', 'min:0'],
             'items.*.unit_price_per_kg' => ['nullable', 'numeric', 'min:0.001'],
             'items.*.notes'          => ['nullable', 'string', 'max:5000'],
         ];
@@ -38,8 +41,11 @@ class StoreSaleRequest extends FormRequest
             'items.min'                        => 'يجب إضافة سطر بيع واحد على الأقل',
             'items.*.birds_count.required'     => 'عدد الطيور مطلوب',
             'items.*.birds_count.min'          => 'عدد الطيور يجب أن يكون أكبر من صفر',
-            'items.*.total_weight_kg.required' => 'الوزن الكلي مطلوب',
-            'items.*.total_weight_kg.min'      => 'الوزن الكلي يجب أن يكون أكبر من صفر',
+            'items.*.total_weight_kg.required' => 'الوزن الصافي مطلوب',
+            'items.*.total_weight_kg.min'      => 'الوزن الصافي يجب أن يكون أكبر من صفر',
+            'items.*.crates_count.min'         => 'عدد الأقفاص لا يمكن أن يكون سالباً',
+            'items.*.crate_weight_kg.min'      => 'وزن القفص لا يمكن أن يكون سالباً',
+            'items.*.gross_weight_kg.min'      => 'الوزن القائم لا يمكن أن يكون سالباً',
             'items.*.unit_price_per_kg.min'    => 'سعر الكيلو يجب أن يكون أكبر من صفر',
         ];
     }

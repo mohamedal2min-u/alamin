@@ -47,6 +47,11 @@ class CreateSaleAction
                     'flock_id'        => $flock->id,
                     'birds_count'     => $birdsCount,
                     'total_weight_kg' => $totalWeightKg,
+                    // معلومات وزن الأقفاص اختيارية — تُخزَّن للتوثيق فقط، لا تدخل في أي حساب هنا
+                    // لأن total_weight_kg الصافي وصل جاهزاً محسوباً من الواجهة.
+                    'crates_count'    => isset($item['crates_count']) ? (int) $item['crates_count'] : null,
+                    'crate_weight_kg' => isset($item['crate_weight_kg']) ? (float) $item['crate_weight_kg'] : null,
+                    'gross_weight_kg' => isset($item['gross_weight_kg']) ? (float) $item['gross_weight_kg'] : null,
                     'avg_weight_kg'   => $avgWeightKg,
                     'unit_price_per_kg' => $unitPricePerKg,
                     'line_total'      => $lineTotal,

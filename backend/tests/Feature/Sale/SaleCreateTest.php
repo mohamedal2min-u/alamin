@@ -147,6 +147,44 @@ class SaleCreateTest extends TestCase
         $this->assertCount(2, $response->json('data.items'));
     }
 
+    public function test_stores_crate_weight_fields_without_affecting_pricing(): void
+    {
+        $farm  = Farm::factory()->create();
+        $user  = $this->actingAsMember($farm);
+        $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
+
+        // gross_weight_kg is what the scale reads (birds + crates); total_weight_kg is the
+        // net weight already computed by the frontend and is what pricing must use.
+        $payload = $this->salePayload([
+            'items' => [[
+                'birds_count'       => 100,
+                'total_weight_kg'   => 240.0, // net, after subtracting 10 crates * 1kg
+                'crates_count'      => 10,
+                'crate_weight_kg'   => 1.0,
+                'gross_weight_kg'   => 250.0,
+                'unit_price_per_kg' => 15.0,
+            ]],
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->withHeaders(['X-Farm-Id' => $farm->id])
+            ->postJson("/api/flocks/{$flock->id}/sales", $payload)
+            ->assertStatus(201);
+
+        // line_total must use the net weight (240), not the gross weight (250)
+        $this->assertEquals(3600, $response->json('data.gross_amount'));
+
+        $this->assertDatabaseHas('sale_items', [
+            'flock_id'          => $flock->id,
+            'birds_count'       => 100,
+            'total_weight_kg'   => 240.0,
+            'crates_count'      => 10,
+            'crate_weight_kg'   => 1.0,
+            'gross_weight_kg'   => 250.0,
+            'line_total'        => 3600.0,
+        ]);
+    }
+
     public function test_cannot_create_sale_on_closed_flock(): void
     {
         $farm  = Farm::factory()->create();

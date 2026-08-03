@@ -13,15 +13,26 @@ import { formatCurrency, getTodayLocalISO } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
+const optionalNumber = (fieldSchema: z.ZodNumber) => z.preprocess(
+  (val) => (typeof val === 'number' && Number.isNaN(val)) ? undefined : val,
+  fieldSchema.optional()
+)
+
 const itemSchema = z.object({
-  birds_count:       z.number({ invalid_type_error: 'يجب إدخال رقم' }).int().min(1, 'عدد الطيور يجب أن يكون أكبر من 0'),
-  total_weight_kg:   z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'الوزن يجب أن يكون أكبر من 0'),
+  birds_count:      z.number({ invalid_type_error: 'يجب إدخال رقم' }).int().min(1, 'عدد الطيور يجب أن يكون أكبر من 0'),
+  // الوزن القائم = وزن الطيور + الأقفاص كما يُقرأ من الميزان مباشرة.
+  gross_weight_kg:  z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'الوزن يجب أن يكون أكبر من 0'),
+  crates_count:     optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).int().min(0, 'لا يمكن أن يكون سالباً')),
+  crate_weight_kg:  optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0, 'لا يمكن أن يكون سالباً')),
   // اختياري — إن تُرك فارغاً تُسجَّل البيعة كدين وتُرحَّل إلى الذمم لتحديد السعر لاحقاً.
-  unit_price_per_kg: z.preprocess(
-    (val) => (typeof val === 'number' && Number.isNaN(val)) ? undefined : val,
-    z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'السعر يجب أن يكون أكبر من 0').optional()
-  ),
+  unit_price_per_kg: optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'السعر يجب أن يكون أكبر من 0')),
   notes:             z.string().max(5000).optional().or(z.literal('')),
+}).refine((data) => {
+  const cratesWeight = (data.crates_count ?? 0) * (data.crate_weight_kg ?? 0)
+  return data.gross_weight_kg - cratesWeight > 0
+}, {
+  message: 'الوزن الصافي يجب أن يكون أكبر من صفر — تحقق من وزن الأقفاص',
+  path: ['gross_weight_kg'],
 })
 
 const schema = z.object({
@@ -60,7 +71,13 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
       sale_date:       getTodayLocalISO(),
       discount_amount: 0,
       received_amount: 0,
-      items: [{ birds_count: undefined as unknown as number, total_weight_kg: undefined as unknown as number, unit_price_per_kg: undefined as unknown as number }],
+      items: [{
+        birds_count:      undefined as unknown as number,
+        gross_weight_kg:  undefined as unknown as number,
+        crates_count:     undefined,
+        crate_weight_kg:  undefined,
+        unit_price_per_kg: undefined,
+      }],
     },
   })
 
@@ -71,8 +88,13 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
   const watchDiscount  = Number(watch('discount_amount') || 0)
   const watchReceived  = Number(watch('received_amount') || 0)
 
+  const netWeightOf = (it: { gross_weight_kg?: number; crates_count?: number; crate_weight_kg?: number }) => {
+    const cratesWeight = Number(it.crates_count ?? 0) * Number(it.crate_weight_kg ?? 0)
+    return Math.max(0, Number(it.gross_weight_kg ?? 0) - cratesWeight)
+  }
+
   const gross = watchedItems.reduce((sum, it) => {
-    const w = Number(it.total_weight_kg ?? 0)
+    const w = netWeightOf(it)
     const p = Number(it.unit_price_per_kg ?? 0)
     return sum + w * p
   }, 0)
@@ -97,7 +119,10 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
         notes:           data.notes || undefined,
         items: data.items.map((it) => ({
           birds_count:       it.birds_count,
-          total_weight_kg:   it.total_weight_kg,
+          total_weight_kg:   netWeightOf(it),
+          crates_count:      it.crates_count || undefined,
+          crate_weight_kg:   it.crate_weight_kg || undefined,
+          gross_weight_kg:   it.gross_weight_kg,
           unit_price_per_kg: it.unit_price_per_kg ?? undefined,
           notes:             it.notes || undefined,
         })),
@@ -153,7 +178,13 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ birds_count: undefined as unknown as number, total_weight_kg: undefined as unknown as number, unit_price_per_kg: undefined as unknown as number })}
+              onClick={() => append({
+                birds_count:      undefined as unknown as number,
+                gross_weight_kg:  undefined as unknown as number,
+                crates_count:     undefined,
+                crate_weight_kg:  undefined,
+                unit_price_per_kg: undefined,
+              })}
             >
               <Plus className="h-3.5 w-3.5" />
               إضافة سطر
@@ -166,9 +197,12 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
 
           <div className="space-y-2">
             {fields.map((field, idx) => {
-              const w = Number(watchedItems[idx]?.total_weight_kg ?? 0)
-              const p = Number(watchedItems[idx]?.unit_price_per_kg ?? 0)
-              const lineTotal = w * p
+              const it           = watchedItems[idx] ?? {}
+              const cratesWeight = Number(it.crates_count ?? 0) * Number(it.crate_weight_kg ?? 0)
+              const netWeight    = netWeightOf(it)
+              const p            = Number(it.unit_price_per_kg ?? 0)
+              const lineTotal    = netWeight * p
+              const hasCrates    = Number(it.crates_count ?? 0) > 0 && Number(it.crate_weight_kg ?? 0) > 0
 
               return (
                 <div
@@ -200,14 +234,36 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
                       required
                     />
                     <Input
-                      {...register(`items.${idx}.total_weight_kg`, { valueAsNumber: true })}
-                      id={`total_weight_kg_${idx}`}
-                      label="الوزن الكلي (كغ)"
+                      {...register(`items.${idx}.crates_count`, { valueAsNumber: true })}
+                      id={`crates_count_${idx}`}
+                      label="عدد الأقفاص"
+                      type="number"
+                      min={0}
+                      placeholder="اختياري"
+                      error={errors.items?.[idx]?.crates_count?.message}
+                    />
+                    <Input
+                      {...register(`items.${idx}.crate_weight_kg`, { valueAsNumber: true })}
+                      id={`crate_weight_kg_${idx}`}
+                      label="وزن القفص الواحد (كغ)"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      placeholder="اختياري"
+                      error={errors.items?.[idx]?.crate_weight_kg?.message}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      {...register(`items.${idx}.gross_weight_kg`, { valueAsNumber: true })}
+                      id={`gross_weight_kg_${idx}`}
+                      label="الوزن القائم (كغ)"
                       type="number"
                       step="0.001"
                       min={0.001}
                       placeholder="مثال: 250.5"
-                      error={errors.items?.[idx]?.total_weight_kg?.message}
+                      error={errors.items?.[idx]?.gross_weight_kg?.message}
                       required
                     />
                     <Input
@@ -222,11 +278,19 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
                     />
                   </div>
 
+                  {hasCrates && (
+                    <p className="text-end text-xs font-semibold text-slate-500">
+                      وزن الأقفاص: <span className="tabular-nums">{cratesWeight.toFixed(2)} كغ</span>
+                      {' — '}
+                      الوزن الصافي: <span className="tabular-nums text-slate-700">{netWeight.toFixed(2)} كغ</span>
+                    </p>
+                  )}
+
                   {lineTotal > 0 ? (
                     <p className="text-end text-xs font-semibold text-slate-600">
                       إجمالي السطر: <span className="tabular-nums">{formatCurrency(lineTotal)}</span>
                     </p>
-                  ) : watchedItems[idx]?.total_weight_kg > 0 && !watchedItems[idx]?.unit_price_per_kg && (
+                  ) : netWeight > 0 && !it.unit_price_per_kg && (
                     <p className="text-end text-xs font-semibold text-amber-600">
                       السعر غير محدد — ستُسجَّل البيعة كدين وتُرحَّل إلى الذمم والمراجعة لتحديد السعر لاحقاً.
                     </p>

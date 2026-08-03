@@ -73,7 +73,7 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role
           label="استهلاك العلف"
           equation={getEq(summary?.feed?.entries)}
           value={summary?.feed?.total ?? 0}
-          color="emerald"
+          color="amber"
           icon={<Wheat className="h-5 w-5" />}
           isLoading={isLoading}
           onClick={() => onStatClick('feed')}
@@ -94,7 +94,7 @@ export function WorkerProgressHeader({ flock, summary, isLoading, viewDate, role
           equation={getEq(summary?.water?.entries)}
           value={summary?.water?.total ?? 0}
           unit="صهريج"
-          color="green"
+          color="blue"
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a4 4 0 0 0 4-4c0-4-4-8-4-8s-4 4-4 8a4 4 0 0 0 4 4z"/></svg>}
           isLoading={isLoading}
           onClick={() => onStatClick('water')}
@@ -141,7 +141,7 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
   equation: string 
   value: number
   unit?: string
-  color: 'red' | 'emerald' | 'indigo' | 'green'
+  color: 'red' | 'emerald' | 'indigo' | 'green' | 'amber' | 'blue'
   icon: React.ReactNode 
   isLoading?: boolean
   onClick: () => void 
@@ -164,6 +164,18 @@ function StatBox({ label, equation, value, unit, color, icon, isLoading, onClick
       border: 'border-indigo-200/60 dark:border-indigo-900/50',
       iconBg: 'bg-indigo-100 text-indigo-500 dark:bg-indigo-900/40 dark:text-indigo-400',
       text: 'text-indigo-600 dark:text-indigo-400',
+    },
+    amber: {
+      bg: 'bg-amber-50/80 dark:bg-slate-800',
+      border: 'border-amber-200/80 dark:border-amber-900/50',
+      iconBg: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
+      text: 'text-amber-600 dark:text-amber-400',
+    },
+    blue: {
+      bg: 'bg-sky-50/80 dark:bg-slate-800',
+      border: 'border-sky-200/80 dark:border-sky-900/50',
+      iconBg: 'bg-sky-100 text-sky-500 dark:bg-sky-900/40 dark:text-sky-400',
+      text: 'text-sky-600 dark:text-sky-400',
     },
     green: {
       bg: 'bg-primary-50/60 dark:bg-slate-800',

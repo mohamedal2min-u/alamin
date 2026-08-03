@@ -1,9 +1,10 @@
 'use client'
 
 import React from 'react'
-import { Thermometer, Wheat, Moon, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { Thermometer, Wheat, Moon, ShieldCheck, CloudSun, type LucideIcon } from 'lucide-react'
 import { getFlockDailyGuidelines, getTargetFeedPerBird } from '@/lib/poultry-standards'
 import { cn } from '@/lib/utils'
+import { useQuery } from '@tanstack/react-query'
 
 interface Props {
   ageDays: number
@@ -14,7 +15,18 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
   const guidelines = getFlockDailyGuidelines(ageDays, birdCount, 50)
   const gramsPerBird = Math.round(getTargetFeedPerBird(ageDays))
 
-  const cards: { title: string; value: string; unit: string; sub: string; icon: LucideIcon; gradient: string }[] = [
+  const { data: weather } = useQuery({
+    queryKey: ['weather-kansafra'],
+    queryFn: async () => {
+      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.6333&longitude=36.5667&current_weather=true')
+      return res.json()
+    },
+    staleTime: 15 * 60_000,
+  })
+
+  const currentTemp = weather?.current_weather?.temperature
+
+  const cards: { title: string; value: string; unit: string; sub: string; icon: LucideIcon; gradient: string; extraContent?: React.ReactNode }[] = [
     {
       title: 'الحرارة المثالية',
       value: `${Math.floor(guidelines.minTemp)}-${Math.ceil(guidelines.maxTemp)}`,
@@ -22,6 +34,12 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
       sub: 'درجة مئوية',
       icon: Thermometer,
       gradient: 'from-primary-500 to-primary-700',
+      extraContent: currentTemp !== undefined ? (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm border border-white/20">
+          <CloudSun className="h-3 w-3 text-white" />
+          <span className="text-[10px] font-black text-white tabular-nums" dir="ltr">{currentTemp}°</span>
+        </div>
+      ) : null
     },
     {
       title: 'توزيع العلف',
@@ -78,6 +96,8 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
               <div className="absolute -right-2 -bottom-2 opacity-10">
                 <Icon size={60} strokeWidth={1.5} />
               </div>
+
+              {card.extraContent}
 
               <div className="relative z-10 flex flex-col gap-2.5">
                 <div className="space-y-1">

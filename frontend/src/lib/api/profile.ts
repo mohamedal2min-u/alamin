@@ -2,6 +2,11 @@ import { apiClient } from './client'
 import type { User } from '@/types/auth'
 
 export const profileApi = {
+  getMe: () =>
+    apiClient
+      .get<{ data: User }>('/auth/me')
+      .then((r) => r.data),
+
   updateProfile: (data: { name?: string; email?: string | null; whatsapp?: string | null }) =>
     apiClient
       .put<{ message: string; data: User }>('/auth/me', data)

@@ -8,8 +8,10 @@ import { MoreMenu } from '@/components/layout/MoreMenu'
 import { FlockGlobalHeader } from '@/components/layout/FlockGlobalHeader'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
+import { useAuthStore } from '@/stores/auth.store'
+import { profileApi } from '@/lib/api/profile'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState} from 'react'
+import { useEffect, useState} from 'react'
 import { RefreshCcw } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -21,6 +23,16 @@ import { usePathname } from 'next/navigation'
 
 export default function FarmLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { isAuthenticated, setUser } = useAuthStore()
+
+  // Re-sync the current user (name, avatar, etc.) from the server on app start.
+  // Each device persists its own copy of `user` locally, so a profile change
+  // made on one device (e.g. avatar upload on desktop) only reaches other
+  // devices/sessions (e.g. the phone) once they refetch it here.
+  useEffect(() => {
+    if (!isAuthenticated) return
+    profileApi.getMe().then((res) => setUser(res.data)).catch(() => {})
+  }, [isAuthenticated, setUser])
   const isAccountingOrOpsPage = 
     pathname?.endsWith('/dashboard') || 
     pathname?.endsWith('/worker') || 

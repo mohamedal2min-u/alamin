@@ -18,7 +18,8 @@ export function WorkerGuidelinesCard({ ageDays, birdCount }: Props) {
   const { data: weather } = useQuery({
     queryKey: ['weather-kansafra'],
     queryFn: async () => {
-      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.6333&longitude=36.5667&current_weather=true')
+      // إحداثيات قرية كنصفرة الدقيقة — ناحية إحسم، منطقة أريحا، إدلب (35°39'35"N 36°29'05"E)
+      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.6597&longitude=36.4847&current_weather=true')
       return res.json()
     },
     staleTime: 15 * 60_000,

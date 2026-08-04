@@ -314,17 +314,17 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
                       type="button"
                       onClick={() => stepMedQty(-medStep)}
                       disabled={medQtyNum <= 0}
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary-100 bg-white text-xl font-black text-primary-600 transition-all duration-200 hover:bg-primary-50 active:scale-95 disabled:opacity-40"
+                      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-primary-100 bg-white text-3xl font-black text-primary-600 transition-all duration-200 hover:bg-primary-50 active:scale-95 disabled:opacity-40"
                       aria-label="إنقاص"
                     >
                       −
                     </button>
-                    <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0} max={medAvailableQty} step={medStep} className={cn(dynamicInputClass, 'text-center')} />
+                    <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0} max={medAvailableQty} step={medStep} className={cn(dynamicInputClass, 'h-16 text-center text-lg')} />
                     <button
                       type="button"
                       onClick={() => stepMedQty(medStep)}
                       disabled={!!selectedMedItem && medQtyNum >= medAvailableQty}
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary-100 bg-white text-xl font-black text-primary-600 transition-all duration-200 hover:bg-primary-50 active:scale-95 disabled:opacity-40"
+                      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-primary-100 bg-white text-3xl font-black text-primary-600 transition-all duration-200 hover:bg-primary-50 active:scale-95 disabled:opacity-40"
                       aria-label="زيادة"
                     >
                       +

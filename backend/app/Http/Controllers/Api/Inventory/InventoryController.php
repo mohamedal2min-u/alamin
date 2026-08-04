@@ -28,7 +28,8 @@ class InventoryController extends Controller
 
         $query = Item::where('farm_id', $farmId)
             ->where('status', 'active')
-            ->with(['itemType:id,code,name']);
+            ->with(['itemType:id,code,name'])
+            ->withSum('warehouseItems', 'current_quantity');
 
         if ($type) {
             $query->whereHas('itemType', fn ($q) => $q->where('code', $type));
@@ -38,12 +39,13 @@ class InventoryController extends Controller
 
         return response()->json([
             'data' => $items->map(fn (Item $item) => [
-                'id'           => $item->id,
-                'name'         => $item->name,
-                'input_unit'   => $item->input_unit,
-                'content_unit' => $item->content_unit,
-                'unit_value'   => (float) $item->unit_value,
-                'type_code'    => $item->itemType?->code,
+                'id'             => $item->id,
+                'name'           => $item->name,
+                'input_unit'     => $item->input_unit,
+                'content_unit'   => $item->content_unit,
+                'unit_value'     => (float) $item->unit_value,
+                'type_code'      => $item->itemType?->code,
+                'total_quantity' => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
             ]),
         ]);
     }

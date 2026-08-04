@@ -5,6 +5,7 @@ export interface InventoryItem {
   content_unit: string
   unit_value: number
   type_code: string
+  total_quantity: number
 }
 
 export interface TodayMortalityEntry {

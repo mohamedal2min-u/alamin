@@ -9,6 +9,8 @@ use App\Models\FlockMedicine;
 use App\Models\Item;
 use App\Models\ItemType;
 use App\Models\User;
+use App\Models\Warehouse;
+use App\Models\WarehouseItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -135,10 +137,17 @@ class MedicineLogListTest extends TestCase
 
     public function test_store_returns_full_resource(): void
     {
-        $farm  = Farm::factory()->create();
-        $user  = $this->actingAsMember($farm);
-        $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
-        $item  = $this->makeMedicineItem($farm);
+        $farm      = Farm::factory()->create();
+        $user      = $this->actingAsMember($farm);
+        $flock     = Flock::factory()->active()->create(['farm_id' => $farm->id]);
+        $item      = $this->makeMedicineItem($farm);
+        $warehouse = Warehouse::where('farm_id', $farm->id)->first();
+        WarehouseItem::factory()->create([
+            'farm_id'          => $farm->id,
+            'warehouse_id'     => $warehouse->id,
+            'item_id'          => $item->id,
+            'current_quantity' => 1000,
+        ]);
 
         $this->actingAs($user, 'sanctum')
             ->withHeaders(['X-Farm-Id' => $farm->id])
@@ -154,7 +163,7 @@ class MedicineLogListTest extends TestCase
                 ],
             ])
             ->assertJsonPath('data.quantity', 5)
-            ->assertJsonPath('data.inventory_linked', false);
+            ->assertJsonPath('data.inventory_linked', true);
     }
 
     public function test_list_requires_authentication(): void

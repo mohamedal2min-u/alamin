@@ -37,58 +37,15 @@ class CreateMedicineLogAction
                 $warehouseItem = WarehouseItem::where('id', $warehouseItem->id)->lockForUpdate()->first();
 
                 if ($warehouseItem->current_quantity < $realQty) {
-                    $shortage = $realQty - $warehouseItem->current_quantity;
-                    $avgCost = (float)($warehouseItem->average_cost ?? 0);
-                    $totalCost = $avgCost * $shortage;
-
-                    // Keep quantity/unit_price expressed in the item's input unit (e.g. boxes),
-                    // matching manual shipments — average_cost/shortage above are per computed unit.
-                    $unitValue           = $item->unit_value ?: 1;
-                    $shortageInputQty    = $shortage / $unitValue;
-                    $avgCostPerInputUnit = $avgCost * $unitValue;
-
-                    $purchaseTxn = InventoryTransaction::create([
-                        'farm_id'           => $flock->farm_id,
-                        'warehouse_id'      => $warehouse->id,
-                        'item_id'           => $data['item_id'],
-                        'transaction_date'  => $data['entry_date'] ?? now()->toDateString(),
-                        'transaction_type'  => 'purchase',
-                        'direction'         => 'in',
-                        'source_module'     => 'auto_purchase',
-                        'original_quantity' => $shortageInputQty,
-                        'computed_quantity' => $shortage,
-                        'unit_price'        => $avgCost > 0 ? $avgCostPerInputUnit : null,
-                        'input_unit'        => $item->input_unit,
-                        'content_unit'      => $item->content_unit,
-                        'total_amount'      => $totalCost > 0 ? $totalCost : null,
-                        'created_by'        => $userId,
-                        'updated_by'        => $userId,
-                    ]);
-
-                    $medCat = \App\Models\ExpenseCategory::firstOrCreate(
-                        ['code' => 'medicine', 'farm_id' => null],
-                        ['name' => 'دواء', 'is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
+                    $unitValue = $item->unit_value ?: 1;
+                    throw new \Exception(
+                        sprintf(
+                            'الكمية المطلوبة أكبر من المتوفر بالمخزون. المتوفر: %s %s',
+                            rtrim(rtrim(number_format($warehouseItem->current_quantity / $unitValue, 3), '0'), '.'),
+                            $item->input_unit
+                        ),
+                        422
                     );
-                    \App\Models\Expense::create([
-                        'farm_id' => $flock->farm_id,
-                        'flock_id' => $flock->id,
-                        'expense_category_id' => $medCat->id,
-                        'entry_date' => $data['entry_date'] ?? now()->toDateString(),
-                        'expense_type' => 'flock',
-                        'quantity' => $shortageInputQty,
-                        'unit_price' => $avgCost > 0 ? $avgCostPerInputUnit : 0,
-                        'total_amount' => $totalCost > 0 ? $totalCost : 0,
-                        'paid_amount' => 0,
-                        'remaining_amount' => $totalCost > 0 ? $totalCost : 0,
-                        'payment_status' => 'unpaid',
-                        'description' => 'دين شراء تلقائي: ' . $item->name,
-                        'linked_inventory_transaction_id' => $purchaseTxn->id,
-                        'worker_id' => $userId,
-                        'created_by' => $userId,
-                        'updated_by' => $userId,
-                    ]);
-
-                    $warehouseItem->increment('current_quantity', $shortage);
                 }
 
                 $avgCost         = (float) ($warehouseItem->average_cost ?? 0);

@@ -78,9 +78,12 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
   const [waterPrice, setWaterPrice]   = useState('')
   const [waterDriver, setWaterDriver] = useState('')
 
-  const calculatedTotal = (activeTab === 'expense') 
-    ? (Number(expQty) * Number(expPrice)) 
+  const calculatedTotal = (activeTab === 'expense')
+    ? (Number(expQty) * Number(expPrice))
     : 0
+
+  const selectedMedItem = medItems.find(i => String(i.id) === medItemId)
+  const medOutOfStock = activeTab === 'medicine' && !!selectedMedItem && selectedMedItem.total_quantity <= 0
 
   useEffect(() => {
     setError(null)
@@ -128,6 +131,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
       } else if (activeTab === 'medicine') {
         if (!medItemId) { setError('اختر صنف الدواء'); setLoading(false); return }
         if (!medQty || Number(medQty) <= 0) { setError('أدخل كمية صحيحة'); setLoading(false); return }
+        if (selectedMedItem && Number(medQty) > selectedMedItem.total_quantity) { setError('الكمية المدخلة أكبر من المتوفر بالمخزون'); setLoading(false); return }
         await quickEntryApi.logMedicine(flockId, { item_id: Number(medItemId), quantity: Number(medQty), entry_date: date })
       } else if (activeTab === 'temp') {
         if (!tempVal || isNaN(Number(tempVal))) { setError('أدخل قيمة حرارة صحيحة'); setLoading(false); return }
@@ -283,10 +287,16 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
         {activeTab === 'medicine' && (
           <div className="space-y-5">
             <FormField label="الدواء المختص" required>
-              <SelectInput value={medItemId} onChange={setMedItemId} options={medItems.map((i) => ({ value: String(i.id), label: i.name }))} placeholder="اختر الصنف" emptyMessage="لا يوجد مخزون أدوية" className={dynamicInputClass} />
+              <SelectInput value={medItemId} onChange={(val: string) => { setMedItemId(val); setMedQty('') }} options={medItems.map((i) => ({ value: String(i.id), label: i.name }))} placeholder="اختر الصنف" emptyMessage="لا يوجد مخزون أدوية" className={dynamicInputClass} />
             </FormField>
-            <FormField label="الكمية المستخدمة" required>
-              <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} step={0.1} className={dynamicInputClass} />
+            <FormField label="الكمية المستخدمة" required hint={selectedMedItem ? `المتوفر بالمخزون: ${selectedMedItem.total_quantity} ${selectedMedItem.input_unit}` : undefined}>
+              {medOutOfStock ? (
+                <div className="rounded-[1.25rem] border border-dashed border-rose-200 bg-rose-50/50 px-4 py-4 text-[10px] font-bold text-rose-500 italic text-center uppercase tracking-tight">
+                  هذا الصنف غير متوفر بالمخزون حالياً
+                </div>
+              ) : (
+                <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} max={selectedMedItem?.total_quantity} step={0.1} className={dynamicInputClass} />
+              )}
             </FormField>
           </div>
         )}
@@ -411,9 +421,9 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
           </div>
         )}
 
-        <button 
-          onClick={handleSubmit} 
-          disabled={loading} 
+        <button
+          onClick={handleSubmit}
+          disabled={loading || medOutOfStock}
           className={cn(
             "w-full rounded-[1.25rem] py-4 text-sm font-bold text-white transition-all duration-300 active:scale-[0.98] disabled:opacity-50 shadow-xl",
             currentTheme.bg,
@@ -427,17 +437,18 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
   )
 }
 
-function FormField({ label, children, required }: any) {
+function FormField({ label, children, required, hint }: any) {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[11px] font-extrabold text-primary-700/70 uppercase tracking-wider px-1">{label} {required && <span className="text-rose-400">*</span>}</label>
       {children}
+      {hint && <p className="text-[10px] font-bold text-primary-400 px-1">{hint}</p>}
     </div>
   )
 }
 
-function NumericInput({ value, onChange, placeholder, min, step, className }: any) {
-  return <input type="number" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} min={min} step={step} className={className} dir="ltr" />
+function NumericInput({ value, onChange, placeholder, min, max, step, className }: any) {
+  return <input type="number" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} min={min} max={max} step={step} className={className} dir="ltr" />
 }
 
 function SelectInput({ value, onChange, options, placeholder, emptyMessage, className }: any) {

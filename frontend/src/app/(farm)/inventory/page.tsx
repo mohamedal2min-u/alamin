@@ -50,6 +50,8 @@ const TYPE_LABEL: Record<string, string> = {
 
 const TARGET_TYPE_CODES = ['feed', 'medicine', 'charcoal', 'water']
 
+const CONTENT_UNIT_OPTIONS = ['كيلو', 'لتر', 'مل', 'جرام', 'عبوة']
+
 const DIRECTION_CONFIG: Record<string, { label: string; icon: typeof ArrowDownCircle; color: string; badgeCls: string; amountCls: string }> = {
   in:  { label: 'وارد',  icon: ArrowDownCircle, color: 'text-emerald-600', badgeCls: 'bg-emerald-50 text-emerald-700', amountCls: 'text-emerald-700' },
   out: { label: 'صادر', icon: ArrowUpCircle,   color: 'text-red-600',    badgeCls: 'bg-red-50 text-red-600',        amountCls: 'text-red-600'     },
@@ -376,20 +378,13 @@ function AddItemForm({
     minimum_stock: '',
     notes: '',
   })
-  const [packages, setPackages] = useState<{ label: string; quantity: string }[]>([])
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState<string | null>(null)
   const [success,  setSuccess]  = useState(false)
-
-  const selectedTypeCode = itemTypes.find(t => String(t.id) === form.item_type_id)?.code
+  const [contentUnitCustom, setContentUnitCustom] = useState(false)
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(prev => ({ ...prev, [k]: toEnglishDigits(e.target.value) }))
-
-  const addPackageRow = () => setPackages(prev => [...prev, { label: '', quantity: '' }])
-  const removePackageRow = (idx: number) => setPackages(prev => prev.filter((_, i) => i !== idx))
-  const updatePackageRow = (idx: number, field: 'label' | 'quantity', value: string) =>
-    setPackages(prev => prev.map((p, i) => i === idx ? { ...p, [field]: field === 'quantity' ? toEnglishDigits(value) : value } : p))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -400,10 +395,6 @@ function AddItemForm({
     setSaving(true)
     setError(null)
     try {
-      const validPackages = packages
-        .filter(p => p.label.trim() && parseFloat(p.quantity) > 0)
-        .map(p => ({ label: p.label.trim(), quantity: Number(p.quantity) }))
-
       const payload: CreateItemPayload = {
         item_type_id:  Number(form.item_type_id),
         name:          form.name,
@@ -412,12 +403,11 @@ function AddItemForm({
         content_unit:  form.content_unit,
         minimum_stock: form.minimum_stock ? Number(form.minimum_stock) : null,
         notes:         form.notes || null,
-        packages:      selectedTypeCode === 'medicine' && validPackages.length > 0 ? validPackages : undefined,
       }
       await inventoryApi.createItem(payload)
       setSuccess(true)
       setForm({ item_type_id: '', name: '', input_unit: '', unit_value: '1', content_unit: '', minimum_stock: '', notes: '' })
-      setPackages([])
+      setContentUnitCustom(false)
       setTimeout(() => { setSuccess(false); onSuccess() }, 1500)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -467,6 +457,7 @@ function AddItemForm({
                 const val = e.target.value;
                 const typeCode = itemTypes.find(t => String(t.id) === val)?.code;
                 if (typeCode === 'feed') {
+                  setContentUnitCustom(false);
                   setForm(prev => ({ ...prev, item_type_id: val, input_unit: 'كيس', content_unit: 'كيلو', unit_value: '50' }));
                 } else {
                   setForm(prev => ({ ...prev, item_type_id: val }));
@@ -498,8 +489,28 @@ function AddItemForm({
                 <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
               </Field>
 
-              <Field label="وحدة المحتوى" required hint="مثال: كيلو، صهريج">
-                <input value={form.content_unit} onChange={set('content_unit')} placeholder="مثل: كيلو" className={inputCls} />
+              <Field label="وحدة المحتوى" required hint="اختر من القائمة، أو 'أخرى' لكتابة وحدة مخصصة">
+                <select
+                  value={contentUnitCustom ? '__custom__' : (CONTENT_UNIT_OPTIONS.includes(form.content_unit) ? form.content_unit : '')}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === '__custom__') {
+                      setContentUnitCustom(true)
+                      setForm(prev => ({ ...prev, content_unit: '' }))
+                    } else {
+                      setContentUnitCustom(false)
+                      setForm(prev => ({ ...prev, content_unit: val }))
+                    }
+                  }}
+                  className={inputCls}
+                >
+                  <option value="">-- اختر الوحدة --</option>
+                  {CONTENT_UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+                  <option value="__custom__">أخرى (حدد يدوياً)</option>
+                </select>
+                {contentUnitCustom && (
+                  <input value={form.content_unit} onChange={set('content_unit')} placeholder="مثل: صهريج" className={cn(inputCls, 'mt-2')} />
+                )}
               </Field>
             </div>
 
@@ -509,51 +520,6 @@ function AddItemForm({
               </p>
             )}
           </div>
-
-          {/* Section: Ready-made packages (medicine only) */}
-          {selectedTypeCode === 'medicine' && (
-            <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
-              <p className="mb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">عبوات جاهزة (اختياري)</p>
-              <p className="mb-3 text-[10px] text-slate-400">تسهّل على العامل اختيار الكمية عند التسجيل اليومي بدل كتابتها يدوياً</p>
-
-              {packages.length > 0 && (
-                <div className="mb-3 space-y-2">
-                  {packages.map((pkg, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input
-                        value={pkg.label}
-                        onChange={(e) => updatePackageRow(idx, 'label', e.target.value)}
-                        placeholder="مثال: كيس كامل"
-                        className={cn(inputCls, 'flex-1')}
-                      />
-                      <input
-                        type="number" min="0.001" step="0.001"
-                        value={pkg.quantity}
-                        onChange={(e) => updatePackageRow(idx, 'quantity', e.target.value)}
-                        placeholder={form.input_unit ? `الكمية (${form.input_unit})` : 'الكمية'}
-                        className={cn(inputCls, 'w-32')}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePackageRow(idx)}
-                        className="shrink-0 rounded-xl bg-slate-100 px-3 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={addPackageRow}
-                className="flex items-center gap-1.5 rounded-xl bg-primary-50 px-3 py-2 text-xs font-bold text-primary-700 hover:bg-primary-100 transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" /> إضافة عبوة
-              </button>
-            </div>
-          )}
 
           {/* Section: Optional */}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -603,51 +569,7 @@ function EditItemModal({
   })
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState<string | null>(null)
-
-  const [packages, setPackages]       = useState<{ id: number; label: string; quantity: number }[]>([])
-  const [newPkgLabel, setNewPkgLabel] = useState('')
-  const [newPkgQty, setNewPkgQty]     = useState('')
-  const [pkgSaving, setPkgSaving]     = useState(false)
-  const [pkgError, setPkgError]       = useState<string | null>(null)
-
-  const isMedicine = item.type_code === 'medicine'
-
-  const loadPackages = () => {
-    inventoryApi.packages(item.id).then(res => setPackages(res.data)).catch(() => {})
-  }
-
-  useEffect(() => {
-    if (isMedicine) loadPackages()
-  }, [item.id])
-
-  const handleAddPackage = async () => {
-    if (!newPkgLabel.trim() || !newPkgQty || parseFloat(newPkgQty) <= 0) {
-      setPkgError('أدخل اسم العبوة والكمية بشكل صحيح')
-      return
-    }
-    setPkgSaving(true)
-    setPkgError(null)
-    try {
-      await inventoryApi.createPackage(item.id, { label: newPkgLabel.trim(), quantity: parseFloat(newPkgQty) })
-      setNewPkgLabel('')
-      setNewPkgQty('')
-      loadPackages()
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setPkgError(msg ?? 'تعذّر إضافة العبوة')
-    } finally {
-      setPkgSaving(false)
-    }
-  }
-
-  const handleDeletePackage = async (pkgId: number) => {
-    try {
-      await inventoryApi.deletePackage(item.id, pkgId)
-      setPackages(prev => prev.filter(p => p.id !== pkgId))
-    } catch {
-      setPkgError('تعذّر حذف العبوة')
-    }
-  }
+  const [contentUnitCustom, setContentUnitCustom] = useState(!CONTENT_UNIT_OPTIONS.includes(item.content_unit))
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [k]: toEnglishDigits(e.target.value) }))
@@ -711,7 +633,27 @@ function EditItemModal({
                 <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
               </Field>
               <Field label="وحدة المحتوى" required>
-                <input value={form.content_unit} onChange={set('content_unit')} className={inputCls} />
+                <select
+                  value={contentUnitCustom ? '__custom__' : (CONTENT_UNIT_OPTIONS.includes(form.content_unit) ? form.content_unit : '')}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === '__custom__') {
+                      setContentUnitCustom(true)
+                      setForm(prev => ({ ...prev, content_unit: '' }))
+                    } else {
+                      setContentUnitCustom(false)
+                      setForm(prev => ({ ...prev, content_unit: val }))
+                    }
+                  }}
+                  className={inputCls}
+                >
+                  <option value="">-- اختر الوحدة --</option>
+                  {CONTENT_UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+                  <option value="__custom__">أخرى (حدد يدوياً)</option>
+                </select>
+                {contentUnitCustom && (
+                  <input value={form.content_unit} onChange={set('content_unit')} placeholder="مثل: صهريج" className={cn(inputCls, 'mt-2')} />
+                )}
               </Field>
             </div>
           </div>
@@ -724,52 +666,6 @@ function EditItemModal({
               <input value={form.notes} onChange={set('notes')} className={inputCls} />
             </Field>
           </div>
-
-          {isMedicine && (
-            <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
-              <p className="mb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">العبوات الجاهزة (اختياري)</p>
-              <p className="mb-3 text-[10px] text-slate-400">تسهّل على العامل اختيار الكمية عند التسجيل اليومي بدل كتابتها يدوياً</p>
-
-              {pkgError && <p className="mb-2 text-xs font-bold text-red-600">{pkgError}</p>}
-
-              {packages.length > 0 && (
-                <ul className="mb-3 space-y-2">
-                  {packages.map(pkg => (
-                    <li key={pkg.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-                      <span className="text-xs font-semibold text-slate-700">{pkg.label} — {pkg.quantity} {form.input_unit}</span>
-                      <button type="button" onClick={() => handleDeletePackage(pkg.id)} className="text-slate-400 hover:text-red-500 transition-colors">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <div className="flex gap-2">
-                <input
-                  value={newPkgLabel}
-                  onChange={(e) => setNewPkgLabel(e.target.value)}
-                  placeholder="مثال: كيس كامل"
-                  className={cn(inputCls, 'flex-1')}
-                />
-                <input
-                  type="number" min="0.001" step="0.001"
-                  value={newPkgQty}
-                  onChange={(e) => setNewPkgQty(toEnglishDigits(e.target.value))}
-                  placeholder={form.input_unit ? `الكمية (${form.input_unit})` : 'الكمية'}
-                  className={cn(inputCls, 'w-32')}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddPackage}
-                  disabled={pkgSaving}
-                  className="shrink-0 rounded-xl bg-primary-50 px-3 text-primary-700 hover:bg-primary-100 transition-colors disabled:opacity-50"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
 
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-5 mt-6">
             <button

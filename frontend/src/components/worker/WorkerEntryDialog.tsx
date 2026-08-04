@@ -17,7 +17,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 import { Dialog } from '@/components/ui/Dialog'
-import { formatCurrency, formatNumber } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import type { InventoryItem } from '@/types/dashboard'
 import { toast } from 'sonner'
 
@@ -60,8 +60,6 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
   const [medItems, setMedItems]   = useState<InventoryItem[]>([])
   const [medItemId, setMedItemId] = useState('')
   const [medQty, setMedQty]       = useState('')
-  const [medQtyMode, setMedQtyMode]     = useState<'package' | 'custom'>('custom')
-  const [medPackageId, setMedPackageId] = useState<number | null>(null)
 
   // Temp
   const [tempTime, setTempTime]   = useState<'morning' | 'afternoon' | 'evening'>('morning')
@@ -94,7 +92,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
   const resetFields = () => {
     setMQty(''); setMReason('')
     setFeedItemId(''); setFeedQty(''); setFeedBags(''); setFeedExtraKg('')
-    setMedItemId(''); setMedQty(''); setMedQtyMode('custom'); setMedPackageId(null)
+    setMedItemId(''); setMedQty('')
     setTempVal('')
     setExpType('bedding'); setExpQty(''); setExpPrice(''); setExpDescription(''); setExpNotes(''); setExpUnitHint('كيس')
     setWaterQty(''); setWaterPrice(''); setWaterDriver('')
@@ -285,72 +283,10 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
         {activeTab === 'medicine' && (
           <div className="space-y-5">
             <FormField label="الدواء المختص" required>
-              <SelectInput
-                value={medItemId}
-                onChange={(val: string) => {
-                  setMedItemId(val)
-                  const item = medItems.find((i) => String(i.id) === val)
-                  const packages = item?.packages ?? []
-                  if (packages.length > 0) {
-                    setMedQtyMode('package')
-                    setMedPackageId(packages[0].id)
-                    setMedQty(String(packages[0].quantity))
-                  } else {
-                    setMedQtyMode('custom')
-                    setMedPackageId(null)
-                    setMedQty('')
-                  }
-                }}
-                options={medItems.map((i) => ({ value: String(i.id), label: i.name }))}
-                placeholder="اختر الصنف"
-                emptyMessage="لا يوجد مخزون أدوية"
-                className={dynamicInputClass}
-              />
+              <SelectInput value={medItemId} onChange={setMedItemId} options={medItems.map((i) => ({ value: String(i.id), label: i.name }))} placeholder="اختر الصنف" emptyMessage="لا يوجد مخزون أدوية" className={dynamicInputClass} />
             </FormField>
             <FormField label="الكمية المستخدمة" required>
-              {(() => {
-                const item = medItems.find((i) => String(i.id) === medItemId)
-                const packages = item?.packages ?? []
-                if (packages.length === 0) {
-                  return <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} step={0.1} className={dynamicInputClass} />
-                }
-                return (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {packages.map((pkg) => (
-                        <button
-                          key={pkg.id}
-                          type="button"
-                          onClick={() => { setMedQtyMode('package'); setMedPackageId(pkg.id); setMedQty(String(pkg.quantity)) }}
-                          className={cn(
-                            'rounded-xl border px-3 py-2 text-xs font-bold transition-colors',
-                            medQtyMode === 'package' && medPackageId === pkg.id
-                              ? cn(currentTheme.bg, 'border-transparent text-white shadow-md')
-                              : 'border-primary-100 bg-white text-primary-700/70 hover:border-primary-300'
-                          )}
-                        >
-                          {pkg.label} ({formatNumber(pkg.quantity)} {item?.input_unit})
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => { setMedQtyMode('custom'); setMedPackageId(null); setMedQty('') }}
-                        className={cn(
-                          'rounded-xl border px-3 py-2 text-xs font-bold transition-colors',
-                          medQtyMode === 'custom'
-                            ? cn(currentTheme.bg, 'border-transparent text-white shadow-md')
-                            : 'border-primary-100 bg-white text-primary-700/70 hover:border-primary-300'
-                        )}
-                      >
-                        كمية أخرى
-                      </button>
-                    </div>
-                    {medQtyMode === 'custom' && (
-                      <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} step={0.1} className={dynamicInputClass} />
-                    )}
-                  </div>
-                )
-              })()}
+              <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} step={0.1} className={dynamicInputClass} />
             </FormField>
           </div>
         )}

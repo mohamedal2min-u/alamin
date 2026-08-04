@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\InventoryTransaction;
 use App\Models\Item;
-use App\Models\ItemPackage;
 use App\Models\ItemType;
 use App\Models\Warehouse;
 use App\Models\WarehouseItem;
@@ -29,7 +28,7 @@ class InventoryController extends Controller
 
         $query = Item::where('farm_id', $farmId)
             ->where('status', 'active')
-            ->with(['itemType:id,code,name', 'packages']);
+            ->with(['itemType:id,code,name']);
 
         if ($type) {
             $query->whereHas('itemType', fn ($q) => $q->where('code', $type));
@@ -45,11 +44,6 @@ class InventoryController extends Controller
                 'content_unit' => $item->content_unit,
                 'unit_value'   => (float) $item->unit_value,
                 'type_code'    => $item->itemType?->code,
-                'packages'     => $item->packages->map(fn (ItemPackage $p) => [
-                    'id'       => $p->id,
-                    'label'    => $p->label,
-                    'quantity' => (float) $p->quantity,
-                ]),
             ]),
         ]);
     }
@@ -86,17 +80,14 @@ class InventoryController extends Controller
         $userId = $request->user()->id;
 
         $validated = $request->validate([
-            'item_type_id'         => ['required', 'integer', 'exists:item_types,id'],
-            'name'                 => ['required', 'string', 'max:150'],
-            'input_unit'           => ['required', 'string', 'max:50'],
-            'unit_value'           => ['required', 'numeric', 'min:0.001'],
-            'content_unit'         => ['required', 'string', 'max:50'],
-            'minimum_stock'        => ['nullable', 'numeric', 'min:0'],
-            'default_cost'         => ['nullable', 'numeric', 'min:0'],
-            'notes'                => ['nullable', 'string', 'max:2000'],
-            'packages'             => ['nullable', 'array'],
-            'packages.*.label'     => ['required_with:packages', 'string', 'max:100'],
-            'packages.*.quantity'  => ['required_with:packages', 'numeric', 'min:0.001'],
+            'item_type_id'  => ['required', 'integer', 'exists:item_types,id'],
+            'name'          => ['required', 'string', 'max:150'],
+            'input_unit'    => ['required', 'string', 'max:50'],
+            'unit_value'    => ['required', 'numeric', 'min:0.001'],
+            'content_unit'  => ['required', 'string', 'max:50'],
+            'minimum_stock' => ['nullable', 'numeric', 'min:0'],
+            'default_cost'  => ['nullable', 'numeric', 'min:0'],
+            'notes'         => ['nullable', 'string', 'max:2000'],
         ]);
 
         // Check unique name per farm
@@ -119,107 +110,10 @@ class InventoryController extends Controller
             'updated_by'    => $userId,
         ]);
 
-        foreach (($validated['packages'] ?? []) as $index => $pkg) {
-            ItemPackage::create([
-                'farm_id'    => $farmId,
-                'item_id'    => $item->id,
-                'label'      => $pkg['label'],
-                'quantity'   => $pkg['quantity'],
-                'sort_order' => $index,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-        }
-
         return response()->json([
             'message' => 'تمت إضافة الصنف بنجاح',
             'data'    => ['id' => $item->id],
         ], 201);
-    }
-
-    // ── GET /api/inventory/items/{item}/packages ───────────────────────────────
-
-    public function packages(Request $request, Item $item): JsonResponse
-    {
-        $farmId = $request->attributes->get('farm_id');
-        if ($item->farm_id !== $farmId) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
-
-        return response()->json([
-            'data' => $item->packages()->get()->map(fn (ItemPackage $p) => [
-                'id'       => $p->id,
-                'label'    => $p->label,
-                'quantity' => (float) $p->quantity,
-            ]),
-        ]);
-    }
-
-    // ── POST /api/inventory/items/{item}/packages ───────────────────────────────
-
-    public function storePackage(Request $request, Item $item): JsonResponse
-    {
-        $farmId = $request->attributes->get('farm_id');
-        if ($item->farm_id !== $farmId) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
-
-        $validated = $request->validate([
-            'label'    => ['required', 'string', 'max:100'],
-            'quantity' => ['required', 'numeric', 'min:0.001'],
-        ]);
-
-        $package = ItemPackage::create([
-            'farm_id'    => $farmId,
-            'item_id'    => $item->id,
-            'label'      => $validated['label'],
-            'quantity'   => $validated['quantity'],
-            'sort_order' => ((int) $item->packages()->max('sort_order')) + 1,
-            'created_by' => $request->user()->id,
-            'updated_by' => $request->user()->id,
-        ]);
-
-        return response()->json([
-            'message' => 'تمت إضافة العبوة بنجاح',
-            'data'    => ['id' => $package->id],
-        ], 201);
-    }
-
-    // ── PUT /api/inventory/items/{item}/packages/{package} ─────────────────────
-
-    public function updatePackage(Request $request, Item $item, ItemPackage $package): JsonResponse
-    {
-        $farmId = $request->attributes->get('farm_id');
-        if ($item->farm_id !== $farmId || $package->item_id !== $item->id) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
-
-        $validated = $request->validate([
-            'label'    => ['required', 'string', 'max:100'],
-            'quantity' => ['required', 'numeric', 'min:0.001'],
-        ]);
-
-        $package->update([
-            'label'      => $validated['label'],
-            'quantity'   => $validated['quantity'],
-            'updated_by' => $request->user()->id,
-        ]);
-
-        return response()->json(['message' => 'تم تحديث العبوة بنجاح']);
-    }
-
-    // ── DELETE /api/inventory/items/{item}/packages/{package} ──────────────────
-
-    public function destroyPackage(Request $request, Item $item, ItemPackage $package): JsonResponse
-    {
-        $farmId = $request->attributes->get('farm_id');
-        if ($item->farm_id !== $farmId || $package->item_id !== $item->id) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
-
-        $package->delete();
-
-        return response()->json(['message' => 'تم حذف العبوة بنجاح']);
     }
 
     public function updateItem(Request $request, Item $item): JsonResponse

@@ -58,11 +58,6 @@ class Item extends Model
         return $this->hasMany(FlockMedicine::class, 'item_id');
     }
 
-    public function packages(): HasMany
-    {
-        return $this->hasMany(ItemPackage::class, 'item_id')->orderBy('sort_order')->orderBy('id');
-    }
-
     public function createdByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

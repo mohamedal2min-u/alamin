@@ -87,10 +87,6 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::get('/items',         [InventoryController::class, 'items']);
         Route::post('/items',        [InventoryController::class, 'createItem']);
         Route::put('/items/{item}',  [InventoryController::class, 'updateItem']);
-        Route::get('/items/{item}/packages',           [InventoryController::class, 'packages']);
-        Route::post('/items/{item}/packages',          [InventoryController::class, 'storePackage']);
-        Route::put('/items/{item}/packages/{package}', [InventoryController::class, 'updatePackage']);
-        Route::delete('/items/{item}/packages/{package}', [InventoryController::class, 'destroyPackage']);
         Route::get('/item-types',    [InventoryController::class, 'itemTypes']);
         Route::get('/stock',         [InventoryController::class, 'stock']);
         Route::get('/summary',       [InventoryController::class, 'summary']);

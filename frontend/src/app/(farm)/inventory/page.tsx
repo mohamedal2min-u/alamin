@@ -53,6 +53,22 @@ const TARGET_TYPE_CODES = ['feed', 'medicine', 'charcoal', 'water']
 const CONTENT_UNIT_OPTIONS = ['كيلو', 'لتر', 'مل', 'جرام', 'عبوة']
 const INPUT_UNIT_OPTIONS = ['كيس', 'شيكارة', 'كرتون', 'صندوق', 'علبة', 'زجاجة', 'برميل', 'جالون', 'طبلية']
 
+// لا يوجد حقل "نوع دواء" في البيانات — نوزّع لوناً هادئاً وثابتاً لكل صنف (حسب الـ id) بدل توحيد الألوان،
+// عشان تبقى البطاقات مميّزة بصرياً عن بعض وأسهل للعين وقت المسح السريع
+const CARD_THEMES = [
+  { bg: 'bg-rose-50/70',    border: 'border-rose-200/70'    },
+  { bg: 'bg-amber-50/70',   border: 'border-amber-200/70'   },
+  { bg: 'bg-emerald-50/70', border: 'border-emerald-200/70' },
+  { bg: 'bg-sky-50/70',     border: 'border-sky-200/70'     },
+  { bg: 'bg-violet-50/70',  border: 'border-violet-200/70'  },
+  { bg: 'bg-pink-50/70',    border: 'border-pink-200/70'    },
+  { bg: 'bg-teal-50/70',    border: 'border-teal-200/70'    },
+  { bg: 'bg-indigo-50/70',  border: 'border-indigo-200/70'  },
+  { bg: 'bg-lime-50/70',    border: 'border-lime-200/70'    },
+  { bg: 'bg-cyan-50/70',    border: 'border-cyan-200/70'    },
+]
+const cardTheme = (id: number) => CARD_THEMES[id % CARD_THEMES.length]
+
 const DIRECTION_CONFIG: Record<string, { label: string; icon: typeof ArrowDownCircle; color: string; badgeCls: string; amountCls: string }> = {
   in:  { label: 'وارد',  icon: ArrowDownCircle, color: 'text-emerald-600', badgeCls: 'bg-emerald-50 text-emerald-700', amountCls: 'text-emerald-700' },
   out: { label: 'صادر', icon: ArrowUpCircle,   color: 'text-red-600',    badgeCls: 'bg-red-50 text-red-600',        amountCls: 'text-red-600'     },
@@ -259,11 +275,12 @@ function ItemsTable({ items, onEdit, categoryFilter = 'all', onCategoryFilterCha
           {rows.map(item => {
             const isLow = item.minimum_stock > 0 && item.total_quantity <= item.minimum_stock
             const pct   = item.minimum_stock > 0 ? Math.min((item.total_quantity / item.minimum_stock) * 100, 100) : 100
+            const theme = cardTheme(item.id)
             return (
-              <div key={item.id} className="relative rounded-2xl border border-slate-200/60 bg-white p-4" style={{ boxShadow: 'var(--shadow-card)' }}>
+              <div key={item.id} className={cn("relative rounded-2xl border pt-6 p-4", theme.bg, theme.border)} style={{ boxShadow: 'var(--shadow-card)' }}>
                 {!!item.shipment_count && (
                   <div
-                    className="absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] font-black text-white shadow-md"
+                    className="absolute -top-3 left-1/2 flex h-6 min-w-6 -translate-x-1/2 items-center justify-center rounded-full bg-slate-800 px-1.5 text-[11px] font-black text-white shadow-md ring-2 ring-white"
                     title={`تمت إضافة حمولة لهذا الصنف ${item.shipment_count} مرة`}
                   >
                     {item.shipment_count}

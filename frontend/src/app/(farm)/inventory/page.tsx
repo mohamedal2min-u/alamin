@@ -587,12 +587,13 @@ function EditItemModal({
   onSuccess: () => void
 }) {
   const [form, setForm] = useState({
-    name:          item.name,
-    input_unit:    item.input_unit || '',
-    unit_value:    item.unit_value.toString(),
-    content_unit:  item.content_unit,
-    minimum_stock: item.minimum_stock.toString(),
-    notes:         item.notes || '',
+    name:           item.name,
+    input_unit:     item.input_unit || '',
+    unit_value:     item.unit_value.toString(),
+    content_unit:   item.content_unit,
+    minimum_stock:  item.minimum_stock.toString(),
+    notes:          item.notes || '',
+    stock_quantity: item.total_quantity.toString(),
   })
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState<string | null>(null)
@@ -609,6 +610,7 @@ function EditItemModal({
     e.preventDefault()
     if (!form.name || !form.content_unit || !form.unit_value || (!isMedicine && !form.input_unit)) return setError('الرجاء إكمال جميع الحقول الإلزامية')
     if (isNaN(parseFloat(form.unit_value)) || parseFloat(form.unit_value) <= 0) return setError('قيمة الوحدة يجب أن تكون رقماً أكبر من صفر')
+    if (form.stock_quantity === '' || isNaN(parseFloat(form.stock_quantity)) || parseFloat(form.stock_quantity) < 0) return setError('رصيد المخزون يجب أن يكون رقماً صحيحاً')
 
     setSaving(true)
     setError(null)
@@ -621,6 +623,10 @@ function EditItemModal({
         minimum_stock: parseFloat(form.minimum_stock || '0'),
         notes:         form.notes,
       })
+      const newStockQty = parseFloat(form.stock_quantity)
+      if (Math.abs(newStockQty - item.total_quantity) > 0.0001) {
+        await inventoryApi.adjustStock(item.id, newStockQty, 'تصحيح يدوي لرصيد المخزون من شاشة تعديل الصنف')
+      }
       onSuccess()
       onClose()
     } catch (err: any) {
@@ -708,6 +714,14 @@ function EditItemModal({
                 )}
               </Field>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+            <p className="mb-1 text-[10px] font-bold text-amber-600 uppercase tracking-wider">تصحيح رصيد المخزون</p>
+            <p className="mb-3 text-[10px] text-amber-600/80">تعديل هذا الحقل يسجّل حركة تسوية يدوية ويغيّر الرصيد الفعلي بالمخزون مباشرة — استخدمه فقط لتصحيح خطأ في الإجمالي.</p>
+            <Field label={`الرصيد الحالي (${item.content_unit})`} required>
+              <input type="number" min="0" step="0.001" value={form.stock_quantity} onChange={set('stock_quantity')} className={inputCls} />
+            </Field>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

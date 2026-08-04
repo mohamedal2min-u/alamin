@@ -132,6 +132,11 @@ export const inventoryApi = {
       .put<{ message: string; data: { id: number } }>(`/inventory/items/${itemId}`, payload)
       .then((r) => r.data),
 
+  adjustStock: (itemId: number, quantity: number, notes?: string) =>
+    apiClient
+      .patch<{ message: string; data: { total_quantity: number } }>(`/inventory/items/${itemId}/adjust-stock`, { quantity, notes })
+      .then((r) => r.data),
+
   stock: () =>
     apiClient
       .get<{ data: StockItem[] }>('/inventory/stock')

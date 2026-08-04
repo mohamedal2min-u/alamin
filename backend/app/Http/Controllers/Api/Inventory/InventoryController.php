@@ -12,6 +12,7 @@ use App\Models\Warehouse;
 use App\Models\WarehouseItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
 {
@@ -153,6 +154,69 @@ class InventoryController extends Controller
         return response()->json([
             'message' => 'تم تحديث بيانات الصنف بنجاح',
             'data'    => ['id' => $item->id],
+        ]);
+    }
+
+    // ── PATCH /api/inventory/items/{item}/adjust-stock ─────────────────────────
+    // تصحيح الرصيد الفعلي بالمخزون يدوياً (لمعالجة انحراف تاريخي في current_quantity)
+
+    public function adjustStock(Request $request, Item $item): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+        if ($item->farm_id !== $farmId) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $validated = $request->validate([
+            'quantity' => ['required', 'numeric', 'min:0'],
+            'notes'    => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $userId = $request->user()->id;
+
+        $newQuantity = DB::transaction(function () use ($item, $farmId, $userId, $validated) {
+            $warehouse = Warehouse::where('farm_id', $farmId)->where('is_active', true)->first();
+            if (! $warehouse) {
+                throw new \Exception('لا يوجد مخزن نشط لهذه المزرعة', 422);
+            }
+
+            $warehouseItem = WarehouseItem::firstOrCreate(
+                ['warehouse_id' => $warehouse->id, 'item_id' => $item->id],
+                ['farm_id' => $farmId, 'current_quantity' => 0, 'average_cost' => $item->default_cost ?? 0, 'created_by' => $userId, 'updated_by' => $userId]
+            );
+            $warehouseItem = WarehouseItem::where('id', $warehouseItem->id)->lockForUpdate()->first();
+
+            $current  = (float) $warehouseItem->current_quantity;
+            $target   = (float) $validated['quantity'];
+            $delta    = $target - $current;
+
+            if (abs($delta) > 0.0001) {
+                InventoryTransaction::create([
+                    'farm_id'           => $farmId,
+                    'warehouse_id'      => $warehouse->id,
+                    'item_id'           => $item->id,
+                    'transaction_date'  => now()->toDateString(),
+                    'transaction_type'  => 'adjustment',
+                    'direction'         => $delta > 0 ? 'in' : 'out',
+                    'source_module'     => 'manual_adjustment',
+                    'original_quantity' => abs($delta),
+                    'computed_quantity' => abs($delta),
+                    'input_unit'        => $item->input_unit,
+                    'content_unit'      => $item->content_unit,
+                    'notes'             => $validated['notes'] ?? 'تصحيح يدوي لرصيد المخزون',
+                    'created_by'        => $userId,
+                    'updated_by'        => $userId,
+                ]);
+
+                $warehouseItem->update(['current_quantity' => $target, 'updated_by' => $userId]);
+            }
+
+            return $target;
+        });
+
+        return response()->json([
+            'message' => 'تم تحديث رصيد المخزون بنجاح',
+            'data'    => ['total_quantity' => $newQuantity],
         ]);
     }
 

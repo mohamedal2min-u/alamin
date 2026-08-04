@@ -232,24 +232,39 @@ class InventoryController extends Controller
             ->withSum('warehouseItems', 'current_quantity')
             ->withSum(['inventoryTransactions as total_received' => fn($q) => $q->where('direction', 'in')], 'computed_quantity')
             ->withCount(['inventoryTransactions as shipment_count' => fn($q) => $q->where('direction', 'in')->where('transaction_type', '!=', 'adjustment')])
-            ->orderBy('name')
-            ->get();
+            ->withMax(['inventoryTransactions as last_shipment_date' => fn($q) => $q->where('direction', 'in')], 'transaction_date')
+            ->get()
+            ->sort(fn ($a, $b) => $this->compareStockOrder($a, $b))
+            ->values();
 
         return response()->json([
             'data' => $items->map(fn (Item $item) => [
-                'id'             => $item->id,
-                'name'           => $item->name,
-                'type_code'      => $item->itemType?->code,
-                'type_name'      => $item->itemType?->name,
-                'input_unit'     => $item->input_unit,
-                'content_unit'   => $item->content_unit,
-                'unit_value'     => (float) $item->unit_value,
-                'minimum_stock'  => (float) ($item->minimum_stock ?? 0),
-                'total_quantity' => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
-                'total_received' => (float) ($item->total_received ?? 0),
-                'shipment_count' => (int) $item->shipment_count,
+                'id'                => $item->id,
+                'name'              => $item->name,
+                'type_code'         => $item->itemType?->code,
+                'type_name'         => $item->itemType?->name,
+                'input_unit'        => $item->input_unit,
+                'content_unit'      => $item->content_unit,
+                'unit_value'        => (float) $item->unit_value,
+                'minimum_stock'     => (float) ($item->minimum_stock ?? 0),
+                'total_quantity'    => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
+                'total_received'    => (float) ($item->total_received ?? 0),
+                'shipment_count'    => (int) $item->shipment_count,
+                'last_shipment_date'=> $item->last_shipment_date,
             ]),
         ]);
+    }
+
+    // ترتيب الأصناف: الأكثر مخزوناً أولاً، وعند تساوي الكمية يتقدّم الأحدث إضافة (تاريخ آخر حمولة)
+    private function compareStockOrder(Item $a, Item $b): int
+    {
+        $qtyA = (float) ($a->warehouse_items_sum_current_quantity ?? 0);
+        $qtyB = (float) ($b->warehouse_items_sum_current_quantity ?? 0);
+        if ($qtyA !== $qtyB) {
+            return $qtyB <=> $qtyA;
+        }
+
+        return strcmp((string) $b->last_shipment_date, (string) $a->last_shipment_date);
     }
 
     // ── GET /api/inventory/overview ──────────────────────────────────────────
@@ -266,21 +281,24 @@ class InventoryController extends Controller
             ->withSum('warehouseItems', 'current_quantity')
             ->withSum(['inventoryTransactions as total_received' => fn($q) => $q->where('direction', 'in')], 'computed_quantity')
             ->withCount(['inventoryTransactions as shipment_count' => fn($q) => $q->where('direction', 'in')->where('transaction_type', '!=', 'adjustment')])
-            ->orderBy('name')
-            ->get();
+            ->withMax(['inventoryTransactions as last_shipment_date' => fn($q) => $q->where('direction', 'in')], 'transaction_date')
+            ->get()
+            ->sort(fn ($a, $b) => $this->compareStockOrder($a, $b))
+            ->values();
 
         $stock = $items->map(fn (Item $item) => [
-            'id'             => $item->id,
-            'name'           => $item->name,
-            'type_code'      => $item->itemType?->code,
-            'type_name'      => $item->itemType?->name,
-            'input_unit'     => $item->input_unit,
-            'content_unit'   => $item->content_unit,
-            'unit_value'     => (float) $item->unit_value,
-            'minimum_stock'  => (float) ($item->minimum_stock ?? 0),
-            'total_quantity' => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
-            'total_received' => (float) ($item->total_received ?? 0),
-            'shipment_count' => (int) $item->shipment_count,
+            'id'                 => $item->id,
+            'name'               => $item->name,
+            'type_code'          => $item->itemType?->code,
+            'type_name'          => $item->itemType?->name,
+            'input_unit'         => $item->input_unit,
+            'content_unit'       => $item->content_unit,
+            'unit_value'         => (float) $item->unit_value,
+            'minimum_stock'      => (float) ($item->minimum_stock ?? 0),
+            'total_quantity'     => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
+            'total_received'     => (float) ($item->total_received ?? 0),
+            'shipment_count'     => (int) $item->shipment_count,
+            'last_shipment_date' => $item->last_shipment_date,
         ]);
 
         // ── 2. Summary KPIs ───────────────────────────────────────────────────

@@ -13,6 +13,7 @@ export interface StockItem {
   total_quantity: number
   total_received?: number
   shipment_count?: number
+  last_shipment_date?: string | null
   notes?: string | null
 }
 

@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { InventoryItem } from '@/types/dashboard'
+import type { InventoryItem, ItemPackage } from '@/types/dashboard'
 
 export interface StockItem {
   id: number
@@ -84,6 +84,11 @@ export interface AddShipmentPayload {
   attachment?: File | null
 }
 
+export interface ItemPackagePayload {
+  label: string
+  quantity: number
+}
+
 export interface CreateItemPayload {
   item_type_id: number
   name: string
@@ -93,6 +98,7 @@ export interface CreateItemPayload {
   minimum_stock?: number | null
   default_cost?: number | null
   notes?: string | null
+  packages?: ItemPackagePayload[]
 }
 
 export interface InventoryOverview {
@@ -130,6 +136,26 @@ export const inventoryApi = {
   updateItem: (itemId: number, payload: Partial<CreateItemPayload>) =>
     apiClient
       .put<{ message: string; data: { id: number } }>(`/inventory/items/${itemId}`, payload)
+      .then((r) => r.data),
+
+  packages: (itemId: number) =>
+    apiClient
+      .get<{ data: ItemPackage[] }>(`/inventory/items/${itemId}/packages`)
+      .then((r) => r.data),
+
+  createPackage: (itemId: number, payload: ItemPackagePayload) =>
+    apiClient
+      .post<{ message: string; data: { id: number } }>(`/inventory/items/${itemId}/packages`, payload)
+      .then((r) => r.data),
+
+  updatePackage: (itemId: number, packageId: number, payload: ItemPackagePayload) =>
+    apiClient
+      .put<{ message: string }>(`/inventory/items/${itemId}/packages/${packageId}`, payload)
+      .then((r) => r.data),
+
+  deletePackage: (itemId: number, packageId: number) =>
+    apiClient
+      .delete<{ message: string }>(`/inventory/items/${itemId}/packages/${packageId}`)
       .then((r) => r.data),
 
   stock: () =>

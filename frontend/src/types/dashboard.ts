@@ -1,3 +1,9 @@
+export interface ItemPackage {
+  id: number
+  label: string
+  quantity: number
+}
+
 export interface InventoryItem {
   id: number
   name: string
@@ -5,6 +11,7 @@ export interface InventoryItem {
   content_unit: string
   unit_value: number
   type_code: string
+  packages?: ItemPackage[]
 }
 
 export interface TodayMortalityEntry {

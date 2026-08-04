@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,7 +10,7 @@ import { medicineLogsApi } from '@/lib/api/medicineLogs'
 import { inventoryApi } from '@/lib/api/inventory'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { formatDate, formatNumber, getTodayLocalISO } from '@/lib/utils'
+import { formatDate, formatNumber, getTodayLocalISO, cn } from '@/lib/utils'
 import type { MedicineLog } from '@/types/medicineLog'
 import type { InventoryItem } from '@/types/dashboard'
 import type { FlockStatus } from '@/types/flock'
@@ -57,6 +57,8 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -66,8 +68,42 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
     },
   })
 
+  const selectedItemId = watch('item_id')
+  const selectedItem   = items.find((i) => i.id === selectedItemId)
+  const packages        = selectedItem?.packages ?? []
+
+  const [qtyMode, setQtyMode]                 = useState<'package' | 'custom'>('custom')
+  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (packages.length > 0) {
+      setQtyMode('package')
+      setSelectedPackageId(packages[0].id)
+      setValue('quantity', packages[0].quantity, { shouldValidate: true })
+    } else {
+      setQtyMode('custom')
+      setSelectedPackageId(null)
+      setValue('quantity', undefined as unknown as number)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedItemId])
+
+  const choosePackage = (pkgId: number, quantity: number) => {
+    setQtyMode('package')
+    setSelectedPackageId(pkgId)
+    setValue('quantity', quantity, { shouldValidate: true })
+  }
+
+  const chooseCustomQty = () => {
+    setQtyMode('custom')
+    setSelectedPackageId(null)
+    setValue('quantity', undefined as unknown as number)
+  }
+
   const handleCancel = () => {
     reset({ item_id: undefined as unknown as number, entry_date: getTodayLocalISO() })
+    setQtyMode('custom')
+    setSelectedPackageId(null)
     setServerError(null)
     setShowForm(false)
   }
@@ -144,7 +180,7 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-3">
             {/* Item select */}
             <div className="space-y-1">
               <label htmlFor="medicine_item_id" className="text-sm font-medium text-slate-700">
@@ -168,17 +204,56 @@ export function MedicineTab({ flockId, flockStatus }: Props) {
             </div>
 
             {/* Quantity */}
-            <Input
-              {...register('quantity', { valueAsNumber: true })}
-              id="medicine_quantity"
-              label="الكمية"
-              type="number"
-              step="0.01"
-              min={0.001}
-              placeholder="مثال: 5"
-              error={errors.quantity?.message}
-              required
-            />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">
+                الكمية <span className="text-red-500">*</span>
+              </label>
+
+              {packages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {packages.map((pkg) => (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      onClick={() => choosePackage(pkg.id, pkg.quantity)}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                        qtyMode === 'package' && selectedPackageId === pkg.id
+                          ? 'border-primary-500 bg-primary-50 text-primary-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
+                      )}
+                    >
+                      {pkg.label} ({formatNumber(pkg.quantity)} {selectedItem?.input_unit})
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={chooseCustomQty}
+                    className={cn(
+                      'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                      qtyMode === 'custom'
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
+                    )}
+                  >
+                    كمية أخرى
+                  </button>
+                </div>
+              )}
+
+              {qtyMode === 'custom' && (
+                <Input
+                  {...register('quantity', { valueAsNumber: true })}
+                  id="medicine_quantity"
+                  type="number"
+                  step="0.01"
+                  min={0.001}
+                  placeholder="مثال: 5"
+                  error={errors.quantity?.message}
+                  required
+                />
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

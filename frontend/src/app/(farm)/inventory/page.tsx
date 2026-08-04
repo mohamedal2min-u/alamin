@@ -393,7 +393,7 @@ function AddItemForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.item_type_id || !form.name || !form.content_unit || (!isMedicine && (!form.input_unit || !form.unit_value))) {
+    if (!form.item_type_id || !form.name || !form.content_unit || !form.unit_value || (!isMedicine && !form.input_unit)) {
       setError('يرجى ملء جميع الحقول المطلوبة')
       return
     }
@@ -404,7 +404,7 @@ function AddItemForm({
         item_type_id:  Number(form.item_type_id),
         name:          form.name,
         input_unit:    isMedicine ? form.content_unit : form.input_unit,
-        unit_value:    isMedicine ? 1 : Number(form.unit_value),
+        unit_value:    Number(form.unit_value),
         content_unit:  form.content_unit,
         minimum_stock: form.minimum_stock ? Number(form.minimum_stock) : null,
         notes:         form.notes || null,
@@ -485,7 +485,7 @@ function AddItemForm({
           {/* Section: Units */}
           <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
             <p className="mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">إعداد الوحدات</p>
-            <div className={cn('grid gap-4', isMedicine ? 'sm:grid-cols-1 sm:max-w-xs' : 'sm:grid-cols-3')}>
+            <div className={cn('grid gap-4', isMedicine ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}>
               {!isMedicine && (
                 <Field label="وحدة الإدخال" required hint="اختر من القائمة، أو 'أخرى' لكتابة وحدة مخصصة">
                   <select
@@ -512,11 +512,9 @@ function AddItemForm({
                 </Field>
               )}
 
-              {!isMedicine && (
-                <Field label="قيمة الوحدة" required hint="كم وحدة محتوى بكل وحدة إدخال">
-                  <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
-                </Field>
-              )}
+              <Field label="قيمة الوحدة" required hint="كم وحدة محتوى بكل وحدة إدخال">
+                <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
+              </Field>
 
               <Field label="وحدة المحتوى" required hint="اختر من القائمة، أو 'أخرى' لكتابة وحدة مخصصة">
                 <select
@@ -609,8 +607,8 @@ function EditItemModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name || !form.content_unit || (!isMedicine && (!form.input_unit || !form.unit_value))) return setError('الرجاء إكمال جميع الحقول الإلزامية')
-    if (!isMedicine && (isNaN(parseFloat(form.unit_value)) || parseFloat(form.unit_value) <= 0)) return setError('قيمة الوحدة يجب أن تكون رقماً أكبر من صفر')
+    if (!form.name || !form.content_unit || !form.unit_value || (!isMedicine && !form.input_unit)) return setError('الرجاء إكمال جميع الحقول الإلزامية')
+    if (isNaN(parseFloat(form.unit_value)) || parseFloat(form.unit_value) <= 0) return setError('قيمة الوحدة يجب أن تكون رقماً أكبر من صفر')
 
     setSaving(true)
     setError(null)
@@ -657,7 +655,7 @@ function EditItemModal({
 
           <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
             <p className="mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">إعداد الوحدات</p>
-            <div className={cn('grid gap-4', isMedicine ? 'sm:grid-cols-1 sm:max-w-xs' : 'sm:grid-cols-3')}>
+            <div className={cn('grid gap-4', isMedicine ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}>
               {!isMedicine && (
                 <Field label="وحدة الإدخال" required>
                   <select
@@ -683,11 +681,9 @@ function EditItemModal({
                   )}
                 </Field>
               )}
-              {!isMedicine && (
-                <Field label="قيمة الوحدة" required>
-                  <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
-                </Field>
-              )}
+              <Field label="قيمة الوحدة" required>
+                <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
+              </Field>
               <Field label="وحدة المحتوى" required>
                 <select
                   value={contentUnitCustom ? '__custom__' : (CONTENT_UNIT_OPTIONS.includes(form.content_unit) ? form.content_unit : '')}

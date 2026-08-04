@@ -83,6 +83,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
     : 0
 
   const selectedMedItem = medItems.find(i => String(i.id) === medItemId)
+  const medAvailableQty = selectedMedItem ? selectedMedItem.total_quantity / (selectedMedItem.unit_value || 1) : 0
   const medOutOfStock = activeTab === 'medicine' && !!selectedMedItem && selectedMedItem.total_quantity <= 0
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
       } else if (activeTab === 'medicine') {
         if (!medItemId) { setError('اختر صنف الدواء'); setLoading(false); return }
         if (!medQty || Number(medQty) <= 0) { setError('أدخل كمية صحيحة'); setLoading(false); return }
-        if (selectedMedItem && Number(medQty) > selectedMedItem.total_quantity) { setError('الكمية المدخلة أكبر من المتوفر بالمخزون'); setLoading(false); return }
+        if (selectedMedItem && Number(medQty) > medAvailableQty) { setError('الكمية المدخلة أكبر من المتوفر بالمخزون'); setLoading(false); return }
         await quickEntryApi.logMedicine(flockId, { item_id: Number(medItemId), quantity: Number(medQty), entry_date: date })
       } else if (activeTab === 'temp') {
         if (!tempVal || isNaN(Number(tempVal))) { setError('أدخل قيمة حرارة صحيحة'); setLoading(false); return }
@@ -289,13 +290,13 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
             <FormField label="الدواء المختص" required>
               <SelectInput value={medItemId} onChange={(val: string) => { setMedItemId(val); setMedQty('') }} options={medItems.map((i) => ({ value: String(i.id), label: i.name }))} placeholder="اختر الصنف" emptyMessage="لا يوجد مخزون أدوية" className={dynamicInputClass} />
             </FormField>
-            <FormField label="الكمية المستخدمة" required hint={selectedMedItem ? `المتوفر بالمخزون: ${selectedMedItem.total_quantity} ${selectedMedItem.input_unit}` : undefined}>
+            <FormField label="الكمية المستخدمة" required hint={selectedMedItem ? `المتوفر بالمخزون: ${medAvailableQty.toFixed(3)} ${selectedMedItem.input_unit}` : undefined}>
               {medOutOfStock ? (
                 <div className="rounded-[1.25rem] border border-dashed border-rose-200 bg-rose-50/50 px-4 py-4 text-[10px] font-bold text-rose-500 italic text-center uppercase tracking-tight">
                   هذا الصنف غير متوفر بالمخزون حالياً
                 </div>
               ) : (
-                <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} max={selectedMedItem?.total_quantity} step={0.1} className={dynamicInputClass} />
+                <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} max={medAvailableQty} step={0.1} className={dynamicInputClass} />
               )}
             </FormField>
           </div>

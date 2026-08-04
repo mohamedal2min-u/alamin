@@ -260,7 +260,15 @@ function ItemsTable({ items, onEdit, categoryFilter = 'all', onCategoryFilterCha
             const isLow = item.minimum_stock > 0 && item.total_quantity <= item.minimum_stock
             const pct   = item.minimum_stock > 0 ? Math.min((item.total_quantity / item.minimum_stock) * 100, 100) : 100
             return (
-              <div key={item.id} className="rounded-2xl border border-slate-200/60 bg-white p-4" style={{ boxShadow: 'var(--shadow-card)' }}>
+              <div key={item.id} className="relative rounded-2xl border border-slate-200/60 bg-white p-4" style={{ boxShadow: 'var(--shadow-card)' }}>
+                {!!item.shipment_count && (
+                  <div
+                    className="absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] font-black text-white shadow-md"
+                    title={`تمت إضافة حمولة لهذا الصنف ${item.shipment_count} مرة`}
+                  >
+                    {item.shipment_count}
+                  </div>
+                )}
                 {/* Header: name + status + edit */}
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="min-w-0 flex-1">

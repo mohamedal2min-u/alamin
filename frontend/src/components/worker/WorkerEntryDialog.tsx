@@ -86,6 +86,18 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
   const medAvailableQty = selectedMedItem ? selectedMedItem.total_quantity / (selectedMedItem.unit_value || 1) : 0
   const medOutOfStock = activeTab === 'medicine' && !!selectedMedItem && selectedMedItem.total_quantity <= 0
 
+  const medIsSmallUnit = selectedMedItem ? ['مل', 'جرام'].includes(selectedMedItem.content_unit) : false
+  const medStep = medIsSmallUnit ? 100 : 0.1
+  const medQtyNum = parseFloat(medQty || '0')
+  const medConversionHint = (medIsSmallUnit && medQtyNum >= 1000)
+    ? `= ${(medQtyNum / 1000).toFixed(2)} ${selectedMedItem?.content_unit === 'مل' ? 'لتر' : 'كجم'}`
+    : null
+
+  const stepMedQty = (delta: number) => {
+    const next = Math.max(0, Math.min(medAvailableQty || Infinity, medQtyNum + delta))
+    setMedQty(String(Math.round(next * 1000) / 1000))
+  }
+
   useEffect(() => {
     setError(null)
     if (activeTab === 'feed') inventoryApi.items('feed').then((res) => setFeedItems(res.data))
@@ -296,7 +308,32 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
                   هذا الصنف غير متوفر بالمخزون حالياً
                 </div>
               ) : (
-                <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0.001} max={medAvailableQty} step={0.1} className={dynamicInputClass} />
+                <>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => stepMedQty(-medStep)}
+                      disabled={medQtyNum <= 0}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary-100 bg-white text-xl font-black text-primary-600 transition-all duration-200 hover:bg-primary-50 active:scale-95 disabled:opacity-40"
+                      aria-label="إنقاص"
+                    >
+                      −
+                    </button>
+                    <NumericInput value={medQty} onChange={setMedQty} placeholder="0.00" min={0} max={medAvailableQty} step={medStep} className={cn(dynamicInputClass, 'text-center')} />
+                    <button
+                      type="button"
+                      onClick={() => stepMedQty(medStep)}
+                      disabled={!!selectedMedItem && medQtyNum >= medAvailableQty}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary-100 bg-white text-xl font-black text-primary-600 transition-all duration-200 hover:bg-primary-50 active:scale-95 disabled:opacity-40"
+                      aria-label="زيادة"
+                    >
+                      +
+                    </button>
+                  </div>
+                  {medConversionHint && (
+                    <p className="mt-1.5 px-1 text-[10px] font-bold text-primary-400">{medConversionHint}</p>
+                  )}
+                </>
               )}
             </FormField>
           </div>

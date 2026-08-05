@@ -110,58 +110,108 @@ export default function SalesPage() {
         </div>
       )}
 
-      {/* Sales table */}
+      {/* Sales: mobile cards + desktop table */}
       {!loading && !error && sales.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50 text-right text-xs font-semibold text-slate-500">
-                <th className="px-5 py-3">التاريخ</th>
-                <th className="px-5 py-3">المشتري</th>
-                <th className="px-5 py-3">الطيور</th>
-                <th className="px-5 py-3">الوزن (كغ)</th>
-                <th className="px-5 py-3">الصافي</th>
-                <th className="px-5 py-3">المستلم</th>
-                <th className="px-5 py-3">المتبقي</th>
-                <th className="px-5 py-3">الحالة</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {sales.map((sale) => {
-                const totalBirds  = sale.items.reduce((s, i) => s + i.birds_count, 0)
-                const totalWeight = sale.items.reduce((s, i) => s + Number(i.total_weight_kg), 0)
+        <>
+          {/* Mobile cards */}
+          <div className="space-y-2 sm:hidden">
+            {sales.map((sale) => {
+              const totalBirds  = sale.items.reduce((s, i) => s + i.birds_count, 0)
+              const totalWeight = sale.items.reduce((s, i) => s + Number(i.total_weight_kg), 0)
+              return (
+                <div key={sale.id} className="rounded-2xl border border-slate-200/60 bg-white p-3.5" style={{ boxShadow: 'var(--shadow-card)' }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-800">{sale.buyer_name ?? '—'}</p>
+                      <p className="mt-0.5 text-[10px] text-slate-400">
+                        {formatDate(sale.sale_date)} · {formatNumber(totalBirds)} طائر · {formatNumber(Number(totalWeight.toFixed(1)))} كغ
+                      </p>
+                    </div>
+                    <PaymentStatusBadge status={sale.payment_status} />
+                  </div>
 
-                return (
-                  <tr key={sale.id} className="transition-colors hover:bg-slate-50">
-                    <td className="px-5 py-3 text-slate-600">{formatDate(sale.sale_date)}</td>
-                    <td className="px-5 py-3 font-medium text-slate-800">{sale.buyer_name ?? '—'}</td>
-                    <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(totalBirds)}</td>
-                    <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(Number(totalWeight.toFixed(1)))}</td>
-                    <td className="px-5 py-3 tabular-nums font-semibold text-slate-900">{formatCurrency(Number(sale.net_amount))}</td>
-                    <td className="px-5 py-3 tabular-nums text-primary-700 font-medium">{formatCurrency(Number(sale.received_amount))}</td>
-                    <td className={`px-5 py-3 tabular-nums font-medium ${sale.remaining_amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                      {formatCurrency(Number(sale.remaining_amount))}
-                    </td>
-                    <td className="px-5 py-3">
-                      <PaymentStatusBadge status={sale.payment_status} />
-                    </td>
-                    <td className="px-5 py-3 text-start">
-                      {sale.payment_status !== 'paid' && (
-                        <button
-                          onClick={() => setPaymentSale(sale)}
-                          className="text-xs font-medium text-primary-600 hover:underline"
-                        >
-                          تحديث الدفع
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-[9px] font-extrabold text-slate-400">الصافي</p>
+                      <p className="text-[13px] font-black tabular-nums text-slate-900">{formatCurrency(Number(sale.net_amount))}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-extrabold text-slate-400">المستلم</p>
+                      <p className="text-[13px] font-black tabular-nums text-primary-700">{formatCurrency(Number(sale.received_amount))}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-extrabold text-slate-400">المتبقي</p>
+                      <p className={`text-[13px] font-black tabular-nums ${sale.remaining_amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                        {formatCurrency(Number(sale.remaining_amount))}
+                      </p>
+                    </div>
+                  </div>
+
+                  {sale.payment_status !== 'paid' && (
+                    <button
+                      onClick={() => setPaymentSale(sale)}
+                      className="mt-3 w-full rounded-xl bg-primary-50 py-2 text-xs font-bold text-primary-600 transition-colors hover:bg-primary-100"
+                    >
+                      تحديث الدفع
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-200/60 bg-white sm:block" style={{ boxShadow: 'var(--shadow-card)' }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50 text-right text-xs font-semibold text-slate-500">
+                  <th className="px-5 py-3">التاريخ</th>
+                  <th className="px-5 py-3">المشتري</th>
+                  <th className="px-5 py-3">الطيور</th>
+                  <th className="px-5 py-3">الوزن (كغ)</th>
+                  <th className="px-5 py-3">الصافي</th>
+                  <th className="px-5 py-3">المستلم</th>
+                  <th className="px-5 py-3">المتبقي</th>
+                  <th className="px-5 py-3">الحالة</th>
+                  <th className="px-5 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sales.map((sale) => {
+                  const totalBirds  = sale.items.reduce((s, i) => s + i.birds_count, 0)
+                  const totalWeight = sale.items.reduce((s, i) => s + Number(i.total_weight_kg), 0)
+
+                  return (
+                    <tr key={sale.id} className="transition-colors hover:bg-slate-50">
+                      <td className="px-5 py-3 text-slate-600">{formatDate(sale.sale_date)}</td>
+                      <td className="px-5 py-3 font-medium text-slate-800">{sale.buyer_name ?? '—'}</td>
+                      <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(totalBirds)}</td>
+                      <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(Number(totalWeight.toFixed(1)))}</td>
+                      <td className="px-5 py-3 tabular-nums font-semibold text-slate-900">{formatCurrency(Number(sale.net_amount))}</td>
+                      <td className="px-5 py-3 tabular-nums text-primary-700 font-medium">{formatCurrency(Number(sale.received_amount))}</td>
+                      <td className={`px-5 py-3 tabular-nums font-medium ${sale.remaining_amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                        {formatCurrency(Number(sale.remaining_amount))}
+                      </td>
+                      <td className="px-5 py-3">
+                        <PaymentStatusBadge status={sale.payment_status} />
+                      </td>
+                      <td className="px-5 py-3 text-start">
+                        {sale.payment_status !== 'paid' && (
+                          <button
+                            onClick={() => setPaymentSale(sale)}
+                            className="text-xs font-medium text-primary-600 hover:underline"
+                          >
+                            تحديث الدفع
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Update payment dialog */}

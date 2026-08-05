@@ -1214,7 +1214,58 @@ function MovementsTable({ transactions }: { transactions: InventoryTransaction[]
           {transactions.length === 0 && <p className="mt-1 text-xs text-slate-400">أضف حمولة جديدة لبدء تتبع الحركات</p>}
         </div>
       ) : (
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
+      <>
+      {/* Mobile: compact cards (the full table is unreadable below md) */}
+      <div className="space-y-2 md:hidden">
+        {filtered.map(tx => {
+          const dir     = DIRECTION_CONFIG[tx.direction]
+          const DirIcon = dir?.icon ?? ArrowDownCircle
+          const payment = tx.payment_status ? PAYMENT_STATUS_LABEL[tx.payment_status] : null
+          return (
+            <div key={tx.id} className="rounded-2xl border border-slate-200/60 bg-white p-3.5" style={{ boxShadow: 'var(--shadow-card)' }}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-slate-800">{tx.item_name ?? '—'}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-400">
+                    {formatDate(tx.transaction_date)} · {TX_TYPE_LABEL[tx.transaction_type] ?? tx.transaction_type}
+                  </p>
+                </div>
+                {dir && (
+                  <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${dir.badgeCls}`}>
+                    <DirIcon className="h-3 w-3" />{dir.label}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-3 flex items-end justify-between gap-2">
+                <div>
+                  <p className="text-[9px] font-extrabold text-slate-400">الكمية</p>
+                  <p className="text-sm font-black tabular-nums text-slate-700">{formatNumber(tx.computed_quantity)} {tx.content_unit}</p>
+                </div>
+                <div className="text-left">
+                  <p className="text-[9px] font-extrabold text-slate-400">الإجمالي</p>
+                  <p className={cn("text-sm font-black tabular-nums", dir?.amountCls ?? 'text-slate-800')}>
+                    {tx.total_amount != null ? formatCurrency(tx.total_amount) : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {(payment || tx.supplier_name || tx.flock_name) && (
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2.5">
+                  {payment && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${payment.color}`}>{payment.label}</span>}
+                  {tx.supplier_name && <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{tx.supplier_name}</span>}
+                  {tx.flock_name && <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{tx.flock_name}</span>}
+                </div>
+              )}
+
+              {tx.notes && <p className="mt-2 text-[11px] text-slate-400">{tx.notes}</p>}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Desktop / tablet: full table */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-slate-200/60 bg-white md:block" style={{ boxShadow: 'var(--shadow-card)' }}>
       <table className="w-full min-w-[1100px] text-xs">
         <thead>
           <tr className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50/90 backdrop-blur text-right text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1259,6 +1310,7 @@ function MovementsTable({ transactions }: { transactions: InventoryTransaction[]
         </tbody>
       </table>
       </div>
+      </>
       )}
     </div>
   )
@@ -1311,7 +1363,33 @@ function AlertsTab({ items }: { items: StockItem[] }) {
           </div>
           <h3 className="text-xs font-bold text-emerald-700 uppercase tracking-wider">مواد تقترب من النفاد</h3>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-emerald-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
+        {/* Mobile: compact cards */}
+        <div className="space-y-2 md:hidden">
+          {lowItems.map(item => {
+            const pct = item.minimum_stock > 0 ? Math.round((item.total_quantity / item.minimum_stock) * 100) : 0
+            return (
+              <div key={item.id} className="rounded-xl border border-emerald-200/60 bg-white p-3.5" style={{ boxShadow: 'var(--shadow-card)' }}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-800">{item.name}</p>
+                    <p className="text-[10px] text-slate-400">{TYPE_LABEL[item.type_code] ?? item.type_code}</p>
+                  </div>
+                  <span className="shrink-0 text-[11px] font-black tabular-nums text-emerald-600">{pct}%</span>
+                </div>
+                <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-emerald-100">
+                  <div className="h-full rounded-full bg-emerald-400" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+                  <span className="font-bold tabular-nums text-emerald-700">المتاح: {formatNumber(item.total_quantity)} {item.content_unit}</span>
+                  <span className="tabular-nums text-slate-400">الحد الأدنى: {formatNumber(item.minimum_stock)} {item.content_unit}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Desktop / tablet: full table */}
+        <div className="hidden overflow-hidden rounded-2xl border border-emerald-200/60 bg-white md:block" style={{ boxShadow: 'var(--shadow-card)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-emerald-100 bg-emerald-50/50 text-right text-[10px] font-bold uppercase tracking-wider text-emerald-600">
@@ -1465,7 +1543,9 @@ export default function InventoryPage() {
                 icon={DollarSign}
                 color="text-amber-700"
               />
-              <KpiCard label="صهاريج الماء للفوج الحالي" value={formatNumber(summary.water_tanks_count || 0)} sub={`التكلفة: ${formatCurrency(summary.water_tanks_cost || 0)}`} icon={Droplets} color="text-cyan-600" />
+              <div className="col-span-2 sm:col-span-1">
+                <KpiCard label="صهاريج الماء للفوج الحالي" value={formatNumber(summary.water_tanks_count || 0)} sub={`التكلفة: ${formatCurrency(summary.water_tanks_cost || 0)}`} icon={Droplets} color="text-cyan-600" />
+              </div>
             </div>
           )}
 

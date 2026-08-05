@@ -80,7 +80,7 @@ export default function FarmLayout({ children }: { children: React.ReactNode }) 
       {!isUnauthorized && role && <FlockGlobalHeader />}
 
       {/* ─── Main Content ─── */}
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl px-3 sm:px-4">
         <main>
           <RoleGuard>{children}</RoleGuard>
         </main>

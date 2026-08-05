@@ -143,7 +143,11 @@ export default function ExpensesPage() {
         >
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-slate-800">تسجيل مصروف جديد</p>
-            <button type="button" onClick={handleCancel} className="text-slate-400 hover:text-slate-600">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -249,45 +253,73 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table: mobile cards + desktop table */}
       {!loading && !error && expenses.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50 text-right text-xs font-semibold text-slate-500">
-                <th className="px-5 py-3">التاريخ</th>
-                <th className="px-5 py-3">التصنيف</th>
-                <th className="px-5 py-3">الفوج</th>
-                <th className="px-5 py-3">المبلغ</th>
-                <th className="px-5 py-3">حالة الدفع</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {expenses.map((expense) => {
-                const status = PAYMENT_STATUS_LABEL[expense.payment_status]
-                return (
-                  <tr key={expense.id} className="transition-colors duration-200 hover:bg-slate-50">
-                    <td className="px-5 py-3 text-slate-500">{formatDate(expense.entry_date)}</td>
-                    <td className="px-5 py-3 font-medium text-slate-800">
-                      {expense.category_name ?? expense.expense_type ?? '—'}
-                    </td>
-                    <td className="px-5 py-3 text-slate-500">{expense.flock_name ?? '—'}</td>
-                    <td className="px-5 py-3 tabular-nums font-semibold text-slate-800">
-                      {formatNumber(expense.total_amount)} USD
-                    </td>
-                    <td className="px-5 py-3">
-                      {status && (
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.color}`}>
-                          {status.label}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Mobile cards */}
+          <div className="space-y-2 sm:hidden">
+            {expenses.map((expense) => {
+              const status = PAYMENT_STATUS_LABEL[expense.payment_status]
+              return (
+                <div key={expense.id} className="rounded-2xl border border-slate-200/60 bg-white p-3.5" style={{ boxShadow: 'var(--shadow-card)' }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-800">{expense.category_name ?? expense.expense_type ?? '—'}</p>
+                      <p className="mt-0.5 text-[10px] text-slate-400">
+                        {formatDate(expense.entry_date)}{expense.flock_name ? ` · ${expense.flock_name}` : ''}
+                      </p>
+                    </div>
+                    {status && (
+                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${status.color}`}>
+                        {status.label}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm font-black tabular-nums text-slate-800">{formatNumber(expense.total_amount)} USD</p>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden overflow-hidden rounded-2xl border border-slate-200/60 bg-white sm:block" style={{ boxShadow: 'var(--shadow-card)' }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50 text-right text-xs font-semibold text-slate-500">
+                  <th className="px-5 py-3">التاريخ</th>
+                  <th className="px-5 py-3">التصنيف</th>
+                  <th className="px-5 py-3">الفوج</th>
+                  <th className="px-5 py-3">المبلغ</th>
+                  <th className="px-5 py-3">حالة الدفع</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {expenses.map((expense) => {
+                  const status = PAYMENT_STATUS_LABEL[expense.payment_status]
+                  return (
+                    <tr key={expense.id} className="transition-colors duration-200 hover:bg-slate-50">
+                      <td className="px-5 py-3 text-slate-500">{formatDate(expense.entry_date)}</td>
+                      <td className="px-5 py-3 font-medium text-slate-800">
+                        {expense.category_name ?? expense.expense_type ?? '—'}
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">{expense.flock_name ?? '—'}</td>
+                      <td className="px-5 py-3 tabular-nums font-semibold text-slate-800">
+                        {formatNumber(expense.total_amount)} USD
+                      </td>
+                      <td className="px-5 py-3">
+                        {status && (
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.color}`}>
+                            {status.label}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )

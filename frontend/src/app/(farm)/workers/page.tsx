@@ -116,7 +116,7 @@ export default function WorkersPage() {
                 <button
                   onClick={() => handleDelete(worker.id, worker.name)}
                   disabled={isDeleting === worker.id}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                   title="حذف العامل"
                 >
                   {isDeleting === worker.id ? (

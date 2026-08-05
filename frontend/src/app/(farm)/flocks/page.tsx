@@ -172,7 +172,29 @@ export default function FlocksPage() {
                   {closedFlocks.length}
                 </span>
               </h2>
-              <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
+              {/* Mobile cards */}
+              <div className="space-y-2 sm:hidden">
+                {closedFlocks.map((flock) => (
+                  <Link
+                    key={flock.id}
+                    href={`/flocks/${flock.id}`}
+                    className="block rounded-2xl border border-slate-200/60 bg-white p-3.5"
+                    style={{ boxShadow: 'var(--shadow-card)' }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-sm font-bold text-slate-800">{flock.name}</p>
+                      <FlockStatusBadge status={flock.status} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{formatDate(flock.start_date)} → {flock.end_date ? formatDate(flock.end_date) : '—'}</span>
+                      <span className="font-bold text-slate-700">{formatNumber(flock.initial_count)} طائر</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-hidden rounded-2xl border border-slate-200/60 bg-white sm:block" style={{ boxShadow: 'var(--shadow-card)' }}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50 text-right text-xs font-semibold text-slate-500">

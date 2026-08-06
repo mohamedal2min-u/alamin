@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -39,10 +39,20 @@ const schema = z.object({
   sale_date:       z.string().min(1, 'تاريخ البيع مطلوب').regex(/^\d{4}-\d{2}-\d{2}$/, 'صيغة التاريخ غير صحيحة'),
   buyer_name:      z.string().max(190).optional().or(z.literal('')),
   reference_no:    z.string().max(100).optional().or(z.literal('')),
+  // وزن قبان السيارة الإلكتروني — اختياري، يملأ الوزن القائم للسطر الأول تلقائياً عند تعبئته.
+  vehicle_weight_before_kg: optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0, 'لا يمكن أن يكون سالباً')),
+  vehicle_weight_after_kg:  optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0, 'لا يمكن أن يكون سالباً')),
+  weight_deduction_kg:      optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0, 'لا يمكن أن يكون سالباً')),
   discount_amount: z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0).optional().or(z.literal(0)),
   received_amount: z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0).optional().or(z.literal(0)),
   notes:           z.string().max(5000).optional().or(z.literal('')),
   items:           z.array(itemSchema).min(1, 'يجب إضافة سطر بيع واحد على الأقل'),
+}).refine((data) => {
+  if (data.vehicle_weight_before_kg == null || data.vehicle_weight_after_kg == null) return true
+  return data.vehicle_weight_after_kg > data.vehicle_weight_before_kg
+}, {
+  message: 'الوزن الثاني يجب أن يكون أكبر من الوزن الأول',
+  path: ['vehicle_weight_after_kg'],
 })
 type FormData = z.infer<typeof schema>
 
@@ -63,12 +73,16 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
     handleSubmit,
     control,
     watch,
+    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       sale_date:       getTodayLocalISO(),
+      vehicle_weight_before_kg: undefined,
+      vehicle_weight_after_kg:  undefined,
+      weight_deduction_kg:      undefined,
       discount_amount: 0,
       received_amount: 0,
       items: [{
@@ -87,6 +101,23 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
   const watchedItems   = watch('items') ?? []
   const watchDiscount  = Number(watch('discount_amount') || 0)
   const watchReceived  = Number(watch('received_amount') || 0)
+
+  // ── وزن قبان السيارة (قبل/بعد) ─────────────────────────────────────────────
+  const watchVehicleBefore    = watch('vehicle_weight_before_kg')
+  const watchVehicleAfter     = watch('vehicle_weight_after_kg')
+  const watchWeightDeduction  = watch('weight_deduction_kg')
+
+  const vehicleNetWeight = (watchVehicleBefore != null && watchVehicleAfter != null)
+    ? Math.max(0, Number(watchVehicleAfter) - Number(watchVehicleBefore) - Number(watchWeightDeduction || 0))
+    : null
+
+  const vehicleWeightLocksFirstItem = vehicleNetWeight !== null && vehicleNetWeight > 0
+
+  useEffect(() => {
+    if (vehicleWeightLocksFirstItem) {
+      setValue('items.0.gross_weight_kg', vehicleNetWeight as number, { shouldValidate: true })
+    }
+  }, [vehicleWeightLocksFirstItem, vehicleNetWeight, setValue])
 
   const netWeightOf = (it: { gross_weight_kg?: number; crates_count?: number; crate_weight_kg?: number }) => {
     const cratesWeight = Number(it.crates_count ?? 0) * Number(it.crate_weight_kg ?? 0)
@@ -114,6 +145,9 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
         sale_date:       data.sale_date,
         buyer_name:      data.buyer_name || undefined,
         reference_no:    data.reference_no || undefined,
+        vehicle_weight_before_kg: data.vehicle_weight_before_kg ?? undefined,
+        vehicle_weight_after_kg:  data.vehicle_weight_after_kg ?? undefined,
+        weight_deduction_kg:      data.weight_deduction_kg ?? undefined,
         discount_amount: data.discount_amount || 0,
         received_amount: data.received_amount || 0,
         notes:           data.notes || undefined,
@@ -168,6 +202,48 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
             placeholder="اختياري"
             error={errors.reference_no?.message}
           />
+        </div>
+
+        {/* Vehicle weighbridge (before/after) */}
+        <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-sm font-semibold text-slate-700">وزن السيارة (اختياري)</p>
+          <div className="grid grid-cols-3 gap-2">
+            <Input
+              {...register('vehicle_weight_before_kg', { valueAsNumber: true })}
+              id="vehicle_weight_before_kg"
+              label="الوزن الأول (كغ)"
+              type="number"
+              step="0.001"
+              min={0}
+              placeholder="مثال: 9472"
+              error={errors.vehicle_weight_before_kg?.message}
+            />
+            <Input
+              {...register('vehicle_weight_after_kg', { valueAsNumber: true })}
+              id="vehicle_weight_after_kg"
+              label="الوزن الثاني (كغ)"
+              type="number"
+              step="0.001"
+              min={0}
+              placeholder="مثال: 15874"
+              error={errors.vehicle_weight_after_kg?.message}
+            />
+            <Input
+              {...register('weight_deduction_kg', { valueAsNumber: true })}
+              id="weight_deduction_kg"
+              label="خصم الوزن (كغم)"
+              type="number"
+              step="0.001"
+              min={0}
+              placeholder="اختياري"
+              error={errors.weight_deduction_kg?.message}
+            />
+          </div>
+          {vehicleNetWeight !== null && (
+            <p className="text-end text-xs font-semibold text-slate-600">
+              الوزن الصافي للسيارة: <span className="tabular-nums text-slate-900">{vehicleNetWeight.toFixed(2)} كغ</span>
+            </p>
+          )}
         </div>
 
         {/* Sale items */}
@@ -264,6 +340,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
                       min={0.001}
                       placeholder="مثال: 250.5"
                       error={errors.items?.[idx]?.gross_weight_kg?.message}
+                      disabled={idx === 0 && vehicleWeightLocksFirstItem}
                       required
                     />
                     <Input

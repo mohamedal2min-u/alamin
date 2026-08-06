@@ -24,6 +24,9 @@ export interface Sale {
   sale_date: string        // "YYYY-MM-DD"
   reference_no: string | null
   buyer_name: string | null
+  vehicle_weight_before_kg: number | null // وزن السيارة الأول (قبل التحميل)
+  vehicle_weight_after_kg: number | null  // وزن السيارة الثاني (بعد التحميل)
+  weight_deduction_kg: number | null      // خصم يدوي إضافي من الوزن الصافي
   gross_amount: number
   discount_amount: number
   net_amount: number
@@ -52,6 +55,9 @@ export interface CreateSalePayload {
   sale_date: string
   buyer_name?: string
   reference_no?: string
+  vehicle_weight_before_kg?: number
+  vehicle_weight_after_kg?: number
+  weight_deduction_kg?: number
   discount_amount?: number
   received_amount?: number
   notes?: string

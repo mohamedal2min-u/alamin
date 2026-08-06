@@ -17,6 +17,17 @@ class StoreSaleRequest extends FormRequest
             'sale_date'              => ['required', 'date_format:Y-m-d'],
             'buyer_name'             => ['nullable', 'string', 'max:190'],
             'reference_no'           => ['nullable', 'string', 'max:100'],
+            'vehicle_weight_before_kg' => ['nullable', 'numeric', 'min:0'],
+            'vehicle_weight_after_kg' => [
+                'nullable', 'numeric', 'min:0',
+                function ($attribute, $value, $fail) {
+                    $before = $this->input('vehicle_weight_before_kg');
+                    if ($before !== null && $value <= $before) {
+                        $fail('الوزن الثاني يجب أن يكون أكبر من الوزن الأول');
+                    }
+                },
+            ],
+            'weight_deduction_kg'    => ['nullable', 'numeric', 'min:0'],
             'discount_amount'        => ['nullable', 'numeric', 'min:0'],
             'received_amount'        => ['nullable', 'numeric', 'min:0'],
             'notes'                  => ['nullable', 'string', 'max:5000'],

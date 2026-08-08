@@ -74,7 +74,9 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
       payload.paid_amount = parseFloat(editValues.paid_amount)
     }
     if (editValues.unit_price !== undefined && editValues.unit_price !== '' && (item.type === 'expense' || item.type === 'water_log' || item.type === 'sale')) {
-      payload.unit_price = parseFloat(editValues.unit_price)
+      const entered = parseFloat(editValues.unit_price)
+      // للمبيعات، الحقل يُدخَل بسعر الطن — يُحوَّل لسعر الكيلو (كما يُخزَّن في السطور) قبل الإرسال.
+      payload.unit_price = item.type === 'sale' ? entered / 1000 : entered
     }
     updateItem({ type: item.type, id: item.record_id, payload })
   }
@@ -192,9 +194,13 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
               onEdit={() => {
                 setEditingId(item.id)
                 setSaveError(null)
+                // للمبيعات، السعر المخزَّن (item.unit_price) هو سعر الكيلو — يُعرض هنا كسعر طن.
+                const displayPrice = item.unit_price != null
+                  ? (item.type === 'sale' ? item.unit_price * 1000 : item.unit_price)
+                  : null
                 setEditValues({
                   paid_amount: String(item.paid_amount ?? 0),
-                  unit_price: item.unit_price != null ? String(item.unit_price) : '',
+                  unit_price: displayPrice != null ? String(displayPrice) : '',
                 })
               }}
               onCancel={() => { setEditingId(null); setEditValues({}); setSaveError(null) }}
@@ -312,7 +318,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                 </div>
                 {(item.type === 'expense' || item.type === 'water_log' || item.type === 'sale') && (
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-slate-500">{item.type === 'sale' ? 'سعر الكيلو' : 'سعر الوحدة'}</label>
+                    <label className="text-xs text-slate-500">{item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'}</label>
                     <Input
                       type="number"
                       min={0}

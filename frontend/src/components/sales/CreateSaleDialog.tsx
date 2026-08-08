@@ -24,6 +24,7 @@ const itemSchema = z.object({
   gross_weight_kg:  z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'الوزن يجب أن يكون أكبر من 0'),
   crates_count:     optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).int().min(0, 'لا يمكن أن يكون سالباً')),
   crate_weight_kg:  optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0, 'لا يمكن أن يكون سالباً')),
+  // القيمة المُدخَلة هنا هي سعر الطن (وليس الكيلو) — تُحوَّل لسعر كيلو عند الحساب والإرسال.
   // اختياري — إن تُرك فارغاً تُسجَّل البيعة كدين وتُرحَّل إلى الذمم لتحديد السعر لاحقاً.
   unit_price_per_kg: optionalNumber(z.number({ invalid_type_error: 'يجب إدخال رقم' }).min(0.001, 'السعر يجب أن يكون أكبر من 0')),
   notes:             z.string().max(5000).optional().or(z.literal('')),
@@ -124,9 +125,13 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
     return Math.max(0, Number(it.gross_weight_kg ?? 0) - cratesWeight)
   }
 
+  // حقل unit_price_per_kg في النموذج يحمل سعر الطن كما يُدخله المستخدم —
+  // يُقسَّم على 1000 هنا وعند الإرسال للحصول على سعر الكيلو الفعلي.
+  const pricePerKgOf = (it: { unit_price_per_kg?: number }) => Number(it.unit_price_per_kg ?? 0) / 1000
+
   const gross = watchedItems.reduce((sum, it) => {
     const w = netWeightOf(it)
-    const p = Number(it.unit_price_per_kg ?? 0)
+    const p = pricePerKgOf(it)
     return sum + w * p
   }, 0)
   const net       = Math.max(gross - watchDiscount, 0)
@@ -157,7 +162,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
           crates_count:      it.crates_count || undefined,
           crate_weight_kg:   it.crate_weight_kg || undefined,
           gross_weight_kg:   it.gross_weight_kg,
-          unit_price_per_kg: it.unit_price_per_kg ?? undefined,
+          unit_price_per_kg: it.unit_price_per_kg != null ? it.unit_price_per_kg / 1000 : undefined,
           notes:             it.notes || undefined,
         })),
       })
@@ -276,7 +281,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
               const it           = watchedItems[idx] ?? {}
               const cratesWeight = Number(it.crates_count ?? 0) * Number(it.crate_weight_kg ?? 0)
               const netWeight    = netWeightOf(it)
-              const p            = Number(it.unit_price_per_kg ?? 0)
+              const p            = pricePerKgOf(it)
               const lineTotal    = netWeight * p
               const hasCrates    = Number(it.crates_count ?? 0) > 0 && Number(it.crate_weight_kg ?? 0) > 0
 
@@ -346,9 +351,9 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
                     <Input
                       {...register(`items.${idx}.unit_price_per_kg`, { valueAsNumber: true })}
                       id={`unit_price_per_kg_${idx}`}
-                      label="سعر الكيلو"
+                      label="سعر الطن"
                       type="number"
-                      step="0.01"
+                      step="1"
                       min={0.001}
                       placeholder="اختياري"
                       error={errors.items?.[idx]?.unit_price_per_kg?.message}

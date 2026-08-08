@@ -6,6 +6,8 @@ use App\Models\Expense;
 use App\Models\Farm;
 use App\Models\FarmUser;
 use App\Models\Flock;
+use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -105,6 +107,37 @@ class ReviewQueueUpdateTest extends TestCase
 
         $this->assertEquals(500.0, $response->json('total_amount'));
         $this->assertNotContains('missing_price', $response->json('review_reasons'));
+    }
+
+    public function test_patch_sale_unit_price_recalculates_total(): void
+    {
+        $create = $this->actingAs($this->user, 'sanctum')
+            ->withHeaders(['X-Farm-Id' => $this->farm->id])
+            ->postJson("/api/flocks/{$this->flock->id}/sales", [
+                'sale_date' => now()->toDateString(),
+                'items' => [
+                    ['birds_count' => 5, 'total_weight_kg' => 20],
+                ],
+            ])
+            ->assertStatus(201);
+
+        $saleId = $create->json('data.id');
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->withHeaders(['X-Farm-Id' => $this->farm->id])
+            ->patchJson("/api/accounting/review-queue/sale/{$saleId}", [
+                'unit_price' => 15.5,
+            ])
+            ->assertOk();
+
+        $this->assertEquals(310.0, $response->json('total_amount')); // 20kg * 15.5
+        $this->assertNotContains('missing_price', $response->json('review_reasons'));
+
+        $this->assertDatabaseHas('sale_items', [
+            'sale_id'           => $saleId,
+            'unit_price_per_kg' => 15.5,
+            'line_total'        => 310.0,
+        ]);
     }
 
     public function test_invalid_type_returns_422(): void

@@ -29,6 +29,16 @@ class CreateMortalityAction
             throw new \Exception('لا يمكن تسجيل نفوق على فوج غير نشط', 422);
         }
 
+        $requestedQuantity = (int) $data['quantity'];
+        $remainingCount    = $flock->computeRemainingCount();
+
+        if ($requestedQuantity > $remainingCount) {
+            throw new \Exception(
+                "كمية النفوق ({$requestedQuantity}) أكبر من العدد المتبقي في الفوج ({$remainingCount})",
+                422
+            );
+        }
+
         $mortality = FlockMortality::create([
             'farm_id'        => $flock->farm_id,
             'flock_id'       => $flock->id,

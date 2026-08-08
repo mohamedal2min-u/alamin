@@ -21,6 +21,16 @@ class CreateSaleAction
         }
 
         return DB::transaction(function () use ($flock, $userId, $data): Sale {
+            $requestedBirds = array_sum(array_column($data['items'], 'birds_count'));
+            $remainingCount = $flock->computeRemainingCount();
+
+            if ($requestedBirds > $remainingCount) {
+                throw new \Exception(
+                    "الكمية المطلوبة ({$requestedBirds}) أكبر من العدد المتبقي في الفوج ({$remainingCount})",
+                    422
+                );
+            }
+
             $discountAmount  = (float) ($data['discount_amount'] ?? 0);
             $receivedAmount  = (float) ($data['received_amount'] ?? 0);
 

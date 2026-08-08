@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AlertCircle, Zap, Bird, Calendar } from 'lucide-react'
+import { AlertCircle, Zap, Bird, Calendar, PackageCheck } from 'lucide-react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
@@ -14,6 +14,7 @@ import { WorkerHistoryList } from '@/components/worker/WorkerHistoryList'
 import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
 import { DayEntriesModal, type DayEntryType } from '@/components/dashboard/DayEntriesModal'
 import { FlockDaySelector } from '@/components/dashboard/FlockDaySelector'
+import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
@@ -27,6 +28,7 @@ export default function DashboardPage() {
   const [activeEntryTab, setActiveEntryTab] = useState<'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | 'water' | null>(null)
   const [entryExtra, setEntryExtra] = useState<Record<string, unknown> | null>(null)
   const [detailType, setDetailType] = useState<DayEntryType | 'water' | null>(null)
+  const [showCloseDialog, setShowCloseDialog] = useState(false)
 
   const getTodayISO = () => {
     const now = new Date()
@@ -65,6 +67,7 @@ export default function DashboardPage() {
   const currentFlock = activeFlock ?? draftFlock
     ?? (isCacheValid && loadingFlocks ? cachedFlock : null)
   const isActive = currentFlock?.status === 'active'
+  const isReadyToClose = isActive && (currentFlock?.remaining_count ?? 1) <= 0
 
   // حفظ الفوج النشط في الـ store لتسريع التحميل في المرة القادمة
   useEffect(() => {
@@ -203,6 +206,31 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Ready to Close Alert */}
+          {isReadyToClose && currentFlock && (
+            <div className="rounded-2xl bg-amber-50/80 border border-amber-200 p-5">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm">
+                  <PackageCheck className="h-5 w-5 text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-extrabold text-amber-900 text-sm">الفوج جاهز للجرد والإغلاق</h3>
+                  <p className="mt-1 text-[12px] font-medium text-amber-800/80 leading-relaxed">
+                    تم بيع/نفوق كل الدجاج في هذا الفوج. توقف حساب العمر — راجع الحسابات والمخزون ثم أغلق الفوج لفتح فوج جديد.
+                  </p>
+                  {!isReadOnly && (
+                    <button
+                      onClick={() => setShowCloseDialog(true)}
+                      className="mt-3 inline-flex items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white active:scale-[0.98] transition-all shadow-sm shadow-amber-200"
+                    >
+                      مراجعة وإغلاق الفوج
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Active Flock Tools */}
           {isActive && (
             <div className="space-y-4">
@@ -266,6 +294,19 @@ export default function DashboardPage() {
                 />
               )}
             </div>
+          )}
+
+          {/* Close Flock Dialog - opened from the ready-to-close alert */}
+          {currentFlock && !isReadOnly && (
+            <CloseFlockDialog
+              flock={currentFlock}
+              isOpen={showCloseDialog}
+              onClose={() => setShowCloseDialog(false)}
+              onSuccess={() => {
+                setShowCloseDialog(false)
+                refetchFlocks()
+              }}
+            />
           )}
         </>
       ) : (

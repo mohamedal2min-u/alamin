@@ -93,6 +93,16 @@ class Flock extends Model
         return $this->hasManyThrough(SaleItem::class, Sale::class, 'flock_id', 'sale_id');
     }
 
+    /**
+     * العدد المتبقي من الدجاج = العدد الابتدائي - إجمالي النفوق - إجمالي المباع.
+     */
+    public function computeRemainingCount(): int
+    {
+        return $this->initial_count
+            - $this->mortalities()->sum('quantity')
+            - $this->saleItems()->sum('birds_count');
+    }
+
     // ─── Audit ────────────────────────────────────────────────────────────────
 
     public function createdByUser(): BelongsTo

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Actions\Flock\ResolveFlockZeroDateAction;
 use App\Models\Flock;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -14,15 +15,24 @@ class FlockResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        // current_age_days: محسوب ديناميكياً للأفواج النشطة والمسودة
-        $agedays = null;
-        if (in_array($this->status, ['active', 'draft'])) {
-            $agedays = (int) Carbon::parse($this->start_date)->startOfDay()
-                ->diffInDays(Carbon::today()->startOfDay()) + 1;
-        }
-
         $totalMortality = (int) ($this->mortalities_sum_quantity ?? 0);
         $totalBirdsSold = (int) ($this->sale_items_sum_birds_count ?? 0);
+        $remainingCount = $this->initial_count - $totalMortality - $totalBirdsSold;
+
+        // current_age_days: محسوب ديناميكياً للأفواج النشطة والمسودة، ويتجمّد عند
+        // اليوم الذي وصل فيه العدد المتبقي للصفر بدل الاستمرار مع "اليوم" الحالي.
+        $agedays = null;
+        if (in_array($this->status, ['active', 'draft'])) {
+            $endDate = Carbon::today();
+            if ($remainingCount <= 0) {
+                $zeroDate = (new ResolveFlockZeroDateAction())->execute($this->resource);
+                if ($zeroDate) {
+                    $endDate = $zeroDate;
+                }
+            }
+            $agedays = (int) Carbon::parse($this->start_date)->startOfDay()
+                ->diffInDays($endDate->startOfDay()) + 1;
+        }
 
         $totalSales    = (float) ($this->sales_sum_net_amount ?? 0);
         $opExpenses    = (float) ($this->expenses_sum_total_amount ?? 0);
@@ -45,7 +55,7 @@ class FlockResource extends JsonResource
             'total_chick_cost' => $chickCost,
             'current_age_days' => $agedays,
             'total_mortality'  => $totalMortality,
-            'remaining_count'  => $this->initial_count - $totalMortality - $totalBirdsSold,
+            'remaining_count'  => $remainingCount,
             'total_sales'      => $totalSales,
             'total_expenses'   => $totalExpenses,
             'net_profit'       => $totalSales - $totalExpenses,

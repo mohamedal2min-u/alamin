@@ -23,7 +23,9 @@ class URME_SS_Admin {
 	}
 
 	public static function menu() {
-		add_submenu_page( 'woocommerce', 'Supplier Sync', 'Supplier Sync', self::CAP, self::SLUG, array( __CLASS__, 'render' ) );
+		$pending = URME_SS_Price_Review::pending_count();
+		$badge   = $pending ? sprintf( ' <span class="awaiting-mod count-%1$d"><span class="pending-count">%1$d</span></span>', $pending ) : '';
+		add_submenu_page( 'woocommerce', 'Supplier Sync', 'Supplier Sync' . $badge, self::CAP, self::SLUG, array( __CLASS__, 'render' ) );
 	}
 
 	public static function action_links( $links ) {
@@ -67,7 +69,9 @@ class URME_SS_Admin {
 
 			case 'unselect':
 				$link = URME_SS_DB::get_link_by_id( absint( $_POST['link_id'] ?? 0 ) );
-				if ( $link ) {
+				if ( $link && URME_SS_Inventory::has_local_units( $link ) ) {
+					self::notice( sprintf( 'Not removed: this watch still has %d local unit(s) in Local first. Switch it to "Supplier now" first if you really want to stop tracking them.', $link['local_qty'] ), 'error' );
+				} elseif ( $link ) {
 					URME_SS_DB::delete_link( $link['id'] );
 					self::notice( 'Removed from sync. The WooCommerce product was not changed.' );
 				}
@@ -81,7 +85,9 @@ class URME_SS_Admin {
 
 			case 'unlink':
 				$link = URME_SS_DB::get_link_by_id( absint( $_POST['link_id'] ?? 0 ) );
-				if ( $link ) {
+				if ( $link && URME_SS_Inventory::has_local_units( $link ) ) {
+					self::notice( sprintf( 'Not unlinked: this watch still has %d local unit(s) in Local first. Switch it to "Supplier now" first.', $link['local_qty'] ), 'error' );
+				} elseif ( $link ) {
 					URME_SS_DB::update_link(
 						$link['id'],
 						array(
@@ -97,6 +103,15 @@ class URME_SS_Admin {
 
 			case 'automatch':
 				self::notice( self::automatch( absint( $_POST['link_id'] ?? 0 ) ) );
+				break;
+
+			case 'review_done':
+				$ok = URME_SS_Price_Review::mark_reviewed( absint( $_POST['review_id'] ?? 0 ) );
+				self::notice( $ok ? 'Marked as reviewed. The selling price was not changed by the plugin.' : 'Already reviewed.' );
+				break;
+
+			case 'set_mode':
+				self::notice_result( self::set_mode( URME_SS_DB::get_link_by_id( absint( $_POST['link_id'] ?? 0 ) ), sanitize_key( $_POST['mode'] ?? '' ) ) );
 				break;
 
 			case 'toggle':
@@ -240,9 +255,51 @@ class URME_SS_Admin {
 		return $msg;
 	}
 
+	/**
+	 * Local first / Supplier now / Paused for one selected watch.
+	 *
+	 * @return array{0: string, 1: string} Message and notice type.
+	 */
+	private static function set_mode( $link, $mode ) {
+		// phpcs:disable WordPress.Security.NonceVerification -- verified in handle().
+		if ( ! $link ) {
+			return array( 'Selection not found.', 'error' );
+		}
+		switch ( $mode ) {
+			case 'paused':
+				URME_SS_DB::update_link( $link['id'], array( 'sync_enabled' => 0 ) );
+				return array( 'Paused. Nothing is synced for this watch; its Local first state (if any) is kept.', 'success' );
+
+			case 'local':
+				$qty  = absint( $_POST['local_qty'] ?? 0 );
+				$raw  = str_replace( array( ' ', ',' ), array( '', '.' ), sanitize_text_field( wp_unslash( $_POST['local_cost'] ?? '' ) ) );
+				$cost = ( '' !== $raw && is_numeric( $raw ) && (float) $raw >= 0 ) ? (float) $raw : null;
+				$ok   = URME_SS_Inventory::enable_local( (int) $link['id'], $qty, $cost );
+				return true === $ok
+					? array( sprintf( 'Local first: %d local unit(s) will be sold before supplier stock. WooCommerce stock was set to %d%s.', $qty, $qty, null === $cost ? '' : ' and cost to ' . wc_format_decimal( $cost, 2 ) . ' SEK' ), 'success' )
+					: array( $ok, 'error' );
+
+			case 'supplier':
+				if ( URME_SS_Inventory::has_local_units( $link ) && empty( $_POST['confirm_drop'] ) ) {
+					return array( sprintf( 'Not changed: %d local unit(s) are still tracked. Confirm the switch to drop them.', $link['local_qty'] ), 'error' );
+				}
+				URME_SS_Inventory::enable_supplier( (int) $link['id'] );
+				return array( 'Supplier now: supplier stock and cost are synced on the next sync.', 'success' );
+		}
+		return array( 'Unknown mode.', 'error' );
+		// phpcs:enable
+	}
+
+	private static function notice_result( array $result ) {
+		self::notice( $result[0], $result[1] );
+	}
+
 	private static function link_product( $link, $pid ) {
 		if ( ! $link ) {
 			return 'Selection not found.';
+		}
+		if ( URME_SS_Inventory::has_local_units( $link ) && (int) $link['product_id'] !== (int) $pid ) {
+			return sprintf( 'Not changed: this watch still has %d local unit(s) in Local first on its current product. Switch it to "Supplier now" first.', $link['local_qty'] );
 		}
 		$product = $pid ? wc_get_product( $pid ) : null;
 		if ( ! $product ) {
@@ -372,9 +429,14 @@ class URME_SS_Admin {
 		$tabs = array(
 			'catalog'  => 'Supplier catalog',
 			'selected' => 'Selected watches',
+			'reviews'  => 'Price Review',
 			'status'   => 'Status & log',
 			'settings' => 'Settings',
 		);
+		$pending = URME_SS_Price_Review::pending_count();
+		if ( $pending ) {
+			$tabs['reviews'] .= sprintf( ' (%d)', $pending );
+		}
 		if ( ! isset( $tabs[ $tab ] ) ) {
 			$tab = 'catalog';
 		}
@@ -424,6 +486,7 @@ class URME_SS_Admin {
 			'Selected for sync',
 			number_format_i18n( $links['selected'] ?? 0 ),
 			sprintf( '%d linked · %d not linked · %d missing', $links['linked'] ?? 0, $links['unlinked'] ?? 0, $links['missing'] ?? 0 )
+				. ( ! empty( $links['local_first'] ) ? sprintf( '<br>%d in Local first', $links['local_first'] ) : '' )
 				. ( ! empty( $links['brand_off'] ) ? sprintf( '<br>%d in disabled brands (not synced)', $links['brand_off'] ) : '' ),
 			! empty( $links['unlinked'] ) || ! empty( $links['errors'] ) || ! empty( $links['brand_off'] )
 		);
@@ -717,6 +780,7 @@ class URME_SS_Admin {
 			'none'    => 'dashicons-dismiss',
 			'review'  => 'dashicons-warning',
 			'manual'  => 'dashicons-admin-links',
+			'local'   => 'dashicons-store',
 			'pending' => 'dashicons-clock',
 			'off'     => 'dashicons-controls-pause',
 		);
@@ -797,6 +861,7 @@ class URME_SS_Admin {
 			'missing'  => array( 'Missing from feed', $counts['missing'] ?? 0 ),
 			'paused'   => array( 'Paused', $counts['paused'] ?? 0 ),
 			'brand_off' => array( 'Brand sync off', $counts['brand_off'] ?? 0 ),
+			'local'    => array( 'Local first', $counts['local_first'] ?? 0 ),
 			'errors'   => array( 'Errors', $counts['errors'] ?? 0 ),
 		);
 		if ( ! isset( $filters[ $status ] ) ) {
@@ -848,12 +913,13 @@ class URME_SS_Admin {
 				<th class="num">Supplier stock</th>
 				<th class="num">Supplier cost</th>
 				<th>WooCommerce product</th>
+				<th class="urme-mode-col">Mode</th>
 				<th>Last sync</th>
 				<th>Actions</th>
 			</tr></thead>
 			<tbody>
 			<?php if ( ! $result['rows'] ) : ?>
-				<tr><td colspan="7">Nothing here. Select watches in the <a href="<?php echo esc_url( self::url() ); ?>">Supplier catalog</a>.</td></tr>
+				<tr><td colspan="8">Nothing here. Select watches in the <a href="<?php echo esc_url( self::url() ); ?>">Supplier catalog</a>.</td></tr>
 			<?php endif; ?>
 			<?php
 			foreach ( $result['rows'] as $row ) {
@@ -904,9 +970,11 @@ class URME_SS_Admin {
 					<button type="submit" class="button button-small">Link</button>
 				</form>
 			</td>
+			<td class="urme-mode-col"><?php self::render_mode_cell( $row, $product, $target ); ?></td>
 			<td>
 				<?php
 				$labels = array(
+					'local'    => '<span class="urme-muted">Local first</span>',
 					'ok'       => '<span class="urme-good">OK</span>',
 					'error'    => '<span class="urme-bad">Error</span>',
 					'missing'  => '<span class="urme-bad">Missing from feed</span>',
@@ -933,18 +1001,144 @@ class URME_SS_Admin {
 			<td class="urme-actions">
 				<?php
 				// phpcs:disable WordPress.Security.EscapeOutput
+				$locked = URME_SS_Inventory::has_local_units( $row );
 				if ( $pid ) {
 					echo self::action_button( 'sync_one', 'Sync now', array( 'link_id' => $row['id'] ), 'button button-small' );
-					echo self::action_button( 'unlink', 'Unlink', array( 'link_id' => $row['id'] ), 'button-link' );
+					if ( ! $locked ) {
+						echo self::action_button( 'unlink', 'Unlink', array( 'link_id' => $row['id'] ), 'button-link' );
+					}
 				} else {
 					echo self::action_button( 'automatch', 'Auto-link', array( 'link_id' => $row['id'] ), 'button button-small' );
 				}
-				echo self::action_button( 'toggle', (int) $row['sync_enabled'] ? 'Pause' : 'Resume', array( 'link_id' => $row['id'] ), 'button-link' );
-				echo self::action_button( 'unselect', 'Remove', array( 'link_id' => $row['id'] ), 'button-link urme-danger', 'Stop syncing this watch? The WooCommerce product itself is not changed.' );
+				if ( ! $locked ) {
+					echo self::action_button( 'unselect', 'Remove', array( 'link_id' => $row['id'] ), 'button-link urme-danger', 'Stop syncing this watch? The WooCommerce product itself is not changed.' );
+				} else {
+					echo '<small class="urme-muted">Unlink/Remove are disabled while local units are tracked.</small>';
+				}
 				// phpcs:enable
 				?>
 			</td>
 		</tr>
+		<?php
+	}
+
+	/**
+	 * Mode column: Local first / Supplier now / Paused, with details and the switcher.
+	 */
+	private static function render_mode_cell( array $row, $product, array $target ) {
+		$local  = URME_SS_Inventory::LOCAL === $row['stock_mode'];
+		$paused = ! (int) $row['sync_enabled'];
+		$sek    = null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] );
+
+		if ( $paused ) {
+			echo self::status_badge( 'off', 'Paused' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<br><small>' . esc_html( $local ? sprintf( 'Local first state kept (%d local unit(s)).', $row['local_qty'] ) : 'Nothing is synced.' ) . '</small>';
+		} elseif ( $local ) {
+			echo self::status_badge( 'local', 'Local first' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<ul class="urme-mode-facts">';
+			printf( '<li>Local stock remaining: <strong>%d</strong></li>', (int) $row['local_qty'] );
+			printf( '<li>Supplier stock: %s</li>', null === $row['stock'] ? '—' : (int) $row['stock'] );
+			printf( '<li>Supplier cost: %s · %s</li>', esc_html( self::eur( $row['purchase_price'] ) ), esc_html( self::sek( $sek ) ) );
+			if ( null !== $row['local_cost'] ) {
+				printf( '<li>Local cost: %s</li>', esc_html( self::sek( $row['local_cost'] ) ) );
+			}
+			echo '</ul><small>';
+			if ( $product && 'no' !== $product->get_backorders() ) {
+				echo '<span class="urme-bad">On hold: backorders are allowed on this product.</span>';
+			} elseif ( (int) $row['local_qty'] > 0 ) {
+				echo esc_html( 'Waiting for local stock to sell.' );
+			} else {
+				echo esc_html( 'Local stock sold – switching to supplier stock on the next safe sync.' );
+			}
+			if ( $product && true === $product->get_manage_stock() && (int) $product->get_stock_quantity() !== (int) $row['local_qty'] ) {
+				printf( '<br><span class="urme-bad">WooCommerce stock is %d, local stock is %d. Correct it by applying Local first again with the right quantity.</span>', (int) $product->get_stock_quantity(), (int) $row['local_qty'] );
+			}
+			echo '</small>';
+		} else {
+			echo self::status_badge( 'exists', 'Supplier now' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<ul class="urme-mode-facts"><li>Supplier stock sync active</li><li>' . esc_html( $target['type'] ? 'Supplier cost sync active' : 'Supplier cost sync: no cost field' ) . '</li></ul>';
+		}
+		if ( $row['mode_note'] ) {
+			echo '<br><small class="urme-muted">' . esc_html( $row['mode_note'] . ( $row['mode_changed_at'] ? ' (' . self::mysql_datetime( $row['mode_changed_at'] ) . ')' : '' ) ) . '</small>';
+		}
+		if ( ! (int) $row['product_id'] ) {
+			return;
+		}
+
+		$current   = $paused ? 'paused' : ( $local ? 'local' : 'supplier' );
+		$def_qty   = $local ? max( 1, (int) $row['local_qty'] ) : max( 1, (int) ( $product ? $product->get_stock_quantity() : 1 ) );
+		$def_cost  = null !== $row['local_cost'] ? $row['local_cost'] : ( ( $product && $target['type'] ) ? URME_SS_Store::get_cost( $product, $target ) : null );
+		?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="urme-mode-form" data-local-units="<?php echo (int) ( $local ? $row['local_qty'] : 0 ); ?>">
+			<?php echo self::hidden_fields( 'set_mode' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+			<input type="hidden" name="link_id" value="<?php echo (int) $row['id']; ?>">
+			<input type="hidden" name="confirm_drop" value="">
+			<select name="mode" aria-label="Sync mode">
+				<option value="local" <?php selected( $current, 'local' ); ?>>Local first</option>
+				<option value="supplier" <?php selected( $current, 'supplier' ); ?>>Supplier now</option>
+				<option value="paused" <?php selected( $current, 'paused' ); ?>>Paused</option>
+			</select>
+			<span class="urme-local-fields">
+				<label>Local units <input type="number" name="local_qty" min="1" step="1" value="<?php echo (int) $def_qty; ?>" class="small-text"></label>
+				<label>Local cost SEK <input type="text" name="local_cost" value="<?php echo esc_attr( null === $def_cost ? '' : wc_format_decimal( $def_cost, 2 ) ); ?>" class="small-text" inputmode="decimal"></label>
+			</span>
+			<button type="submit" class="button button-small">Apply</button>
+		</form>
+		<?php
+	}
+
+	/* --- Price Review tab ----------------------------------------------- */
+
+	private static function render_reviews() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$show = 'all' === sanitize_key( $_GET['show'] ?? '' ) ? 'all' : URME_SS_Price_Review::PENDING;
+		$rows = URME_SS_Price_Review::rows( $show );
+		printf(
+			'<p>Watches that switched automatically from Local first to Dropshipping. Check the selling price; the plugin never changes it. <a href="%s">%s</a></p>',
+			esc_url( self::url( array( 'tab' => 'reviews', 'show' => 'all' === $show ? '' : 'all' ) ) ),
+			'all' === $show ? 'Show only those needing review' : 'Show reviewed too'
+		);
+		?>
+		<table class="widefat striped urme-table">
+			<thead><tr>
+				<th>Product</th><th>SKU</th><th>Transition date</th><th class="num">Supplier stock</th>
+				<th class="num">Supplier cost EUR</th><th class="num">Supplier cost SEK</th><th class="num">Previous local cost</th>
+				<th class="num">Current selling price</th><th>Status</th><th></th>
+			</tr></thead>
+			<tbody>
+			<?php if ( ! $rows ) : ?>
+				<tr><td colspan="10"><?php echo esc_html( 'all' === $show ? 'No price reviews yet.' : 'Nothing waiting for price review.' ); ?></td></tr>
+			<?php endif; ?>
+			<?php foreach ( $rows as $r ) : ?>
+				<?php $v = URME_SS_Price_Review::view( $r ); ?>
+				<tr>
+					<td><?php echo $v['edit'] ? '<a href="' . esc_url( $v['edit'] ) . '">' . esc_html( $v['name'] ) . '</a>' : esc_html( $v['name'] ); ?></td>
+					<td><code><?php echo esc_html( '' !== $v['sku'] ? $v['sku'] : '—' ); ?></code></td>
+					<td><?php echo esc_html( $v['when'] ); ?></td>
+					<td class="num"><?php echo esc_html( null === $v['stock'] ? '—' : (string) $v['stock'] ); ?></td>
+					<td class="num"><?php echo esc_html( self::eur( $v['eur'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::sek( $v['sek'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::sek( $v['local_cost'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( URME_SS_Price_Review::price_text( $v ) ); ?></td>
+					<td>
+						<?php
+						echo URME_SS_Price_Review::PENDING === $r['status'] // phpcs:ignore WordPress.Security.EscapeOutput
+							? self::status_badge( 'review', 'Needs review' )
+							: self::status_badge( 'exists', 'Reviewed' ) . '<br><small>' . esc_html( self::mysql_datetime( $r['reviewed_at'] ) ) . '</small>';
+						?>
+					</td>
+					<td>
+						<?php if ( $v['edit'] ) : ?><a class="button button-primary button-small" href="<?php echo esc_url( $v['edit'] ); ?>">Review price</a><?php endif; ?>
+						<?php
+						if ( URME_SS_Price_Review::PENDING === $r['status'] ) {
+							echo URME_SS_Price_Review::reviewed_button( (int) $r['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+						}
+						?>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
 		<?php
 	}
 
@@ -1000,6 +1194,9 @@ class URME_SS_Admin {
 				<tr><th>Missing from supplier feed</th><td><?php echo esc_html( $sync['missing'] ?? 0 ); ?></td></tr>
 				<tr><th>Paused</th><td><?php echo esc_html( $sync['paused'] ?? 0 ); ?></td></tr>
 				<tr><th>In disabled brands (not processed)</th><td><?php echo esc_html( $sync['brand_off'] ?? 0 ); ?></td></tr>
+				<tr><th>Local first: waiting for local stock to sell</th><td><?php echo esc_html( $sync['local_waiting'] ?? 0 ); ?></td></tr>
+				<tr><th>Local first → Supplier switches</th><td><?php echo esc_html( $sync['handovers'] ?? 0 ); ?></td></tr>
+				<tr class="<?php echo empty( $sync['local_blocked'] ) ? '' : 'urme-error-row'; ?>"><th>Local first on hold (backorders allowed)</th><td><?php echo esc_html( $sync['local_blocked'] ?? 0 ); ?></td></tr>
 				<tr class="<?php echo empty( $sync['errors'] ) ? '' : 'urme-error-row'; ?>"><th>Errors</th><td><?php echo esc_html( $sync['errors'] ?? 0 ); ?>
 					<?php foreach ( (array) ( $sync['error_list'] ?? array() ) as $err ) : ?>
 						<br><small><?php echo esc_html( $err ); ?></small>

@@ -283,6 +283,9 @@ class URME_SS_Sync {
 			'missing'       => 0,
 			'paused'        => 0,
 			'brand_off'     => 0,
+			'local_waiting' => 0,
+			'handovers'     => 0,
+			'local_blocked' => 0,
 			'errors'        => 0,
 			'error_list'    => array(),
 			'skipped'       => '',
@@ -304,6 +307,9 @@ class URME_SS_Sync {
 			}
 			return $stats;
 		}
+
+		// Settle the local-inventory ledger first (crash recovery). Links that fail stay local this run.
+		$ledger_failed = URME_SS_Inventory::sweep();
 
 		$rate   = URME_SS_Rates::current();
 		$target = URME_SS_Store::cost_target();
@@ -369,6 +375,16 @@ class URME_SS_Sync {
 				$stats['error_list'][] = $msg;
 				self::set_link_status( $link, 'error', 'Linked product no longer exists.' );
 				continue;
+			}
+
+			if ( URME_SS_Inventory::LOCAL === $link['stock_mode'] ) {
+				$local = self::local_first_gate( $link, $product, $ledger_failed, $rate, $stats );
+				if ( 'hold' === $local ) {
+					continue;
+				}
+				// 'handover': local stock sold out, switched in this safe run; sync supplier data below.
+				$link['stock_mode'] = URME_SS_Inventory::SUPPLIER;
+				$notes[]            = sprintf( '#%d %s: switched Local first → Supplier', $product->get_id(), $link['product_no'] );
 			}
 
 			++$stats['checked'];
@@ -459,13 +475,15 @@ class URME_SS_Sync {
 			return $stats;
 		}
 		// Quiet hours stay out of the log; the Status tab always shows the latest numbers.
-		$eventful = $stats['stock_updated'] || $stats['cost_updated'] || $stats['errors'] || 'cron' !== $trigger;
+		$eventful = $stats['stock_updated'] || $stats['cost_updated'] || $stats['errors'] || $stats['handovers'] || 'cron' !== $trigger;
 		if ( $eventful ) {
 			URME_SS_Log::info(
 				sprintf(
-					'Product sync: %d selected (%d in disabled brands, skipped), %d checked, %d stock updates, %d cost updates, %d unchanged, %d unlinked, %d missing from feed, %d errors.',
+					'Product sync: %d selected (%d in disabled brands, skipped), %d local first waiting, %d switched to supplier, %d checked, %d stock updates, %d cost updates, %d unchanged, %d unlinked, %d missing from feed, %d errors.',
 					$stats['selected'],
 					$stats['brand_off'],
+					$stats['local_waiting'],
+					$stats['handovers'],
 					$stats['checked'],
 					$stats['stock_updated'],
 					$stats['cost_updated'],
@@ -478,6 +496,50 @@ class URME_SS_Sync {
 		}
 		self::save_status( 'sync', $stats );
 		return $stats;
+	}
+
+	/**
+	 * Local first: decide whether this product is held (local units left, or unsafe)
+	 * or handed over to supplier sync in this run.
+	 *
+	 * @return string 'hold' or 'handover'.
+	 */
+	private static function local_first_gate( array $link, WC_Product $product, array $ledger_failed, $rate, array &$stats ) {
+		if ( 'no' !== $product->get_backorders() ) {
+			++$stats['local_blocked'];
+			++$stats['errors'];
+			$stats['error_list'][] = sprintf( '%s (#%d): backorders are allowed; Local first is on hold.', $link['product_no'], $link['product_id'] );
+			self::set_link_status( $link, 'error', 'Backorders are allowed on this product. Local first is on hold (no stock/cost changes, no switch to supplier) until backorders are set to "Do not allow".' );
+			return 'hold';
+		}
+		if ( in_array( (int) $link['id'], $ledger_failed, true ) || (int) $link['needs_stock_apply'] ) {
+			++$stats['errors'];
+			$stats['error_list'][] = sprintf( '%s (#%d): local inventory could not be reconciled yet; product left unchanged.', $link['product_no'], $link['product_id'] );
+			self::set_link_status( $link, 'error', 'Local inventory is not reconciled yet (see log). Nothing changed; retried on the next sync.' );
+			return 'hold';
+		}
+		if ( (int) $link['local_qty'] > 0 ) {
+			++$stats['local_waiting'];
+			// Supplier data is still read and shown, never written.
+			self::update_link_if_changed(
+				$link,
+				array(
+					'last_stock'    => null === $link['stock'] ? null : (int) $link['stock'],
+					'last_cost_eur' => $link['purchase_price'],
+					'last_cost_sek' => ( null !== $link['purchase_price'] && $rate ) ? round( (float) $link['purchase_price'] * $rate['rate'], 2 ) : null,
+					'last_rate'     => $rate ? $rate['rate'] : null,
+					'last_status'   => 'local',
+					'last_message'  => sprintf( 'Waiting for local stock to sell (%d local unit(s) left).', $link['local_qty'] ),
+				)
+			);
+			return 'hold';
+		}
+		if ( ! URME_SS_Inventory::handover( $link, $product, $rate ) ) {
+			// Another run switched it or the state changed; look again next run.
+			return 'hold';
+		}
+		++$stats['handovers'];
+		return 'handover';
 	}
 
 	private static function set_link_status( array $link, $status, $message ) {

@@ -1,6 +1,7 @@
 <?php
 /**
- * Custom tables: the cached supplier catalog and the product links.
+ * Custom tables: the cached supplier catalog, the product links and the
+ * local-inventory allocation ledger.
  *
  * @package URME_Supplier_Sync
  */
@@ -19,6 +20,15 @@ class URME_SS_DB {
 		return $wpdb->prefix . 'urme_ss_links';
 	}
 
+	/**
+	 * One row per WooCommerce order line of a linked product: how many of its
+	 * reduced units came from local (URME-owned) stock and how many from the supplier.
+	 */
+	public static function alloc_table() {
+		global $wpdb;
+		return $wpdb->prefix . 'urme_ss_alloc';
+	}
+
 	public static function install() {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -26,6 +36,7 @@ class URME_SS_DB {
 		$charset = $wpdb->get_charset_collate();
 		$catalog = self::catalog_table();
 		$links   = self::links_table();
+		$alloc   = self::alloc_table();
 
 		// item_key = ITEM_ID (EAN) when present, otherwise "P:" . PRODUCTNO.
 		dbDelta(
@@ -75,13 +86,167 @@ class URME_SS_DB {
   last_rate decimal(10,6) NULL,
   last_status varchar(20) NOT NULL DEFAULT '',
   last_message varchar(255) NOT NULL DEFAULT '',
+  stock_mode varchar(20) NOT NULL DEFAULT 'supplier',
+  local_qty int(11) NOT NULL DEFAULT 0,
+  local_cost decimal(12,2) NULL,
+  needs_stock_apply tinyint(1) NOT NULL DEFAULT 0,
+  mode_changed_at datetime NULL,
+  mode_note varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY  (id),
   UNIQUE KEY item_key (item_key),
   KEY product_id (product_id)
 ) {$charset};"
 		);
 
+		// Authoritative local/supplier split per order line (see URME_SS_Inventory).
+		dbDelta(
+			"CREATE TABLE {$alloc} (
+  order_item_id bigint(20) unsigned NOT NULL,
+  order_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  link_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  product_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  last_reduced_stock int(11) NOT NULL DEFAULT 0,
+  local_allocated int(11) NOT NULL DEFAULT 0,
+  supplier_allocated int(11) NOT NULL DEFAULT 0,
+  src_local int(11) NOT NULL DEFAULT 0,
+  src_supplier int(11) NOT NULL DEFAULT 0,
+  ret_local int(11) NOT NULL DEFAULT 0,
+  ret_supplier int(11) NOT NULL DEFAULT 0,
+  origin varchar(10) NOT NULL DEFAULT 'sale',
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (order_item_id),
+  KEY link_id (link_id),
+  KEY order_id (order_id)
+) {$charset};"
+		);
+
+		// Admin-only price reviews after an automatic Local first → Supplier switch.
+		$reviews = URME_SS_Price_Review::table();
+		dbDelta(
+			"CREATE TABLE {$reviews} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  link_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  product_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  item_key varchar(100) NOT NULL DEFAULT '',
+  sku varchar(100) NOT NULL DEFAULT '',
+  transitioned_at datetime NOT NULL,
+  local_cost decimal(12,2) NULL,
+  supplier_cost_eur decimal(12,4) NULL,
+  supplier_cost_sek decimal(12,2) NULL,
+  supplier_stock int(11) NULL,
+  regular_price varchar(30) NOT NULL DEFAULT '',
+  sale_price varchar(30) NOT NULL DEFAULT '',
+  status varchar(10) NOT NULL DEFAULT 'pending',
+  reviewed_at datetime NULL,
+  reviewed_by bigint(20) unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY  (id),
+  KEY link_id (link_id),
+  KEY status (status)
+) {$charset};"
+		);
+
+		self::ensure_transactional( array( $links, $alloc, $reviews ) );
+
+		// Only record the new version when every column really exists; otherwise retry next load.
+		$missing = self::missing_columns();
+		if ( $missing ) {
+			update_option( 'urme_ss_schema_error', implode( ', ', $missing ), false );
+			URME_SS_Log::error( 'Database upgrade incomplete, missing: ' . implode( ', ', $missing ) . '. Local first is unavailable until this is fixed; the upgrade is retried on every load.' );
+			return;
+		}
+		delete_option( 'urme_ss_schema_error' );
+		// Orders whose stock was taken before the ledger existed have no known fulfilment source.
+		add_option( 'urme_ss_ledger_since', time(), '', false );
 		update_option( 'urme_ss_db_version', URME_SS_DB_VERSION, false );
+	}
+
+	/**
+	 * Columns added in schema v3 that are missing from the database.
+	 *
+	 * @return string[]
+	 */
+	public static function missing_columns() {
+		global $wpdb;
+		$expected = array(
+			self::links_table() => array( 'stock_mode', 'local_qty', 'local_cost', 'needs_stock_apply', 'mode_changed_at', 'mode_note' ),
+			self::alloc_table() => array( 'order_item_id', 'order_id', 'link_id', 'product_id', 'last_reduced_stock', 'local_allocated', 'supplier_allocated', 'src_local', 'src_supplier', 'ret_local', 'ret_supplier', 'origin', 'created_at', 'updated_at' ),
+			URME_SS_Price_Review::table() => array( 'id', 'link_id', 'product_id', 'item_key', 'sku', 'transitioned_at', 'local_cost', 'supplier_cost_eur', 'supplier_cost_sek', 'supplier_stock', 'regular_price', 'sale_price', 'status', 'reviewed_at', 'reviewed_by' ),
+		);
+		$missing  = array();
+		foreach ( $expected as $table => $columns ) {
+			$have = $wpdb->get_col( "SHOW COLUMNS FROM {$table}" ); // phpcs:ignore WordPress.DB
+			foreach ( $columns as $column ) {
+				if ( ! in_array( $column, (array) $have, true ) ) {
+					$missing[] = $table . '.' . $column;
+				}
+			}
+		}
+		return $missing;
+	}
+
+	/**
+	 * The ledger needs transactions: make sure our own tables use InnoDB on MySQL/MariaDB.
+	 */
+	private static function ensure_transactional( array $tables ) {
+		global $wpdb;
+		if ( self::is_sqlite() ) {
+			return;
+		}
+		foreach ( $tables as $table ) {
+			// phpcs:ignore WordPress.DB
+			$engine = $wpdb->get_var( $wpdb->prepare( 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $table ) );
+			if ( $engine && 'innodb' !== strtolower( $engine ) ) {
+				$wpdb->query( "ALTER TABLE {$table} ENGINE=InnoDB" ); // phpcs:ignore WordPress.DB
+				URME_SS_Log::warning( sprintf( 'Converted %s from %s to InnoDB so inventory updates can use transactions.', $table, $engine ) );
+			}
+		}
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Transactions (used by the local-inventory ledger)
+	 * ------------------------------------------------------------------- */
+
+	public static function is_sqlite() {
+		global $wpdb;
+		return ( defined( 'DB_ENGINE' ) && 'sqlite' === DB_ENGINE ) || ( class_exists( 'WP_SQLite_DB' ) && $wpdb instanceof WP_SQLite_DB );
+	}
+
+	/**
+	 * Row lock suffix for SELECTs inside a transaction (SQLite locks the whole database instead).
+	 */
+	public static function lock_clause() {
+		return self::is_sqlite() ? '' : ' FOR UPDATE';
+	}
+
+	/**
+	 * Start a transaction, or a savepoint if another plugin already opened one
+	 * (a plain START TRANSACTION would silently commit theirs).
+	 *
+	 * @return string|false Handle for commit()/rollback(), false on failure.
+	 */
+	public static function begin() {
+		global $wpdb;
+		$nested = false;
+		if ( ! self::is_sqlite() ) {
+			$suppress = $wpdb->suppress_errors( true );
+			$nested   = '1' === (string) $wpdb->get_var( 'SELECT @@in_transaction' ); // MariaDB; MySQL returns an error = not nested.
+			$wpdb->suppress_errors( $suppress );
+		}
+		if ( $nested ) {
+			return false === $wpdb->query( 'SAVEPOINT urme_ss' ) ? false : 'savepoint';
+		}
+		return false === $wpdb->query( 'START TRANSACTION' ) ? false : 'transaction';
+	}
+
+	public static function commit( $handle ) {
+		global $wpdb;
+		return false !== $wpdb->query( 'savepoint' === $handle ? 'RELEASE SAVEPOINT urme_ss' : 'COMMIT' );
+	}
+
+	public static function rollback( $handle ) {
+		global $wpdb;
+		$wpdb->query( 'savepoint' === $handle ? 'ROLLBACK TO SAVEPOINT urme_ss' : 'ROLLBACK' );
 	}
 
 	public static function maybe_upgrade() {
@@ -381,6 +546,7 @@ class URME_SS_DB {
 
 	public static function insert_link( $item_key, $product_id, $method ) {
 		global $wpdb;
+		URME_SS_Inventory::flush_cache();
 		$wpdb->insert(
 			self::links_table(),
 			array(
@@ -397,11 +563,13 @@ class URME_SS_DB {
 
 	public static function update_link( $id, array $data ) {
 		global $wpdb;
+		URME_SS_Inventory::flush_cache();
 		return $wpdb->update( self::links_table(), $data, array( 'id' => (int) $id ) );
 	}
 
 	public static function delete_link( $id ) {
 		global $wpdb;
+		URME_SS_Inventory::flush_cache();
 		return $wpdb->delete( self::links_table(), array( 'id' => (int) $id ), array( '%d' ) );
 	}
 
@@ -435,6 +603,9 @@ class URME_SS_DB {
 				break;
 			case 'brand_off':
 				$where[] = self::brand_condition( false, $params );
+				break;
+			case 'local':
+				$where[] = "l.stock_mode = 'local_first'";
 				break;
 		}
 		if ( ! empty( $args['enabled_brands_only'] ) ) {
@@ -472,6 +643,15 @@ class URME_SS_DB {
 		);
 	}
 
+	/**
+	 * The link for a WooCommerce product or variation, if any.
+	 */
+	public static function link_for_product( $product_id ) {
+		global $wpdb;
+		$l = self::links_table();
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$l} WHERE product_id = %d AND product_id > 0 LIMIT 1", $product_id ), ARRAY_A ); // phpcs:ignore WordPress.DB
+	}
+
 	public static function link_counts() {
 		global $wpdb;
 		$c      = self::catalog_table();
@@ -484,6 +664,7 @@ class URME_SS_DB {
 				SUM(l.sync_enabled = 0) AS paused,
 				SUM(c.id IS NULL OR c.in_feed = 0) AS missing,
 				SUM(l.last_status = 'error') AS errors,
+				SUM(l.stock_mode = 'local_first') AS local_first,
 				SUM({$off}) AS brand_off
 			FROM {$l} l LEFT JOIN {$c} c ON c.item_key = l.item_key";
 		$row    = $wpdb->get_row( $params ? $wpdb->prepare( $sql, $params ) : $sql, ARRAY_A ); // phpcs:ignore WordPress.DB

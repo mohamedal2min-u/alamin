@@ -50,3 +50,11 @@
 .urme-ss .urme-brand-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 2px 8px; background: #fff; border: 1px solid #dcdcde; border-radius: 4px; }
 .urme-ss .urme-brand-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 16px; max-height: 360px; overflow: auto; padding: 8px; background: #fff; border: 1px solid #dcdcde; }
 .urme-ss .urme-brand-list label { display: block; }
+.urme-ss .urme-badge-local { color: #7a4ec2; }
+.urme-ss .urme-mode-col { min-width: 210px; }
+.urme-ss .urme-mode-facts { margin: 4px 0; }
+.urme-ss .urme-mode-facts li { margin: 0; font-size: 12px; }
+.urme-ss .urme-mode-form { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; }
+.urme-ss .urme-local-fields { display: inline-flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+.urme-ss .urme-local-fields label { display: inline-flex; align-items: center; gap: 3px; }
+.urme-ss .urme-local-fields input[name=local_cost] { width: 90px; }

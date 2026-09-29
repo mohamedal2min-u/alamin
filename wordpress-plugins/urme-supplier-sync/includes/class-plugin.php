@@ -15,6 +15,8 @@ class URME_SS_Plugin {
 		add_action( 'before_woocommerce_init', array( __CLASS__, 'declare_compatibility' ) );
 		add_action( 'plugins_loaded', array( __CLASS__, 'loaded' ) );
 		add_action( self::CRON_HOOK, array( 'URME_SS_Sync', 'cron' ) );
+		// Order stock movements (storefront, REST and admin) feed the local-inventory ledger.
+		URME_SS_Inventory::init();
 	}
 
 	public static function loaded() {
@@ -28,8 +30,20 @@ class URME_SS_Plugin {
 			return;
 		}
 		URME_SS_DB::maybe_upgrade();
+		if ( get_option( 'urme_ss_schema_error' ) ) {
+			add_action(
+				'admin_notices',
+				static function () {
+					printf( '<div class="notice notice-error"><p>URME Supplier Sync: the database upgrade to 1.1.0 is incomplete (missing %s). Local first is unavailable; the upgrade is retried automatically. Check WooCommerce > Status > Logs (urme-supplier-sync).</p></div>', esc_html( get_option( 'urme_ss_schema_error' ) ) );
+				}
+			);
+		}
 		if ( is_admin() ) {
 			URME_SS_Admin::init();
+			// Admin-only "URME Lager / Dropshipping" labels on orders; never registered on the front end or REST.
+			URME_SS_Fulfillment::init();
+			// Admin-only "Price review required" notices.
+			URME_SS_Price_Review::init();
 		}
 		// Self-heal the schedule if it was lost (e.g. after a migration).
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {

@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -36,13 +36,58 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.0.0.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.1.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
 4. Settings > "Brands enabled for sync": tick the brands you sell. (None are enabled at first.)
 5. Supplier catalog: tick watches > "Select checked for sync". Watches with a unique SKU/EAN match
    are linked automatically; others are linked under "Selected watches" with the product search.
+
+== Local first → Supplier automatically ==
+
+Per selected watch, under Selected watches > Mode:
+
+* Supplier now (default): stock and cost follow the supplier.
+* Local first: you own N units. They are sold first; supplier stock and cost are shown
+  but never written while local units remain. When the last local unit is sold, the next
+  safe sync (fresh, successful feed) switches the watch to Supplier now and syncs supplier
+  stock and EUR -> SEK cost. Until then the product is out of stock.
+* Paused: nothing is synced; Local first state is kept.
+
+Every order line of a linked product is booked in a ledger table (urme_ss_alloc) as local or
+supplier units, in one database transaction together with the local stock count, so a crash
+can never count a unit twice. Cancellations, refunds with restock and admin quantity edits
+return units to local first. A returned local unit on a watch that is already on Supplier now
+switches it back to Local first (WooCommerce stock = local units, cost = saved local cost).
+Anything that cannot be booked is logged and retried by the next sync, and that watch is not
+switched until it is booked.
+
+Local first cannot be enabled while backorders are allowed on the product (WooCommerce could
+otherwise sell supplier units before the local ones). If backorders are turned on later, the
+watch is put on hold and flagged until they are turned off again.
+
+== Fulfillment source (admin only) ==
+
+Each order line of a supplier-linked watch shows, on the order edit screen only:
+URME Lager (own stock), Dropshipping (supplier) or Mixed, with the unit counts. The order shows
+a summary (URME stock only / Dropshipping required / Mixed fulfillment), and WooCommerce > Orders
+gets a Fulfillment column and filter. The source is frozen when stock is taken for the order;
+later supplier changes never alter it, and returns are shown next to it. Orders placed before
+1.1.0 show "Unknown / Legacy order".
+
+Nothing is stored on the order (no order or line meta, no order notes), so it cannot appear in
+customer pages, My Account, emails, invoices, packing slips, the REST/Store API or structured data.
+
+== Price review (admin only) ==
+
+When a watch switches automatically from Local first to Supplier (its last local unit was sold),
+an admin notice "Price review required: SKU … has switched to Dropshipping." appears with the
+product, SKU, previous local cost, supplier cost EUR/SEK, supplier stock, current selling price,
+the switch time, a "Review price" button and "Mark as reviewed". It stays until marked as
+reviewed. Supplier Sync > Price Review lists them (Needs review / Reviewed) with a count badge.
+One switch = one review (created in the same transaction as the switch). Selling prices are
+never changed by the plugin.
 
 == Cost price field ==
 

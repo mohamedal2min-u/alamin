@@ -29,3 +29,28 @@
 		$( '.urme-brand-list input[type=checkbox]' ).prop( 'checked', $( this ).hasClass( 'urme-brands-all' ) );
 	} );
 } )( jQuery );
+
+( function ( $ ) {
+	// Mode switcher on Selected watches: local fields only for "Local first";
+	// confirm before local units are dropped by switching to "Supplier now".
+	function sync( $form ) {
+		$form.find( '.urme-local-fields' ).toggle( 'local' === $form.find( 'select[name=mode]' ).val() );
+	}
+	$( '.urme-mode-form' ).each( function () {
+		sync( $( this ) );
+	} );
+	$( document ).on( 'change', '.urme-mode-form select[name=mode]', function () {
+		sync( $( this ).closest( 'form' ) );
+	} );
+	$( document ).on( 'submit', '.urme-mode-form', function ( e ) {
+		var $form = $( this ),
+			units = parseInt( $form.data( 'local-units' ), 10 ) || 0;
+		if ( 'supplier' === $form.find( 'select[name=mode]' ).val() && units > 0 ) {
+			if ( ! window.confirm( units + ' local unit(s) are still tracked. Switch to Supplier now and stop tracking them?' ) ) {
+				e.preventDefault();
+				return;
+			}
+			$form.find( 'input[name=confirm_drop]' ).val( '1' );
+		}
+	} );
+} )( jQuery );

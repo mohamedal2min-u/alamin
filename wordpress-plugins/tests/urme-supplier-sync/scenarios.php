@@ -91,6 +91,8 @@ echo 'WordPress ' . get_bloginfo( 'version' ) . ', WooCommerce ' . WC_VERSION . 
 /* ------------------------------------------------------------------ reset */
 $wpdb->query( 'DELETE FROM ' . URME_SS_DB::catalog_table() );
 $wpdb->query( 'DELETE FROM ' . URME_SS_DB::links_table() );
+$wpdb->query( 'DELETE FROM ' . URME_SS_DB::alloc_table() );
+$wpdb->query( 'DELETE FROM ' . URME_SS_Price_Review::table() );
 foreach ( array( 'urme_ss_status', 'urme_ss_log', 'urme_ss_rate', 'urme_ss_feed_state', 'urme_ss_lock' ) as $o ) {
 	delete_option( $o );
 }
@@ -560,5 +562,10 @@ ok( 500 === $r['total'] && 50 === count( $r['rows'] ), 'brand filter + paging', 
 ok( 1 === URME_SS_DB::search_catalog( array( 'productno' => 'REF000006' ) )['total'], 'PRODUCTNO search' );
 ok( 1 === URME_SS_DB::search_catalog( array( 'ean' => '4900000000018' ) )['total'], 'EAN search' );
 ok( 7 === URME_SS_DB::search_catalog( array( 'selected' => 'yes' ) )['total'], 'selected filter' );
+
+// Local first → Supplier automatically (1.1.0).
+require __DIR__ . '/local-first.php';
+// Admin-only fulfilment source and price reviews (1.1.0).
+require __DIR__ . '/fulfillment-review.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

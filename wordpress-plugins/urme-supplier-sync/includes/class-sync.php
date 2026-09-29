@@ -123,7 +123,8 @@ class URME_SS_Sync {
 				}
 			}
 			if ( $args['sync_products'] ) {
-				$sync = self::sync_products( (int) $args['link_id'], $args['trigger'] );
+				// A feed that failed in this run blocks all product writes; the cached catalog is kept as is.
+				$sync = self::sync_products( (int) $args['link_id'], $args['trigger'], false === $feed_ok );
 			}
 		} catch ( Throwable $e ) {
 			URME_SS_Log::error( 'Unexpected error: ' . $e->getMessage() );
@@ -262,9 +263,11 @@ class URME_SS_Sync {
 	/**
 	 * Push supplier stock and cost to the linked, enabled products.
 	 *
-	 * @param int $only_link_id Limit to one link (0 = all).
+	 * @param int    $only_link_id Limit to one link (0 = all).
+	 * @param string $trigger      What started the run.
+	 * @param bool   $feed_failed  The feed refresh requested in this run failed.
 	 */
-	private static function sync_products( $only_link_id = 0, $trigger = 'manual' ) {
+	private static function sync_products( $only_link_id = 0, $trigger = 'manual', $feed_failed = false ) {
 		$feed  = self::status()['feed'];
 		$prev  = self::status()['sync'];
 		$stats = array(
@@ -287,7 +290,9 @@ class URME_SS_Sync {
 
 		// Safety: never push data from a catalog we could not refresh recently.
 		$max_age = (int) URME_SS_Settings::get( 'max_feed_age_hours' ) * HOUR_IN_SECONDS;
-		if ( empty( $feed['last_success'] ) ) {
+		if ( $feed_failed ) {
+			$stats['skipped'] = 'The supplier feed could not be downloaded or read in this run, so no products were changed. The previous catalog is kept for browsing.';
+		} elseif ( empty( $feed['last_success'] ) ) {
 			$stats['skipped'] = 'No successful feed download yet, so no products were changed.';
 		} elseif ( time() - (int) $feed['last_success'] > $max_age ) {
 			$stats['skipped'] = sprintf( 'The supplier feed has not been refreshed successfully for %s, so no products were changed.', human_time_diff( (int) $feed['last_success'] ) );

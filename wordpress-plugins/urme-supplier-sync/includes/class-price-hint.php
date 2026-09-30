@@ -94,7 +94,7 @@ class URME_SS_Price_Hint {
 		}
 		$extra = rtrim( rtrim( number_format( $ctx['extra_eur'], 2, '.', '' ), '0' ), '.' );
 		return sprintf(
-			'<div class="urme-hint"><strong>Suggested price: %s</strong><br>After %s coupon: %s<br>Klarna %s: %s<br>Cost incl. +%s EUR: %s<br>Estimated profit: %s</div>',
+			'<div class="urme-hint"><strong>Suggested price: %s</strong><br><span class="urme-hint-detail">After %s coupon: %s<br>Klarna %s: %s<br>Cost incl. +%s EUR: %s<br>Estimated profit: %s</span></div>',
 			esc_html( self::kr( $h['price'] ) ),
 			esc_html( self::pct( $ctx['coupon'] ) ),
 			esc_html( self::kr( $h['paid'] ) ),

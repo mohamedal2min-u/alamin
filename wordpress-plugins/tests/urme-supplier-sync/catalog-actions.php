@@ -28,6 +28,14 @@ function ca_keys( array $get ) {
 	sort( $keys );
 	return $keys;
 }
+/**
+ * The Brand filter's options: value => label.
+ */
+function ca_brand_options( $html ) {
+	preg_match( '#<select name="brand">(.*?)</select>#s', $html, $m );
+	preg_match_all( '#<option value="([^"]*)"[^>]*>([^<]*)</option>#', $m[1] ?? '', $o );
+	return array_combine( $o[1], array_map( 'html_entity_decode', $o[2] ) );
+}
 function ca_prices_ok( $pid, $regular, $sale ) {
 	$p = p( $pid );
 	return $regular === $p->get_regular_price() && $sale === $p->get_sale_price();
@@ -130,7 +138,25 @@ $r = ca_row( $html, 'REF000198' );
 ok( '—' === ca_stock_cell( $r ) && false === strpos( $r, 'start_' ) && false !== strpos( $r, 'Needs review' ), 'Needs review: no stock, no button' );
 $r = ca_row( $html, 'REF000132' );
 ok( false !== strpos( ff_text( $r ), 'Dropshipping' ) && false !== strpos( $r, 'value="sync|' ) && false !== strpos( $r, 'value="lager|' ), 'already Dropshipping: "Dropshipping" + "Sync now" + "URME Lager"', ff_text( $r ) );
-$rc = ca_row( ph_catalog( array( 'brand' => 'Casio' ) ), 'REF000204' );
+$enabled = array();
+foreach ( URME_SS_DB::brands() as $b ) {
+	if ( URME_SS_Settings::brand_enabled( $b['manufacturer'] ) ) {
+		$enabled[ $b['manufacturer'] ] = $b['manufacturer'] . ' (' . (int) $b['n'] . ')';
+	}
+}
+$opts = ca_brand_options( ph_catalog( array() ) );
+ok( array( '' => 'All brands' ) + $enabled === $opts && isset( $opts['BOSS'] ) && ! isset( $opts['Casio'] ), sprintf( 'Brand filter: "All brands" + only the %d brands enabled for sync (Casio, disabled, not listed)', count( $enabled ) ), $opts );
+ok( 1 === preg_match( '#<option value="BOSS"\s+selected=\'selected\'>BOSS \(\d+\)</option>#', ph_catalog( array( 'brand' => 'BOSS' ) ) ), '   an enabled brand is listed without a suffix and stays selected' );
+$all = URME_SS_DB::search_catalog( array( 'per_page' => 1 ) )['total'];
+ok( $all === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_DB::catalog_table() . " WHERE in_feed = 1 AND category = 'WATCH'" ) && 0 < URME_SS_DB::search_catalog( array( 'brand' => 'Casio', 'per_page' => 1 ) )['total'], '   "All brands" still lists every watch, disabled brands included', $all );
+$casio = ph_catalog( array( 'brand' => 'Casio' ) );
+$co    = ca_brand_options( $casio );
+ok( isset( $co['Casio'] ) && false !== strpos( $co['Casio'], '– sync off' ) && 1 === preg_match( '#<option value="Casio"\s+selected=\'selected\'>#', $casio ) && count( $co ) === count( $opts ) + 1, '   filtered on disabled Casio (old link): Casio shown selected, "– sync off"', $co );
+URME_SS_Settings::set_brand( 'Casio', true );
+$on = ca_brand_options( ph_catalog( array() ) );
+URME_SS_Settings::set_brand( 'Casio', false );
+ok( isset( $on['Casio'] ) && false === strpos( $on['Casio'], 'sync' ) && ! isset( ca_brand_options( ph_catalog( array() ) )['Casio'] ), '   Casio turned on → listed; off again → gone' );
+$rc = ca_row( $casio, 'REF000204' );
 ok( '0 / Out of stock' === ca_stock_cell( $rc ) && false === strpos( $rc, 'start_' ), 'brand sync disabled (Casio): stock shown, no sync button', ca_stock_cell( $rc ) );
 
 section( 'CA2. Filters' );

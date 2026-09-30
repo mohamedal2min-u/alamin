@@ -85,8 +85,15 @@
 	function rowMessage( $tr, text, kind ) {
 		var $m = $tr.find( '.urme-row-msg' );
 		$m.text( text ).removeClass( 'urme-row-ok urme-row-error' );
+		clearTimeout( $m.data( 'urmeHide' ) );
 		if ( kind ) {
 			$m.addClass( 'ok' === kind ? 'urme-row-ok' : 'urme-row-error' );
+		}
+		if ( 'ok' === kind ) {
+			// A success note clears itself; errors stay until the next action.
+			$m.data( 'urmeHide', setTimeout( function () {
+				$m.text( '' ).removeClass( 'urme-row-ok' );
+			}, 6000 ) );
 		}
 	}
 

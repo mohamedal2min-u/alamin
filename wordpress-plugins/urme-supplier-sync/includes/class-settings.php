@@ -65,8 +65,8 @@ class URME_SS_Settings {
 		$new = array(
 			'feed_url'           => esc_url_raw( trim( (string) ( $input['feed_url'] ?? $current['feed_url'] ) ) ),
 			'categories'         => $categories ? array_values( array_unique( $categories ) ) : array( 'WATCH' ),
-			// Only replace the brand list when the form actually contained it.
-			'enabled_brands'     => isset( $input['brands_present'] ) ? self::sanitize_brands( (array) ( $input['enabled_brands'] ?? array() ) ) : $current['enabled_brands'],
+			// Only change the brand list when the form actually contained it, and then only by what was changed on that page.
+			'enabled_brands'     => isset( $input['brands_present'] ) ? self::brands_from_form( $input, (array) $current['enabled_brands'] ) : $current['enabled_brands'],
 			'auto_sync'          => empty( $input['auto_sync'] ) ? 0 : 1,
 			'cost_target'        => in_array( $input['cost_target'] ?? '', array( 'auto', 'wc_cogs', 'meta', 'none' ), true ) ? $input['cost_target'] : 'auto',
 			'cost_meta_key'      => self::sanitize_meta_key( (string) ( $input['cost_meta_key'] ?? '' ) ),
@@ -83,7 +83,51 @@ class URME_SS_Settings {
 		);
 
 		update_option( self::OPTION, $new );
+		self::log_brand_change( (array) $current['enabled_brands'], $new['enabled_brands'], 'settings page' );
 		return $new;
+	}
+
+	/**
+	 * Enabled brands after a settings-page save. The page posts the brands that were ticked when it
+	 * was opened (brands_before); only the difference is applied, so a brand enabled or disabled
+	 * elsewhere after the page was opened (brand button, another tab) is not overwritten.
+	 */
+	private static function brands_from_form( array $input, array $current ) {
+		$posted = self::sanitize_brands( (array) ( $input['enabled_brands'] ?? array() ) );
+		if ( ! isset( $input['brands_before'] ) ) {
+			return $posted; // A form without the snapshot: the list as posted.
+		}
+		$before = json_decode( (string) $input['brands_before'], true );
+		$before = array_flip( array_map( array( __CLASS__, 'brand_key' ), is_array( $before ) ? $before : array() ) );
+		$ticked = array();
+		foreach ( $posted as $b ) {
+			$ticked[ self::brand_key( $b ) ] = $b;
+		}
+		$list = array();
+		foreach ( $current as $b ) {
+			$list[ self::brand_key( $b ) ] = $b;
+		}
+		foreach ( $ticked as $key => $b ) {
+			if ( ! isset( $before[ $key ] ) ) {
+				$list[ $key ] = $b; // Ticked on this page.
+			}
+		}
+		foreach ( array_keys( $before ) as $key ) {
+			if ( ! isset( $ticked[ $key ] ) ) {
+				unset( $list[ $key ] ); // Unticked on this page.
+			}
+		}
+		return self::sanitize_brands( $list );
+	}
+
+	private static function log_brand_change( array $old, array $new, $source ) {
+		$old_keys = array_map( array( __CLASS__, 'brand_key' ), $old );
+		$new_keys = array_map( array( __CLASS__, 'brand_key' ), $new );
+		$added    = array_diff( $new_keys, $old_keys );
+		$removed  = array_diff( $old_keys, $new_keys );
+		if ( $added || $removed ) {
+			URME_SS_Log::info( sprintf( 'Brands enabled for sync changed (%s): %s%s. Now: %s.', $source, $added ? 'enabled ' . implode( ', ', $added ) : '', $removed ? ( $added ? '; ' : '' ) . 'disabled ' . implode( ', ', $removed ) : '', $new_keys ? implode( ', ', $new_keys ) : 'none' ) );
+		}
 	}
 
 	/**
@@ -143,8 +187,10 @@ class URME_SS_Settings {
 		} else {
 			unset( $list[ self::brand_key( $brand ) ] );
 		}
+		$old                   = (array) $all['enabled_brands'];
 		$all['enabled_brands'] = self::sanitize_brands( $list );
 		update_option( self::OPTION, $all );
+		self::log_brand_change( $old, $all['enabled_brands'], 'brand button' );
 	}
 
 	public static function sanitize_meta_key( $key ) {

@@ -453,8 +453,8 @@ class URME_SS_Sync {
 					'last_status'   => $cost_error ? 'error' : 'ok',
 					'last_message'  => substr( implode( ' ', $messages ), 0, 255 ),
 				);
-				if ( $changes ) {
-					$data['last_synced_at'] = $now;
+				if ( $changes || ! $cost_error ) {
+					$data['last_synced_at'] = $now; // Checked against the supplier, also when nothing had to change.
 				}
 				self::update_link_if_changed( $link, $data );
 			} catch ( Throwable $e ) {

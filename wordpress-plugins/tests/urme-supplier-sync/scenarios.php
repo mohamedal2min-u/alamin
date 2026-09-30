@@ -586,5 +586,7 @@ require __DIR__ . '/bulk-fulfillment.php';
 require __DIR__ . '/gift-wrap.php';
 // 1.5: two Fulfillment states only (URME Lager / Dropshipping).
 require __DIR__ . '/two-state.php';
+// 1.5.5: "Move to URME Lager" in WooCommerce Quick Edit.
+require __DIR__ . '/quick-edit.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

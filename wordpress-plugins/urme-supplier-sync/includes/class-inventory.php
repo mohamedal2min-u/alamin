@@ -587,12 +587,15 @@ class URME_SS_Inventory {
 
 	/**
 	 * Admin: back to URME Lager. The watch leaves supplier sync (its link is removed) and its
-	 * WooCommerce stock becomes 0 (out of stock) until the admin enters the real stock; the
-	 * supplier quantity is never kept. Prices and cost are not touched.
+	 * WooCommerce stock becomes $qty (default 0, out of stock until the admin enters the real
+	 * stock); the supplier quantity is never kept. Prices and cost are not touched.
 	 *
+	 * @param int $link_id Link ID.
+	 * @param int $qty     URME's own stock (Quick Edit passes the typed count).
 	 * @return true|string True or an error message.
 	 */
-	public static function return_to_lager( $link_id ) {
+	public static function return_to_lager( $link_id, $qty = 0 ) {
+		$qty  = max( 0, (int) $qty );
 		$link = URME_SS_DB::get_link_by_id( $link_id );
 		if ( ! $link ) {
 			return 'Selection not found.';
@@ -607,9 +610,13 @@ class URME_SS_Inventory {
 				$product->set_manage_stock( true );
 				$product->save();
 			}
-			wc_update_product_stock( $product, 0, 'set' );
+			wc_update_product_stock( $product, $qty, 'set' );
 		}
-		URME_SS_Log::info( sprintf( 'Back to URME Lager: product #%d (%s) removed from supplier sync; stock 0 (out of stock) until the real stock is entered.', $link['product_id'], $link['item_key'] ) );
+		URME_SS_Log::info(
+			$qty
+				? sprintf( 'Back to URME Lager: product #%d (%s) removed from supplier sync; URME stock %d.', $link['product_id'], $link['item_key'], $qty )
+				: sprintf( 'Back to URME Lager: product #%d (%s) removed from supplier sync; stock 0 (out of stock) until the real stock is entered.', $link['product_id'], $link['item_key'] )
+		);
 		return true;
 	}
 

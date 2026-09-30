@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -88,7 +88,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.3.0.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.4.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -215,6 +215,18 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.4.0 =
+* Supplier catalog row actions (Save sale price, Start supplier sync, Use Local first, Sync now,
+  Resume) run without reloading the page; the row is updated in place.
+* Local URME stock always has priority over Dropshipping on every manual path: Start supplier sync,
+  "Select checked for sync" (stock above 0 starts as Local first with current stock and COGS kept,
+  stock 0 as Supplier now; Needs review, brand off and invalid watches are rejected one by one),
+  manual linking and automatch, Local first -> Supplier now (no override), Resume, and turning a
+  brand on again (watches with local units stay paused and are listed).
+* WooCommerce > Products: Fulfillment filter (Dropshipping / URME Lager / Local first / Paused /
+  Supplier – brand sync off) with live counts, the same states as the badge; works with the other
+  product filters, sorting and paging.
 
 = 1.3.0 =
 * Supplier catalog: "URME stock" column (current WooCommerce stock of the linked or uniquely matched

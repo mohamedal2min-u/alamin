@@ -840,7 +840,7 @@ class URME_SS_Admin {
 			'in_stock'     => empty( $_GET['in_stock'] ) ? '' : '1',
 			'selected'     => in_array( $_GET['selected'] ?? '', array( 'yes', 'no' ), true ) ? sanitize_key( $_GET['selected'] ) : '',
 			'match'        => in_array( $_GET['match'] ?? '', array( 'exists', 'none', 'review', 'manual' ), true ) ? sanitize_key( $_GET['match'] ) : '',
-			'brand_sync'   => in_array( $_GET['brand_sync'] ?? '', array( 'on', 'off' ), true ) ? sanitize_key( $_GET['brand_sync'] ) : '',
+			'brand_sync'   => in_array( $_GET['brand_sync'] ?? '', array( 'on', 'off', 'any' ), true ) ? sanitize_key( $_GET['brand_sync'] ) : '',
 			'show_missing' => empty( $_GET['show_missing'] ) ? '' : '1',
 			'new_only'     => empty( $_GET['new_only'] ) ? '' : '1',
 			'category'     => sanitize_text_field( wp_unslash( $_GET['category'] ?? '' ) ),
@@ -850,6 +850,10 @@ class URME_SS_Admin {
 		);
 		$page = max( 1, absint( $_GET['paged'] ?? 1 ) );
 		// phpcs:enable
+		// Opened without a brand choice: only the brands enabled for sync ("All brands" = brand_sync any).
+		if ( '' === $f['brand_sync'] && '' === $f['brand'] ) {
+			$f['brand_sync'] = URME_SS_Settings::enabled_brand_keys() ? 'on' : 'any';
+		}
 		$per_page = $f['per_page'] ? (int) $f['per_page'] : 50;
 
 		$result  = URME_SS_DB::search_catalog( array_merge( $f, array( 'page' => $page, 'per_page' => $per_page ) ) );
@@ -897,7 +901,7 @@ class URME_SS_Admin {
 			<input type="hidden" name="tab" value="catalog">
 			<label>Brand
 				<select name="brand">
-					<option value="">All brands</option>
+					<option value="">All</option>
 					<?php foreach ( $brands as $b ) : ?>
 						<option value="<?php echo esc_attr( $b['manufacturer'] ); ?>" <?php selected( $f['brand'], $b['manufacturer'] ); ?>><?php echo esc_html( $b['manufacturer'] . ' (' . (int) $b['n'] . ')' . ( URME_SS_Settings::brand_enabled( $b['manufacturer'] ) ? '' : ' – sync off' ) ); ?></option>
 					<?php endforeach; ?>
@@ -905,9 +909,9 @@ class URME_SS_Admin {
 			</label>
 			<label>Brand sync
 				<select name="brand_sync">
-					<option value="">Any</option>
 					<option value="on" <?php selected( $f['brand_sync'], 'on' ); ?>>Enabled brands</option>
 					<option value="off" <?php selected( $f['brand_sync'], 'off' ); ?>>Disabled brands</option>
+					<option value="any" <?php selected( in_array( $f['brand_sync'], array( 'any', '' ), true ) ); ?>>All brands</option>
 				</select>
 			</label>
 			<label>In URME

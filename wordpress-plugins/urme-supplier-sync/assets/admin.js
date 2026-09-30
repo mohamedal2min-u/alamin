@@ -111,16 +111,6 @@
 } )( jQuery );
 
 ( function ( $ ) {
-	// Fulfillment switcher on Selected watches: quantity and cost fields only for "URME Lager".
-	function sync( $form ) {
-		$form.find( '.urme-local-fields' ).toggle( 'local' === $form.find( 'select[name=mode]' ).val() );
-	}
-	$( '.urme-mode-form' ).each( function () {
-		sync( $( this ) );
-	} );
-	$( document ).on( 'change', '.urme-mode-form select[name=mode]', function () {
-		sync( $( this ).closest( 'form' ) );
-	} );
 	// URME Lager stock has priority: the server refuses Dropshipping while the stock is above 0 (no override).
 	$( document ).on( 'submit', '.urme-mode-form', function ( e ) {
 		var $form = $( this ),

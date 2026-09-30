@@ -35,9 +35,10 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   - When a URME Lager watch's stock reaches 0 (last unit sold, or set by hand) it becomes
     Dropshipping in the same request: supplier stock and cost are written from the stored
     catalog, and a "Price review required" notice asks to check the selling price.
-  - Dropshipping -> URME Lager (Selected watches): you type the units URME owns (at least 1) and
-    optionally the cost; supplier stock and cost sync stops at once. The supplier quantity is
-    never used as URME stock.
+  - Dropshipping -> URME Lager (Selected watches): supplier stock and cost sync stops at once and
+    WooCommerce stock becomes 0 (out of stock); the supplier quantity is never kept. It stays like
+    that (it does not switch back to Dropshipping at 0) until you enter the real stock in
+    WooCommerce (product page or quick edit); after that stock is sold it becomes Dropshipping.
   - Older states (Local first, Paused, supplier link with brand sync off) are shown as URME Lager.
     Pause / Resume no longer exist.
 * Per-product controls in the Sync column, only for an enabled brand, a unique confirmed match and
@@ -137,7 +138,8 @@ Per selected watch, under Selected watches > Mode:
 * URME Lager: WooCommerce stock is URME's own stock; supplier stock and cost are shown but never
   written. When the stock reaches 0 the watch becomes Dropshipping at once (in that same request)
   and supplier stock and EUR -> SEK cost are written. The hourly sync does the same for anything
-  missed.
+  missed. A watch just moved back from Dropshipping waits at stock 0 (out of stock) until you enter
+  its stock in WooCommerce; it is not switched back while it waits.
 
 Every order line of a linked product is booked in a ledger table (urme_ss_alloc) as local or
 supplier units, in one database transaction together with the local stock count, so a crash

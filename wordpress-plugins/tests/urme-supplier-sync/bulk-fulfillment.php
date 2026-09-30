@@ -203,10 +203,9 @@ ok( 0 === (int) URME_SS_DB::get_link_by_id( $l360 )['product_id'] && 0 === strpo
 URME_SS_DB::delete_link( $l360 );
 
 $l0    = URME_SS_DB::get_link( key_of( 294 ) ); // Dropshipping, synced to 8.
-$_POST = array( 'local_qty' => '3', 'local_cost' => '480' );
 $r     = admin( 'set_mode', $l0, 'local' );
-$_POST = array();
-ok( 'success' === $r[1] && 3 === p( $K0 )->get_stock_quantity() && 'local_first' === URME_SS_DB::get_link( key_of( 294 ) )['stock_mode'], 'Dropshipping → URME Lager with 3 typed units: stock 3 (never the supplier 8)', $r );
+ok( 'success' === $r[1] && 0 === p( $K0 )->get_stock_quantity() && 'local_first' === URME_SS_DB::get_link( key_of( 294 ) )['stock_mode'], 'Dropshipping → URME Lager: stock 0 (never the supplier 8)', $r );
+bs_set( $K0, 3 ); // The admin enters 3 in WooCommerce.
 $r1 = admin( 'run_row_action', 'resume|' . $l0['id'] );
 $r2 = admin( 'set_mode', URME_SS_DB::get_link( key_of( 294 ) ), 'supplier' );
 $r3 = ax( 'dropship|' . $l0['id'] );

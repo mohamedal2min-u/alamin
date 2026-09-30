@@ -92,6 +92,7 @@ class URME_SS_Settings {
 		self::guard_enabled_brands( (array) $current['enabled_brands'], $new['enabled_brands'] );
 		update_option( self::OPTION, $new );
 		self::log_brand_change( (array) $current['enabled_brands'], $new['enabled_brands'], 'settings page' );
+		self::brand_pages_changed( (array) $current['enabled_brands'], $new['enabled_brands'] );
 		return $new;
 	}
 
@@ -219,6 +220,20 @@ class URME_SS_Settings {
 		self::guard_enabled_brands( $old, $all['enabled_brands'] );
 		update_option( self::OPTION, $all );
 		self::log_brand_change( $old, $all['enabled_brands'], 'brand button' );
+		self::brand_pages_changed( $old, $all['enabled_brands'] );
+	}
+
+	/**
+	 * After a brand is turned on or off, its Supplier-now products switch between Dropshipping and
+	 * "brand sync off": their product pages are cleaned from caches.
+	 */
+	private static function brand_pages_changed( array $old, array $new ) {
+		$old_keys = array_map( array( __CLASS__, 'brand_key' ), $old );
+		$new_keys = array_map( array( __CLASS__, 'brand_key' ), $new );
+		$changed  = array_merge( array_diff( $new_keys, $old_keys ), array_diff( $old_keys, $new_keys ) );
+		if ( $changed ) {
+			URME_SS_Product_Source::brands_changed( array_values( $changed ) );
+		}
 	}
 
 	public static function sanitize_meta_key( $key ) {

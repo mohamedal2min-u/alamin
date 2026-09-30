@@ -647,19 +647,31 @@ class URME_SS_DB {
 			),
 			array( '%s', '%d', '%s', '%d', '%s' )
 		);
-		return (int) $wpdb->insert_id;
+		$id = (int) $wpdb->insert_id;
+		URME_SS_Product_Source::changed( array( $product_id ) );
+		return $id;
 	}
 
 	public static function update_link( $id, array $data ) {
 		global $wpdb;
 		URME_SS_Inventory::flush_cache();
-		return $wpdb->update( self::links_table(), $data, array( 'id' => (int) $id ) );
+		// Only a change of product, sync on/off or mode can change a product's Fulfillment state.
+		$state  = array_intersect_key( $data, array_flip( array( 'product_id', 'sync_enabled', 'stock_mode' ) ) );
+		$before = $state ? (int) $wpdb->get_var( $wpdb->prepare( 'SELECT product_id FROM ' . self::links_table() . ' WHERE id = %d', $id ) ) : 0; // phpcs:ignore WordPress.DB
+		$result = $wpdb->update( self::links_table(), $data, array( 'id' => (int) $id ) );
+		if ( $state ) {
+			URME_SS_Product_Source::changed( array( $before, $data['product_id'] ?? 0 ) );
+		}
+		return $result;
 	}
 
 	public static function delete_link( $id ) {
 		global $wpdb;
 		URME_SS_Inventory::flush_cache();
-		return $wpdb->delete( self::links_table(), array( 'id' => (int) $id ), array( '%d' ) );
+		$product_id = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT product_id FROM ' . self::links_table() . ' WHERE id = %d', $id ) ); // phpcs:ignore WordPress.DB
+		$result     = $wpdb->delete( self::links_table(), array( 'id' => (int) $id ), array( '%d' ) );
+		URME_SS_Product_Source::changed( array( $product_id ) );
+		return $result;
 	}
 
 	/**

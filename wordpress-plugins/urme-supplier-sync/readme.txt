@@ -74,6 +74,13 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   Counts are products (list rows); a variable product whose variations are in different states
   is counted, and listed once, under each of them. It combines with the stock status, category,
   product type, brand and search filters, sorting and paging.
+* Gift wrap (ThemeComplete Extra Product Options, "Presentinslagning") is not offered for a true
+  Dropshipping product or variation: ThemeComplete's options are switched off for it with
+  ThemeComplete's `wc_epo_disable` filter, and an add-to-cart request that still posts its option
+  fields (tmcp_*) for a Dropshipping item is refused. Local first, URME Lager, Paused and brand
+  sync off keep it. A variable product keeps it; the selected variation decides at add to cart.
+  When a product's Fulfillment state changes, its page is cleaned from caches (clean_post_cache).
+  ThemeComplete forms are never changed.
 * A product is synced only when all of these are true:
   1. its supplier CATEGORY is WATCH,
   2. its brand (MANUFACTURER) is enabled in Settings > Brands enabled for sync,

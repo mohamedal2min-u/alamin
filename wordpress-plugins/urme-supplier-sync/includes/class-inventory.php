@@ -588,6 +588,7 @@ class URME_SS_Inventory {
 			URME_SS_Log::error( sprintf( 'Local first → Supplier for product #%d postponed: %s. Nothing changed; retried on the next sync.', $link['product_id'], $e->getMessage() ) );
 			return false;
 		}
+		URME_SS_Product_Source::changed( array( $link['product_id'] ) ); // Now Dropshipping: its product page must not stay cached.
 		$sku = $product ? $product->get_sku() : ( $link['product_no'] ?? $link['item_key'] );
 		URME_SS_Log::info( sprintf( 'Transition Local first → Supplier for product #%d (%s): local stock sold out, supplier stock and cost now synced.', $link['product_id'], $sku ) );
 		URME_SS_Log::info( sprintf( 'Price review required: SKU %s (product #%d) has switched to Dropshipping. Selling price was not changed.', $sku, $link['product_id'] ) );
@@ -642,6 +643,7 @@ class URME_SS_Inventory {
 		if ( false === $result ) {
 			return 'Database error while enabling Local first.';
 		}
+		URME_SS_Product_Source::changed( array( $link['product_id'] ) );
 		self::apply_pending( $link_id );
 		URME_SS_Log::info( sprintf( 'Local first enabled for product #%d (%s): %d local unit(s)%s.', $link['product_id'], $link['item_key'], $qty, null === $cost ? '' : ', local cost ' . wc_format_decimal( $cost, 2 ) . ' SEK' ) );
 		return true;
@@ -764,6 +766,7 @@ class URME_SS_Inventory {
 			),
 			array( 'id' => $link_id )
 		);
+		URME_SS_Product_Source::changed( array( $link['product_id'] ) );
 		URME_SS_Log::info( sprintf( 'Transition %s → Supplier (manual) for product #%d%s.', self::LOCAL === $link['stock_mode'] ? 'Local first' : 'Supplier', $link['product_id'], (int) $link['local_qty'] ? sprintf( '; %d local unit(s) dropped', $link['local_qty'] ) : '' ) );
 		return true;
 	}

@@ -585,5 +585,7 @@ require __DIR__ . '/product-admin.php';
 require __DIR__ . '/ajax-local.php';
 // Bulk selection follows local stock priority; Fulfillment filter and counts on WooCommerce > Products.
 require __DIR__ . '/bulk-fulfillment.php';
+// 1.4.1: no ThemeComplete gift wrap (Presentinslagning) for true Dropshipping products.
+require __DIR__ . '/gift-wrap.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

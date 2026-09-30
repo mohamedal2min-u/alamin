@@ -33,6 +33,7 @@ require_once URME_SS_DIR . 'includes/class-matcher.php';
 require_once URME_SS_DIR . 'includes/class-inventory.php';
 require_once URME_SS_DIR . 'includes/class-fulfillment.php';
 require_once URME_SS_DIR . 'includes/class-product-source.php';
+require_once URME_SS_DIR . 'includes/class-gift-wrap.php';
 require_once URME_SS_DIR . 'includes/class-price-review.php';
 require_once URME_SS_DIR . 'includes/class-sync.php';
 require_once URME_SS_DIR . 'includes/class-plugin.php';

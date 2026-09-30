@@ -189,24 +189,27 @@ class URME_SS_Product_Source {
 	/**
 	 * Badge HTML for a product or variation.
 	 */
-	public static function html( $product_id ) {
+	public static function html( $product_id, $short = false ) {
 		$product_id = (int) $product_id;
 		if ( ! isset( self::$map[ $product_id ] ) ) {
 			self::prime( array( $product_id ) ); // Not on a primed page: one query for this product.
 		}
 		$entry = self::$map[ $product_id ];
 		if ( $entry['own'] || ! $entry['variations'] ) {
-			return self::badge( $entry['own'] ) . self::styles();
+			return self::badge( $entry['own'], $short ) . self::styles();
 		}
 		// Variable product: the sources of its supplier-linked variations.
 		$groups = array();
 		foreach ( $entry['variations'] as $link ) {
-			$html            = self::badge( $link );
+			$html            = self::badge( $link, $short );
 			$groups[ $html ] = ( $groups[ $html ] ?? 0 ) + 1;
 		}
 		$out = array();
 		foreach ( $groups as $html => $n ) {
-			$out[] = $html . ' <small class="urme-src-note">' . esc_html( sprintf( '%d variation%s', $n, 1 === $n ? '' : 's' ) ) . '</small>';
+			$label = sprintf( '%d variation%s', $n, 1 === $n ? '' : 's' );
+			$out[] = $html . ( $short
+				? ' <small class="urme-src-note" title="' . esc_attr( $label ) . '">×' . (int) $n . '</small>'
+				: ' <small class="urme-src-note">' . esc_html( $label ) . '</small>' );
 		}
 		return implode( '<br>', $out ) . self::styles();
 	}
@@ -215,13 +218,22 @@ class URME_SS_Product_Source {
 	 * Only two Fulfillment states are shown: Dropshipping, or URME Lager for everything else
 	 * (not linked, Local first, Paused, supplier-linked with brand sync off).
 	 */
-	private static function badge( $link ) {
+	private static function badge( $link, $short = false ) {
 		$drop = self::DROPSHIP === self::state( $link );
-		$out  = $drop
-			? '<span class="urme-src urme-src-dropship">Dropshipping</span>'
-			: '<span class="urme-src urme-src-lager">URME Lager</span>';
+		if ( $short ) {
+			// Products list: one letter, full name on hover and for screen readers.
+			$out = $drop
+				? '<span class="urme-src urme-src-dropship urme-src-short" title="Dropshipping" aria-label="Dropshipping">D</span>'
+				: '<span class="urme-src urme-src-lager urme-src-short" title="URME Lager" aria-label="URME Lager">U</span>';
+		} else {
+			$out = $drop
+				? '<span class="urme-src urme-src-dropship">Dropshipping</span>'
+				: '<span class="urme-src urme-src-lager">URME Lager</span>';
+		}
 		if ( $drop && isset( $link['in_feed'] ) && ! (int) $link['in_feed'] ) {
-			$out .= ' <small class="urme-src-note">not in supplier feed</small>';
+			$out .= $short
+				? ' <small class="urme-src-note urme-bad-note" title="not in supplier feed">!</small>'
+				: ' <small class="urme-src-note">not in supplier feed</small>';
 		}
 		return $out;
 	}
@@ -231,9 +243,9 @@ class URME_SS_Product_Source {
 			return '';
 		}
 		self::$styled = true;
-		return '<style>.wp-list-table .column-urme_source{width:9em}.urme-src{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap}'
+		return '<style>.wp-list-table .column-urme_source{width:6em}.urme-src-short{min-width:12px;padding:1px 6px;text-align:center;cursor:help}.urme-bad-note{color:#b32d2e;font-weight:700}.urme-src{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap}'
 			. '.urme-src-dropship{background:#e5f0fa;color:#135e96}.urme-src-local{background:#edfaef;color:#00701a}'
-			. '.urme-src-paused{background:#f0f0f1;color:#50575e}.urme-src-lager{background:#fcf0e3;color:#8a4b00}'
+			. '.urme-src-paused{background:#f0f0f1;color:#50575e}.urme-src-lager{background:#edfaef;color:#00701a}'
 			. '.urme-src-brand_off{background:#f0f0f1;color:#8c1f1f}.urme-src-note{color:#646970}</style>';
 	}
 
@@ -416,7 +428,7 @@ class URME_SS_Product_Source {
 
 	public static function render_column( $column, $post_id ) {
 		if ( 'urme_source' === $column && self::allowed() ) {
-			echo self::html( (int) $post_id ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo self::html( (int) $post_id, true ); // phpcs:ignore WordPress.Security.EscapeOutput
 			$own = self::$map[ (int) $post_id ]['own'] ?? null;
 			if ( $own && self::DROPSHIP === self::state( $own ) ) {
 				// Read by assets/quick-edit.js: this product may be moved to URME Lager in Quick Edit.

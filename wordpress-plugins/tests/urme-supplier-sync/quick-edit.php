@@ -80,7 +80,7 @@ ok( 8 === qe_state( $Q1 )['stock'] && 'dropship' === URME_SS_Product_Source::pro
 
 section( 'QE1. Markup' );
 $c1 = qe_column( $Q1 );
-ok( false !== strpos( $c1, '>Dropshipping<' ) && 1 === substr_count( $c1, '<span class="hidden urme-qe-dropship"></span>' ), 'Dropshipping product: its Fulfillment cell carries the Quick Edit marker' );
+ok( false !== strpos( $c1, 'title="Dropshipping" aria-label="Dropshipping">D<' ) && 1 === substr_count( $c1, '<span class="hidden urme-qe-dropship"></span>' ), 'Dropshipping product: its Fulfillment cell carries the Quick Edit marker' );
 ok( false === strpos( qe_column( $Q4 ), 'urme-qe-dropship' ) && false === strpos( qe_column( $Q5 ), 'urme-qe-dropship' ) && false === strpos( qe_column( $KV ), 'urme-qe-dropship' ), '   no marker for URME Lager, brand sync off or a variable product' );
 ob_start();
 URME_SS_Product_Source::quick_edit_box( 'urme_source', 'product' );
@@ -106,7 +106,7 @@ qe_save( $Q1, array( 'urme_ss_to_lager' => '1', '_stock' => '3' ) );
 $a1 = qe_state( $Q1 );
 ok( null === URME_SS_DB::get_link( key_of( 450 ) ) && 3 === $a1['stock'] && 'instock' === $a1['status'] && 'lager' === URME_SS_Product_Source::product_state( $Q1 ), 'removed from supplier sync; stock 3, in stock; badge URME Lager', $a1 );
 ok( $b1['regular'] === $a1['regular'] && $b1['sale'] === $a1['sale'] && abs( $b1['cogs'] - $a1['cogs'] ) < 0.001, '   regular/sale price and COGS unchanged', array( $b1, $a1 ) );
-ok( false === strpos( qe_column( $Q1 ), 'urme-qe-dropship' ) && false !== strpos( qe_column( $Q1 ), '>URME Lager<' ), '   the re-rendered row shows URME Lager, no Quick Edit marker' );
+ok( false === strpos( qe_column( $Q1 ), 'urme-qe-dropship' ) && false !== strpos( qe_column( $Q1 ), 'title="URME Lager" aria-label="URME Lager">U<' ), '   the re-rendered row shows URME Lager, no Quick Edit marker' );
 run();
 ok( 3 === qe_state( $Q1 )['stock'] && abs( qe_state( $Q1 )['cogs'] - $b1['cogs'] ) < 0.001, '   the next sync writes nothing (supplier 8 not written)' );
 

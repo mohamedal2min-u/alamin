@@ -35,7 +35,15 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
     WooCommerce stock as local units and the current cost as local cost (nothing is overwritten).
     Not offered while backorders are allowed.
   - Selected watches show their mode with "Sync now"; paused ones show "Resume" (same mode).
-  Prices are never changed. Every condition is checked again when the button is clicked.
+  Supplier sync never changes prices. Every condition is checked again when the button is clicked.
+* Manual sale price: for every linked or uniquely matched product (also when Paused), the catalog and
+  Selected watches show the regular price (read-only) and an editable sale price with Save. Only the
+  sale price of that exact product or variation is saved (WooCommerce product API); an empty field
+  removes the sale. It must be a number in SEK, not above the regular price. Nothing else changes
+  and no sync is started.
+* WooCommerce > Products gets a "Fulfillment" column from the Supplier Sync link (never from the
+  stock quantity): Dropshipping (Supplier now), Local first (units left), Paused, or URME Lager (not
+  supplier-linked). The Supplier catalog shows the same badge for matched products.
 * A product is synced only when all of these are true:
   1. its supplier CATEGORY is WATCH,
   2. its brand (MANUFACTURER) is enabled in Settings > Brands enabled for sync,

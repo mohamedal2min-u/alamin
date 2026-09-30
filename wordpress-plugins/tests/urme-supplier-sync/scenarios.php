@@ -575,5 +575,7 @@ require __DIR__ . '/price-hint.php';
 require __DIR__ . '/brand-sync.php';
 // Supplier catalog: URME stock column, per-product start/resume/sync controls, filters.
 require __DIR__ . '/catalog-actions.php';
+// Fulfillment badge (Products list + catalog) and manual sale price editor.
+require __DIR__ . '/product-admin.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

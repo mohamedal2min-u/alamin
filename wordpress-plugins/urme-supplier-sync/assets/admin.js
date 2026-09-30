@@ -10,6 +10,14 @@
 		refresh();
 	} );
 
+	// Enter in a catalog sale price field saves that row (not the bulk selection).
+	$( document ).on( 'keydown', '#urme-select-form .urme-price-edit input', function ( e ) {
+		if ( 13 === e.which ) {
+			e.preventDefault();
+			$( this ).closest( '.urme-price-edit' ).find( 'button' ).trigger( 'click' );
+		}
+	} );
+
 	// Confirmation for per-row catalog buttons (they submit the catalog form).
 	$( document ).on( 'click', 'button[data-confirm]', function ( e ) {
 		if ( ! window.confirm( $( this ).data( 'confirm' ) ) ) {

@@ -63,6 +63,14 @@ class URME_SS_Admin {
 
 		// A per-row button in the Supplier catalog (inside the bulk-select form) names its own action.
 		$row_action = sanitize_text_field( wp_unslash( $_POST['row_action'] ?? '' ) );
+		if ( 0 === strpos( $row_action, 'sale|' ) ) {
+			// Manual sale price of one row: only that row's input is used.
+			$key        = substr( $row_action, 5 );
+			$raw        = wp_unslash( $_POST['sale_price'][ $key ] ?? null );
+			$row_action = '';
+			$do         = '';
+			self::notice_result( self::save_sale_price( $key, null === $raw ? null : sanitize_text_field( (string) $raw ) ) );
+		}
 		if ( '' !== $row_action ) {
 			self::notice_result( self::run_row_action( $row_action ) );
 			$do = '';
@@ -110,6 +118,11 @@ class URME_SS_Admin {
 
 			case 'automatch':
 				self::notice( self::automatch( absint( $_POST['link_id'] ?? 0 ) ) );
+				break;
+
+			case 'save_sale':
+				$raw = wp_unslash( $_POST['sale_price'] ?? null );
+				self::notice_result( self::save_sale_price( sanitize_text_field( wp_unslash( $_POST['item_key'] ?? '' ) ), null === $raw ? null : sanitize_text_field( (string) $raw ) ) );
 				break;
 
 			case 'review_done':
@@ -430,6 +443,76 @@ class URME_SS_Admin {
 		return array( sprintf( 'Local first for "%s": %d local unit(s) kept, cost %s kept. Supplier stock and cost are used after the last local unit is sold.', $product->get_name(), $info['qty'], null === $cost ? '(none set)' : wc_format_decimal( $cost, 2 ) . ' SEK' ), 'success' );
 	}
 
+	/**
+	 * The WooCommerce product a supplier item is confirmed to be: its linked product, or its
+	 * unique URME match (checked again against the current store). 0 when there is none.
+	 */
+	private static function confirmed_product_id( $item_key ) {
+		$link = URME_SS_DB::get_link( $item_key );
+		if ( $link && (int) $link['product_id'] ) {
+			return (int) $link['product_id'];
+		}
+		$item = URME_SS_DB::get_item( $item_key );
+		if ( ! $item || URME_SS_Matcher::EXISTS !== $item['match_status'] || ! (int) $item['match_product_id'] ) {
+			return 0;
+		}
+		URME_SS_Matcher::reset();
+		$match = URME_SS_Matcher::match( $item );
+		return ( URME_SS_Matcher::EXISTS === $match['status'] && $match['product_id'] === (int) $item['match_product_id'] ) ? $match['product_id'] : 0;
+	}
+
+	/**
+	 * Manual sale price edit (never done by supplier sync). Only the sale price of the exact
+	 * product or variation is changed, through the WooCommerce product API. Empty = remove the sale.
+	 *
+	 * @param string      $item_key Supplier item whose confirmed product is edited.
+	 * @param string|null $raw      Posted value.
+	 * @return array{0: string, 1: string} Message and notice type.
+	 */
+	private static function save_sale_price( $item_key, $raw ) {
+		if ( null === $raw ) {
+			return array( 'No sale price was sent; nothing was changed.', 'error' );
+		}
+		$pid = self::confirmed_product_id( (string) $item_key );
+		if ( ! $pid ) {
+			return array( 'This supplier watch has no linked or uniquely matched URME product; no price was changed.', 'error' );
+		}
+		$product = wc_get_product( $pid );
+		if ( ! $product || 'trash' === $product->get_status() ) {
+			return array( sprintf( 'Product #%d no longer exists; no price was changed.', $pid ), 'error' );
+		}
+		if ( $product->is_type( array( 'variable', 'grouped' ) ) ) {
+			return array( sprintf( '"%s" has no price of its own (it is a %s product); edit a single variation instead.', $product->get_name(), $product->get_type() ), 'error' );
+		}
+		$name    = $product->get_name();
+		$regular = (string) $product->get_regular_price();
+		$old     = (string) $product->get_sale_price();
+		$value   = str_replace( array( ' ', "\xc2\xa0", ',' ), array( '', '', '.' ), trim( $raw ) );
+
+		if ( '' === $value ) {
+			if ( '' === $old ) {
+				return array( sprintf( '"%s" has no sale price; nothing was changed.', $name ), 'info' );
+			}
+			$product->set_sale_price( '' );
+			$product->save();
+			URME_SS_Log::info( sprintf( 'Sale price of product #%d removed manually (was %s SEK); regular price %s SEK.', $pid, $old, '' === $regular ? '—' : $regular ) );
+			return array( sprintf( 'Sale price removed: "%s" now sells at its regular price%s.', $name, '' === $regular ? '' : ' of ' . wc_format_decimal( $regular, 2 ) . ' kr' ), 'success' );
+		}
+		if ( ! preg_match( '/^\d+(\.\d{1,2})?$/', $value ) ) {
+			return array( sprintf( 'Sale price "%s" is not valid: enter a number in SEK, e.g. 4290 or 4290.50. Nothing was changed.', $raw ), 'error' );
+		}
+		if ( '' !== $regular && (float) $value > (float) $regular ) {
+			return array( sprintf( 'Sale price %s kr is above the regular price %s kr of "%s"; nothing was changed.', $value, wc_format_decimal( $regular, 2 ), $name ), 'error' );
+		}
+		if ( '' !== $old && abs( (float) $old - (float) $value ) < 0.001 ) {
+			return array( sprintf( 'Sale price of "%s" is already %s kr; nothing was changed.', $name, wc_format_decimal( $old, 2 ) ), 'info' );
+		}
+		$product->set_sale_price( wc_format_decimal( $value ) );
+		$product->save();
+		URME_SS_Log::info( sprintf( 'Sale price of product #%d changed manually: %s → %s SEK (regular %s SEK).', $pid, '' === $old ? '—' : $old, wc_format_decimal( $value ), '' === $regular ? '—' : $regular ) );
+		return array( sprintf( 'Sale price of "%s" saved: %s kr%s.', $name, wc_format_decimal( $value, 2 ), '' === $regular ? '' : ' (regular ' . wc_format_decimal( $regular, 2 ) . ' kr)' ), 'success' );
+	}
+
 	private static function notice_result( array $result ) {
 		self::notice( $result[0], $result[1] );
 	}
@@ -546,6 +629,19 @@ class URME_SS_Admin {
 		}
 		$out .= '<button type="submit" class="' . esc_attr( $class ) . '">' . esc_html( $label ) . '</button></form>';
 		return $out;
+	}
+
+	/**
+	 * Selected watches: the same manual sale price editor as a small form of its own.
+	 */
+	private static function sale_form( $item_key, WC_Product $product ) {
+		$regular = (string) $product->get_regular_price();
+		return '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="urme-inline urme-price-edit">'
+			. self::hidden_fields( 'save_sale' )
+			. '<input type="hidden" name="item_key" value="' . esc_attr( $item_key ) . '">'
+			. '<small>Regular: ' . esc_html( '' === $regular ? '—' : self::kr( $regular ) ) . '</small><br>'
+			. '<label>Sale price <input type="text" name="sale_price" value="' . esc_attr( (string) $product->get_sale_price() ) . '" size="7" inputmode="decimal" autocomplete="off"></label> '
+			. '<button type="submit" class="button button-small">Save</button></form>';
 	}
 
 	private static function hidden_fields( $do ) {
@@ -778,6 +874,7 @@ class URME_SS_Admin {
 		}
 		$stock  = URME_SS_Store::stock_info( $stock_ids );
 		$linked = URME_SS_DB::links_by_product( $stock_ids );
+		URME_SS_Product_Source::prime( $stock_ids ); // Fulfillment badges, one query.
 
 		$match_filters = array(
 			''       => 'Any',
@@ -923,7 +1020,7 @@ class URME_SS_Admin {
 						<td><code><?php echo esc_html( $row['product_no'] ); ?></code></td>
 						<td><code><?php echo esc_html( $row['item_id'] ); ?></code></td>
 						<td class="num"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></td>
-						<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+						<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ) . ( isset( $stock[ self::urme_product_id( $row ) ] ) ? '<br>' . URME_SS_Product_Source::html( self::urme_product_id( $row ) ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 						<td class="num"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?></td>
 						<td class="num"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></td>
 						<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $hint ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
@@ -953,6 +1050,7 @@ class URME_SS_Admin {
 							if ( $row['link_id'] && (int) $row['product_id'] && ( 'manual' !== $row['link_method'] ) && (int) $row['product_id'] !== (int) $row['match_product_id'] ) {
 								echo '<br><small>→ ' . self::product_link( (int) $row['product_id'] ) . '</small>'; // phpcs:ignore WordPress.Security.EscapeOutput
 							}
+							echo self::sale_editor( $row, $stock[ self::urme_product_id( $row ) ] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput
 							?>
 						</td>
 					</tr>
@@ -1011,6 +1109,29 @@ class URME_SS_Admin {
 			$confirm ? ' data-confirm="' . esc_attr( $confirm ) . '"' : '',
 			esc_html( $label )
 		);
+	}
+
+	/**
+	 * Manual sale price editor for the row's confirmed product (inside the catalog form; the
+	 * input is keyed by supplier item so each row's Save only sends its own value).
+	 */
+	private static function sale_editor( array $row, $info ) {
+		if ( ! $info || $info['variable'] || ! self::urme_product_id( $row ) ) {
+			return '';
+		}
+		$key = (string) $row['item_key'];
+		return sprintf(
+			'<div class="urme-price-edit"><small>Regular: %s</small><br><label>Sale price <input type="text" name="sale_price[%s]" value="%s" size="7" inputmode="decimal" autocomplete="off"></label> %s</div>',
+			esc_html( '' === $info['regular'] ? '—' : self::kr( $info['regular'] ) ),
+			esc_attr( $key ),
+			esc_attr( $info['sale'] ),
+			self::row_button( 'sale|' . $key, 'Save', 'button button-small' )
+		);
+	}
+
+	private static function kr( $value ) {
+		$v = (float) $value;
+		return number_format_i18n( $v, floor( $v ) === $v ? 0 : 2 ) . ' kr';
 	}
 
 	/**
@@ -1284,6 +1405,9 @@ class URME_SS_Admin {
 				<?php
 				// phpcs:disable WordPress.Security.EscapeOutput
 				$locked = URME_SS_Inventory::has_local_units( $row );
+				if ( $product && ! $product->is_type( array( 'variable', 'grouped' ) ) ) {
+					echo self::sale_form( $row['item_key'], $product );
+				}
 				if ( $pid ) {
 					echo self::action_button( 'sync_one', 'Sync now', array( 'link_id' => $row['id'] ), 'button button-small' );
 					if ( ! $locked ) {

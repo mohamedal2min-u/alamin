@@ -44,6 +44,8 @@ class URME_SS_Plugin {
 			URME_SS_Fulfillment::init();
 			// Admin-only "Price review required" notices.
 			URME_SS_Price_Review::init();
+			// Admin-only Fulfillment column (URME Lager / Dropshipping / Local first / Paused) on WooCommerce > Products.
+			URME_SS_Product_Source::init();
 		}
 		// Self-heal the schedule if it was lost (e.g. after a migration).
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {

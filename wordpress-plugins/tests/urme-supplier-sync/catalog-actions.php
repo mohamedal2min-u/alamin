@@ -16,7 +16,8 @@ function ca_row( $html, $product_no ) {
 	return '';
 }
 function ca_stock_cell( $row_html ) {
-	return preg_match( '#<td class="num urme-stock-col">(.*?)</td>#s', $row_html, $m ) ? ff_text( str_replace( '<br>', ' ', $m[1] ) ) : null;
+	// Stock text only; the Fulfillment badge after it is checked in product-admin.php.
+	return preg_match( '#<td class="num urme-stock-col">(.*?)</td>#s', $row_html, $m ) ? ff_text( str_replace( '<br>', ' ', preg_replace( '#(<br>)?<span class="urme-src.*$#s', '', $m[1] ) ) ) : null;
 }
 function ca_act( $action, $i ) {
 	return admin( 'run_row_action', $action . '|' . key_of( $i ) );

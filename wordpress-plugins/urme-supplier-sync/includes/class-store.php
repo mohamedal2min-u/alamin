@@ -245,7 +245,7 @@ class URME_SS_Store {
 	 * reports the parent's stock (that is where WooCommerce keeps it).
 	 *
 	 * @param int[] $ids Exact product or variation IDs.
-	 * @return array<int, array{managed: bool, qty: int|null, backorders: string, status: string, by_parent: bool, variable: bool}|null>
+	 * @return array<int, array{managed: bool, qty: int|null, backorders: string, status: string, by_parent: bool, variable: bool, regular: string, sale: string}|null>
 	 */
 	public static function stock_info( array $ids ) {
 		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
@@ -289,6 +289,8 @@ class URME_SS_Store {
 				'status'     => (string) get_post_meta( $id, '_stock_status', true ),
 				'by_parent'  => $by_parent,
 				'variable'   => is_array( $types ) && in_array( 'variable', wp_list_pluck( $types, 'slug' ), true ),
+				'regular'    => (string) get_post_meta( $id, '_regular_price', true ),
+				'sale'       => (string) get_post_meta( $id, '_sale_price', true ),
 			);
 		}
 		return $out;

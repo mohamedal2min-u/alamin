@@ -191,7 +191,7 @@ class URME_SS_Admin {
 		switch ( $do ) {
 			case 'select':
 				$keys = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['item_keys'] ?? array() ) );
-				self::notice( self::select_items( $keys ) );
+				self::notice_result( self::select_items( $keys ) );
 				break;
 
 			case 'unselect':
@@ -250,6 +250,11 @@ class URME_SS_Admin {
 				$link = URME_SS_DB::get_link_by_id( absint( $_POST['link_id'] ?? 0 ) );
 				if ( $link ) {
 					$enabled = (int) $link['sync_enabled'] ? 0 : 1;
+					$block   = $enabled ? self::resume_block( $link ) : '';
+					if ( '' !== $block ) {
+						self::notice( $block, 'error' );
+						break;
+					}
 					URME_SS_DB::update_link( $link['id'], array( 'sync_enabled' => $enabled ) );
 					self::notice( $enabled ? 'Sync resumed for this watch.' : 'Sync paused for this watch.' );
 				}
@@ -340,51 +345,153 @@ class URME_SS_Admin {
 	}
 
 	/**
-	 * Select supplier items for sync and try to link each automatically.
+	 * "Select checked for sync": each checked watch is handled on its own, with the same rules as
+	 * the per-row actions. Local URME stock always has priority: a product with WooCommerce stock
+	 * starts as Local first (that stock and the current COGS kept), only a product with 0 local
+	 * stock starts as Supplier now. Ambiguous, disabled-brand or invalid watches are rejected
+	 * without affecting the others. A watch with no URME product yet is selected without a
+	 * product (nothing is written until it is linked, and linking applies the same rule).
+	 *
+	 * @return array{0: string, 1: string} Message and notice type.
 	 */
 	private static function select_items( array $keys ) {
-		$added      = 0;
-		$matched    = 0;
-		$off_brands = array();
-		foreach ( array_unique( array_filter( $keys ) ) as $key ) {
+		$supplier = array();
+		$local    = array();
+		$manual   = array();
+		$rejected = array();
+		$skipped  = array();
+		URME_SS_Matcher::reset();
+		foreach ( array_unique( array_filter( array_map( 'strval', $keys ) ) ) as $key ) {
 			$item = URME_SS_DB::get_item( $key );
-			if ( ! $item || URME_SS_DB::get_link( $key ) ) {
+			if ( ! $item ) {
+				$rejected[] = $key . ' – not in the supplier catalog';
+				continue;
+			}
+			$no = $item['product_no'];
+			if ( URME_SS_DB::get_link( $key ) ) {
+				$skipped[] = $no;
+				continue;
+			}
+			if ( ! (int) $item['in_feed'] ) {
+				$rejected[] = $no . ' – no longer in the supplier feed';
 				continue;
 			}
 			if ( ! URME_SS_Settings::brand_enabled( $item['manufacturer'] ) ) {
-				$off_brands[] = $item['manufacturer'];
-			}
-			$match   = URME_SS_Store::auto_match( $item );
-			$link_id = URME_SS_DB::insert_link( $key, $match['product_id'], $match['method'] );
-			if ( ! $link_id ) {
+				$rejected[] = sprintf( '%s – sync is disabled for %s', $no, $item['manufacturer'] );
 				continue;
 			}
-			++$added;
-			if ( $match['product_id'] ) {
-				++$matched;
-			} else {
-				URME_SS_DB::update_link(
-					$link_id,
-					array(
-						'last_status'  => 'unlinked',
-						'last_message' => $match['message'],
-					)
-				);
+			$found = URME_SS_Matcher::match( $item )['candidates'];
+			if ( count( $found ) > 1 ) {
+				$rejected[] = sprintf( '%s – several URME products match (Needs review: IDs %s)', $no, implode( ', ', array_keys( $found ) ) );
+				continue;
 			}
+			if ( ! $found ) {
+				// Not in URME yet: selected without a product; nothing is written until it is linked.
+				$link_id = URME_SS_DB::insert_link( $key, 0, '' );
+				if ( $link_id ) {
+					URME_SS_DB::update_link(
+						$link_id,
+						array(
+							'last_status'  => 'unlinked',
+							'last_message' => 'No product with this SKU or EAN; link manually.',
+						)
+					);
+					$manual[] = $no;
+				}
+				continue;
+			}
+			$pid = (int) key( $found );
+			if ( URME_SS_DB::item_key_for_product( $pid ) ) {
+				$rejected[] = sprintf( '%s – product #%d is already linked to another supplier watch', $no, $pid );
+				continue;
+			}
+			$product = wc_get_product( $pid );
+			if ( ! $product || 'trash' === $product->get_status() ) {
+				$rejected[] = sprintf( '%s – product #%d no longer exists', $no, $pid );
+				continue;
+			}
+			list( $why, $units ) = self::local_first_check( $product );
+			if ( '' !== $why ) {
+				$rejected[] = $no . ' – ' . $why;
+				continue;
+			}
+			$link_id = URME_SS_DB::insert_link( $key, $pid, implode( '+', current( $found ) ) );
+			if ( ! $link_id ) {
+				$rejected[] = $no . ' – the selection could not be saved';
+				continue;
+			}
+			if ( $units > 0 ) {
+				$ok = self::enable_local_now( $link_id, $product, $units );
+				if ( true !== $ok ) {
+					URME_SS_DB::delete_link( $link_id ); // Never leave a selection that could sync supplier values over local stock.
+					$rejected[] = $no . ' – ' . $ok;
+					continue;
+				}
+				$local[] = sprintf( '%s (%d)', $no, $units );
+				continue;
+			}
+			$supplier[] = $no;
 		}
-		if ( ! $added ) {
-			return 'Nothing new was selected.';
+
+		if ( ! $supplier && ! $local && ! $manual && ! $rejected ) {
+			return array( 'Nothing new was selected.', 'info' );
 		}
-		$msg = sprintf(
-			'%d watch(es) selected; %d linked automatically by SKU/EAN%s. Products are updated on the next sync (or click "Sync now").',
-			$added,
-			$matched,
-			$added > $matched ? sprintf( ', %d need manual linking under "Selected watches"', $added - $matched ) : ''
-		);
-		if ( $off_brands ) {
-			$msg .= ' Note: sync is disabled for ' . implode( ', ', array_unique( $off_brands ) ) . ' – enable the brand to sync these.';
+		$parts = array();
+		if ( $local ) {
+			$parts[] = sprintf( 'Local first – local URME stock and cost kept, sold before supplier stock (%d): %s.', count( $local ), implode( ', ', $local ) );
 		}
-		return $msg;
+		if ( $supplier ) {
+			$parts[] = sprintf( 'Supplier now – URME stock 0, updated on the next sync or with "Sync now" (%d): %s.', count( $supplier ), implode( ', ', $supplier ) );
+		}
+		if ( $manual ) {
+			$parts[] = sprintf( 'Selected without a URME product – link it under Selected watches (%d): %s.', count( $manual ), implode( ', ', $manual ) );
+		}
+		if ( $rejected ) {
+			$parts[] = sprintf( 'Not selected, nothing changed (%d): %s.', count( $rejected ), implode( '; ', $rejected ) );
+		}
+		if ( $skipped ) {
+			$parts[] = sprintf( 'Already selected: %s.', implode( ', ', $skipped ) );
+		}
+		$started = count( $local ) + count( $supplier ) + count( $manual );
+		return array( implode( ' ', $parts ), $rejected ? ( $started ? 'warning' : 'error' ) : 'success' );
+	}
+
+	/**
+	 * Local URME stock always has priority over Dropshipping. For a product about to be linked in
+	 * a supplier selection: its local units (0 = it may start as Supplier now), or why it can
+	 * neither start as Supplier now nor as Local first.
+	 *
+	 * @return array{0: string, 1: int} Reason ('' when it can start) and the local units.
+	 */
+	private static function local_first_check( WC_Product $product ) {
+		$units = URME_SS_Inventory::local_units_before_supplier( null, $product );
+		if ( $units < 1 ) {
+			return array( '', 0 );
+		}
+		$name = $product->get_name();
+		$by   = (int) $product->get_stock_managed_by_id();
+		if ( $product->is_type( 'variable' ) ) {
+			$why = sprintf( 'local URME stock exists (%d on the variable product "%s"); Local first needs a simple product or a single variation and Dropshipping cannot start while local stock remains', $units, $name );
+		} elseif ( $by && $by !== $product->get_id() ) {
+			$why = sprintf( 'local URME stock exists (%d, managed by the parent product of "%s"); Local first needs the variation to manage its own stock and Dropshipping cannot start while local stock remains', $units, $name );
+		} elseif ( 'no' !== $product->get_backorders() ) {
+			$why = sprintf( 'local URME stock exists (%d) but backorders are allowed on "%s"; set Backorders to "Do not allow" to use Local first (Dropshipping cannot start while local stock remains)', $units, $name );
+		} else {
+			$why = '';
+		}
+		return array( $why, $units );
+	}
+
+	/**
+	 * Local first on a new link: the product's current WooCommerce stock becomes the local
+	 * quantity and its current cost (COGS) the local cost. Stock, cost and prices are kept.
+	 *
+	 * @return true|string True or an error message.
+	 */
+	private static function enable_local_now( $link_id, WC_Product $product, $units ) {
+		$target = URME_SS_Store::cost_target();
+		$cost   = $target['type'] ? URME_SS_Store::get_cost( $product, $target ) : null;
+		return URME_SS_Inventory::enable_local( (int) $link_id, (int) $units, $cost );
 	}
 
 	/**
@@ -422,6 +529,11 @@ class URME_SS_Admin {
 					if ( $units > 0 ) {
 						return array( 'Not changed: ' . URME_SS_Inventory::local_priority_message( $units ), 'error' );
 					}
+				} elseif ( ! (int) $link['sync_enabled'] ) {
+					$block = self::resume_block( $link );
+					if ( '' !== $block ) {
+						return array( $block, 'error' );
+					}
 				}
 				URME_SS_Inventory::enable_supplier( (int) $link['id'] );
 				return array( 'Supplier now: supplier stock and cost are synced on the next sync.', 'success' );
@@ -451,6 +563,10 @@ class URME_SS_Admin {
 				}
 				if ( (int) $link['sync_enabled'] ) {
 					return array( 'Sync was already on for this watch.', 'info' );
+				}
+				$block = self::resume_block( $link );
+				if ( '' !== $block ) {
+					return array( $block, 'error' );
 				}
 				URME_SS_DB::update_link( (int) $link['id'], array( 'sync_enabled' => 1 ) );
 				return array( sprintf( 'Sync resumed (%s). The product is updated on the next sync, or click "Sync now".', URME_SS_Inventory::LOCAL === $link['stock_mode'] ? 'Local first' : 'Supplier now' ), 'success' );
@@ -671,15 +787,32 @@ class URME_SS_Admin {
 		if ( $other ) {
 			return sprintf( 'Not linked: "%s" is already linked to supplier item %s.', $product->get_name(), $other );
 		}
-		URME_SS_DB::update_link(
-			$link['id'],
-			array(
-				'product_id'   => $pid,
-				'match_method' => 'manual',
-				'last_status'  => '',
-				'last_message' => '',
-			)
+		// Local URME stock always has priority: a product with local stock is linked as Local first.
+		$units = 0;
+		if ( (int) $link['sync_enabled'] && ! ( URME_SS_Inventory::has_local_units( $link ) && (int) $link['product_id'] === (int) $pid ) ) {
+			list( $why, $units ) = self::local_first_check( $product );
+			if ( '' !== $why ) {
+				return 'Not linked, nothing changed: ' . $why . '.';
+			}
+		}
+		$data = array(
+			'product_id'   => $pid,
+			'match_method' => 'manual',
+			'last_status'  => '',
+			'last_message' => '',
 		);
+		if ( (int) $link['product_id'] !== (int) $pid ) {
+			$data['last_stock'] = null; // Nothing synced to this product yet (Resume checks against it).
+		}
+		URME_SS_DB::update_link( $link['id'], $data );
+		if ( $units > 0 ) {
+			$ok = self::enable_local_now( $link['id'], $product, $units );
+			if ( true !== $ok ) {
+				self::restore_link( $link );
+				return 'Not linked, nothing changed: ' . $ok;
+			}
+			return sprintf( 'Linked to "%s" as Local first: %d local unit(s) and the current cost kept (local URME stock has priority). Supplier stock and cost are used after the last local unit is sold.', $product->get_name(), $units );
+		}
 		// Push stock and cost for this one product right away (with the usual safety checks).
 		$result = URME_SS_Sync::run(
 			array(
@@ -707,7 +840,20 @@ class URME_SS_Admin {
 			if ( ! $item ) {
 				continue;
 			}
-			$match = URME_SS_Store::auto_match( $item, (int) $link['id'] );
+			$match   = URME_SS_Store::auto_match( $item, (int) $link['id'] );
+			$units   = 0;
+			$product = null;
+			if ( $match['product_id'] && (int) $link['sync_enabled'] ) {
+				// Local URME stock always has priority: a product with local stock is linked as Local first.
+				$product = wc_get_product( $match['product_id'] );
+				list( $why, $units ) = $product ? self::local_first_check( $product ) : array( 'the product no longer exists', 0 );
+				if ( '' !== $why ) {
+					$match = array(
+						'product_id' => 0,
+						'message'    => 'Not linked: ' . $why . '.',
+					);
+				}
+			}
 			if ( $match['product_id'] ) {
 				URME_SS_DB::update_link(
 					$link['id'],
@@ -718,6 +864,19 @@ class URME_SS_Admin {
 						'last_message' => '',
 					)
 				);
+				$err = ( $units > 0 && $product ) ? self::enable_local_now( $link['id'], $product, $units ) : true;
+				if ( true !== $err ) {
+					self::restore_link( $link );
+					URME_SS_DB::update_link(
+						$link['id'],
+						array(
+							'last_status'  => 'unlinked',
+							'last_message' => 'Not linked: ' . $err,
+						)
+					);
+					$fail[] = $item['product_no'];
+					continue;
+				}
 				++$ok;
 			} else {
 				URME_SS_DB::update_link(
@@ -735,6 +894,32 @@ class URME_SS_Admin {
 			$msg .= ' No unique match for: ' . implode( ', ', array_slice( $fail, 0, 15 ) ) . ( count( $fail ) > 15 ? '…' : '' );
 		}
 		return $msg;
+	}
+
+	/**
+	 * Put a link's product and status back as they were (a Local first start that failed).
+	 */
+	private static function restore_link( array $link ) {
+		URME_SS_DB::update_link(
+			$link['id'],
+			array(
+				'product_id'   => (int) $link['product_id'],
+				'match_method' => (string) $link['match_method'],
+				'last_status'  => (string) $link['last_status'],
+				'last_message' => (string) $link['last_message'],
+				'last_stock'   => null === $link['last_stock'] ? null : (int) $link['last_stock'],
+			)
+		);
+	}
+
+	/**
+	 * Resuming a paused Supplier-now watch is starting Dropshipping again: refused while local
+	 * URME stock exists. '' when it may resume.
+	 */
+	private static function resume_block( array $link ) {
+		$product = (int) $link['product_id'] ? wc_get_product( (int) $link['product_id'] ) : null;
+		$units   = URME_SS_Inventory::local_units_on_resume( $link, $product );
+		return $units > 0 ? 'Not resumed: ' . URME_SS_Inventory::local_priority_message( $units ) : '';
 	}
 
 	private static function notice( $message, $type = 'success' ) {
@@ -1113,7 +1298,7 @@ class URME_SS_Admin {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="urme-select-form">
 			<?php echo self::hidden_fields( 'select' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<div class="tablenav top"><button type="submit" class="button button-primary urme-bulk" disabled>Select checked for sync</button>
-				<span class="description">Selecting is always manual. A watch that exists in URME is not synced until you select it.</span></div>
+				<span class="description">Selecting is always manual. A watch that exists in URME is not synced until you select it. Watches with URME stock start as Local first; only URME stock 0 starts Supplier now.</span></div>
 			<table class="widefat striped urme-table">
 				<thead><tr>
 					<td class="check-column"><input type="checkbox" class="urme-check-all" aria-label="Select all"></td>

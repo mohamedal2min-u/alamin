@@ -668,6 +668,25 @@ class URME_SS_Inventory {
 		return max( $tracked, $woo );
 	}
 
+	/**
+	 * Resuming a paused Supplier-now link. Units in WooCommerce above what supplier sync last set
+	 * were added by hand while paused, so they are local URME stock; when supplier sync never
+	 * set a stock, every unit is. A paused Local first link resumes as Local first (0 here).
+	 *
+	 * @param array           $link    Supplier link.
+	 * @param WC_Product|null $product Its product.
+	 */
+	public static function local_units_on_resume( array $link, $product ) {
+		if ( self::LOCAL === ( $link['stock_mode'] ?? '' ) ) {
+			return 0;
+		}
+		$woo = self::local_units_before_supplier( null, $product );
+		if ( $woo < 1 ) {
+			return 0;
+		}
+		return ( null === $link['last_stock'] || $woo > (int) $link['last_stock'] ) ? $woo : 0;
+	}
+
 	public static function local_priority_message( $units ) {
 		return sprintf( 'Local URME stock exists (%d unit%s). Dropshipping cannot start while local stock remains. Use Local first.', $units, 1 === (int) $units ? '' : 's' );
 	}

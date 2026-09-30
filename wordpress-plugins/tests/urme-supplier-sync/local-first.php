@@ -43,6 +43,17 @@ function lf_select( $i ) {
 	admin( 'select_items', array( key_of( $i ) ) );
 	return link_of( $i );
 }
+/**
+ * A Supplier-now link as earlier versions made it (bulk selection linked any matched product as
+ * Supplier now, whatever its stock). Since 1.4 selection starts a product with stock as Local
+ * first; tests about the sync of an existing Supplier-now link over stock use this.
+ */
+function lf_legacy_select( $i ) {
+	URME_SS_Matcher::reset();
+	$match = URME_SS_Store::auto_match( URME_SS_DB::get_item( key_of( $i ) ) );
+	URME_SS_DB::insert_link( key_of( $i ), $match['product_id'], $match['method'] );
+	return link_of( $i );
+}
 function lf_link( $i ) {
 	return link_of( $i );
 }
@@ -111,7 +122,7 @@ ok( 8 === (int) cat( 36 )['stock'] && 200.0 === (float) cat( 36 )['purchase_pric
 
 $L1 = lf_product( 'SKU 1513905 (local 1)', 'REF000036', 1, 900 );
 $l  = lf_select( 36 );
-ok( (int) $l['product_id'] === $L1 && 'supplier' === $l['stock_mode'] && 0 === (int) $l['local_qty'], 'new link defaults to Supplier now' );
+ok( (int) $l['product_id'] === $L1 && 'local_first' === $l['stock_mode'] && 1 === (int) $l['local_qty'] && 900.0 === (float) $l['local_cost'], 'selected with URME stock 1: starts as Local first (1 unit, cost 900), never Supplier now', $l );
 ok( true === URME_SS_Inventory::enable_local( (int) $l['id'], 1, 900 ), 'Local first enabled (1 local unit, cost 900)' );
 $l = lf_link( 36 );
 ok( 'local_first' === $l['stock_mode'] && 1 === (int) $l['local_qty'] && 900.0 === (float) $l['local_cost'] && 0 === (int) $l['needs_stock_apply'], 'link state: local_first, 1 unit, cost 900' );
@@ -272,6 +283,8 @@ ok( 'supplier' === link_of( 1 )['stock_mode'], 'cancel of a supplier sale does n
 section( 'LF-B. Backorders cannot oversell local inventory' );
 $LB = lf_product( 'Backorders on', 'REF000066', 1, 300, 'notify' );
 $lb = lf_select( 66 );
+ok( null === $lb && 1 === lf_stock( $LB ), 'selection refused: 1 local unit, but backorders are allowed (neither Local first nor Supplier now)' );
+$lb = lf_legacy_select( 66 ); // An existing Supplier-now link (earlier version).
 $r  = URME_SS_Inventory::enable_local( (int) $lb['id'], 1, 300 );
 ok( is_string( $r ) && false !== stripos( $r, 'backorders' ), 'Local first refused while backorders are allowed', $r );
 ok( 'supplier' === lf_link( 66 )['stock_mode'] && 'notify' === p( $LB )->get_backorders(), 'link unchanged; backorders setting not touched' );

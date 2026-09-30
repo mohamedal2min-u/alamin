@@ -38,9 +38,21 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   Supplier sync never changes prices. Every condition is checked again when the button is clicked.
   These row actions and the sale price Save run without reloading the page; the row is updated in
   place with the result (bulk "Select checked for sync" is a normal form).
-* Local URME stock always has priority over Dropshipping: "Start supplier sync" is refused while the
-  product has WooCommerce stock ("Local URME stock exists (N units)... Use Local first."), and a
-  Local first watch cannot be switched to Supplier now by hand while it has local units or stock.
+* Local URME stock always has priority over Dropshipping, on every manual path:
+  - "Start supplier sync" is refused while the product has WooCommerce stock ("Local URME stock
+    exists (N units)... Use Local first.").
+  - "Select checked for sync" handles each checked watch on its own: WooCommerce stock above 0 ->
+    Local first (that stock as local units, the current COGS as local cost; stock, cost and prices
+    kept); stock 0 -> Supplier now. Needs review (several URME products), brand sync off, not in
+    the feed, or local stock that cannot be Local first (backorders allowed, variable parent,
+    stock managed by the parent) -> that watch is not selected and is listed in the notice; the
+    others are still processed. A watch with no URME product yet is selected without a product.
+  - Linking a product under Selected watches (manually or "Link automatically") applies the same
+    rule: a product with stock is linked as Local first.
+  - A Local first watch cannot be switched to Supplier now by hand while it has local units or
+    stock (no confirmation overrides it).
+  - "Resume" of a paused Supplier-now watch is refused when its WooCommerce stock is above the
+    stock supplier sync last set (units added by hand while paused, or never synced).
   After the last local unit is sold, the automatic Local first -> Supplier switch works as before.
 * Manual sale price: for every linked or uniquely matched product (also when Paused), the catalog and
   Selected watches show the regular price (read-only) and an editable sale price with Save. Only the
@@ -50,6 +62,12 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 * WooCommerce > Products gets a "Fulfillment" column from the Supplier Sync link (never from the
   stock quantity): Dropshipping (Supplier now), Local first (units left), Paused, or URME Lager (not
   supplier-linked). The Supplier catalog shows the same badge for matched products.
+* A "Fulfillment" filter in WooCommerce's product filter row: All / Dropshipping / URME Lager /
+  Local first / Paused, each with its current count (read live from the links, one aggregate
+  query). Same rules as the badge: Dropshipping = sync on + Supplier now + brand sync on; Local
+  first; Paused = sync off; URME Lager = none of these (not linked, or linked with brand sync off).
+  A variable product counts under each state one of its variations has. It combines with the
+  stock status, category, product type, brand and search filters, sorting and paging.
 * A product is synced only when all of these are true:
   1. its supplier CATEGORY is WATCH,
   2. its brand (MANUFACTURER) is enabled in Settings > Brands enabled for sync,

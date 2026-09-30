@@ -91,8 +91,8 @@ nf_feed( $feed_n, $BS_SET );
 run( array( 'force_feed' => true ) );
 $B1 = bs_product( 'REF000132', key_of( 132 ), 2, 480 ); // Like 1513905: old stock, old COGS 480 SEK.
 $B2 = bs_product( 'REF000138', key_of( 138 ), 1, 300 );
-$l1 = lf_select( 132 );
-lf_select( 138 );
+$l1 = lf_legacy_select( 132 ); // Linked as Supplier now before 1.4, like 1513905 in production.
+lf_legacy_select( 138 );
 ok( $l1 && (int) $l1['product_id'] === $B1 && 'sku+ean' === $l1['match_method'] && 'supplier' === $l1['stock_mode'] && 1 === (int) $l1['sync_enabled'] && 0 === (int) $l1['local_qty'], 'linked by SKU + EAN, Supplier now, sync enabled, local_qty 0', $l1 );
 ok( 8 === (int) cat( 132 )['stock'] && 176.0 === (float) cat( 132 )['purchase_price'] && '1' === (string) cat( 132 )['in_feed'] && 'BOSS' === cat( 132 )['manufacturer'], 'catalog: BOSS, stock 8, 176 EUR, in feed' );
 $sek = round( 176 * 11.321, 2 ); // 1,992.50 SEK: supplier cost only, never the price-hint +12 EUR.

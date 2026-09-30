@@ -569,5 +569,7 @@ require __DIR__ . '/local-first.php';
 require __DIR__ . '/fulfillment-review.php';
 // Admin-only NEW supplier product indicator (1.1.0).
 require __DIR__ . '/new-products.php';
+// Admin-only selling price hint (1.2.0).
+require __DIR__ . '/price-hint.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

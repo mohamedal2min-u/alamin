@@ -616,6 +616,7 @@ class URME_SS_Admin {
 		$rate    = URME_SS_Rates::current();
 		$cats    = URME_SS_Settings::get( 'categories' );
 		$mcounts = URME_SS_DB::match_counts();
+		$hint    = URME_SS_Price_Hint::context(); // Once per page; each row is pure arithmetic.
 
 		$product_ids = array();
 		foreach ( $result['rows'] as $row ) {
@@ -717,12 +718,13 @@ class URME_SS_Admin {
 					<th class="num">Supplier stock</th>
 					<th class="num">Cost EUR</th>
 					<th class="num">Cost SEK</th>
+					<th class="urme-hint-col">Price hint</th>
 					<th class="urme-match-col">In URME</th>
 					<th>Sync</th>
 				</tr></thead>
 				<tbody>
 				<?php if ( ! $result['rows'] ) : ?>
-					<tr><td colspan="11">
+					<tr><td colspan="12">
 						<?php
 						echo URME_SS_DB::catalog_counts()['total']
 							? 'No watches match your search.'
@@ -755,6 +757,7 @@ class URME_SS_Admin {
 						<td class="num"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></td>
 						<td class="num"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?></td>
 						<td class="num"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></td>
+						<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $hint ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 						<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 						<td>
 							<?php
@@ -868,6 +871,7 @@ class URME_SS_Admin {
 		$per_page = 50;
 		$counts   = URME_SS_DB::link_counts();
 		$target   = URME_SS_Store::cost_target();
+		$hint     = URME_SS_Price_Hint::context();
 
 		$filters = array(
 			'all'      => array( 'All', $counts['selected'] ?? 0 ),
@@ -938,7 +942,7 @@ class URME_SS_Admin {
 			<?php endif; ?>
 			<?php
 			foreach ( $result['rows'] as $row ) {
-				self::render_selected_row( $row, $target );
+				self::render_selected_row( $row, $target, $hint );
 			}
 			?>
 			</tbody>
@@ -947,7 +951,7 @@ class URME_SS_Admin {
 		self::pagination( $result['total'], $per_page, $page, array_filter( array( 'page' => self::SLUG, 'tab' => 'selected', 'status' => $status, 'q' => $q ) ) );
 	}
 
-	private static function render_selected_row( array $row, array $target ) {
+	private static function render_selected_row( array $row, array $target, array $hint ) {
 		$pid     = (int) $row['product_id'];
 		$product = $pid ? wc_get_product( $pid ) : null;
 		$in_feed = ! empty( $row['catalog_id'] ) && (int) $row['in_feed'];
@@ -962,7 +966,7 @@ class URME_SS_Admin {
 				<?php endif; ?>
 			</td>
 			<td class="num"><?php echo null === $row['stock'] ? '—' : esc_html( $row['stock'] ); ?></td>
-			<td class="num"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><br><small><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></small></td>
+			<td class="num"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><br><small><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></small><br><?php echo URME_SS_Price_Hint::short_html( $row['purchase_price'], $hint ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-product-col">
 				<?php if ( $product ) : ?>
 					<a href="<?php echo esc_url( get_edit_post_link( self::edit_id( $pid ) ) ?? '' ); ?>"><strong><?php echo esc_html( $product->get_name() ); ?></strong></a>
@@ -1390,6 +1394,23 @@ class URME_SS_Admin {
 					<p class="description">Protects against a half-empty feed. 0 disables the check.</p></td></tr>
 				<tr><th><label for="urme-age">Stale feed protection</label></th>
 					<td>Stop updating products when the feed has not been refreshed for <input type="number" id="urme-age" name="settings[max_feed_age_hours]" min="1" max="72" value="<?php echo esc_attr( $s['max_feed_age_hours'] ); ?>" class="small-text"> hours</td></tr>
+			</table>
+			<h2>Selling price hint</h2>
+			<p class="description">A suggested selling price shown in the Supplier catalog and Selected watches, for you only. It never changes any price, coupon or product.
+				Suggested price = the lowest price, rounded up, where (price after coupon ÷ (1 + VAT)) − payment fee − cost ≥ target profit. Cost = (PURCHASE_PRICE + extra cost) × EUR/SEK; PURCHASE_PRICE is VAT 0%.</p>
+			<table class="form-table">
+				<tr><th><label for="urme-h-extra">Extra supplier cost</label></th>
+					<td><input type="number" id="urme-h-extra" name="settings[hint_extra_eur]" min="0" max="1000" step="0.01" value="<?php echo esc_attr( $s['hint_extra_eur'] ); ?>" class="small-text"> EUR per watch, added to PURCHASE_PRICE</td></tr>
+				<tr><th><label for="urme-h-coupon">Coupon allowance</label></th>
+					<td><input type="number" id="urme-h-coupon" name="settings[hint_coupon_pct]" min="0" max="90" step="0.01" value="<?php echo esc_attr( $s['hint_coupon_pct'] ); ?>" class="small-text"> % discount the customer may use</td></tr>
+				<tr><th><label for="urme-h-fee">Klarna/payment fee</label></th>
+					<td><input type="number" id="urme-h-fee" name="settings[hint_fee_pct]" min="0" max="50" step="0.01" value="<?php echo esc_attr( $s['hint_fee_pct'] ); ?>" class="small-text"> % of the amount the customer pays after the coupon</td></tr>
+				<tr><th><label for="urme-h-vat">VAT</label></th>
+					<td><input type="number" id="urme-h-vat" name="settings[hint_vat_pct]" min="0" max="100" step="0.01" value="<?php echo esc_attr( $s['hint_vat_pct'] ); ?>" class="small-text"> % included in the selling price</td></tr>
+				<tr><th><label for="urme-h-profit">Target profit</label></th>
+					<td><input type="number" id="urme-h-profit" name="settings[hint_profit_sek]" min="0" step="1" value="<?php echo esc_attr( $s['hint_profit_sek'] ); ?>" class="small-text"> SEK per watch</td></tr>
+				<tr><th><label for="urme-h-round">Rounding</label></th>
+					<td>Round up to the next <input type="number" id="urme-h-round" name="settings[hint_round_sek]" min="1" max="1000" step="1" value="<?php echo esc_attr( $s['hint_round_sek'] ); ?>" class="small-text"> SEK (never down)</td></tr>
 			</table>
 			<?php submit_button( 'Save settings' ); ?>
 		</form>

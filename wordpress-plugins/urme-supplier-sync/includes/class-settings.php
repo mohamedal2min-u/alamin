@@ -31,6 +31,13 @@ class URME_SS_Settings {
 			'min_feed_ratio'     => 50,
 			// Do not push stock/cost from a catalog older than this many hours.
 			'max_feed_age_hours' => 3,
+			// Selling price hint (admin only, never written to products).
+			'hint_extra_eur'     => 12,  // Fixed supplier cost per watch, EUR, on top of PURCHASE_PRICE.
+			'hint_coupon_pct'    => 10,  // Discount a customer may use.
+			'hint_fee_pct'       => 5,   // Klarna/payment fee, % of what the customer pays.
+			'hint_vat_pct'       => 25,  // Swedish VAT included in the listed price.
+			'hint_profit_sek'    => 500, // Target profit per watch.
+			'hint_round_sek'     => 10,  // Round the suggested price up to this step.
 		);
 	}
 
@@ -67,10 +74,27 @@ class URME_SS_Settings {
 			'manage_stock'       => empty( $input['manage_stock'] ) ? 0 : 1,
 			'min_feed_ratio'     => max( 0, min( 100, (int) ( $input['min_feed_ratio'] ?? 50 ) ) ),
 			'max_feed_age_hours' => max( 1, min( 72, (int) ( $input['max_feed_age_hours'] ?? 3 ) ) ),
+			'hint_extra_eur'     => self::number( $input, $current, 'hint_extra_eur', 0, 1000 ),
+			'hint_coupon_pct'    => self::number( $input, $current, 'hint_coupon_pct', 0, 90 ),
+			'hint_fee_pct'       => self::number( $input, $current, 'hint_fee_pct', 0, 50 ),
+			'hint_vat_pct'       => self::number( $input, $current, 'hint_vat_pct', 0, 100 ),
+			'hint_profit_sek'    => self::number( $input, $current, 'hint_profit_sek', 0, 1000000 ),
+			'hint_round_sek'     => (int) self::number( $input, $current, 'hint_round_sek', 1, 1000 ),
 		);
 
 		update_option( self::OPTION, $new );
 		return $new;
+	}
+
+	/**
+	 * A number from the form (comma or dot decimals), clamped; the current value when absent or invalid.
+	 */
+	private static function number( array $input, array $current, $key, $min, $max ) {
+		$raw = str_replace( array( ',', ' ' ), array( '.', '' ), trim( (string) ( $input[ $key ] ?? '' ) ) );
+		if ( '' === $raw || ! is_numeric( $raw ) ) {
+			return $current[ $key ];
+		}
+		return max( $min, min( $max, round( (float) $raw, 2 ) ) );
 	}
 
 	public static function sanitize_brands( array $brands ) {

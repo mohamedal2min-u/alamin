@@ -38,6 +38,7 @@ function ff_order_html( $order ) {
 	);
 }
 function ff_column_html( $order ) {
+	URME_SS_Fulfillment::flush_map(); // Each call stands for a fresh page load.
 	return ff_admin_html(
 		static function () use ( $order ) {
 			do_action( 'manage_woocommerce_page_wc-orders_custom_column', 'urme_fulfillment', wc_get_order( $order->get_id() ) );
@@ -141,6 +142,114 @@ $o_plain->update_status( 'processing' );
 ok( 'Unknown / Legacy order' === ff_text( ff_column_html( $o_plain ) ) && '' === ff_text( ff_line_html( $o_plain ) ), 'legacy order without supplier watches: neutral status, no line label' );
 $o_new_plain = lf_order( $P8, 1 );
 ok( '–' === ff_text( ff_column_html( $o_new_plain ) ), 'new order without supplier watches: no fulfilment label' );
+
+/* ------------------------------------------------ orders list performance */
+section( 'FF-P. Orders list: fulfilment data loaded in bulk, zero queries per row' );
+// Enough orders of every kind: URME Lager, Dropshipping, Mixed, legacy and untracked.
+// Listed newest ID first so the backdated legacy orders are mixed into every page.
+$FP = lf_product( 'FF perf local', 'REF000114', 200, 500 );
+$GLOBALS['LF_SET']['REF000114'] = array( 'STOCK' => '9', 'PURCHASE_PRICE' => '80.00' );
+lf_feed();
+run( array( 'force_feed' => true ) );
+$fp = lf_select( 114 );
+URME_SS_Inventory::enable_local( (int) $fp['id'], 200, 500 );
+for ( $k = 0; $k < 110; $k++ ) {
+	$kind = $k % 5;
+	if ( 4 === $kind ) {
+		$o = wc_create_order();
+		$o->add_product( wc_get_product( $FD ), 1 );
+		$o->set_date_created( '2024-02-0' . ( 1 + $k % 9 ) . ' 10:00:00' ); // Legacy.
+		$o->calculate_totals();
+		$o->save();
+		$o->update_status( 'processing' );
+	} elseif ( 3 === $kind ) {
+		$o = wc_create_order();
+		$o->add_product( wc_get_product( $FP ), 1 );
+		$o->add_product( wc_get_product( $FD ), 1 ); // Mixed order.
+		$o->calculate_totals();
+		$o->save();
+		$o->update_status( 'processing' );
+	} else {
+		$o = lf_order( array( $FP, $FD, $P8 )[ $kind ], 1 ); // URME Lager / Dropshipping / untracked.
+		if ( 106 === $k ) {
+			// A refunded order on the first page: HPOS then runs a nested refund query inside the list query.
+			wc_create_refund( array( 'order_id' => $o->get_id(), 'amount' => 1 ) );
+		}
+	}
+}
+$hpos = Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+$http = 0;
+$count_http = static function ( $pre ) use ( &$http ) {
+	++$http;
+	return $pre;
+};
+add_filter( 'pre_http_request', $count_http );
+foreach ( array( 20, 50, 100 ) as $n ) {
+	URME_SS_Fulfillment::flush_map();
+	wp_set_current_user( $GLOBALS['FF_ADMIN'] );
+	set_current_screen( $hpos ? 'woocommerce_page_wc-orders' : 'edit-shop_order' );
+	$q0 = $wpdb->num_queries;
+	if ( $hpos ) {
+		// Exactly what WooCommerce's HPOS orders list does.
+		$args   = apply_filters( 'woocommerce_order_list_table_prepare_items_query_args', array( 'limit' => $n, 'page' => 1, 'paginate' => true, 'type' => 'shop_order', 'orderby' => 'id', 'order' => 'DESC' ) );
+		$args   = apply_filters( 'woocommerce_shop_order_list_table_prepare_items_query_args', $args );
+		$result = wc_get_orders( $args );
+		$rows   = $result->orders;
+	} else {
+		// Legacy storage: the list is the main WP_Query on edit.php?post_type=shop_order.
+		$saved                   = $GLOBALS['wp_the_query'];
+		$q                       = new WP_Query();
+		$GLOBALS['wp_the_query'] = $q;
+		$posts                   = $q->query( array( 'post_type' => 'shop_order', 'post_status' => 'any', 'posts_per_page' => $n, 'orderby' => 'ID', 'order' => 'DESC' ) );
+		$GLOBALS['wp_the_query'] = $saved;
+		$rows                    = wp_list_pluck( $posts, 'ID' );
+	}
+	$q1 = $wpdb->num_queries;
+	ob_start();
+	foreach ( $rows as $row ) {
+		URME_SS_Fulfillment::render_column( 'urme_fulfillment', $row );
+	}
+	$html = ob_get_clean();
+	$q2   = $wpdb->num_queries;
+	$GLOBALS['current_screen'] = null;
+	ok( count( $rows ) === $n && 0 === $q2 - $q1, sprintf( '%d orders (%s list): rendering the Fulfillment column ran 0 queries', $n, $hpos ? 'HPOS' : 'legacy' ), array( count( $rows ), $q2 - $q1 ) );
+	// Correct values: compare with the full per-order calculation.
+	$bad = 0;
+	foreach ( $rows as $row ) {
+		$full = URME_SS_Fulfillment::order( $row )['status'];
+		$full = in_array( $full, array( 'local', 'dropship', 'mixed', 'legacy' ), true ) ? $full : 'none';
+		$bad += false === strpos( $html, 'urme-ff-' . $full ) ? 1 : 0;
+	}
+	$kinds = array();
+	foreach ( array( 'local', 'dropship', 'mixed', 'legacy', 'none' ) as $kk ) {
+		$kinds[ $kk ] = substr_count( $html, 'urme-ff-' . $kk . '"' );
+	}
+	ok( 0 === $bad && $kinds['local'] && $kinds['dropship'] && $kinds['mixed'] && $kinds['legacy'] && $kinds['none'], sprintf( '   values correct for all %d rows (all kinds present)', $n ), $kinds );
+	$pq = $wpdb->num_queries;
+	URME_SS_Fulfillment::flush_map();
+	URME_SS_Fulfillment::prime( $hpos ? array_map( static function ( $o ) { return $o->get_id(); }, $rows ) : $rows );
+	ok( 1 === $wpdb->num_queries - $pq, sprintf( '   bulk load for %d orders = 1 query', $n ), $wpdb->num_queries - $pq );
+}
+// A line removed from an order afterwards keeps its ledger row; the list must still match the order screen.
+$o = wc_create_order();
+$o->add_product( wc_get_product( $FP ), 1 );
+$o->add_product( wc_get_product( $FD ), 1 );
+$o->calculate_totals();
+$o->save();
+$o->update_status( 'processing' );
+$o = wc_get_order( $o->get_id() );
+foreach ( $o->get_items() as $item_id => $item ) {
+	if ( (int) $item->get_product_id() === (int) $FP ) {
+		wc_maybe_adjust_line_item_product_stock( $item, 0 ); // What WooCommerce does when an admin deletes a line.
+		wc_delete_order_item( $item_id );
+	}
+}
+$o = wc_get_order( $o->get_id() );
+URME_SS_Fulfillment::flush_map();
+$full = URME_SS_Fulfillment::order( $o )['status'];
+ok( 'dropship' === $full && URME_SS_Fulfillment::list_status( $o->get_id(), $o->get_date_created()->getTimestamp() ) === $full, 'line removed from a Mixed order: list shows the same as the order screen (Dropshipping)', $full );
+remove_filter( 'pre_http_request', $count_http );
+ok( 0 === $http, 'no HTTP (feed) request while rendering the orders list', $http );
 
 /* ---------------------------------------------------------- price review */
 section( 'PR1–3. Automatic Local → Supplier creates exactly one price review' );

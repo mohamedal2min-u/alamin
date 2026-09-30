@@ -23,6 +23,20 @@ class URME_SS_Fulfillment {
 
 	const FILTER = 'urme_fulfillment';
 
+	/**
+	 * Orders list: order ID => array( local, supplier, legacy_rows ), loaded in bulk for the visible page.
+	 *
+	 * @var array<int,int[]>
+	 */
+	private static $map = array();
+
+	/**
+	 * Query args of WooCommerce's HPOS orders list while it runs its query, so its results can be primed.
+	 *
+	 * @var array|null
+	 */
+	private static $listing = null;
+
 	/* ---------------------------------------------------------------------
 	 * Classification (from the ledger only)
 	 * ------------------------------------------------------------------- */
@@ -84,7 +98,7 @@ class URME_SS_Fulfillment {
 			'lines'     => array(),
 			'untracked' => 0,
 		);
-		if ( ! $order ) {
+		if ( ! $order instanceof WC_Order ) { // Not found, or a refund.
 			return $out;
 		}
 		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . URME_SS_DB::alloc_table() . ' WHERE order_id = %d', $order->get_id() ), ARRAY_A ); // phpcs:ignore WordPress.DB
@@ -110,9 +124,103 @@ class URME_SS_Fulfillment {
 	}
 
 	private static function before_ledger( WC_Order $order ) {
+		$date = $order->get_date_created();
+		return self::ts_before_ledger( $date ? $date->getTimestamp() : 0 );
+	}
+
+	private static function ts_before_ledger( $ts ) {
 		$since = (int) get_option( 'urme_ss_ledger_since', 0 );
-		$date  = $order->get_date_created();
-		return $since && $date && $date->getTimestamp() < $since;
+		return $since && $ts && $ts < $since;
+	}
+
+	/**
+	 * Load the ledger totals for many orders with ONE query (orders list).
+	 *
+	 * @param int[] $order_ids Orders on the current list page.
+	 */
+	public static function prime( array $order_ids ) {
+		global $wpdb;
+		$ids = array_values( array_diff( array_unique( array_filter( array_map( 'intval', $order_ids ) ) ), array_keys( self::$map ) ) );
+		if ( ! $ids ) {
+			return;
+		}
+		foreach ( $ids as $id ) {
+			self::$map[ $id ] = array( 0, 0, 0 );
+		}
+		// Only lines still on the order count (same as order()); the join is on the items table's primary key.
+		// phpcs:ignore WordPress.DB
+		$rows = $wpdb->get_results(
+			'SELECT a.order_id,
+				SUM(CASE WHEN a.origin = \'sale\' THEN a.src_local ELSE 0 END) AS l,
+				SUM(CASE WHEN a.origin = \'sale\' THEN a.src_supplier ELSE 0 END) AS s,
+				SUM(CASE WHEN a.origin = \'legacy\' THEN 1 ELSE 0 END) AS g
+			FROM ' . URME_SS_DB::alloc_table() . ' a
+			INNER JOIN ' . $wpdb->prefix . 'woocommerce_order_items oi ON oi.order_item_id = a.order_item_id
+			WHERE a.order_id IN (' . implode( ',', $ids ) . ') GROUP BY a.order_id',
+			ARRAY_A
+		);
+		foreach ( (array) $rows as $r ) {
+			self::$map[ (int) $r['order_id'] ] = array( (int) $r['l'], (int) $r['s'], (int) $r['g'] );
+		}
+	}
+
+	public static function flush_map() {
+		self::$map = array();
+	}
+
+	/**
+	 * Orders-list status from the primed map (no per-row queries).
+	 *
+	 * @param int $order_id   Order ID.
+	 * @param int $created_ts Order creation time (already loaded by the list).
+	 */
+	public static function list_status( $order_id, $created_ts ) {
+		if ( ! isset( self::$map[ $order_id ] ) ) {
+			self::prime( array( $order_id ) ); // Not on a primed page: one query for this order.
+		}
+		list( $local, $supplier, $legacy ) = self::$map[ $order_id ];
+		if ( $local || $supplier ) {
+			return self::classify( $local, $supplier );
+		}
+		return ( $legacy || self::ts_before_ledger( $created_ts ) ) ? self::LEGACY : self::UNTRACK;
+	}
+
+	/* --- Priming hooks for the orders list ------------------------------- */
+
+	public static function hpos_list_starts( $args ) {
+		self::$listing = is_array( $args ) ? $args : null;
+		return $args;
+	}
+
+	/**
+	 * HPOS: WooCommerce passes the list's query results through this filter. Other order queries
+	 * that run inside it (e.g. refunds primed for the page's orders) have a different type or limit.
+	 */
+	public static function hpos_prime( $results, $args = array() ) {
+		$list = self::$listing;
+		if ( ! $list || ! is_array( $args ) || empty( $args['paginate'] )
+			|| ( $list['type'] ?? 'shop_order' ) !== ( $args['type'] ?? '' )
+			|| (int) ( $list['limit'] ?? 0 ) !== (int) ( $args['limit'] ?? -1 ) ) {
+			return $results;
+		}
+		self::$listing = null;
+		$orders = is_object( $results ) && isset( $results->orders ) ? $results->orders : (array) $results;
+		$ids    = array();
+		foreach ( $orders as $o ) {
+			$ids[] = $o instanceof WC_Abstract_Order ? $o->get_id() : (int) $o;
+		}
+		self::prime( $ids );
+		return $results;
+	}
+
+	/**
+	 * Legacy storage: the orders list is the main query on edit.php?post_type=shop_order.
+	 */
+	public static function legacy_prime( $posts, $query ) {
+		if ( $posts && $query instanceof WP_Query && $query->is_main_query() && 'shop_order' === $query->get( 'post_type' ) && self::allowed() ) {
+			self::prime( wp_list_pluck( $posts, 'ID' ) );
+		}
+		return $posts;
 	}
 
 	/**
@@ -147,6 +255,11 @@ class URME_SS_Fulfillment {
 		add_action( 'manage_woocommerce_page_wc-orders_custom_column', array( __CLASS__, 'render_column' ), 10, 2 );
 		add_action( 'woocommerce_order_list_table_restrict_manage_orders', array( __CLASS__, 'render_filter' ) );
 		add_filter( 'woocommerce_order_list_table_prepare_items_query_args', array( __CLASS__, 'filter_hpos' ) );
+		// Bulk-load the fulfilment data of all visible orders (no per-row queries).
+		// The type-specific filter is the last step before WooCommerce runs the list query.
+		add_filter( 'woocommerce_shop_order_list_table_prepare_items_query_args', array( __CLASS__, 'hpos_list_starts' ), PHP_INT_MAX );
+		add_filter( 'woocommerce_order_query', array( __CLASS__, 'hpos_prime' ), 10, 2 );
+		add_filter( 'the_posts', array( __CLASS__, 'legacy_prime' ), 10, 2 );
 		// Order list, legacy posts storage.
 		add_filter( 'manage_edit-shop_order_columns', array( __CLASS__, 'add_column' ) );
 		add_action( 'manage_shop_order_posts_custom_column', array( __CLASS__, 'render_column' ), 10, 2 );
@@ -241,8 +354,17 @@ class URME_SS_Fulfillment {
 		if ( 'urme_fulfillment' !== $column || ! self::allowed() ) {
 			return;
 		}
-		$o = self::order( $order );
-		echo in_array( $o['status'], array( self::LOCAL, self::DROPSHIP, self::MIXED, self::LEGACY ), true ) ? self::badge( $o['status'] ) : '<span class="urme-ff urme-ff-none">–</span>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		// HPOS passes the order object, legacy storage passes the post ID (post already loaded by the list).
+		if ( $order instanceof WC_Abstract_Order ) {
+			$id   = $order->get_id();
+			$date = $order->get_date_created();
+			$ts   = $date ? $date->getTimestamp() : 0;
+		} else {
+			$id = (int) $order;
+			$ts = (int) strtotime( (string) get_post_field( 'post_date_gmt', $id ) . ' UTC' );
+		}
+		$status = self::list_status( $id, $ts );
+		echo in_array( $status, array( self::LOCAL, self::DROPSHIP, self::MIXED, self::LEGACY ), true ) ? self::badge( $status ) : '<span class="urme-ff urme-ff-none">–</span>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		self::styles();
 	}
 

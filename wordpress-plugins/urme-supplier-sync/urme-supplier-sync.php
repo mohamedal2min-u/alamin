@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       URME Supplier Sync
  * Description:       Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly link.
- * Version:           1.2.1
+ * Version:           1.3.0
  * Author:            URME.se
  * Requires at least: 6.2
  * Requires PHP:      7.4
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'URME_SS_VERSION', '1.2.1' );
+define( 'URME_SS_VERSION', '1.3.0' );
 define( 'URME_SS_DB_VERSION', '3' );
 define( 'URME_SS_FILE', __FILE__ );
 define( 'URME_SS_DIR', plugin_dir_path( __FILE__ ) );
@@ -32,6 +32,7 @@ require_once URME_SS_DIR . 'includes/class-store.php';
 require_once URME_SS_DIR . 'includes/class-matcher.php';
 require_once URME_SS_DIR . 'includes/class-inventory.php';
 require_once URME_SS_DIR . 'includes/class-fulfillment.php';
+require_once URME_SS_DIR . 'includes/class-product-source.php';
 require_once URME_SS_DIR . 'includes/class-price-review.php';
 require_once URME_SS_DIR . 'includes/class-sync.php';
 require_once URME_SS_DIR . 'includes/class-plugin.php';

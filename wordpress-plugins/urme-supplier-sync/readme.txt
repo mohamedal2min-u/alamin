@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.2.1
+Stable tag: 1.3.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -22,6 +22,28 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   - Needs review (several products could match)
   - Manually linked
   This is information only. Nothing is synced because a product exists.
+* "URME stock" column: the current WooCommerce stock of the linked product, or of the unique
+  confirmed URME match (the exact product or variation): green quantity, red "0 / Out of stock",
+  "Not managed", and a note when backorders are allowed. Filters: URME stock (In stock / Out of
+  stock / Not managed) and "Ready for supplier sync" (brand on, unique match, URME stock 0, not
+  selected, still in the feed).
+* Per-product controls in the Sync column, only for an enabled brand, a unique confirmed match and
+  a watch still in the feed (never for Not in URME / Needs review):
+  - URME stock 0: "Start supplier sync" selects and links the watch (Supplier now) and syncs its
+    supplier stock and cost at once, with the normal safety rules.
+  - URME stock above 0: "Use Local first" selects and links it as Local first with the current
+    WooCommerce stock as local units and the current cost as local cost (nothing is overwritten).
+    Not offered while backorders are allowed.
+  - Selected watches show their mode with "Sync now"; paused ones show "Resume" (same mode).
+  Supplier sync never changes prices. Every condition is checked again when the button is clicked.
+* Manual sale price: for every linked or uniquely matched product (also when Paused), the catalog and
+  Selected watches show the regular price (read-only) and an editable sale price with Save. Only the
+  sale price of that exact product or variation is saved (WooCommerce product API); an empty field
+  removes the sale. It must be a number in SEK, not above the regular price. Nothing else changes
+  and no sync is started.
+* WooCommerce > Products gets a "Fulfillment" column from the Supplier Sync link (never from the
+  stock quantity): Dropshipping (Supplier now), Local first (units left), Paused, or URME Lager (not
+  supplier-linked). The Supplier catalog shows the same badge for matched products.
 * A product is synced only when all of these are true:
   1. its supplier CATEGORY is WATCH,
   2. its brand (MANUFACTURER) is enabled in Settings > Brands enabled for sync,
@@ -36,7 +58,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.2.1.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.3.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -163,6 +185,18 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.3.0 =
+* Supplier catalog: "URME stock" column (current WooCommerce stock of the linked or uniquely matched
+  product/variation) and filters "URME stock" and "Ready for supplier sync".
+* Per-product "Start supplier sync" (URME stock 0) and "Use Local first" (URME stock above 0, current
+  stock and cost kept), "Sync now" and "Resume", only for an enabled brand and a unique match.
+* Fulfillment badges (Dropshipping / Local first (N) / Paused / URME Lager) on WooCommerce > Products
+  and in the catalog.
+* Manual sale price editor in the catalog and Selected watches. Supplier sync still never changes
+  regular or sale prices.
+* Faster admin pages: the catalog needs 28 plugin queries at any page size (was 45); the price-review
+  notice loads its products in bulk.
 
 = 1.2.1 =
 * Fix: saving the Settings page could remove brands that were enabled after the page was opened

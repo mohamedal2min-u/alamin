@@ -239,6 +239,78 @@ class URME_SS_Store {
 		);
 	}
 
+	/**
+	 * Current WooCommerce stock of many products/variations, read in bulk (a constant number of
+	 * queries for any number of IDs). Read only. A variation whose stock is managed by its parent
+	 * reports the parent's stock (that is where WooCommerce keeps it).
+	 *
+	 * @param int[] $ids Exact product or variation IDs.
+	 * @return array<int, array{managed: bool, qty: int|null, backorders: string, status: string, by_parent: bool, variable: bool, regular: string, sale: string}|null>
+	 */
+	/**
+	 * Load posts, meta and terms of many products (and of their variations' parents) in a
+	 * constant number of queries, so reading them afterwards costs no query per product.
+	 *
+	 * @param int[] $ids Product or variation IDs.
+	 * @return int[] The IDs, cleaned.
+	 */
+	public static function prime_products( array $ids ) {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		if ( ! $ids ) {
+			return array();
+		}
+		_prime_post_caches( $ids, false, false );
+		$parents = array();
+		foreach ( $ids as $id ) {
+			$post = get_post( $id );
+			if ( $post && 'product_variation' === $post->post_type && $post->post_parent ) {
+				$parents[] = (int) $post->post_parent;
+			}
+		}
+		if ( $parents ) {
+			_prime_post_caches( $parents, false, false );
+		}
+		update_meta_cache( 'post', array_merge( $ids, $parents ) );
+		update_object_term_cache( array_merge( $ids, $parents ), 'product' );
+		return $ids;
+	}
+
+	public static function stock_info( array $ids ) {
+		$ids = self::prime_products( $ids );
+		if ( ! $ids ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $ids as $id ) {
+			$post = get_post( $id );
+			if ( ! $post || ! in_array( $post->post_type, array( 'product', 'product_variation' ), true ) || 'trash' === $post->post_status ) {
+				$out[ $id ] = null;
+				continue;
+			}
+			$stock_id  = $id;
+			$by_parent = false;
+			if ( 'yes' !== get_post_meta( $id, '_manage_stock', true ) && 'product_variation' === $post->post_type && $post->post_parent && 'yes' === get_post_meta( $post->post_parent, '_manage_stock', true ) ) {
+				$stock_id  = (int) $post->post_parent;
+				$by_parent = true;
+			}
+			$managed    = 'yes' === get_post_meta( $stock_id, '_manage_stock', true );
+			$backorders = (string) get_post_meta( $stock_id, '_backorders', true );
+			$types      = 'product' === $post->post_type ? get_the_terms( $id, 'product_type' ) : false;
+			$out[ $id ] = array(
+				'managed'    => $managed,
+				'qty'        => $managed ? (int) wc_stock_amount( get_post_meta( $stock_id, '_stock', true ) ) : null,
+				'backorders' => '' === $backorders ? 'no' : $backorders,
+				'status'     => (string) get_post_meta( $id, '_stock_status', true ),
+				'by_parent'  => $by_parent,
+				'variable'   => is_array( $types ) && in_array( 'variable', wp_list_pluck( $types, 'slug' ), true ),
+				'regular'    => (string) get_post_meta( $id, '_regular_price', true ),
+				'sale'       => (string) get_post_meta( $id, '_sale_price', true ),
+			);
+		}
+		return $out;
+	}
+
 	/* ---------------------------------------------------------------------
 	 * The two product writes
 	 * ------------------------------------------------------------------- */

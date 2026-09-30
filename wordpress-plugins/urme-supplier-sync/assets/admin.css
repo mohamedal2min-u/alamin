@@ -62,3 +62,7 @@
 .urme-ss .urme-new-age { color: #b32d2e; }
 .urme-ss .urme-hint-col { min-width: 170px; }
 .urme-ss .urme-hint { font-size: 12px; line-height: 1.5; text-align: left; white-space: nowrap; }
+.urme-ss .urme-stock-col { min-width: 90px; }
+.urme-ss .urme-warn { color: #996800; }
+.urme-ss .urme-price-edit { margin-top: 6px; }
+.urme-ss .urme-price-edit input { width: 80px; }

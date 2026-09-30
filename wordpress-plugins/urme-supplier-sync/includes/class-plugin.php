@@ -30,7 +30,8 @@ class URME_SS_Plugin {
 			return;
 		}
 		URME_SS_DB::maybe_upgrade();
-		if ( get_option( 'urme_ss_schema_error' ) ) {
+		// The error is deleted before the current version is recorded, so it can only exist while the version is behind.
+		if ( get_option( 'urme_ss_db_version' ) !== URME_SS_DB_VERSION && get_option( 'urme_ss_schema_error' ) ) {
 			add_action(
 				'admin_notices',
 				static function () {
@@ -44,6 +45,8 @@ class URME_SS_Plugin {
 			URME_SS_Fulfillment::init();
 			// Admin-only "Price review required" notices.
 			URME_SS_Price_Review::init();
+			// Admin-only Fulfillment column (URME Lager / Dropshipping / Local first / Paused) on WooCommerce > Products.
+			URME_SS_Product_Source::init();
 		}
 		// Self-heal the schedule if it was lost (e.g. after a migration).
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {

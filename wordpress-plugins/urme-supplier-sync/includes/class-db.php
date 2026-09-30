@@ -459,12 +459,41 @@ class URME_SS_DB {
 			$where[] = 'l.id IS NULL';
 		}
 
+		// URME stock of the linked product, or of the unique confirmed match (joined only when filtering on it).
+		$joins = '';
+		$urme  = in_array( $args['urme_stock'] ?? '', array( 'in', 'out', 'unmanaged' ), true ) ? $args['urme_stock'] : '';
+		$ready = ! empty( $args['ready'] );
+		if ( $urme || $ready ) {
+			$pm      = $wpdb->postmeta;
+			$joins   = " LEFT JOIN {$wpdb->posts} up ON up.ID = (CASE WHEN l.product_id > 0 THEN l.product_id WHEN c.match_status = 'exists' THEN c.match_product_id ELSE 0 END) AND up.post_status <> 'trash'"
+				. " LEFT JOIN {$pm} ums ON ums.post_id = up.ID AND ums.meta_key = '_manage_stock'"
+				. " LEFT JOIN {$pm} ust ON ust.post_id = up.ID AND ust.meta_key = '_stock'"
+				. " LEFT JOIN {$pm} pms ON pms.post_id = up.post_parent AND up.post_parent > 0 AND pms.meta_key = '_manage_stock'"
+				. " LEFT JOIN {$pm} pst ON pst.post_id = up.post_parent AND up.post_parent > 0 AND pst.meta_key = '_stock'";
+			$own     = "COALESCE(ums.meta_value, '') = 'yes'";
+			$managed = "({$own} OR (up.post_type = 'product_variation' AND COALESCE(pms.meta_value, '') = 'yes'))";
+			$qty     = "(CASE WHEN {$own} THEN COALESCE(ust.meta_value, '0') ELSE COALESCE(pst.meta_value, '0') END + 0)";
+			if ( 'in' === $urme ) {
+				$where[] = "up.ID IS NOT NULL AND {$managed} AND {$qty} > 0";
+			} elseif ( 'out' === $urme ) {
+				$where[] = "up.ID IS NOT NULL AND {$managed} AND {$qty} <= 0";
+			} elseif ( 'unmanaged' === $urme ) {
+				$where[] = "up.ID IS NOT NULL AND NOT {$managed}";
+			}
+			if ( $ready ) {
+				// Ready for supplier sync: brand on, unique match, not selected, still in the feed, URME stock 0.
+				$where[] = self::brand_condition( true, $params );
+				$where[] = "c.in_feed = 1 AND c.match_status = 'exists' AND c.match_product_id > 0 AND l.id IS NULL AND up.ID IS NOT NULL AND {$managed} AND {$qty} <= 0";
+				$where[] = "NOT EXISTS (SELECT 1 FROM {$l} lx WHERE lx.product_id = c.match_product_id)";
+			}
+		}
+
 		$per_page = max( 10, min( 200, (int) ( $args['per_page'] ?? 50 ) ) );
 		$page     = max( 1, (int) ( $args['page'] ?? 1 ) );
-		$from     = "FROM {$c} c LEFT JOIN {$l} l ON l.item_key = c.item_key WHERE " . implode( ' AND ', $where );
+		$from     = "FROM {$c} c LEFT JOIN {$l} l ON l.item_key = c.item_key{$joins} WHERE " . implode( ' AND ', $where );
 
 		$count_sql = "SELECT COUNT(*) {$from}";
-		$rows_sql  = "SELECT c.*, l.id AS link_id, l.product_id, l.sync_enabled, l.match_method AS link_method {$from} ORDER BY c.manufacturer ASC, c.product_no ASC LIMIT %d OFFSET %d";
+		$rows_sql  = "SELECT c.*, l.id AS link_id, l.product_id, l.sync_enabled, l.match_method AS link_method, l.stock_mode, l.local_qty, l.last_status AS link_status {$from} ORDER BY c.manufacturer ASC, c.product_no ASC LIMIT %d OFFSET %d";
 
 		// phpcs:disable WordPress.DB
 		$total = (int) $wpdb->get_var( $params ? $wpdb->prepare( $count_sql, $params ) : $count_sql );

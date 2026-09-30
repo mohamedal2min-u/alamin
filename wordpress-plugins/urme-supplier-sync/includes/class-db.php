@@ -448,7 +448,9 @@ class URME_SS_DB {
 		$joins = '';
 		$urme  = in_array( $args['urme_stock'] ?? '', array( 'in', 'out', 'unmanaged' ), true ) ? $args['urme_stock'] : '';
 		$ready = ! empty( $args['ready'] );
-		if ( $urme || $ready ) {
+		$hide  = ! empty( $args['hide_stocked'] );
+		$order = "CASE WHEN l.product_id > 0 OR c.match_status = 'exists' THEN 0 WHEN c.match_status = 'review' THEN 1 ELSE 2 END";
+		if ( $urme || $ready || $hide ) {
 			$pm      = $wpdb->postmeta;
 			$joins   = " LEFT JOIN {$wpdb->posts} up ON up.ID = (CASE WHEN l.product_id > 0 THEN l.product_id WHEN c.match_status = 'exists' THEN c.match_product_id ELSE 0 END) AND up.post_status <> 'trash'"
 				. " LEFT JOIN {$pm} ums ON ums.post_id = up.ID AND ums.meta_key = '_manage_stock'"
@@ -471,6 +473,12 @@ class URME_SS_DB {
 				$where[] = "c.in_feed = 1 AND c.match_status = 'exists' AND c.match_product_id > 0 AND l.id IS NULL AND up.ID IS NOT NULL AND {$managed} AND {$qty} <= 0";
 				$where[] = "NOT EXISTS (SELECT 1 FROM {$l} lx WHERE lx.product_id = c.match_product_id)";
 			}
+			if ( $hide ) {
+				// Watches with URME stock need nothing here: hidden until their stock is 0 (never a selected one).
+				$where[] = "NOT ( l.id IS NULL AND up.ID IS NOT NULL AND {$managed} AND {$qty} > 0 )";
+			}
+			// Watches in the store at URME stock 0, not selected yet (ready for Dropshipping), come first.
+			$order = "CASE WHEN l.id IS NULL AND c.match_status = 'exists' AND up.ID IS NOT NULL AND {$managed} AND {$qty} <= 0 THEN 0 WHEN l.product_id > 0 THEN 1 WHEN c.match_status = 'exists' THEN 2 WHEN c.match_status = 'review' THEN 3 ELSE 4 END";
 		}
 
 		$per_page = max( 10, min( 200, (int) ( $args['per_page'] ?? 50 ) ) );
@@ -478,7 +486,7 @@ class URME_SS_DB {
 		$from     = "FROM {$c} c LEFT JOIN {$l} l ON l.item_key = c.item_key{$joins} WHERE " . implode( ' AND ', $where );
 
 		$count_sql = "SELECT COUNT(*) {$from}";
-		$rows_sql  = "SELECT c.*, l.id AS link_id, l.product_id, l.sync_enabled, l.match_method AS link_method, l.stock_mode, l.local_qty, l.last_status AS link_status, l.last_message AS link_message {$from} ORDER BY CASE WHEN l.product_id > 0 OR c.match_status = 'exists' THEN 0 WHEN c.match_status = 'review' THEN 1 ELSE 2 END, c.manufacturer ASC, c.product_no ASC, c.item_key ASC LIMIT %d OFFSET %d";
+		$rows_sql  = "SELECT c.*, l.id AS link_id, l.product_id, l.sync_enabled, l.match_method AS link_method, l.stock_mode, l.local_qty, l.last_status AS link_status, l.last_message AS link_message {$from} ORDER BY {$order}, c.manufacturer ASC, c.product_no ASC, c.item_key ASC LIMIT %d OFFSET %d";
 
 		// phpcs:disable WordPress.DB
 		$total = (int) $wpdb->get_var( $params ? $wpdb->prepare( $count_sql, $params ) : $count_sql );

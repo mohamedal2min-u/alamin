@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -36,7 +36,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.2.0.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.2.1.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -84,7 +84,9 @@ Per selected watch, under Selected watches > Mode:
   but never written while local units remain. When the last local unit is sold, the next
   safe sync (fresh, successful feed) switches the watch to Supplier now and syncs supplier
   stock and EUR -> SEK cost. Until then the product is out of stock.
-* Paused: nothing is synced; Local first state is kept.
+* Paused: nothing is synced. The product's current WooCommerce stock and cost stay exactly as they
+  are (nothing is restored); the link is kept, so sync can be turned on again later. Local first
+  state is kept.
 
 Every order line of a linked product is booked in a ledger table (urme_ss_alloc) as local or
 supplier units, in one database transaction together with the local stock count, so a crash
@@ -159,6 +161,16 @@ available in Settings.
 Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job, e.g.
 `*/15 * * * * curl -s https://urme.se/wp-cron.php?doing_wp_cron > /dev/null`
 or `wp cron event run --due-now` from the server.
+
+== Changelog ==
+
+= 1.2.1 =
+* Fix: saving the Settings page could remove brands that were enabled after the page was opened
+  (e.g. with "Enable brand sync" in the catalog); their watches were then skipped. Only the
+  changes made on the page are applied now, and every change to the enabled brands is logged.
+* Fix: "Last synced" is recorded after every successful sync, also when nothing had to change.
+* Fix: a Paused watch is never written to, also when an order with one of its local units is
+  cancelled or refunded.
 
 == Uninstall ==
 

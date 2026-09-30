@@ -210,4 +210,44 @@ bs_set( $B1, 1, 480 );
 run( array( 'trigger' => 'manual' ) ); // What "Sync now" calls.
 $b = bs_state( $B1 );
 ok( 8 === $b['stock'] && abs( $b['cogs'] - $sek ) < 0.001 && 'manual' === sync_stats()['trigger'], 'manual Sync now: same result', $b );
+
+section( 'BS-P1. Paused: supplier stock and cost stop, current values kept, link kept' );
+$lb1 = URME_SS_DB::get_link( key_of( 132 ) );
+bs_set( $B1, 6, 777 ); // The admin's own values at the moment of pausing.
+admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb1['id'] ), 'paused' );
+nf_feed( $feed_n, array_merge( $BS_SET, array( 'REF000132' => array( 'MANUFACTURER' => 'BOSS', 'STOCK' => '11', 'PURCHASE_PRICE' => '200.00' ) ) ) );
+run();
+do_action( URME_SS_Plugin::CRON_HOOK );
+URME_SS_Log::flush();
+$b = bs_state( $B1 );
+$l = URME_SS_DB::get_link( key_of( 132 ) );
+ok( 6 === $b['stock'] && abs( $b['cogs'] - 777 ) < 0.001, 'P1. paused: supplier stock 11 and cost 200 EUR not applied; stock 6 and COGS 777 kept as they were', $b );
+ok( 2 !== $b['stock'] && abs( $b['cogs'] - 480 ) > 1, '   no old/original values restored (not 2 / 480)', $b );
+ok( $l && (int) $l['product_id'] === $B1 && 0 === (int) $l['sync_enabled'] && 'supplier' === $l['stock_mode'], '   link kept (same product), sync off', $l );
+ok( '4990' === $b['regular'] && '4490' === $b['sale'], '   selling prices unchanged' );
+admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb1['id'] ), 'supplier' );
+run();
+$b = bs_state( $B1 );
+ok( 11 === $b['stock'] && abs( $b['cogs'] - round( 200 * 11.321, 2 ) ) < 0.001, '   resumed with "Supplier now": supplier stock 11 and 200 EUR × rate synced again', $b );
+
+section( 'BS-P2. Paused: a returned local unit does not overwrite stock or cost' );
+$lb2 = URME_SS_DB::get_link( key_of( 138 ) );
+URME_SS_Inventory::enable_local( (int) $lb2['id'], 1, 900 ); // One own unit, local cost 900.
+$o = lf_order( $B2, 1 );                                      // Sold from local stock…
+run();                                                        // …then switched to supplier in a safe sync.
+ok( 'supplier' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'] && 3 === bs_state( $B2 )['stock'], '   (setup: local unit sold, watch switched to supplier, stock 3)', bs_state( $B2 ) );
+admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb2['id'] ), 'paused' );
+bs_set( $B2, 7, 555 );                                        // Admin's own values while paused.
+wc_get_order( $o->get_id() )->update_status( 'cancelled' );   // The local unit comes back; WooCommerce restocks it (+1).
+$b = bs_state( $B2 );
+ok( 8 === $b['stock'] && abs( $b['cogs'] - 555 ) < 0.001, 'P2. paused: only WooCommerce\'s own restock (7 → 8); the plugin does not set stock to the local count (1) or cost to 900', $b );
+run();
+$b = bs_state( $B2 );
+ok( 8 === $b['stock'] && abs( $b['cogs'] - 555 ) < 0.001, '   still unchanged after the next sync', $b );
+$_POST['confirm_drop'] = '1';
+admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb2['id'] ), 'supplier' );
+unset( $_POST['confirm_drop'] );
+run();
+$b = bs_state( $B2 );
+ok( 3 === $b['stock'] && abs( $b['cogs'] - round( 150 * 11.321, 2 ) ) < 0.001, '   resumed with "Supplier now": supplier stock 3 and 150 EUR × rate', $b );
 settings( array( 'rate_override' => '' ) );

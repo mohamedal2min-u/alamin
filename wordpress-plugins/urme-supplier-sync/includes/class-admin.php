@@ -844,7 +844,9 @@ class URME_SS_Admin {
 		$default_view = '' === $f['brand_sync'] && ! $narrowed && URME_SS_Settings::enabled_brand_keys();
 		$per_page     = $f['per_page'] ? (int) $f['per_page'] : 50;
 
-		$result  = URME_SS_DB::search_catalog( array_merge( $f, array( 'brand_sync' => $default_view ? 'on' : $f['brand_sync'], 'page' => $page, 'per_page' => $per_page ) ) );
+		// Watches with URME stock are hidden until their stock is 0 (a search or "URME stock: In stock" shows them).
+		$hide_stocked = '' === $f['productno'] && '' === $f['ean'] && '' === $f['q'] && 'in' !== $f['urme_stock'];
+		$result       = URME_SS_DB::search_catalog( array_merge( $f, array( 'brand_sync' => $default_view ? 'on' : $f['brand_sync'], 'hide_stocked' => $hide_stocked, 'page' => $page, 'per_page' => $per_page ) ) );
 		// Brand filter: only brands enabled for sync, plus the one filtered on now (e.g. from an old link).
 		$brands  = array_filter(
 			URME_SS_DB::brands(),
@@ -959,6 +961,9 @@ class URME_SS_Admin {
 			<?php if ( $default_view ) : ?>
 				<span class="urme-muted urme-default-view">Brands enabled for sync only (a search looks in all brands) · <a href="<?php echo esc_url( self::url( array( 'brand_sync' => 'any' ) ) ); ?>">Show all brands</a></span>
 			<?php endif; ?>
+			<?php if ( $hide_stocked ) : ?>
+				<span class="urme-muted urme-hidden-stocked">Watches with URME stock are hidden until their stock is 0 · <a href="<?php echo esc_url( self::url( array( 'urme_stock' => 'in', 'brand_sync' => 'any' ) ) ); ?>">Show them</a></span>
+			<?php endif; ?>
 			<?php
 			if ( '' !== $f['brand'] ) {
 				$on = URME_SS_Settings::brand_enabled( $f['brand'] );
@@ -974,7 +979,7 @@ class URME_SS_Admin {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="urme-select-form">
 			<?php echo self::hidden_fields( 'select' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<div class="tablenav top"><button type="submit" class="button button-primary urme-bulk" disabled>Select checked for sync</button>
-				<span class="description">Selecting is always manual. Only watches with URME stock 0 can be selected (Dropshipping); watches with URME stock stay URME Lager. Watches in your store are listed first.</span></div>
+				<span class="description">Selecting is always manual. Only watches with URME stock 0 can be selected (Dropshipping). Watches with URME stock are hidden; at stock 0 they come back at the top.</span></div>
 			<table class="widefat striped urme-table">
 				<thead><tr>
 					<td class="check-column"><input type="checkbox" class="urme-check-all" aria-label="Select all"></td>

@@ -101,7 +101,7 @@ ok( false !== strpos( URME_SS_Product_Source::html( $Z0 ), '>Dropshipping</span>
 URME_SS_Settings::set_brand( 'BOSS', false );
 URME_SS_Settings::set_brand( 'BOSS', true );
 $html = ph_catalog( array( 'brand' => 'BOSS' ) );
-ok( array( 'Dropshipping' ) === pa_badges( ca_row( $html, 'REF000180' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000228' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000234' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000216' ) ), 'Supplier catalog shows the same badge for matched products' );
+ok( array( 'Dropshipping' ) === pa_badges( ca_row( $html, 'REF000180' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000228' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000234' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( ph_catalog( array( 'brand' => 'BOSS', 'urme_stock' => 'in' ) ), 'REF000216' ) ), 'Supplier catalog shows the same badge for matched products' );
 ok( array() === pa_badges( ca_row( $html, 'REF000192' ) ) && array() === pa_badges( ca_row( $html, 'REF000198' ) ), '   no badge for Not in URME / Needs review' );
 
 section( 'PA5–10. Manual sale price: 4490 → 4290' );

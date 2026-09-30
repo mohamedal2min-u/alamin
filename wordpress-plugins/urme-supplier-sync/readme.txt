@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.6.1
+Stable tag: 1.6.2
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -15,6 +15,9 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 * WooCommerce > Supplier Sync shows every supplier watch with image (loaded from the supplier,
   nothing is added to the Media Library), brand, model (PRODUCTNO), EAN (ITEM_ID), supplier stock,
   cost in EUR and cost in SEK.
+* Watches with URME stock (URME Lager, stock above 0, not selected) are hidden from the catalog:
+  there is nothing to do on them. When their stock reaches 0 they come back at the very top, ready
+  for "Dropshipping". A Model / EAN / Text search or "URME stock: In stock" still shows them.
 * The catalog lists the watches in your store first (linked, or a unique URME match), then Needs
   review, then Not in URME; brand and model order inside each group. Compact columns: brand above
   the product name, model (PRODUCTNO) above the EAN, EUR cost above SEK cost.
@@ -106,7 +109,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.6.1.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.6.2.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -218,6 +221,11 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.6.2 =
+* Supplier catalog: watches with URME stock are hidden until their stock is 0; watches at URME
+  stock 0 (not selected yet, ready for Dropshipping) are listed first, then Dropshipping. A search
+  or "URME stock: In stock" still shows the hidden ones.
 
 = 1.6.1 =
 * Selling price hint: the target profit is a percentage of the cost (default 20%, Settings >

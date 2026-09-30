@@ -123,12 +123,13 @@ ok( 1 === preg_match( '#<th class="num">Supplier stock</th>\s*<th class="num urm
 $r = ca_row( $html, 'REF000180' );
 ok( '0 / Out of stock' === ca_stock_cell( $r ) && false !== strpos( $r, 'urme-bad">0 / Out of stock' ), 'stock 0: red "0 / Out of stock"', ca_stock_cell( $r ) );
 ok( false !== strpos( $r, 'value="start_supplier|' . key_of( 180 ) . '"' ) && false === strpos( $r, 'start_local|' ), '   → "Start supplier sync" only' );
-$r = ca_row( $html, 'REF000186' );
+$html_in = ph_catalog( array( 'brand' => 'BOSS', 'urme_stock' => 'in' ) ); // (1.6.2) Watches with URME stock are listed on request only.
+$r = ca_row( $html_in, 'REF000186' );
 ok( '3' === ca_stock_cell( $r ) && false !== strpos( $r, 'urme-good">3<' ), 'stock 3: green 3', ca_stock_cell( $r ) );
 ok( false === strpos( $r, 'start_local|' ) && false === strpos( $r, 'start_supplier|' ) && false !== strpos( $r, 'URME Lager (3 in stock) – Dropshipping is possible at stock 0' ), '   → no button (stays URME Lager), note shown' );
 $r = ca_row( $html, 'REF000210' );
 ok( '0 / Out of stock' === ca_stock_cell( $r ) && false !== strpos( $r, 'start_supplier|' . key_of( 210 ) ), 'variation: its own stock (0) shown, Start supplier sync offered', ca_stock_cell( $r ) );
-$r = ca_row( $html, 'REF000216' );
+$r = ca_row( $html_in, 'REF000216' );
 ok( '2 Backorders allowed' === ca_stock_cell( $r ) && false === strpos( $r, 'start_local|' ) && false === strpos( $r, 'start_supplier|' ) && false !== strpos( $r, 'URME Lager (2 in stock)' ), 'backorders: stock 2 + "Backorders allowed"; no button, note shown', ca_stock_cell( $r ) );
 $r = ca_row( $html, 'REF000222' );
 ok( 0 === strpos( (string) ca_stock_cell( $r ), 'Not managed' ) && false === strpos( $r, 'start_' ), 'stock not managed: "Not managed", no button', ca_stock_cell( $r ) );
@@ -151,10 +152,10 @@ $all = URME_SS_DB::search_catalog( array( 'per_page' => 1 ) )['total'];
 ok( $all === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_DB::catalog_table() . " WHERE in_feed = 1 AND category = 'WATCH'" ) && 0 < URME_SS_DB::search_catalog( array( 'brand' => 'Casio', 'per_page' => 1 ) )['total'], '   "All brands" still lists every watch, disabled brands included', $all );
 // 1.5.6: opening the catalog (no filter at all) shows only the brands enabled for sync.
 $open = ph_catalog( array() );
-$want = URME_SS_DB::search_catalog( array( 'brand_sync' => 'on', 'per_page' => 1 ) )['total'];
+$want = URME_SS_DB::search_catalog( array( 'brand_sync' => 'on', 'hide_stocked' => true, 'per_page' => 1 ) )['total'];
 ok( '' === ca_row( $open, 'REF000204' ) && '' !== ca_row( $open, 'REF000180' ) && false !== strpos( $open, number_format_i18n( $want ) . ' watches found' ) && false !== strpos( $open, 'Brands enabled for sync only (a search looks in all brands)' ) && 0 === preg_match( '#<select name="brand_sync">(?:(?!</select>).)*selected=#s', $open ), sprintf( 'catalog opens with the enabled brands only (%d watches; Casio, disabled, not listed); "Brand sync: Default (enabled brands)"', $want ) );
 $anyb = ph_catalog( array( 'brand_sync' => 'any', 'brand' => '' ) );
-ok( '' !== ca_row( $anyb, 'REF000204' ) && false !== strpos( $anyb, number_format_i18n( $all ) . ' watches found' ) && 1 === preg_match( '#<option value="any"\s+selected=\'selected\'>All brands</option>#', $anyb ) && false === strpos( $anyb, 'Brands enabled for sync only' ), '   "Brand sync: All brands" lists every watch, disabled brands included' );
+ok( '' !== ca_row( $anyb, 'REF000204' ) && false !== strpos( $anyb, number_format_i18n( URME_SS_DB::search_catalog( array( 'hide_stocked' => true, 'per_page' => 1 ) )['total'] ) . ' watches found' ) && 1 === preg_match( '#<option value="any"\s+selected=\'selected\'>All brands</option>#', $anyb ) && false === strpos( $anyb, 'Brands enabled for sync only' ), '   "Brand sync: All brands" lists every watch, disabled brands included' );
 $p2    = ph_catalog( array( 'paged' => 2 ) );
 preg_match_all( '#<span class="urme-brand">([^<]+)</span>#', $p2, $b2 );
 $p2_on = array_filter( $b2[1], static function ( $b ) { return URME_SS_Settings::brand_enabled( html_entity_decode( $b ) ); } );
@@ -228,7 +229,7 @@ $st = bs_state( $Z3 );
 ok( 'error' === $res[1] && null === URME_SS_DB::get_link( key_of( 186 ) ) && 3 === $st['stock'] && abs( $st['cogs'] - 650 ) < 0.001, '   Dropshipping at stock 3 refused; next sync: still 3 / 650', array( $res, $st ) );
 
 section( 'CA5. Two states only: URME Lager / Dropshipping' );
-$r  = ca_row( ph_catalog( array( 'brand' => 'BOSS' ) ), 'REF000186' );
+$r  = ca_row( ph_catalog( array( 'brand' => 'BOSS', 'urme_stock' => 'in' ) ), 'REF000186' );
 $lz = URME_SS_DB::get_link( key_of( 180 ) );
 ok( false !== strpos( ff_text( $r ), 'URME Lager' ) && false === strpos( $r, 'value="dropship|' ) && false === strpos( $r, 'value="sync|' ) && false === strpos( $r, 'resume|' ) && false === strpos( $r, 'lager|' ) && false === strpos( ff_text( $r ), 'Local first' ), 'URME Lager row: "URME Lager", no Dropshipping/Sync now/Resume/"Local first" button', ff_text( $r ) );
 $res  = admin( 'set_mode', $lz, 'paused' );
@@ -301,3 +302,33 @@ list( $q_many )       = $cold( $more );
 ok( $q_few === $q_many && 12 === $info[ $Z0 ]['qty'] && $info[ $ZV ]['managed'] && ! $info[ $ZU ]['managed'] && 'yes' === $info[ $ZB ]['backorders'], sprintf( '   stock read in bulk, cold cache: %d products %d queries, %d products %d queries (same)', count( $ids ), $q_few, count( array_unique( $more ) ), $q_many ), $info );
 remove_filter( 'pre_http_request', $count_http );
 settings( array( 'rate_override' => '' ) );
+
+section( 'CA10. (1.6.2) Watches with URME stock are hidden; at stock 0 they come back first' );
+$H3 = bs_product( 'REF000486', key_of( 486 ), 3, 600 ); // URME Lager with 3.
+$H0 = bs_product( 'REF000492', key_of( 492 ), 0, 600 ); // URME Lager at 0 (ready for Dropshipping).
+$CA_SET['REF000486'] = array( 'MANUFACTURER' => 'BOSS', 'STOCK' => '5', 'PURCHASE_PRICE' => '100.00' );
+$CA_SET['REF000492'] = array( 'MANUFACTURER' => 'BOSS', 'STOCK' => '5', 'PURCHASE_PRICE' => '100.00' );
+nf_feed( $feed_n, array_merge( $BS_SET, $CA_SET ) );
+run( array( 'force_feed' => true ) );
+$vis = ph_catalog( array( 'brand' => 'BOSS' ) );
+ok( '' === ca_row( $vis, 'REF000486' ) && '' !== ca_row( $vis, 'REF000492' ) && false !== strpos( $vis, 'Watches with URME stock are hidden until their stock is 0' ), 'URME stock 3: not listed (note shown); URME stock 0: listed' );
+ok( '' !== ca_row( $vis, 'REF000180' ), '   Dropshipping rows stay listed (their stock is the supplier\'s)' );
+ok( '' !== ca_row( ph_catalog( array( 'productno' => 'REF000486' ) ), 'REF000486' ) && '' !== ca_row( ph_catalog( array( 'brand' => 'BOSS', 'urme_stock' => 'in' ) ), 'REF000486' ), '   a Model search or "URME stock: In stock" still shows it' );
+$rows = URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 200 ) )['rows'];
+$first = $rows[0]['product_no'] ?? '';
+$ready = array();
+foreach ( $rows as $k => $r0 ) {
+	$info = URME_SS_Store::stock_info( array( (int) $r0['match_product_id'] ) )[ (int) $r0['match_product_id'] ] ?? null;
+	$ready[ $k ] = ! $r0['link_id'] && 'exists' === $r0['match_status'] && $info && $info['managed'] && $info['qty'] <= 0;
+}
+$last_ready = max( array_keys( array_filter( $ready ) ) );
+ok( $ready[0] && ! in_array( false, array_slice( $ready, 0, $last_ready + 1 ), true ), 'watches at URME stock 0, not selected yet, are listed first', array( $first, $last_ready ) );
+bs_set( $H3, 0 ); // The last units are sold.
+$rows = URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 200 ) )['rows'];
+$pos  = array_search( 'REF000486', array_column( $rows, 'product_no' ), true );
+ok( false !== $pos && $pos <= $last_ready + 1, 'stock 3 → 0: REF000486 is back, among the first rows', $pos );
+ok( false !== strpos( ca_row( ph_catalog( array( 'brand' => 'BOSS' ) ), 'REF000486' ), 'value="start_supplier|' . key_of( 486 ) . '"' ), '   with its "Dropshipping" button' );
+$p1  = wp_list_pluck( URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 10, 'page' => 1 ) )['rows'], 'item_key' );
+$p2  = wp_list_pluck( URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 10, 'page' => 2 ) )['rows'], 'item_key' );
+$tot = URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 200 ) );
+ok( array_merge( $p1, $p2 ) === array_slice( array_column( $tot['rows'], 'item_key' ), 0, 20 ) && count( $tot['rows'] ) === $tot['total'], '   paging and the count follow the same list', $tot['total'] );

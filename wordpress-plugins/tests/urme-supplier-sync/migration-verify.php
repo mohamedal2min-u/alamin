@@ -1,7 +1,9 @@
 <?php
 /**
- * Migration test, step 2 (run after swapping in plugin 1.1.0): the first load upgrades
- * DB v2 -> v3. Nothing that existed may be lost or change behaviour.
+ * Migration test, step 2 (run after swapping in the current plugin): the first load upgrades
+ * DB v2 -> v3. Supplier links of watches in sync are kept unchanged; since 1.5.2 paused links
+ * and links without a product are URME Lager and leave supplier sync once (their products are
+ * not changed). Nothing else may be lost or change behaviour.
  */
 global $wpdb;
 $pass = 0;
@@ -18,7 +20,7 @@ $ok   = static function ( $cond, $label, $extra = null ) use ( &$pass, &$fail ) 
 $snap = json_decode( file_get_contents( getenv( 'URME_MIGRATION_SNAPSHOT' ) ), true );
 
 echo "== Migration 1.0.0 -> " . URME_SS_VERSION . ' on WooCommerce ' . WC_VERSION . "\n";
-$ok( '1.1.0' === URME_SS_VERSION, 'plugin version is 1.1.0' );
+$ok( version_compare( URME_SS_VERSION, '1.1.0', '>=' ), 'plugin version ' . URME_SS_VERSION );
 $ok( '3' === get_option( 'urme_ss_db_version' ), 'database upgraded to v3', get_option( 'urme_ss_db_version' ) );
 $ok( URME_SS_DB::alloc_table() === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', URME_SS_DB::alloc_table() ) ), 'ledger table created' );
 $ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_DB::alloc_table() ), 'ledger starts empty' );
@@ -26,21 +28,22 @@ $ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_DB::alloc_tab
 $catalog = $wpdb->get_results( 'SELECT * FROM ' . URME_SS_DB::catalog_table() . ' ORDER BY id', ARRAY_A );
 $ok( $catalog === $snap['catalog'], sprintf( 'supplier catalog identical (%d rows, incl. match status)', count( $catalog ) ) );
 
-$links   = $wpdb->get_results( 'SELECT * FROM ' . URME_SS_DB::links_table() . ' ORDER BY id', ARRAY_A );
-$ok( count( $links ) === count( $snap['links'] ), sprintf( 'all %d links kept', count( $snap['links'] ) ) );
+$links    = array_column( $wpdb->get_results( 'SELECT * FROM ' . URME_SS_DB::links_table() . ' ORDER BY id', ARRAY_A ), null, 'item_key' );
+$expected = array_filter( $snap['links'], static function ( $l ) { return '0' !== (string) $l['sync_enabled'] && '0' !== (string) $l['product_id']; } );
+$removed  = array_diff( array_column( $snap['links'], 'item_key' ), array_column( $expected, 'item_key' ) );
+$ok( count( $links ) === count( $expected ) && ! array_intersect( $removed, array_keys( $links ) ), sprintf( '%d supplier links kept; %d paused / product-less links left supplier sync (1.5.2)', count( $expected ), count( $removed ) ), array( array_keys( $links ), $removed ) );
 $same    = true;
 $default = true;
-foreach ( $snap['links'] as $i => $old ) {
-	$new = $links[ $i ] ?? array();
+foreach ( $expected as $old ) {
+	$new = $links[ $old['item_key'] ] ?? array();
 	foreach ( $old as $col => $val ) {
 		$same = $same && array_key_exists( $col, $new ) && $new[ $col ] === $val;
 	}
-	$default = $default && 'supplier' === $new['stock_mode'] && '0' === $new['local_qty'] && null === $new['local_cost'] && '0' === $new['needs_stock_apply'] && null === $new['mode_changed_at'] && '' === $new['mode_note'];
+	$default = $default && 'supplier' === ( $new['stock_mode'] ?? '' ) && '0' === $new['local_qty'] && null === $new['local_cost'] && '0' === $new['needs_stock_apply'] && null === $new['mode_changed_at'] && '' === $new['mode_note'];
 }
 $ok( $same, 'every existing link column unchanged (product, match method, sync_enabled, last sync data)' );
 $ok( $default, 'new columns default to Supplier now (no local stock, nothing pending)' );
-$paused = array_values( array_filter( $links, static function ( $l ) { return '0' === $l['sync_enabled']; } ) );
-$ok( 1 === count( $paused ) && '4900000000018' === $paused[0]['item_key'], 'paused link still paused' );
+$ok( in_array( '4900000000018', $removed, true ) && ! isset( $links['4900000000018'] ), 'the paused link is URME Lager now (left supplier sync); its product is checked below' );
 
 $ok( get_option( 'urme_ss_settings' ) === $snap['options']['settings'], 'settings unchanged (brands, cost field, safety values)' );
 $ok( get_option( 'urme_ss_feed_state' ) === $snap['options']['feed_state'], 'feed state (ETag/hash) unchanged' );
@@ -58,10 +61,10 @@ foreach ( $snap['products'] as $id => $old ) {
 }
 $ok( $same, 'products unchanged by syncs after the upgrade (no behaviour change)' );
 $sync = get_option( 'urme_ss_status' )['sync'];
-$ok( 0 === $sync['stock_updated'] && 0 === $sync['cost_updated'] && 0 === $sync['local_waiting'] && 0 === $sync['handovers'] && 0 === $sync['errors'], 'sync after upgrade: no updates, no local first, no errors', $sync );
+$ok( 0 === $sync['stock_updated'] && 0 === $sync['cost_updated'] && 0 === $sync['errors'], 'sync after upgrade: no updates, no local first, no errors', $sync );
 $ok( ! in_array( 'local_first', $wpdb->get_col( 'SELECT stock_mode FROM ' . URME_SS_DB::links_table() ), true ), 'no link switched to Local first by itself' );
 $ok( array() === URME_SS_DB::missing_columns(), 'all new columns present (links, ledger incl. frozen source, price reviews)', URME_SS_DB::missing_columns() );
-$ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() ) && 0 === URME_SS_Price_Review::pending_count(), 'no price reviews created by the upgrade or the syncs after it' );
+$ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_DB::reviews_table() ), 'no price reviews created by the upgrade or the syncs after it' );
 $ok( (int) get_option( 'urme_ss_ledger_since' ) > 0, 'ledger start time recorded (older orders show Unknown / Legacy order)' );
 $ok( '' !== (string) get_option( 'urme_ss_new_since' ) && 0 === URME_SS_DB::new_count(), sprintf( 'existing %d catalog watches are not shown as NEW after the upgrade', count( $snap['catalog'] ) ), URME_SS_DB::new_count() );
 $old_orders = wc_get_orders( array( 'limit' => 5, 'return' => 'ids' ) );

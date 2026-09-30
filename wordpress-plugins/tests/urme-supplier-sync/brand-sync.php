@@ -245,12 +245,11 @@ $r = admin( 'run_row_action', 'start_supplier|' . key_of( 132 ) );
 $b = bs_state( $B1 );
 ok( 'success' === $r[1] && 11 === $b['stock'] && abs( $b['cogs'] - round( 200 * 11.321, 2 ) ) < 0.001, '   at stock 0: Dropshipping again from the catalog, supplier stock 11 and 200 EUR × rate synced', array( $r, $b ) );
 
-section( 'BS-P2. URME Lager sold out → Dropshipping; a returned unit keeps it Dropshipping until "URME Lager"' );
+section( 'BS-P2. A returned unit keeps a watch Dropshipping until "URME Lager"' );
 $lb2 = URME_SS_DB::get_link( key_of( 138 ) );
-URME_SS_Inventory::enable_local( (int) $lb2['id'], 1, 900 ); // A legacy Local first link: one own unit, local cost 900.
-$o = lf_order( $B2, 1 );                                      // Sold: stock 0…
-run();                                                        // …Dropshipping.
-ok( 'supplier' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'] && 3 === bs_state( $B2 )['stock'], '   (setup: last URME unit sold, now Dropshipping with supplier stock 3)', bs_state( $B2 ) );
+$o   = lf_order( $B2, 1 ); // A Dropshipping unit is sold…
+run();                     // …and the sync writes the supplier stock again.
+ok( 'supplier' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'] && 3 === bs_state( $B2 )['stock'], '   (setup: Dropshipping with supplier stock 3, one unit sold)', bs_state( $B2 ) );
 wc_get_order( $o->get_id() )->update_status( 'cancelled' );   // The URME unit comes back (WooCommerce restocks it).
 run();
 ok( 'supplier' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'] && 3 === bs_state( $B2 )['stock'], 'P2. the returned URME unit: still Dropshipping, supplier stock 3 (1.5.2: no automatic switch)', bs_state( $B2 ) );

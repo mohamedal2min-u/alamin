@@ -42,20 +42,7 @@ foreach ( $ids as $id ) {
 }
 ok( $ok_states, '   the states are the same as when asked one by one' );
 
-section( 'LT3. Admin pages: the price-review notice costs one count, only' );
-$wpdb->query( $wpdb->prepare( 'UPDATE ' . URME_SS_Price_Review::table() . ' SET status = %s WHERE status = %s', 'reviewed', 'pending' ) ); // phpcs:ignore WordPress.DB
-$pp = new ReflectionProperty( 'URME_SS_Price_Review', 'pending' );
-$pp->setAccessible( true );
-$pp->setValue( null, null );
-set_current_screen( 'dashboard' ); // An admin page.
-$q0 = $wpdb->num_queries;
-ob_start();
-URME_SS_Price_Review::render_notice();
-$notice = ob_get_clean();
-$GLOBALS['current_screen'] = null;
-ok( '' === $notice && 1 === $wpdb->num_queries - $q0, 'nothing pending: no notice, 1 query (the count the menu badge uses anyway)', $wpdb->num_queries - $q0 );
+section( 'LT3. Admin pages: no Price Review (removed in 1.6.0)' );
 $page = ff_admin_html( array( 'URME_SS_Admin', 'render' ) );
-ok( false !== strpos( $page, '>Price Review<' ), '   reviewed items exist: the Price Review tab stays' );
-$wpdb->query( 'DELETE FROM ' . URME_SS_Price_Review::table() ); // phpcs:ignore WordPress.DB
-$page = ff_admin_html( array( 'URME_SS_Admin', 'render' ) );
-ok( false === strpos( $page, 'Price Review' ) && false !== strpos( $page, '>Supplier catalog<' ), '   no reviews at all (none are created since 1.5.2): the tab is hidden' );
+$notices = ff_admin_html( static function () { do_action( 'admin_notices' ); } );
+ok( false === strpos( $page, 'Price Review' ) && false === stripos( $notices, 'price review' ) && false !== strpos( $page, '>Supplier catalog<' ), 'no Price Review tab, notice or menu badge' );

@@ -416,6 +416,6 @@ class URME_SS_Fulfillment {
 			return;
 		}
 		$done = true;
-		echo '<style>.urme-ff{display:inline-flex;align-items:center;gap:2px;font-weight:600;white-space:nowrap}.urme-ff .dashicons{font-size:16px;width:16px;height:16px}.urme-ff-local{color:#7a4ec2}.urme-ff-dropship{color:#2271b1}.urme-ff-mixed{color:#8a6100}.urme-ff-legacy,.urme-ff-pending,.urme-ff-untracked,.urme-ff-none{color:#646970;font-weight:400}.urme-ff-line{margin-top:4px}</style>';
+		echo '<style>.urme-ff{display:inline-flex;align-items:center;gap:2px;font-weight:600;white-space:nowrap}.urme-ff .dashicons{font-size:16px;width:16px;height:16px}.urme-ff-local{color:#00701a}.urme-ff-dropship{color:#2271b1}.urme-ff-mixed{color:#8a6100}.urme-ff-legacy,.urme-ff-pending,.urme-ff-untracked,.urme-ff-none{color:#646970;font-weight:400}.urme-ff-line{margin-top:4px}</style>';
 	}
 }

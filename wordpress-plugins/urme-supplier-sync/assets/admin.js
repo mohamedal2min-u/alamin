@@ -109,15 +109,3 @@
 		$( '.urme-brand-list input[type=checkbox]' ).prop( 'checked', $( this ).hasClass( 'urme-brands-all' ) );
 	} );
 } )( jQuery );
-
-( function ( $ ) {
-	// URME Lager stock has priority: the server refuses Dropshipping while the stock is above 0 (no override).
-	$( document ).on( 'submit', '.urme-mode-form', function ( e ) {
-		var $form = $( this ),
-			units = parseInt( $form.data( 'local-units' ), 10 ) || 0;
-		if ( 'supplier' === $form.find( 'select[name=mode]' ).val() && units > 0 ) {
-			e.preventDefault();
-			window.alert( 'URME Lager stock is ' + units + '. Dropshipping can only start when the URME Lager stock is 0.' );
-		}
-	} );
-} )( jQuery );

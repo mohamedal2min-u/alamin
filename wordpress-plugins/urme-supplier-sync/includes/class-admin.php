@@ -86,7 +86,7 @@ class URME_SS_Admin {
 
 	/**
 	 * @param array $post Unslashed request: nonce, row_action ("sale|<item_key>", "start_supplier|<item_key>",
-	 *                    "start_local|<item_key>", "dropship|<link_id>", "sync|<link_id>"), sale_price.
+	 *                    "dropship|<link_id>", "lager|<link_id>", "sync|<link_id>"), sale_price.
 	 * @return array{success: bool, status: int, data: array}
 	 */
 	private static function row_ajax( array $post ) {
@@ -114,8 +114,8 @@ class URME_SS_Admin {
 			$key    = $arg;
 			$raw    = ( isset( $post['sale_price'] ) && is_scalar( $post['sale_price'] ) ) ? sanitize_text_field( (string) $post['sale_price'] ) : null;
 			$result = self::save_sale_price( $key, $raw );
-		} elseif ( in_array( $op, array( 'start_supplier', 'start_local', 'dropship', 'resume', 'sync' ), true ) ) {
-			$key    = in_array( $op, array( 'dropship', 'resume', 'sync' ), true ) ? (string) ( URME_SS_DB::get_link_by_id( absint( $arg ) )['item_key'] ?? '' ) : $arg;
+		} elseif ( in_array( $op, array( 'start_supplier', 'start_local', 'dropship', 'lager', 'resume', 'sync' ), true ) ) {
+			$key    = in_array( $op, array( 'dropship', 'lager', 'resume', 'sync' ), true ) ? (string) ( URME_SS_DB::get_link_by_id( absint( $arg ) )['item_key'] ?? '' ) : $arg;
 			$result = self::run_row_action( $action );
 		} else {
 			return $fail( 400, 'Unknown action.' );
@@ -126,7 +126,6 @@ class URME_SS_Admin {
 			'data'    => array(
 				'type'     => $result[1],
 				'message'  => $result[0],
-				'suggest'  => $result[2] ?? '',
 				'key'      => $key,
 				'row_html' => '' !== $key ? self::catalog_row_html( $key ) : '',
 			),
@@ -196,72 +195,9 @@ class URME_SS_Admin {
 				self::notice_result( self::select_items( $keys ) );
 				break;
 
-			case 'unselect':
-				$link = URME_SS_DB::get_link_by_id( absint( $_POST['link_id'] ?? 0 ) );
-				if ( $link ) {
-					URME_SS_DB::delete_link( $link['id'] );
-					self::notice( 'Removed from sync. The WooCommerce product was not changed.' );
-				}
-				break;
-
-			case 'link':
-				$link = URME_SS_DB::get_link_by_id( absint( $_POST['link_id'] ?? 0 ) );
-				$pid  = absint( $_POST['product_id'] ?? 0 );
-				self::notice( self::link_product( $link, $pid ) );
-				break;
-
-			case 'unlink':
-				$link = URME_SS_DB::get_link_by_id( absint( $_POST['link_id'] ?? 0 ) );
-				if ( $link ) {
-					URME_SS_DB::update_link(
-						$link['id'],
-						array(
-							'product_id'   => 0,
-							'match_method' => '',
-							'last_status'  => 'unlinked',
-							'last_message' => 'Unlinked manually.',
-						)
-					);
-					self::notice( 'Product unlinked. The WooCommerce product was not changed.' );
-				}
-				break;
-
-			case 'automatch':
-				self::notice( self::automatch( absint( $_POST['link_id'] ?? 0 ) ) );
-				break;
-
-			case 'save_sale':
-				$raw = wp_unslash( $_POST['sale_price'] ?? null );
-				self::notice_result( self::save_sale_price( sanitize_text_field( wp_unslash( $_POST['item_key'] ?? '' ) ), null === $raw ? null : sanitize_text_field( (string) $raw ) ) );
-				break;
-
 			case 'review_done':
 				$ok = URME_SS_Price_Review::mark_reviewed( absint( $_POST['review_id'] ?? 0 ) );
 				self::notice( $ok ? 'Marked as reviewed. The selling price was not changed by the plugin.' : 'Already reviewed.' );
-				break;
-
-			case 'set_mode':
-				self::notice_result( self::set_mode( URME_SS_DB::get_link_by_id( absint( $_POST['link_id'] ?? 0 ) ), sanitize_key( $_POST['mode'] ?? '' ) ) );
-				break;
-
-			case 'toggle':
-				self::notice( self::NO_PAUSE, 'error' );
-				break;
-
-			case 'sync_one':
-				$result = URME_SS_Sync::run(
-					array(
-						'refresh_feed' => false,
-						'link_id'      => absint( $_POST['link_id'] ?? 0 ),
-					)
-				);
-				if ( ! $result['ran'] ) {
-					self::notice( $result['message'], 'warning' );
-				} elseif ( ! empty( $result['sync']['skipped'] ) ) {
-					self::notice( 'Not synced: ' . $result['sync']['skipped'], 'warning' );
-				} else {
-					self::notice( 'Synced this product. See its status below.' );
-				}
 				break;
 
 			case 'toggle_brand':
@@ -344,23 +280,20 @@ class URME_SS_Admin {
 	 */
 	private static function held_message() {
 		$held = URME_SS_Settings::held_on_enable();
-		return $held ? sprintf( ' Kept as URME Lager because local URME stock exists (%d): %s. Supplier stock and cost were not written; they can become Dropshipping at stock 0.', count( $held ), implode( ', ', $held ) ) : '';
+		return $held ? sprintf( ' Moved to URME Lager (removed from supplier sync) because URME stock exists (%d): %s. Their stock and cost were not changed.', count( $held ), implode( ', ', $held ) ) : '';
 	}
 
 	/**
-	 * "Select checked for sync": each checked watch is handled on its own, with the same rules as
-	 * the per-row actions. Local URME stock always has priority: a product with WooCommerce stock
-	 * starts as URME Lager (that stock and the current COGS kept), only a product with 0 local
-	 * stock starts as Dropshipping. Ambiguous, disabled-brand or invalid watches are rejected
-	 * without affecting the others. A watch with no URME product yet is selected without a
-	 * product (nothing is written until it is linked, and linking applies the same rule).
+	 * "Select checked for sync": each checked watch is handled on its own. Only a watch whose
+	 * unique URME product has stock 0 is selected (Dropshipping); a product with URME stock stays
+	 * URME Lager and is not selected. Ambiguous, disabled-brand, not-in-URME or invalid watches
+	 * are rejected without affecting the others.
 	 *
 	 * @return array{0: string, 1: string} Message and notice type.
 	 */
 	private static function select_items( array $keys ) {
 		$supplier = array();
 		$local    = array();
-		$manual   = array();
 		$rejected = array();
 		$skipped  = array();
 		URME_SS_Matcher::reset();
@@ -389,18 +322,7 @@ class URME_SS_Admin {
 				continue;
 			}
 			if ( ! $found ) {
-				// Not in URME yet: selected without a product; nothing is written until it is linked.
-				$link_id = URME_SS_DB::insert_link( $key, 0, '' );
-				if ( $link_id ) {
-					URME_SS_DB::update_link(
-						$link_id,
-						array(
-							'last_status'  => 'unlinked',
-							'last_message' => 'No product with this SKU or EAN; link manually.',
-						)
-					);
-					$manual[] = $no;
-				}
+				$rejected[] = $no . ' – no URME product with this SKU or EAN (create it in WooCommerce first)';
 				continue;
 			}
 			$pid = (int) key( $found );
@@ -413,41 +335,27 @@ class URME_SS_Admin {
 				$rejected[] = sprintf( '%s – product #%d no longer exists', $no, $pid );
 				continue;
 			}
-			list( $why, $units ) = self::local_first_check( $product );
-			if ( '' !== $why ) {
-				$rejected[] = $no . ' – ' . $why;
-				continue;
-			}
-			$link_id = URME_SS_DB::insert_link( $key, $pid, implode( '+', current( $found ) ) );
-			if ( ! $link_id ) {
-				$rejected[] = $no . ' – the selection could not be saved';
-				continue;
-			}
+			$units = URME_SS_Inventory::local_units_before_supplier( null, $product );
 			if ( $units > 0 ) {
-				$ok = self::enable_local_now( $link_id, $product, $units );
-				if ( true !== $ok ) {
-					URME_SS_DB::delete_link( $link_id ); // Never leave a selection that could sync supplier values over local stock.
-					$rejected[] = $no . ' – ' . $ok;
-					continue;
-				}
-				$local[] = sprintf( '%s (%d)', $no, $units );
+				$local[] = sprintf( '%s (%d)', $no, $units ); // URME stock: stays URME Lager, not selected.
+				continue;
+			}
+			if ( ! URME_SS_DB::insert_link( $key, $pid, implode( '+', current( $found ) ) ) ) {
+				$rejected[] = $no . ' – the selection could not be saved';
 				continue;
 			}
 			$supplier[] = $no;
 		}
 
-		if ( ! $supplier && ! $local && ! $manual && ! $rejected ) {
+		if ( ! $supplier && ! $local && ! $rejected ) {
 			return array( 'Nothing new was selected.', 'info' );
 		}
 		$parts = array();
-		if ( $local ) {
-			$parts[] = sprintf( 'URME Lager – stock and cost kept; Dropshipping starts automatically at stock 0 (%d): %s.', count( $local ), implode( ', ', $local ) );
-		}
 		if ( $supplier ) {
 			$parts[] = sprintf( 'Dropshipping – URME stock 0, updated on the next sync or with "Sync now" (%d): %s.', count( $supplier ), implode( ', ', $supplier ) );
 		}
-		if ( $manual ) {
-			$parts[] = sprintf( 'Selected without a URME product – link it under Selected watches (%d): %s.', count( $manual ), implode( ', ', $manual ) );
+		if ( $local ) {
+			$parts[] = sprintf( 'Not selected: URME stock exists, they stay URME Lager (%d): %s.', count( $local ), implode( ', ', $local ) );
 		}
 		if ( $rejected ) {
 			$parts[] = sprintf( 'Not selected, nothing changed (%d): %s.', count( $rejected ), implode( '; ', $rejected ) );
@@ -455,52 +363,13 @@ class URME_SS_Admin {
 		if ( $skipped ) {
 			$parts[] = sprintf( 'Already selected: %s.', implode( ', ', $skipped ) );
 		}
-		$started = count( $local ) + count( $supplier ) + count( $manual );
-		return array( implode( ' ', $parts ), $rejected ? ( $started ? 'warning' : 'error' ) : 'success' );
+		$started = count( $supplier );
+		return array( implode( ' ', $parts ), ( $rejected || $local ) ? ( $started ? 'warning' : 'error' ) : 'success' );
 	}
 
 	/**
-	 * Local URME stock always has priority over Dropshipping. For a product about to be linked in
-	 * a supplier selection: its local units (0 = it may start as Dropshipping), or why it can
-	 * neither start as Dropshipping nor as URME Lager.
-	 *
-	 * @return array{0: string, 1: int} Reason ('' when it can start) and the local units.
-	 */
-	private static function local_first_check( WC_Product $product ) {
-		$units = URME_SS_Inventory::local_units_before_supplier( null, $product );
-		if ( $units < 1 ) {
-			return array( '', 0 );
-		}
-		$name = $product->get_name();
-		$by   = (int) $product->get_stock_managed_by_id();
-		if ( $product->is_type( 'variable' ) ) {
-			$why = sprintf( 'local URME stock exists (%d on the variable product "%s"); URME Lager needs a simple product or a single variation and Dropshipping cannot start while local stock remains', $units, $name );
-		} elseif ( $by && $by !== $product->get_id() ) {
-			$why = sprintf( 'local URME stock exists (%d, managed by the parent product of "%s"); URME Lager needs the variation to manage its own stock and Dropshipping cannot start while local stock remains', $units, $name );
-		} elseif ( 'no' !== $product->get_backorders() ) {
-			$why = sprintf( 'local URME stock exists (%d) but backorders are allowed on "%s"; set Backorders to "Do not allow" to use URME Lager (Dropshipping cannot start while local stock remains)', $units, $name );
-		} else {
-			$why = '';
-		}
-		return array( $why, $units );
-	}
-
-	/**
-	 * URME Lager on a new link: the product's current WooCommerce stock becomes the local
-	 * quantity and its current cost (COGS) the local cost. Stock, cost and prices are kept.
-	 *
-	 * @return true|string True or an error message.
-	 */
-	private static function enable_local_now( $link_id, WC_Product $product, $units ) {
-		$target = URME_SS_Store::cost_target();
-		$cost   = $target['type'] ? URME_SS_Store::get_cost( $product, $target ) : null;
-		return URME_SS_Inventory::enable_local( (int) $link_id, (int) $units, $cost );
-	}
-
-	/**
-	 * The two Fulfillment states of one selected watch: URME Lager ('local') or Dropshipping
-	 * ('supplier'). Dropshipping starts only at URME Lager stock 0; URME Lager takes the typed
-	 * quantity (never the supplier's) and stops supplier stock and cost sync at once.
+	 * Dropshipping ('supplier', only at URME stock 0) or back to URME Lager ('local': the watch
+	 * leaves supplier sync and its stock becomes 0 until the real stock is entered).
 	 *
 	 * @return array{0: string, 1: string} Message and notice type.
 	 */
@@ -511,12 +380,9 @@ class URME_SS_Admin {
 		}
 		switch ( $mode ) {
 			case 'local':
-				if ( URME_SS_Inventory::LOCAL === $link['stock_mode'] ) {
-					return array( 'Already URME Lager; nothing was changed. Change its stock in WooCommerce.', 'info' );
-				}
 				$ok = URME_SS_Inventory::return_to_lager( (int) $link['id'] );
 				return true === $ok
-					? array( 'URME Lager: stock set to 0 (out of stock); supplier stock and cost are no longer synced. Enter the real stock in WooCommerce when you have it; it becomes Dropshipping again only after that stock is sold.', 'success' )
+					? array( 'URME Lager: removed from supplier sync; stock set to 0 (out of stock). Enter the real stock in WooCommerce when you have it.', 'success' )
 					: array( $ok, 'error' );
 
 			case 'supplier':
@@ -544,21 +410,26 @@ class URME_SS_Admin {
 	}
 
 	/**
-	 * Supplier catalog row actions: "start_supplier|<item_key>", "start_local|<item_key>",
-	 * "resume|<link_id>", "sync|<link_id>".
+	 * Supplier catalog row actions: "start_supplier|<item_key>", "dropship|<link_id>",
+	 * "lager|<link_id>", "sync|<link_id>" (and refusals for the old "start_local" / "resume").
 	 *
-	 * @return array{0: string, 1: string, 2?: string} Message, notice type and optionally a suggested action.
+	 * @return array{0: string, 1: string} Message and notice type.
 	 */
 	private static function run_row_action( $value ) {
 		$parts = explode( '|', (string) $value, 2 );
 		$arg   = $parts[1] ?? '';
 		switch ( $parts[0] ) {
 			case 'start_supplier':
+				return self::start_from_catalog( $arg );
+
 			case 'start_local':
-				return self::start_from_catalog( $arg, 'start_local' === $parts[0] ? 'local' : 'supplier' );
+				return array( 'A watch with URME stock simply stays URME Lager; there is nothing to start.', 'info' );
 
 			case 'dropship':
 				return self::set_mode( URME_SS_DB::get_link_by_id( absint( $arg ) ), 'supplier' );
+
+			case 'lager':
+				return self::set_mode( URME_SS_DB::get_link_by_id( absint( $arg ) ), 'local' );
 
 			case 'resume':
 				return array( self::NO_PAUSE, 'error' );
@@ -599,18 +470,18 @@ class URME_SS_Admin {
 	 * Start sync for one supplier watch from the catalog, only for a unique, confirmed URME match.
 	 * Every condition shown on the page is checked again here, against the current data.
 	 *
+	 * Dropshipping: URME stock is 0, supplier stock and cost are synced at once.
+	 *
 	 * @param string $item_key Supplier item.
-	 * @param string $mode     'supplier': URME stock is 0, sync supplier stock and cost now.
-	 *                         'local': URME stock > 0, keep it and the current cost as URME Lager.
-	 * @return array{0: string, 1: string, 2?: string} Message, notice type and optionally a suggested action.
+	 * @return array{0: string, 1: string} Message and notice type.
 	 */
-	private static function start_from_catalog( $item_key, $mode ) {
+	private static function start_from_catalog( $item_key ) {
 		$item = URME_SS_DB::get_item( $item_key );
 		if ( ! $item ) {
 			return array( 'Supplier watch not found.', 'error' );
 		}
 		if ( URME_SS_DB::get_link( $item_key ) ) {
-			return array( sprintf( '%s is already selected; see Selected watches.', $item['product_no'] ), 'warning' );
+			return array( sprintf( '%s is already selected.', $item['product_no'] ), 'warning' );
 		}
 		if ( ! (int) $item['in_feed'] ) {
 			return array( sprintf( '%s is no longer in the supplier feed; nothing was changed.', $item['product_no'] ), 'error' );
@@ -621,7 +492,7 @@ class URME_SS_Admin {
 		URME_SS_Matcher::reset();
 		$match = URME_SS_Matcher::match( $item );
 		if ( URME_SS_Matcher::EXISTS !== $match['status'] || $match['product_id'] !== (int) $item['match_product_id'] ) {
-			return array( sprintf( '%s has no unique, confirmed URME product (the match may have changed); nothing was changed. Click "Re-check now" or link it under Selected watches.', $item['product_no'] ), 'error' );
+			return array( sprintf( '%s has no unique, confirmed URME product (the match may have changed); nothing was changed. Click "Re-check now" (the SKU or EAN in WooCommerce must match).', $item['product_no'] ), 'error' );
 		}
 		$pid = $match['product_id'];
 		if ( URME_SS_DB::item_key_for_product( $pid ) ) {
@@ -633,61 +504,36 @@ class URME_SS_Admin {
 			return array( sprintf( 'Product #%d no longer exists; nothing was changed.', $pid ), 'error' );
 		}
 		if ( ! $info['managed'] ) {
-			return array( sprintf( '"%s" does not manage stock in WooCommerce; select and link it under Selected watches instead.', $product->get_name() ), 'error' );
+			return array( sprintf( '"%s" does not manage stock in WooCommerce; use "Select checked for sync" instead.', $product->get_name() ), 'error' );
 		}
 		if ( $info['by_parent'] ) {
-			return array( sprintf( 'The stock of "%s" is managed by its parent product; select and link it under Selected watches instead. Nothing was changed.', $product->get_name() ), 'error' );
+			return array( sprintf( 'The stock of "%s" is managed by its parent product; use "Select checked for sync" instead. Nothing was changed.', $product->get_name() ), 'error' );
 		}
 
-		if ( 'supplier' === $mode ) {
-			$units = URME_SS_Inventory::local_units_before_supplier( null, $product );
-			if ( $units > 0 ) {
-				// Local stock always has priority: never overwrite it with supplier stock.
-				return array( URME_SS_Inventory::local_priority_message( $units ), 'error', 'start_local' );
-			}
-			$link_id = URME_SS_DB::insert_link( $item_key, $pid, $match['method'] );
-			if ( ! $link_id ) {
-				return array( 'Could not save the selection.', 'error' );
-			}
-			URME_SS_Log::info( sprintf( 'Dropshipping started from the catalog for product #%d (%s).', $pid, $item['product_no'] ) );
-			$result = URME_SS_Sync::run(
-				array(
-					'refresh_feed' => false,
-					'link_id'      => $link_id,
-				)
-			);
-			$link = URME_SS_DB::get_link_by_id( $link_id );
-			if ( ! $result['ran'] ) {
-				return array( sprintf( '%s is linked to "%s" (Dropshipping), but %s It is synced on the next run.', $item['product_no'], $product->get_name(), lcfirst( $result['message'] ) ), 'warning' );
-			}
-			if ( ! empty( $result['sync']['skipped'] ) || 'ok' !== ( $link['last_status'] ?? '' ) ) {
-				return array( sprintf( '%s is linked to "%s" (Dropshipping), but it was not synced yet: %s', $item['product_no'], $product->get_name(), $result['sync']['skipped'] ? $result['sync']['skipped'] : ( $link['last_message'] ?? '' ) ), 'warning' );
-			}
-			return array( sprintf( 'Dropshipping started for "%s": stock %s, cost %s.', $product->get_name(), null === $link['last_stock'] ? '—' : (int) $link['last_stock'], null === $link['last_cost_sek'] ? 'not synced' : wc_format_decimal( $link['last_cost_sek'], 2 ) . ' SEK' ), 'success' );
+		$units = URME_SS_Inventory::local_units_before_supplier( null, $product );
+		if ( $units > 0 ) {
+			// Local stock always has priority: never overwrite it with supplier stock.
+			return array( URME_SS_Inventory::local_priority_message( $units ), 'error' );
 		}
-
-		// Local first: the units in WooCommerce now are the local units; the current cost is the local cost.
-		if ( $info['qty'] < 1 ) {
-			return array( sprintf( 'URME stock of "%s" is 0; nothing was changed. Use "Dropshipping" instead.', $product->get_name() ), 'warning' );
-		}
-		if ( $info['variable'] ) {
-			return array( 'URME Lager works on a simple product or a single variation, not on a variable parent product.', 'error' );
-		}
-		if ( 'no' !== $info['backorders'] ) {
-			return array( sprintf( 'URME Lager was not set: backorders are allowed on "%s". Set Backorders to "Do not allow" and try again. Nothing was changed.', $product->get_name() ), 'error' );
-		}
-		$target  = URME_SS_Store::cost_target();
-		$cost    = $target['type'] ? URME_SS_Store::get_cost( $product, $target ) : null;
 		$link_id = URME_SS_DB::insert_link( $item_key, $pid, $match['method'] );
 		if ( ! $link_id ) {
 			return array( 'Could not save the selection.', 'error' );
 		}
-		$ok = URME_SS_Inventory::enable_local( $link_id, (int) $info['qty'], $cost );
-		if ( true !== $ok ) {
-			URME_SS_DB::delete_link( $link_id ); // Never leave a half-set-up selection that could sync supplier values.
-			return array( $ok . ' Nothing was changed.', 'error' );
+		URME_SS_Log::info( sprintf( 'Dropshipping started from the catalog for product #%d (%s).', $pid, $item['product_no'] ) );
+		$result = URME_SS_Sync::run(
+			array(
+				'refresh_feed' => false,
+				'link_id'      => $link_id,
+			)
+		);
+		$link = URME_SS_DB::get_link_by_id( $link_id );
+		if ( ! $result['ran'] ) {
+			return array( sprintf( '%s is linked to "%s" (Dropshipping), but %s It is synced on the next run.', $item['product_no'], $product->get_name(), lcfirst( $result['message'] ) ), 'warning' );
 		}
-		return array( sprintf( 'URME Lager for "%s": %d unit(s) kept, cost %s kept. It becomes Dropshipping automatically when the stock reaches 0.', $product->get_name(), $info['qty'], null === $cost ? '(none set)' : wc_format_decimal( $cost, 2 ) . ' SEK' ), 'success' );
+		if ( ! empty( $result['sync']['skipped'] ) || 'ok' !== ( $link['last_status'] ?? '' ) ) {
+			return array( sprintf( '%s is linked to "%s" (Dropshipping), but it was not synced yet: %s', $item['product_no'], $product->get_name(), $result['sync']['skipped'] ? $result['sync']['skipped'] : ( $link['last_message'] ?? '' ) ), 'warning' );
+		}
+		return array( sprintf( 'Dropshipping started for "%s": stock %s, cost %s.', $product->get_name(), null === $link['last_stock'] ? '—' : (int) $link['last_stock'], null === $link['last_cost_sek'] ? 'not synced' : wc_format_decimal( $link['last_cost_sek'], 2 ) . ' SEK' ), 'success' );
 	}
 
 	/**
@@ -764,143 +610,6 @@ class URME_SS_Admin {
 		self::notice( $result[0], $result[1] );
 	}
 
-	private static function link_product( $link, $pid ) {
-		if ( ! $link ) {
-			return 'Selection not found.';
-		}
-		$product = $pid ? wc_get_product( $pid ) : null;
-		if ( ! $product ) {
-			return 'Choose a WooCommerce product first.';
-		}
-		$other = URME_SS_DB::item_key_for_product( $pid, $link['id'] );
-		if ( $other ) {
-			return sprintf( 'Not linked: "%s" is already linked to supplier item %s.', $product->get_name(), $other );
-		}
-		// Local URME stock always has priority: a product with local stock is linked as Local first.
-		$units = 0;
-		if ( (int) $link['sync_enabled'] && ! ( URME_SS_Inventory::has_local_units( $link ) && (int) $link['product_id'] === (int) $pid ) ) {
-			list( $why, $units ) = self::local_first_check( $product );
-			if ( '' !== $why ) {
-				return 'Not linked, nothing changed: ' . $why . '.';
-			}
-		}
-		$data = array(
-			'product_id'   => $pid,
-			'match_method' => 'manual',
-			'last_status'  => '',
-			'last_message' => '',
-		);
-		if ( (int) $link['product_id'] !== (int) $pid ) {
-			$data['last_stock'] = null; // Nothing synced to this product yet (Resume checks against it).
-		}
-		URME_SS_DB::update_link( $link['id'], $data );
-		if ( $units > 0 ) {
-			$ok = self::enable_local_now( $link['id'], $product, $units );
-			if ( true !== $ok ) {
-				self::restore_link( $link );
-				return 'Not linked, nothing changed: ' . $ok;
-			}
-			return sprintf( 'Linked to "%s" as URME Lager: %d unit(s) and the current cost kept (local URME stock has priority). It becomes Dropshipping automatically when the stock reaches 0.', $product->get_name(), $units );
-		}
-		// Push stock and cost for this one product right away (with the usual safety checks).
-		$result = URME_SS_Sync::run(
-			array(
-				'refresh_feed' => false,
-				'link_id'      => (int) $link['id'],
-			)
-		);
-		if ( ! empty( $result['sync']['skipped'] ) ) {
-			return sprintf( 'Linked to "%s". Not synced yet: %s', $product->get_name(), $result['sync']['skipped'] );
-		}
-		return sprintf( 'Linked to "%s" and synced.', $product->get_name() );
-	}
-
-	private static function automatch( $link_id ) {
-		$links = $link_id
-			? array_filter( array( URME_SS_DB::get_link_by_id( $link_id ) ) )
-			: URME_SS_DB::get_links( array( 'status' => 'unlinked' ) )['rows'];
-		$ok    = 0;
-		$fail  = array();
-		foreach ( $links as $link ) {
-			if ( (int) $link['product_id'] ) {
-				continue;
-			}
-			$item = URME_SS_DB::get_item( $link['item_key'] );
-			if ( ! $item ) {
-				continue;
-			}
-			$match   = URME_SS_Store::auto_match( $item, (int) $link['id'] );
-			$units   = 0;
-			$product = null;
-			if ( $match['product_id'] && (int) $link['sync_enabled'] ) {
-				// Local URME stock always has priority: a product with local stock is linked as Local first.
-				$product = wc_get_product( $match['product_id'] );
-				list( $why, $units ) = $product ? self::local_first_check( $product ) : array( 'the product no longer exists', 0 );
-				if ( '' !== $why ) {
-					$match = array(
-						'product_id' => 0,
-						'message'    => 'Not linked: ' . $why . '.',
-					);
-				}
-			}
-			if ( $match['product_id'] ) {
-				URME_SS_DB::update_link(
-					$link['id'],
-					array(
-						'product_id'   => $match['product_id'],
-						'match_method' => $match['method'],
-						'last_status'  => '',
-						'last_message' => '',
-					)
-				);
-				$err = ( $units > 0 && $product ) ? self::enable_local_now( $link['id'], $product, $units ) : true;
-				if ( true !== $err ) {
-					self::restore_link( $link );
-					URME_SS_DB::update_link(
-						$link['id'],
-						array(
-							'last_status'  => 'unlinked',
-							'last_message' => 'Not linked: ' . $err,
-						)
-					);
-					$fail[] = $item['product_no'];
-					continue;
-				}
-				++$ok;
-			} else {
-				URME_SS_DB::update_link(
-					$link['id'],
-					array(
-						'last_status'  => 'unlinked',
-						'last_message' => $match['message'],
-					)
-				);
-				$fail[] = $item['product_no'];
-			}
-		}
-		$msg = sprintf( '%d linked automatically.', $ok );
-		if ( $fail ) {
-			$msg .= ' No unique match for: ' . implode( ', ', array_slice( $fail, 0, 15 ) ) . ( count( $fail ) > 15 ? '…' : '' );
-		}
-		return $msg;
-	}
-
-	/**
-	 * Put a link's product and status back as they were (a Local first start that failed).
-	 */
-	private static function restore_link( array $link ) {
-		URME_SS_DB::update_link(
-			$link['id'],
-			array(
-				'product_id'   => (int) $link['product_id'],
-				'match_method' => (string) $link['match_method'],
-				'last_status'  => (string) $link['last_status'],
-				'last_message' => (string) $link['last_message'],
-				'last_stock'   => null === $link['last_stock'] ? null : (int) $link['last_stock'],
-			)
-		);
-	}
-
 	private static function notice( $message, $type = 'success' ) {
 		set_transient(
 			'urme_ss_notice_' . get_current_user_id(),
@@ -934,19 +643,6 @@ class URME_SS_Admin {
 		return $out;
 	}
 
-	/**
-	 * Selected watches: the same manual sale price editor as a small form of its own.
-	 */
-	private static function sale_form( $item_key, WC_Product $product ) {
-		$regular = (string) $product->get_regular_price();
-		return '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="urme-inline urme-price-edit">'
-			. self::hidden_fields( 'save_sale' )
-			. '<input type="hidden" name="item_key" value="' . esc_attr( $item_key ) . '">'
-			. '<small>Regular: ' . esc_html( '' === $regular ? '—' : self::kr( $regular ) ) . '</small><br>'
-			. '<label>Sale price <input type="text" name="sale_price" value="' . esc_attr( (string) $product->get_sale_price() ) . '" size="7" inputmode="decimal" autocomplete="off"></label> '
-			. '<button type="submit" class="button button-small">Save</button></form>';
-	}
-
 	private static function hidden_fields( $do ) {
 		$back = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : self::url();
 		return wp_nonce_field( 'urme_ss', '_wpnonce', false, false )
@@ -967,7 +663,6 @@ class URME_SS_Admin {
 		$tab  = sanitize_key( $_GET['tab'] ?? 'catalog' );
 		$tabs = array(
 			'catalog'  => 'Supplier catalog',
-			'selected' => 'Selected watches',
 			'reviews'  => 'Price Review',
 			'status'   => 'Status & log',
 			'settings' => 'Settings',
@@ -1032,11 +727,12 @@ class URME_SS_Admin {
 		);
 
 		self::card(
-			'Selected for sync',
-			number_format_i18n( $links['selected'] ?? 0 ),
-			sprintf( '%d linked · %d not linked · %d missing', $links['linked'] ?? 0, $links['unlinked'] ?? 0, $links['missing'] ?? 0 )
-				. sprintf( '<br>%d Dropshipping · %d URME Lager', $links['dropship'] ?? 0, $links['lager'] ?? 0 ),
-			! empty( $links['unlinked'] ) || ! empty( $links['errors'] ) || ! empty( $links['brand_off'] )
+			'Dropshipping',
+			number_format_i18n( $links['dropship'] ?? 0 ),
+			sprintf( '<a href="%s">Show in the catalog</a>', esc_url( self::url( array( 'selected' => 'yes' ) ) ) )
+				. ( ! empty( $links['missing'] ) ? sprintf( '<br>%d no longer in the feed', $links['missing'] ) : '' )
+				. ( ! empty( $links['errors'] ) ? sprintf( '<br>%d with a sync error', $links['errors'] ) : '' ),
+			! empty( $links['errors'] ) || ! empty( $links['missing'] )
 		);
 
 		self::card(
@@ -1059,7 +755,7 @@ class URME_SS_Admin {
 		echo '</div></div>';
 
 		if ( ! URME_SS_Settings::enabled_brand_keys() ) {
-			printf( '<div class="notice notice-warning inline"><p><strong>No brands are enabled for sync yet.</strong> Selected watches are only synced when their brand is enabled. <a href="%s">Choose brands in Settings</a>.</p></div>', esc_url( self::url( array( 'tab' => 'settings' ) ) ) );
+			printf( '<div class="notice notice-warning inline"><p><strong>No brands are enabled for sync yet.</strong> Watches are only synced when their brand is enabled. <a href="%s">Choose brands in Settings</a>.</p></div>', esc_url( self::url( array( 'tab' => 'settings' ) ) ) );
 		}
 		$target = URME_SS_Store::cost_target();
 		if ( ! $target['type'] ) {
@@ -1359,7 +1055,7 @@ class URME_SS_Admin {
 					echo '<span class="urme-muted">Not selected</span>';
 					echo self::start_control( $row, $stock[ self::urme_product_id( $row ) ] ?? null, $brand_on, URME_SS_Product_Source::is_linked( self::urme_product_id( $row ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput
 				} elseif ( ! (int) $row['product_id'] ) {
-					printf( '<span class="urme-bad">Selected, not linked</span><br><a href="%s">Link product</a>', esc_url( self::url( array( 'tab' => 'selected', 'status' => 'unlinked' ) ) ) );
+					echo '<span class="urme-bad">Selected, not linked</span>';
 				} elseif ( ! $brand_on || ! (int) $row['sync_enabled'] || URME_SS_Inventory::LOCAL === $row['stock_mode'] ) {
 					echo '<span class="urme-muted">URME Lager</span>';
 					if ( $brand_on ) {
@@ -1367,6 +1063,7 @@ class URME_SS_Admin {
 					}
 				} else {
 					echo '<span class="urme-good">Dropshipping</span>';
+					echo '<br>' . self::row_button( 'lager|' . (int) $row['link_id'], 'URME Lager', 'button button-small', 'Move ' . $row['product_no'] . ' back to URME Lager? It leaves supplier sync and its stock becomes 0 (out of stock) until you enter the real stock in WooCommerce.' ); // phpcs:ignore WordPress.Security.EscapeOutput
 					if ( 'error' === $row['link_status'] ) {
 						echo '<br><span class="urme-bad">Last sync: error</span>' . ( '' !== (string) $row['link_message'] ? '<br><small class="urme-bad">' . esc_html( $row['link_message'] ) . '</small>' : '' );
 					}
@@ -1479,7 +1176,7 @@ class URME_SS_Admin {
 			return '<br><small class="urme-muted">Product already linked to another supplier watch</small>';
 		}
 		if ( ! $info['managed'] || $info['by_parent'] ) {
-			return '<br><small class="urme-muted">' . ( $info['by_parent'] ? 'Stock managed by the parent product' : 'Stock not managed in WooCommerce' ) . ' – select and link manually</small>';
+			return '<br><small class="urme-muted">' . ( $info['by_parent'] ? 'Stock managed by the parent product' : 'Stock not managed in WooCommerce' ) . ' – use "Select checked for sync"</small>';
 		}
 		$key = (string) $row['item_key'];
 		if ( $info['qty'] <= 0 ) {
@@ -1490,18 +1187,7 @@ class URME_SS_Admin {
 				sprintf( 'Start Dropshipping for %s? WooCommerce stock is set to the supplier stock (%s) and the cost to the supplier cost. Prices are not changed.', $row['product_no'], null === $row['stock'] ? '—' : (int) $row['stock'] )
 			);
 		}
-		if ( $info['variable'] ) {
-			return '<br><small class="urme-muted">Variable product – select and link a variation manually</small>';
-		}
-		if ( 'no' !== $info['backorders'] ) {
-			return '<br><small class="urme-warn">URME Lager needs backorders off</small>';
-		}
-		return '<br>' . self::row_button(
-			'start_local|' . $key,
-			'URME Lager',
-			'button button-small',
-			sprintf( 'Keep %s as URME Lager? Your %d unit(s) in WooCommerce and the current cost are kept; it becomes Dropshipping automatically when the stock reaches 0.', $row['product_no'], $info['qty'] )
-		);
+		return '<br><small class="urme-muted">' . esc_html( sprintf( 'URME Lager (%d in stock) – Dropshipping is possible at stock 0', $info['qty'] ) ) . '</small>';
 	}
 
 	/**
@@ -1578,229 +1264,6 @@ class URME_SS_Admin {
 	}
 
 	/* --- Selected tab --------------------------------------------------- */
-
-	private static function render_selected() {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended
-		$status = sanitize_key( $_GET['status'] ?? 'all' );
-		$q      = sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) );
-		$page   = max( 1, absint( $_GET['paged'] ?? 1 ) );
-		// phpcs:enable
-		$per_page = 50;
-		$counts   = URME_SS_DB::link_counts();
-		$target   = URME_SS_Store::cost_target();
-		$hint     = URME_SS_Price_Hint::context();
-
-		$filters = array(
-			'all'      => array( 'All', $counts['selected'] ?? 0 ),
-			'linked'   => array( 'Linked', $counts['linked'] ?? 0 ),
-			'unlinked' => array( 'Not linked', $counts['unlinked'] ?? 0 ),
-			'missing'  => array( 'Missing from feed', $counts['missing'] ?? 0 ),
-			'dropship' => array( 'Dropshipping', $counts['dropship'] ?? 0 ),
-			'lager'    => array( 'URME Lager', $counts['lager'] ?? 0 ),
-			'errors'   => array( 'Errors', $counts['errors'] ?? 0 ),
-		);
-		if ( ! isset( $filters[ $status ] ) ) {
-			$status = 'all';
-		}
-
-		echo '<ul class="subsubsub">';
-		$parts = array();
-		foreach ( $filters as $id => $info ) {
-			$parts[] = sprintf(
-				'<li><a href="%s" class="%s">%s <span class="count">(%d)</span></a>',
-				esc_url( self::url( array( 'tab' => 'selected', 'status' => $id ) ) ),
-				$id === $status ? 'current' : '',
-				esc_html( $info[0] ),
-				(int) $info[1]
-			);
-		}
-		echo implode( ' | </li>', $parts ) . '</li></ul>'; // phpcs:ignore WordPress.Security.EscapeOutput
-
-		?>
-		<form method="get" class="urme-filters urme-filters-right">
-			<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
-			<input type="hidden" name="tab" value="selected">
-			<input type="hidden" name="status" value="<?php echo esc_attr( $status ); ?>">
-			<input type="search" name="q" value="<?php echo esc_attr( $q ); ?>" placeholder="Brand, model, EAN…">
-			<button class="button">Search</button>
-			<?php
-			if ( ! empty( $counts['unlinked'] ) ) {
-				echo self::action_button( 'automatch', 'Auto-link all unlinked by SKU/EAN' ); // phpcs:ignore WordPress.Security.EscapeOutput
-			}
-			?>
-		</form>
-		<br class="clear">
-		<?php
-
-		$result = URME_SS_DB::get_links(
-			array(
-				'status'   => $status,
-				'q'        => $q,
-				'page'     => $page,
-				'per_page' => $per_page,
-			)
-		);
-		?>
-		<table class="widefat striped urme-table urme-selected">
-			<thead><tr>
-				<th class="urme-img-col">Image</th>
-				<th>Supplier watch</th>
-				<th class="num">Supplier stock</th>
-				<th class="num">Supplier cost</th>
-				<th>WooCommerce product</th>
-				<th class="urme-mode-col">Mode</th>
-				<th>Last sync</th>
-				<th>Actions</th>
-			</tr></thead>
-			<tbody>
-			<?php if ( ! $result['rows'] ) : ?>
-				<tr><td colspan="8">Nothing here. Select watches in the <a href="<?php echo esc_url( self::url() ); ?>">Supplier catalog</a>.</td></tr>
-			<?php endif; ?>
-			<?php
-			foreach ( $result['rows'] as $row ) {
-				self::render_selected_row( $row, $target, $hint );
-			}
-			?>
-			</tbody>
-		</table>
-		<?php
-		self::pagination( $result['total'], $per_page, $page, array_filter( array( 'page' => self::SLUG, 'tab' => 'selected', 'status' => $status, 'q' => $q ) ) );
-	}
-
-	private static function render_selected_row( array $row, array $target, array $hint ) {
-		$pid     = (int) $row['product_id'];
-		$product = $pid ? wc_get_product( $pid ) : null;
-		$in_feed = ! empty( $row['catalog_id'] ) && (int) $row['in_feed'];
-		?>
-		<tr class="<?php echo $in_feed ? '' : 'urme-missing'; ?>">
-			<td class="urme-img-col"><?php echo self::img( $row['img_url'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-			<td>
-				<strong><?php echo esc_html( $row['manufacturer'] ); ?></strong> <?php echo esc_html( $row['product_name'] ); ?><br>
-				Model <code><?php echo esc_html( $row['product_no'] ); ?></code> · EAN <code><?php echo esc_html( $row['item_id'] ); ?></code>
-				<?php if ( ! $in_feed ) : ?>
-					<br><span class="urme-bad">Not in supplier feed<?php echo $row['missing_since'] ? ' since ' . esc_html( self::mysql_datetime( $row['missing_since'] ) ) : ''; ?> – product left unchanged</span>
-				<?php endif; ?>
-			</td>
-			<td class="num"><?php echo null === $row['stock'] ? '—' : esc_html( $row['stock'] ); ?></td>
-			<td class="num"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><br><small><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></small><br><?php echo URME_SS_Price_Hint::short_html( $row['purchase_price'], $hint ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-			<td class="urme-product-col">
-				<?php if ( $product ) : ?>
-					<a href="<?php echo esc_url( get_edit_post_link( self::edit_id( $pid ) ) ?? '' ); ?>"><strong><?php echo esc_html( $product->get_name() ); ?></strong></a>
-					<br>SKU <code><?php echo esc_html( $product->get_sku() ?: '—' ); ?></code>
-					<?php if ( $row['match_method'] ) : ?><span class="urme-muted">(<?php echo esc_html( 'manual' === $row['match_method'] ? 'linked manually' : 'matched by ' . strtoupper( str_replace( '+', ' + ', $row['match_method'] ) ) ); ?>)</span><?php endif; ?>
-					<br>Stock: <?php echo esc_html( true === $product->get_manage_stock() ? (string) $product->get_stock_quantity() : 'not managed' ); ?> (<?php echo esc_html( wc_get_product_stock_status_options()[ $product->get_stock_status() ] ?? $product->get_stock_status() ); ?>)
-					<?php if ( $target['type'] ) : ?>
-						· Cost: <?php echo esc_html( self::sek( URME_SS_Store::get_cost( $product, $target ) ) ); ?>
-					<?php endif; ?>
-				<?php elseif ( $pid ) : ?>
-					<span class="urme-bad">Linked product #<?php echo (int) $pid; ?> no longer exists.</span>
-				<?php else : ?>
-					<span class="urme-bad">Not linked</span>
-				<?php endif; ?>
-
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="urme-link-form">
-					<?php echo self::hidden_fields( 'link' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-					<input type="hidden" name="link_id" value="<?php echo (int) $row['id']; ?>">
-					<select class="wc-product-search" name="product_id" data-placeholder="<?php echo esc_attr( $pid ? 'Change linked product…' : 'Search product by name or SKU…' ); ?>" data-action="woocommerce_json_search_products_and_variations" data-allow_clear="true" style="width: 100%;"></select>
-					<button type="submit" class="button button-small">Link</button>
-				</form>
-			</td>
-			<td class="urme-mode-col"><?php self::render_mode_cell( $row, $product, $target ); ?></td>
-			<td>
-				<?php
-				$labels = array(
-					'local'    => '<span class="urme-muted">URME Lager</span>',
-					'ok'       => '<span class="urme-good">OK</span>',
-					'error'    => '<span class="urme-bad">Error</span>',
-					'missing'  => '<span class="urme-bad">Missing from feed</span>',
-					'unlinked' => '<span class="urme-bad">Not linked</span>',
-				);
-				if ( ! URME_SS_Settings::brand_enabled( (string) $row['manufacturer'] ) ) {
-					echo self::status_badge( 'off', 'Brand sync off' ) . '<br><small>' . esc_html( sprintf( 'Enable %s in Settings to sync. Link kept.', $row['manufacturer'] ) ) . '</small><br>'; // phpcs:ignore WordPress.Security.EscapeOutput
-				}
-				echo wp_kses_post( $labels[ $row['last_status'] ] ?? '<span class="urme-muted">Waiting for next sync</span>' );
-				if ( ! (int) $row['sync_enabled'] ) {
-					echo ' <span class="urme-muted">(paused)</span>';
-				}
-				if ( $row['last_message'] ) {
-					echo '<br><small>' . esc_html( $row['last_message'] ) . '</small>';
-				}
-				if ( $row['last_synced_at'] ) {
-					echo '<br><small>Last synced ' . esc_html( self::mysql_datetime( $row['last_synced_at'] ) ) . '</small>';
-				}
-				if ( null !== $row['last_cost_sek'] ) {
-					echo '<br><small>' . esc_html( sprintf( '%s × %s = %s', self::eur( $row['last_cost_eur'] ), number_format_i18n( (float) $row['last_rate'], 4 ), self::sek( $row['last_cost_sek'] ) ) ) . '</small>';
-				}
-				?>
-			</td>
-			<td class="urme-actions">
-				<?php
-				// phpcs:disable WordPress.Security.EscapeOutput
-				$locked = URME_SS_Inventory::has_local_units( $row );
-				if ( $product && ! $product->is_type( array( 'variable', 'grouped' ) ) ) {
-					echo self::sale_form( $row['item_key'], $product );
-				}
-				if ( $pid ) {
-					echo self::action_button( 'sync_one', 'Sync now', array( 'link_id' => $row['id'] ), 'button button-small' );
-					if ( ! $locked ) {
-						echo self::action_button( 'unlink', 'Unlink', array( 'link_id' => $row['id'] ), 'button-link' );
-					}
-				} else {
-					echo self::action_button( 'automatch', 'Auto-link', array( 'link_id' => $row['id'] ), 'button button-small' );
-				}
-				if ( ! $locked ) {
-					echo self::action_button( 'unselect', 'Remove', array( 'link_id' => $row['id'] ), 'button-link urme-danger', 'Stop syncing this watch? The WooCommerce product itself is not changed.' );
-				} else {
-					echo '<small class="urme-muted">Unlink/Remove are disabled while local units are tracked.</small>';
-				}
-				// phpcs:enable
-				?>
-			</td>
-		</tr>
-		<?php
-	}
-
-	/**
-	 * Mode column: URME Lager or Dropshipping, with details and the switcher.
-	 */
-	private static function render_mode_cell( array $row, $product, array $target ) {
-		$drop = (int) $row['sync_enabled'] && URME_SS_Inventory::LOCAL !== $row['stock_mode'] && URME_SS_Settings::brand_enabled( (string) $row['manufacturer'] );
-		$sek  = null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] );
-		$woo  = ( $product && true === $product->get_manage_stock() ) ? (int) $product->get_stock_quantity() : null;
-
-		if ( $drop ) {
-			echo self::status_badge( 'exists', 'Dropshipping' ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '<ul class="urme-mode-facts"><li>Supplier stock sync active</li><li>' . esc_html( $target['type'] ? 'Supplier cost sync active' : 'Supplier cost sync: no cost field' ) . '</li></ul>';
-		} else {
-			echo self::status_badge( 'local', 'URME Lager' ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '<ul class="urme-mode-facts">';
-			printf( '<li>URME stock: <strong>%s</strong></li>', null === $woo ? '—' : (int) $woo );
-			printf( '<li>Supplier stock: %s (not synced)</li>', null === $row['stock'] ? '—' : (int) $row['stock'] );
-			printf( '<li>Supplier cost: %s · %s</li>', esc_html( self::eur( $row['purchase_price'] ) ), esc_html( self::sek( $sek ) ) );
-			echo '</ul>';
-			if ( $product && 'no' !== $product->get_backorders() ) {
-				echo '<small class="urme-bad">On hold: backorders are allowed on this product.</small>';
-			} elseif ( URME_SS_Inventory::LOCAL === $row['stock_mode'] && ! (int) $row['sync_enabled'] ) {
-				echo '<small class="urme-warn">' . esc_html( 'Waiting for stock: out of stock until you enter the real stock in WooCommerce.' ) . '</small>';
-			} elseif ( URME_SS_Inventory::LOCAL === $row['stock_mode'] && URME_SS_Settings::brand_enabled( (string) $row['manufacturer'] ) ) {
-				echo '<small>' . esc_html( 'Becomes Dropshipping automatically when the stock reaches 0.' ) . '</small>';
-			}
-		}
-		if ( ! (int) $row['product_id'] ) {
-			return;
-		}
-		?>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="urme-mode-form" data-local-units="<?php echo (int) ( $drop ? 0 : max( 0, (int) $woo ) ); ?>">
-			<?php echo self::hidden_fields( 'set_mode' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-			<input type="hidden" name="link_id" value="<?php echo (int) $row['id']; ?>">
-			<select name="mode" aria-label="Fulfillment">
-				<option value="local" <?php selected( ! $drop ); ?>>URME Lager</option>
-				<option value="supplier" <?php selected( $drop ); ?>>Dropshipping</option>
-			</select>
-			<button type="submit" class="button button-small">Apply</button>
-		</form>
-		<?php
-	}
 
 	/* --- Price Review tab ----------------------------------------------- */
 
@@ -2094,7 +1557,7 @@ class URME_SS_Admin {
 					<td>Stop updating products when the feed has not been refreshed for <input type="number" id="urme-age" name="settings[max_feed_age_hours]" min="1" max="72" value="<?php echo esc_attr( $s['max_feed_age_hours'] ); ?>" class="small-text"> hours</td></tr>
 			</table>
 			<h2>Selling price hint</h2>
-			<p class="description">A suggested selling price shown in the Supplier catalog and Selected watches, for you only. It never changes any price, coupon or product.
+			<p class="description">A suggested selling price shown in the Supplier catalog, for you only. It never changes any price, coupon or product.
 				Suggested price = the lowest price, rounded up, where (price after coupon ÷ (1 + VAT)) − payment fee − cost ≥ target profit. Cost = (PURCHASE_PRICE + extra cost) × EUR/SEK; PURCHASE_PRICE is VAT 0%.</p>
 			<table class="form-table">
 				<tr><th><label for="urme-h-extra">Extra supplier cost</label></th>

@@ -292,13 +292,12 @@ ok( false === URME_SS_Price_Review::mark_reviewed( (int) $rows[0]['id'] ), 'mark
 run();
 ok( 1 === count( pr_rows( $pr['id'] ) ) && 'reviewed' === pr_rows( $pr['id'] )[0]['status'], 'not shown again after later syncs' );
 
-section( 'PR5. Back to Local first and switching again → a new review' );
+section( 'PR5. Local unit returned after the switch: stays Dropshipping, no new review (1.5.2)' );
 lf_refund( $o_pr, 1 );
-ok( 'local_first' === lf_link( 102 )['stock_mode'], 'local unit returned → Local first' );
-lf_order( $PR, 1 );
+ok( 'supplier' === lf_link( 102 )['stock_mode'], 'local unit returned → still Dropshipping' );
 run();
 $rows = pr_rows( $pr['id'] );
-ok( 2 === count( $rows ) && 'reviewed' === $rows[0]['status'] && 'pending' === $rows[1]['status'], 'second transition → one new pending review', $rows );
+ok( 1 === count( $rows ) && 'reviewed' === $rows[0]['status'], 'no second transition, no new review', $rows );
 
 section( 'PR-A. Switch and review are atomic' );
 $PA = lf_product( 'Price review atomic', 'REF000108', 1, 700 );

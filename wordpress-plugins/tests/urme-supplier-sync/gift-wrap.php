@@ -51,11 +51,12 @@ $hf   = static function ( $pre ) use ( &$http ) {
 };
 add_filter( 'pre_http_request', $hf );
 ok( false !== has_filter( 'wc_epo_disable', array( 'URME_SS_Gift_Wrap', 'disable_epo' ) ) && false !== has_filter( 'woocommerce_add_to_cart_validation', array( 'URME_SS_Gift_Wrap', 'validate_add_to_cart' ) ), 'registered on every request (not admin-only): wc_epo_disable + woocommerce_add_to_cart_validation' );
-ok( 'dropship' === URME_SS_Product_Source::product_state( $K0 ) && 'local' === URME_SS_Product_Source::product_state( $K3 ) && 'paused' === URME_SS_Product_Source::product_state( $KP ) && 'brand_off' === URME_SS_Product_Source::product_state( $BR[368] ) && 'lager' === URME_SS_Product_Source::product_state( $KC ), 'product_state(): the badge states (Dropshipping / Local first / Paused / brand sync off / URME Lager)' );
+ok( 'dropship' === URME_SS_Product_Source::product_state( $K0 ) && 'lager' === URME_SS_Product_Source::product_state( $K3 ) && 'local' === URME_SS_Product_Source::product_state( $ZL ) && 'paused' === URME_SS_Product_Source::product_state( $KP ) && 'brand_off' === URME_SS_Product_Source::product_state( $BR[368] ) && 'lager' === URME_SS_Product_Source::product_state( $KC ), 'product_state(): the badge states (Dropshipping / Local first / Paused / brand sync off / URME Lager)' );
 
 section( 'GW1–5. Presentinslagning per Fulfillment state' );
 ok( gw_epo_disabled( $K0 ), '1. Dropshipping (REF000294) → ThemeComplete options off: Presentinslagning absent', URME_SS_Product_Source::product_state( $K0 ) );
-ok( ! gw_epo_disabled( $K3 ), '2. Local first (REF000282) → unchanged: Presentinslagning visible' );
+ok( ! gw_epo_disabled( $K3 ), '2. URME Lager with stock (REF000282, not selected) → unchanged: Presentinslagning visible' );
+ok( ! gw_epo_disabled( $ZL ), '   legacy Local first link (REF000228) → visible' );
 ok( ! gw_epo_disabled( $KC ), '3. URME Lager → visible' );
 ok( ! gw_epo_disabled( $KP ), '4. legacy paused link (URME Lager) → visible' );
 ok( ! gw_epo_disabled( $BR[368] ), '5. Supplier – brand sync off → visible' );
@@ -64,7 +65,7 @@ ok( true === apply_filters( 'wc_epo_disable', true, $K3 ), '   an earlier "disab
 section( 'GW6–9. Add to cart (server side)' );
 ok( false === gw_add( $K0 ) && wc_has_notice( 'Presentinslagning kan inte väljas för den här produkten.', 'error' ), '6. crafted add-to-cart: Dropshipping + Presentinslagning → rejected with a notice' );
 ok( true === gw_add( $K0, 0, false ), '7. normal Dropshipping purchase without gift wrap → allowed' );
-ok( true === gw_add( $K3 ) && true === gw_add( $KC ) && true === gw_add( $KP ) && true === gw_add( $BR[368] ), '8. every URME Lager case (Local first link, not linked, legacy paused, brand sync off) + Presentinslagning → allowed (the 45 SEK price is ThemeComplete\'s own; nothing here changes it)' );
+ok( true === gw_add( $K3 ) && true === gw_add( $ZL ) && true === gw_add( $KC ) && true === gw_add( $KP ) && true === gw_add( $BR[368] ), '8. every URME Lager case (not linked with stock, legacy Local first link, not linked, legacy paused, brand sync off) + Presentinslagning → allowed (the 45 SEK price is ThemeComplete\'s own; nothing here changes it)' );
 $_REQUEST['tmcp_checkbox_0'] = '';
 ok( true === apply_filters( 'woocommerce_add_to_cart_validation', true, $K0, 1, 0, array() ), '   an empty (unticked) option field is not a gift-wrap request' );
 unset( $_REQUEST['tmcp_checkbox_0'] );
@@ -72,7 +73,7 @@ ok( false === apply_filters( 'woocommerce_add_to_cart_validation', false, $K3, 1
 
 section( 'GW9. Variable product: the selected variation decides' );
 ok( ! gw_epo_disabled( $KV ), '   the variable parent keeps the option although one variation is Dropshipping (no hiding for a sibling)' );
-ok( false === gw_add( $KV, $KVS ) && true === gw_add( $KV, $KVL ) && true === gw_add( $KV, $KVU ), '9. + gift: Dropshipping variation → rejected; Local first variation and never-linked variation → allowed' );
+ok( false === gw_add( $KV, $KVS ) && true === gw_add( $KV, $KVL ) && true === gw_add( $KV, $KVU ), '9. + gift: Dropshipping variation → rejected; URME Lager variation and never-linked variation → allowed' );
 ok( true === gw_add( $KV, $KVS, false ), '   Dropshipping variation without gift wrap → allowed' );
 
 section( 'GW10–11. State changes: pages cleaned, option follows' );
@@ -81,16 +82,12 @@ $cp      = static function ( $id ) use ( &$cleaned ) {
 	$cleaned[] = (int) $id;
 };
 add_action( 'clean_post_cache', $cp );
-$lk = URME_SS_DB::get_link( key_of( 282 ) ); // Local first (3).
-$o  = lf_order( $K3, (int) $lk['local_qty'] ); // Last local units sold…
-run( array( 'refresh_feed' => false ) );      // …automatic Local first → Supplier.
-ok( 'supplier' === URME_SS_DB::get_link( key_of( 282 ) )['stock_mode'] && gw_epo_disabled( $K3 ) && in_array( $K3, $cleaned, true ), '10. URME Lager → Dropshipping (last unit sold): Presentinslagning removed, product page cleaned from caches', array( URME_SS_Product_Source::product_state( $K3 ), $cleaned ) );
-$cleaned             = array();
-$_POST['local_qty']  = '2';
-$_POST['local_cost'] = '650';
-$r                   = admin( 'set_mode', URME_SS_DB::get_link( key_of( 282 ) ), 'local' );
-unset( $_POST['local_qty'], $_POST['local_cost'] );
-ok( 'success' === $r[1] && ! gw_epo_disabled( $K3 ) && in_array( $K3, $cleaned, true ), '11. Supplier → Local first: Presentinslagning available again, product page cleaned', $r );
+lf_order( $K3, (int) p( $K3 )->get_stock_quantity() ); // The URME units are sold…
+$r = admin( 'run_row_action', 'start_supplier|' . key_of( 282 ) ); // …and "Dropshipping" is clicked at stock 0.
+ok( 'success' === $r[1] && 'supplier' === URME_SS_DB::get_link( key_of( 282 ) )['stock_mode'] && gw_epo_disabled( $K3 ) && in_array( $K3, $cleaned, true ), '10. URME Lager → Dropshipping (at stock 0): Presentinslagning removed, product page cleaned from caches', array( $r, URME_SS_Product_Source::product_state( $K3 ), $cleaned ) );
+$cleaned = array();
+$r       = admin( 'run_row_action', 'lager|' . URME_SS_DB::get_link( key_of( 282 ) )['id'] );
+ok( 'success' === $r[1] && ! gw_epo_disabled( $K3 ) && in_array( $K3, $cleaned, true ), '11. Dropshipping → URME Lager: Presentinslagning available again, product page cleaned', $r );
 $cleaned = array();
 URME_SS_Settings::set_brand( 'BOSS', false );
 $off = gw_epo_disabled( $K0 );
@@ -99,13 +96,9 @@ ok( ! $off && gw_epo_disabled( $K0 ) && in_array( $K0, $cleaned, true ), '   bra
 $all_products = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ('product','product_variation')" );
 ok( count( array_unique( $cleaned ) ) < $all_products / 2, sprintf( '   only the affected products are cleaned (%d of %d), no site-wide purge', count( array_unique( $cleaned ) ), $all_products ) );
 $cleaned = array();
-$_POST = array( 'local_qty' => '2' );
-admin( 'set_mode', URME_SS_DB::get_link( key_of( 294 ) ), 'local' );
-$_POST = array();
+admin( 'run_row_action', 'lager|' . URME_SS_DB::get_link( key_of( 294 ) )['id'] );
 ok( ! gw_epo_disabled( $K0 ) && in_array( $K0, $cleaned, true ), '   Dropshipping → URME Lager: option back, page cleaned' );
-bs_set( $K0, 0 );
-admin( 'run_row_action', 'dropship|' . URME_SS_DB::get_link( key_of( 294 ) )['id'] );
-run( array( 'refresh_feed' => false ) );
+admin( 'run_row_action', 'start_supplier|' . key_of( 294 ) ); // Dropshipping again for the tests below.
 remove_action( 'clean_post_cache', $cp );
 
 section( 'GW12–14. Form 10375, HTTP, queries' );

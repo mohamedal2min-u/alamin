@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.4.1
+Stable tag: 1.5.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -90,7 +90,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.4.1.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -215,6 +215,17 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.5.0 =
+* Two Fulfillment states only: URME Lager and Dropshipping. Local first, Paused and supplier links
+  with brand sync off are shown as URME Lager; Pause / Resume are removed.
+* WooCommerce stock is the URME count (no order history decides the state). URME Lager ->
+  Dropshipping only at stock 0 (refused with a clear error otherwise, nothing changed).
+* A URME Lager watch whose stock reaches 0 becomes Dropshipping in the same request, with supplier
+  stock and cost from the stored catalog and a "Price review required" notice for the selling price.
+* Dropshipping -> URME Lager takes the typed quantity (at least 1), never the supplier quantity, and
+  stops supplier stock and cost sync at once.
+* Products filter, badges, catalog and Selected watches show only the two states.
 
 = 1.4.1 =
 * Gift wrap (ThemeComplete "Presentinslagning") is no longer offered for true Dropshipping products:

@@ -188,25 +188,22 @@ ok( ! $insp['cogs_enabled'] && $insp['with_gtin'] >= 2, 'inspection sees GTIN va
 section( 'C. Select + automatic matching' );
 $res = admin( 'select_items', array( key_of( 0 ), key_of( 1 ), key_of( 2 ), key_of( 6 ), key_of( 12 ), key_of( 18 ), key_of( 24 ) ) );
 echo "  ({$res[0]})\n";
-ok( 'warning' === $res[1] && false !== strpos( $res[0], 'REF000012 – several URME products match (Needs review' ) && null === link_of( 12 ), 'bulk: SKU/EAN conflict (Needs review) rejected, the others selected', $res );
-// A selection without a product from an earlier version (1.3.0 selected conflicts unlinked); the rest of the scenario uses it.
+ok( 'warning' === $res[1] && false !== strpos( $res[0], 'REF000012 – several URME products match (Needs review' ) && null === link_of( 12 ) && false !== strpos( $res[0], 'REF000006 – no URME product with this SKU or EAN' ) && null === link_of( 6 ), 'bulk: Needs review and "not in URME" rejected, the others selected', $res );
+// Links made by earlier versions (a manual link and an unlinked conflict); the rest of the scenario uses them.
+URME_SS_DB::insert_link( key_of( 6 ), $P4, 'manual' );
 $l12 = URME_SS_DB::insert_link( key_of( 12 ), 0, '' );
 URME_SS_DB::update_link( $l12, array( 'last_status' => 'unlinked', 'last_message' => URME_SS_Store::auto_match( cat( 12 ) )['message'] ) );
 ok( (int) link_of( 0 )['product_id'] === $P1 && 'sku' === link_of( 0 )['match_method'], 'exact SKU match' );
 ok( (int) link_of( 1 )['product_id'] === $P2, 'normalized SKU match (ref-000001)' );
 ok( (int) link_of( 2 )['product_id'] === $P3 && 'ean' === link_of( 2 )['match_method'], 'EAN match via GTIN-14 variant' );
-ok( 0 === (int) link_of( 6 )['product_id'], 'no match stays unlinked' );
 ok( 0 === (int) link_of( 12 )['product_id'] && false !== strpos( link_of( 12 )['last_message'], 'Several' ), 'SKU/EAN conflict -> not linked', link_of( 12 )['last_message'] );
 ok( (int) link_of( 18 )['product_id'] === $V6, 'variation matched by SKU' );
 ok( array( 'Nothing new was selected.', 'info' ) === admin( 'select_items', array( key_of( 0 ) ) ), 'selecting twice is a no-op' );
 
 /* ------------------------------------------------------------------ D */
-section( 'D. Manual linking' );
-$msg = admin( 'link_product', link_of( 6 ), $P4 );
-ok( (int) link_of( 6 )['product_id'] === $P4 && 'manual' === link_of( 6 )['match_method'], 'manual link saved', $msg );
-ok( p( $P4 )->get_stock_quantity() === (int) cat( 6 )['stock'], 'manual link synced stock immediately', array( p( $P4 )->get_stock_quantity(), cat( 6 )['stock'] ) );
-$msg = admin( 'link_product', link_of( 12 ), $P1 );
-ok( 0 === (int) link_of( 12 )['product_id'] && false !== strpos( $msg, 'already linked' ), 'cannot link a product twice', $msg );
+section( 'D. Manual link from an earlier version' );
+run( array( 'refresh_feed' => false, 'link_id' => (int) link_of( 6 )['id'] ) );
+ok( (int) link_of( 6 )['product_id'] === $P4 && 'manual' === link_of( 6 )['match_method'] && p( $P4 )->get_stock_quantity() === (int) cat( 6 )['stock'], 'manual link kept and synced', array( p( $P4 )->get_stock_quantity(), cat( 6 )['stock'] ) );
 
 /* ------------------------------------------------------------------ Z */
 section( 'Z. URME match status for every catalog watch' );

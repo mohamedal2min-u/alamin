@@ -38,9 +38,31 @@ function lf_product( $name, $sku, $qty, $cogs = null, $backorders = 'no' ) {
 	}
 	return $p->save();
 }
+/**
+ * A selection as versions before 1.5.2 made it: stock 0 → Dropshipping link, stock above 0 →
+ * Local first link with that stock and cost. Since 1.5.2 a watch with URME stock is never
+ * selected (and such links are removed once); the ledger tests below keep these fixtures.
+ */
 function lf_select( $i ) {
 	URME_SS_Matcher::reset();
-	admin( 'select_items', array( key_of( $i ) ) );
+	$item = URME_SS_DB::get_item( key_of( $i ) );
+	if ( ! $item || ! URME_SS_Settings::brand_enabled( $item['manufacturer'] ) ) {
+		return null;
+	}
+	$match = URME_SS_Store::auto_match( $item );
+	if ( ! $match['product_id'] ) {
+		return null;
+	}
+	$product = wc_get_product( $match['product_id'] );
+	$units   = URME_SS_Inventory::local_units_before_supplier( null, $product );
+	if ( $units > 0 && ( $product->is_type( 'variable' ) || 'no' !== $product->get_backorders() ) ) {
+		return null;
+	}
+	$id = URME_SS_DB::insert_link( key_of( $i ), $match['product_id'], $match['method'] );
+	if ( $units > 0 ) {
+		$target = URME_SS_Store::cost_target();
+		URME_SS_Inventory::enable_local( (int) $id, (int) $units, $target['type'] ? URME_SS_Store::get_cost( $product, $target ) : null );
+	}
 	return link_of( $i );
 }
 /**
@@ -172,20 +194,16 @@ ok( lf_alloc( $item->get_id() ) === $a, 'ledger unchanged after repeated saves/r
 ok( 8 === lf_stock( $L1 ) && 0 === (int) lf_link( 36 )['local_qty'], 'stock and local count unchanged' );
 
 /* ------------------------------------------------------------------ 7 */
-section( 'LF7. Local unit returned after the switch → back to Local first, not mixed' );
+section( 'LF7. Local unit returned after the switch → stays Dropshipping (1.5.2: no automatic switch back)' );
 lf_refund( $o1, 1 );
 $a = lf_alloc( $i1->get_id() );
 $l = lf_link( 36 );
 ok( 0 === (int) $a['local_allocated'] && 0 === (int) $a['last_reduced_stock'], 'ledger: local unit returned', $a );
-ok( 'local_first' === $l['stock_mode'] && 1 === (int) $l['local_qty'] && 0 === (int) $l['needs_stock_apply'], 'Supplier → Local first, 1 local unit', $l );
-ok( 1 === lf_stock( $L1 ), 'Woo stock = 1 local unit (not supplier 8 + 1)', lf_stock( $L1 ) );
-ok( abs( lf_cogs( $L1 ) - 900 ) < 0.001, 'COGS restored to local 900', lf_cogs( $L1 ) );
-ok( 1 === lf_log_count( 'Transition Supplier → Local first for product #' . $L1 ), 'return transition logged' );
+ok( 'supplier' === $l['stock_mode'] && 0 === (int) $l['local_qty'] && 1 === (int) $l['sync_enabled'], 'stays Dropshipping (local count 0, still synced)', $l );
+ok( 0 === lf_log_count( 'Transition Supplier → Local first for product #' . $L1 ), 'no switch back logged' );
 run();
-ok( 1 === lf_stock( $L1 ) && 'local_first' === lf_link( 36 )['stock_mode'], 'sync keeps it local (1 unit) while supplier has 8' );
-$o1b = lf_order( $L1, 1 );
-run();
-ok( 'supplier' === lf_link( 36 )['stock_mode'] && 8 === lf_stock( $L1 ), 'returned unit sold again → Supplier, stock 8' );
+ok( 8 === lf_stock( $L1 ) && 'supplier' === lf_link( 36 )['stock_mode'], 'sync: supplier stock 8 (use "URME Lager" in the catalog to take it back)', lf_stock( $L1 ) );
+ok( abs( lf_cogs( $L1 ) - round( 200 * lf_rate(), 2 ) ) < 0.001, 'COGS = supplier cost', lf_cogs( $L1 ) );
 
 /* ------------------------------------------------------------------ 5 */
 section( 'LF5. Feed fails when local reaches 0 → no switch, no writes' );
@@ -408,18 +426,15 @@ ok( 'success' === $out[1] && 'supplier' === lf_link( 78 )['stock_mode'] && 0 ===
 ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), 'manual switch to Supplier now creates no price review' );
 run();
 ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), '...and the next sync does not create one either' );
-$out = $res->invoke( null, lf_link( 78 ), 'local' );
-ok( 'success' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'] && ! (int) lf_link( 78 )['sync_enabled'] && 0 === lf_stock( $LC5 ), '(1.5.1) back to URME Lager via admin: stock 0, waiting for the real stock', $out );
+$cogs78 = lf_cogs( $LC5 );
+$out    = $res->invoke( null, lf_link( 78 ), 'local' );
+ok( 'success' === $out[1] && null === lf_link( 78 ) && 0 === lf_stock( $LC5 ) && 'outofstock' === p( $LC5 )->get_stock_status(), '(1.5.2) back to URME Lager via admin: removed from supplier sync, stock 0 / out of stock', $out );
+ok( abs( lf_cogs( $LC5 ) - $cogs78 ) < 0.001 && '4990' === p( $LC5 )->get_regular_price() && '4490' === p( $LC5 )->get_sale_price(), '   cost and prices unchanged' );
 wc_update_product_stock( wc_get_product( $LC5 ), 2, 'set' ); // The admin enters 2 in WooCommerce.
-ok( 1 === (int) lf_link( 78 )['sync_enabled'] && 2 === (int) lf_link( 78 )['local_qty'] && 2 === lf_stock( $LC5 ), '   stock 2 entered: active URME Lager with 2' );
-$out = $res->invoke( null, lf_link( 78 ), 'paused' );
-ok( 'error' === $out[1] && '1' === (string) lf_link( 78 )['sync_enabled'] && 'local_first' === lf_link( 78 )['stock_mode'] && 2 === lf_stock( $LC5 ), '(1.5) Pause no longer exists: refused, URME Lager unchanged', $out );
+ok( null === lf_link( 78 ) && 2 === lf_stock( $LC5 ), '   stock 2 entered: a normal URME Lager product, not selected again' );
+$out = $res->invoke( null, lf_link( 36 ), 'paused' );
+ok( 'error' === $out[1] && 'supplier' === lf_link( 36 )['stock_mode'], '(1.5) Pause no longer exists: refused, nothing changed', $out );
 $_POST = array();
-// 1.5: no order history, so relinking is allowed; a product with stock is linked as URME Lager.
-$msg = admin( 'link_product', lf_link( 78 ), $P8 );
-ok( (int) lf_link( 78 )['product_id'] === $P8 && 'local_first' === lf_link( 78 )['stock_mode'] && 2 === lf_stock( $LC5 ), '(1.5) relinking a URME Lager watch to a product with stock: linked as URME Lager, the old product keeps its stock', $msg );
-$msg = admin( 'link_product', lf_link( 78 ), $LC5 ); // Back to its own product for the tests below.
-ok( (int) lf_link( 78 )['product_id'] === $LC5 && 'local_first' === lf_link( 78 )['stock_mode'], '   linked back', $msg );
 
 /* ------------------------------------------------------------------ hard crash */
 section( 'LF-K. Process killed mid-transaction: database discards it, booked once later' );

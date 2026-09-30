@@ -71,86 +71,9 @@ class URME_SS_Inventory {
 		return isset( self::$linked[ (int) $product_id ] );
 	}
 
-	/**
-	 * URME Lager links whose WooCommerce stock reached 0 in this request (switched on shutdown).
-	 *
-	 * @var int[]
-	 */
-	private static $sold_out = array();
-
 	public static function init() {
 		add_action( 'woocommerce_new_order_item', array( __CLASS__, 'on_item_saved' ), 20, 3 );
 		add_action( 'woocommerce_update_order_item', array( __CLASS__, 'on_item_saved' ), 20, 3 );
-		add_action( 'woocommerce_product_set_stock', array( __CLASS__, 'on_stock_set' ) );
-		add_action( 'woocommerce_variation_set_stock', array( __CLASS__, 'on_stock_set' ) );
-	}
-
-	/**
-	 * Hook: WooCommerce stock of a product changed (sale, return, product page, quick edit).
-	 * - A URME Lager watch waiting for its stock (back from Dropshipping, sync off) that gets a
-	 *   stock above 0 becomes an active URME Lager watch.
-	 * - An active URME Lager watch at stock 0 becomes Dropshipping in this same request (on
-	 *   shutdown, after the order line is booked). A waiting watch at 0 stays URME Lager.
-	 */
-	public static function on_stock_set( $product ) {
-		if ( ! $product instanceof WC_Product || true !== $product->get_manage_stock() || ! self::is_linked_product( $product->get_id() ) ) {
-			return;
-		}
-		$qty  = (int) $product->get_stock_quantity();
-		$link = URME_SS_DB::link_for_product( $product->get_id() );
-		if ( ! $link || self::LOCAL !== $link['stock_mode'] ) {
-			return;
-		}
-		if ( $qty > 0 ) {
-			if ( ! (int) $link['sync_enabled'] ) {
-				URME_SS_DB::update_link(
-					(int) $link['id'],
-					array(
-						'sync_enabled'    => 1,
-						'local_qty'       => $qty,
-						'mode_changed_at' => current_time( 'mysql', true ),
-						'mode_note'       => sprintf( 'URME Lager stock entered: %d.', $qty ),
-					)
-				);
-				URME_SS_Log::info( sprintf( 'URME Lager stock entered for product #%d: %d. It becomes Dropshipping when this stock is sold.', $link['product_id'], $qty ) );
-			}
-			return;
-		}
-		if ( ! (int) $link['sync_enabled'] ) {
-			return; // Waiting for the admin's stock: never switched at 0.
-		}
-		if ( ! self::$sold_out ) {
-			add_action( 'shutdown', array( __CLASS__, 'switch_sold_out' ) );
-		}
-		self::$sold_out[ (int) $link['id'] ] = (int) $link['id'];
-	}
-
-	/**
-	 * URME Lager → Dropshipping for the watches that sold out in this request: the switch (with
-	 * its price-review notice to adjust the selling price), then supplier stock and cost from the
-	 * stored catalog (no feed download). Stock above 0 again, backorders or brand off: no switch.
-	 */
-	public static function switch_sold_out() {
-		global $wpdb;
-		$ids            = self::$sold_out;
-		self::$sold_out = array();
-		foreach ( $ids as $id ) {
-			$link    = $wpdb->get_row( $wpdb->prepare( 'SELECT l.*, c.product_no, c.manufacturer, c.purchase_price, c.stock FROM ' . URME_SS_DB::links_table() . ' l LEFT JOIN ' . URME_SS_DB::catalog_table() . ' c ON c.item_key = l.item_key WHERE l.id = %d', $id ), ARRAY_A ); // phpcs:ignore WordPress.DB
-			$product = $link ? wc_get_product( (int) $link['product_id'] ) : null;
-			if ( ! $link || ! $product || self::LOCAL !== $link['stock_mode'] || ! (int) $link['sync_enabled'] || 'no' !== $product->get_backorders()
-				|| self::local_units_before_supplier( null, $product ) > 0 || ! URME_SS_Settings::brand_enabled( (string) $link['manufacturer'] ) ) {
-				continue;
-			}
-			if ( self::handover( $link, $product, URME_SS_Rates::current() ) ) {
-				URME_SS_Sync::run(
-					array(
-						'refresh_feed' => false,
-						'link_id'      => $id,
-						'trigger'      => 'stock 0',
-					)
-				);
-			}
-		}
 	}
 
 	/**
@@ -337,7 +260,6 @@ class URME_SS_Inventory {
 			'back_local'         => 0,
 			'back_supplier'      => 0,
 			'link_changes'       => array(),
-			'returned_to_local'  => false,
 			'warnings'           => array(),
 		);
 		$mode      = $link ? $link['stock_mode'] : self::SUPPLIER;
@@ -370,17 +292,11 @@ class URME_SS_Inventory {
 				$supplier           = 0;
 			}
 			if ( $plan['back_local'] && $link ) {
-				$plan['link_changes']['local_qty'] = $local_qty + $plan['back_local'];
-				if ( self::SUPPLIER === $mode ) {
-					// A URME-owned unit is back on the shelf: sell it before supplier stock again.
-					$plan['returned_to_local']                 = true;
-					$plan['link_changes']['stock_mode']        = self::LOCAL;
-					$plan['link_changes']['mode_changed_at']   = current_time( 'mysql', true );
-					$plan['link_changes']['mode_note']         = sprintf( 'Local unit returned (%d); selling it before supplier stock.', $plan['back_local'] );
-					$plan['link_changes']['needs_stock_apply'] = 1;
-				}
+				// A returned unit of a Dropshipping watch does not change its mode (no order history
+				// decides the fulfillment); the admin moves it back to URME Lager if wanted.
+				$plan['link_changes']['local_qty'] = self::SUPPLIER === $mode ? 0 : $local_qty + $plan['back_local'];
 			}
-			if ( $plan['back_supplier'] && self::LOCAL === ( $plan['link_changes']['stock_mode'] ?? $mode ) && $link ) {
+			if ( $plan['back_supplier'] && self::LOCAL === $mode && $link ) {
 				// WooCommerce just added supplier units to a local-only stock level: take them out again.
 				$plan['link_changes']['needs_stock_apply'] = 1;
 			}
@@ -432,9 +348,6 @@ class URME_SS_Inventory {
 		}
 		if ( $plan['took_local'] && 0 === $local_now ) {
 			URME_SS_Log::info( sprintf( 'Local stock for product #%d is sold out; it switches to supplier stock on the next safe sync.', $facts['product_id'] ) );
-		}
-		if ( $plan['returned_to_local'] ) {
-			URME_SS_Log::info( sprintf( 'Transition Supplier → Local first for product #%d: %d local unit(s) returned (%s).', $facts['product_id'], $plan['back_local'], $ref ) );
 		}
 		foreach ( $plan['warnings'] as $warning ) {
 			URME_SS_Log::warning( sprintf( 'Local inventory (%s, product #%d): %s', $ref, $facts['product_id'], $warning ) );
@@ -673,47 +586,47 @@ class URME_SS_Inventory {
 	}
 
 	/**
-	 * Admin: Dropshipping → URME Lager. WooCommerce stock becomes 0 (out of stock) until the
-	 * admin enters the real stock in WooCommerce; the supplier quantity is never kept. Until then
-	 * the watch is a URME Lager link with sync off: supplier sync never writes to it and it is not
-	 * switched back to Dropshipping at 0. Prices and cost are not touched.
+	 * Admin: back to URME Lager. The watch leaves supplier sync (its link is removed) and its
+	 * WooCommerce stock becomes 0 (out of stock) until the admin enters the real stock; the
+	 * supplier quantity is never kept. Prices and cost are not touched.
 	 *
 	 * @return true|string True or an error message.
 	 */
 	public static function return_to_lager( $link_id ) {
 		$link = URME_SS_DB::get_link_by_id( $link_id );
-		if ( ! $link || ! (int) $link['product_id'] ) {
-			return 'Link a WooCommerce product first.';
+		if ( ! $link ) {
+			return 'Selection not found.';
 		}
-		$product = wc_get_product( (int) $link['product_id'] );
-		if ( ! $product ) {
-			return 'The linked product no longer exists.';
+		$product = (int) $link['product_id'] ? wc_get_product( (int) $link['product_id'] ) : null;
+		if ( $product && $product->is_type( 'variable' ) ) {
+			return 'A variable parent product has no stock of its own; nothing was changed.';
 		}
-		if ( $product->is_type( 'variable' ) ) {
-			return 'URME Lager works on a simple product or a single variation, not on a variable parent product.';
+		URME_SS_DB::delete_link( (int) $link['id'] );
+		if ( $product ) {
+			if ( true !== $product->get_manage_stock() ) {
+				$product->set_manage_stock( true );
+				$product->save();
+			}
+			wc_update_product_stock( $product, 0, 'set' );
 		}
-		if ( 'no' !== $product->get_backorders() ) {
-			return sprintf( 'URME Lager was not set: backorders are allowed on "%s". Set Backorders to "Do not allow" and try again. Nothing was changed.', $product->get_name() );
-		}
-		self::baseline( $link ); // Earlier sales stay booked as supplier sales.
-		URME_SS_DB::update_link(
-			(int) $link['id'],
-			array(
-				'stock_mode'        => self::LOCAL,
-				'local_qty'         => 0,
-				'sync_enabled'      => 0,
-				'needs_stock_apply' => 0,
-				'mode_changed_at'   => current_time( 'mysql', true ),
-				'mode_note'         => 'Back to URME Lager – waiting for stock (enter it in WooCommerce).',
-			)
-		);
-		if ( true !== $product->get_manage_stock() ) {
-			$product->set_manage_stock( true );
-			$product->save();
-		}
-		wc_update_product_stock( $product, 0, 'set' );
-		URME_SS_Log::info( sprintf( 'Dropshipping → URME Lager for product #%d (%s): stock 0, out of stock until the real stock is entered.', $link['product_id'], $link['item_key'] ) );
+		URME_SS_Log::info( sprintf( 'Back to URME Lager: product #%d (%s) removed from supplier sync; stock 0 (out of stock) until the real stock is entered.', $link['product_id'], $link['item_key'] ) );
 		return true;
+	}
+
+	/**
+	 * Once (1.5.2): watches that are URME Lager (Local first, paused, or without a product) are
+	 * removed from supplier sync. Their WooCommerce stock, cost and prices stay as they are.
+	 */
+	public static function remove_lager_links() {
+		global $wpdb;
+		$ids = array_map( 'intval', (array) $wpdb->get_col( 'SELECT id FROM ' . URME_SS_DB::links_table() . " WHERE product_id = 0 OR stock_mode = 'local_first' OR sync_enabled = 0" ) ); // phpcs:ignore WordPress.DB
+		foreach ( $ids as $id ) {
+			URME_SS_DB::delete_link( $id );
+		}
+		if ( $ids ) {
+			URME_SS_Log::info( sprintf( '%d URME Lager watch(es) removed from supplier sync (1.5.2); their stock, cost and prices were not changed.', count( $ids ) ) );
+		}
+		return count( $ids );
 	}
 
 	/**
@@ -821,12 +734,12 @@ class URME_SS_Inventory {
 
 	/**
 	 * A brand is turned on again: its Supplier-now links would start writing supplier stock and
-	 * cost at the next sync. Each one is checked like a manual Resume, before the brand is saved;
-	 * a link whose product has local URME stock (stock above what supplier sync last set) is paused
-	 * so nothing is written to it. Stock is read in bulk (constant queries for any number of links).
+	 * cost at the next sync. Each one is checked before the brand is saved; a link whose product
+	 * has local URME stock (stock above what supplier sync last set) is URME Lager and is removed
+	 * from supplier sync, so nothing is written to it. Stock is read in bulk (constant queries for any number of links).
 	 *
 	 * @param string[] $brand_keys Upper-cased brands being enabled.
-	 * @return string[] The paused watches, for the admin notice.
+	 * @return string[] The watches removed from supplier sync, for the admin notice.
 	 */
 	public static function hold_on_brand_enable( array $brand_keys ) {
 		global $wpdb;
@@ -847,15 +760,8 @@ class URME_SS_Inventory {
 			if ( $units < 1 ) {
 				continue;
 			}
-			URME_SS_DB::update_link(
-				$r['id'],
-				array(
-					'sync_enabled' => 0,
-					'last_status'  => 'error',
-					'last_message' => sprintf( 'Paused when %s sync was turned on: %s', $r['manufacturer'], self::local_priority_message( $units ) ),
-				)
-			);
-			URME_SS_Log::info( sprintf( 'Brand %s enabled: product #%d (%s) paused, %d local unit(s) found; supplier stock and cost not written.', $r['manufacturer'], $r['product_id'], $r['product_no'], $units ) );
+			URME_SS_DB::delete_link( (int) $r['id'] ); // URME Lager: out of supplier sync, stock and cost kept.
+			URME_SS_Log::info( sprintf( 'Brand %s enabled: product #%d (%s) has %d URME unit(s); removed from supplier sync (URME Lager), supplier stock and cost not written.', $r['manufacturer'], $r['product_id'], $r['product_no'], $units ) );
 			$held[] = sprintf( '%s (%d unit%s)', $r['product_no'], $units, 1 === $units ? '' : 's' );
 		}
 		return $held;

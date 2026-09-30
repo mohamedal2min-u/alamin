@@ -11,14 +11,6 @@ function ph_ctx( array $over = array() ) {
 function ph_catalog( array $get ) {
 	return nf_catalog_html( $get + array( 'tab' => 'catalog' ) );
 }
-function ph_selected( $q = '' ) {
-	$m = new ReflectionMethod( 'URME_SS_Admin', 'render_selected' );
-	$m->setAccessible( true );
-	$_GET = array( 'tab' => 'selected', 'q' => $q );
-	$html = ff_admin_html( static function () use ( $m ) { $m->invoke( null ); } );
-	$_GET = array();
-	return $html;
-}
 function ph_save( array $s ) {
 	// Like the settings form: all current values posted as strings, plus the changed ones.
 	$in               = URME_SS_Settings::all();
@@ -147,7 +139,6 @@ $watch   = static function ( $check, $object_id, $meta_key ) use ( &$writes ) {
 };
 add_filter( 'update_post_metadata', $watch, 10, 3 );
 add_filter( 'add_post_metadata', $watch, 10, 3 );
-$sel = ph_selected( 'REF000120' );
 ph_catalog( array() );
 ph_save( array( 'hint_profit_sek' => '900' ) );
 ph_catalog( array( 'productno' => 'REF000120' ) );
@@ -155,10 +146,9 @@ run();
 ph_save( array( 'hint_profit_sek' => '500' ) );
 remove_filter( 'update_post_metadata', $watch, 10 );
 remove_filter( 'add_post_metadata', $watch, 10 );
-ok( '4990' === p( $ph )->get_regular_price() && '4490' === p( $ph )->get_sale_price() && '4490' === p( $ph )->get_price(), '11. regular 4,990 and sale 4,490 unchanged after catalog, Selected watches, settings change and sync' );
+ok( '4990' === p( $ph )->get_regular_price() && '4490' === p( $ph )->get_sale_price() && '4490' === p( $ph )->get_price(), '11. regular 4,990 and sale 4,490 unchanged after catalog, settings change and sync' );
 ok( array() === $writes, '   no write to _regular_price, _sale_price or _price', $writes );
 ok( (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'shop_coupon'" ) === $coupons, '   no coupon created or changed' );
-ok( false !== strpos( ph_text( $sel ), 'Suggested price: 3,900 kr Est. profit 504 kr' ), '   Selected watches shows the hint next to the supplier cost' );
 
 section( 'PH12. Nothing customer-facing' );
 wp_set_current_user( 0 );

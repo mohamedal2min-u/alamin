@@ -65,7 +65,7 @@ $PA_SET = array(
 );
 nf_feed( $feed_n, array_merge( $BS_SET, $CA_SET, $PA_SET ) );
 run( array( 'force_feed' => true ) );
-ok( 'success' === ca_act( 'start_local', 228 )[1] && 'success' === ca_act( 'start_supplier', 234 )[1], '   (REF000228 Local first with 3 units, REF000234 Supplier now)' );
+ok( lf_select( 228 ) && 'success' === ca_act( 'start_supplier', 234 )[1], '   (REF000228 legacy Local first link with 3 units, REF000234 Dropshipping)' );
 $lp = URME_SS_DB::get_link( key_of( 234 ) );
 $wpdb->update( URME_SS_DB::links_table(), array( 'sync_enabled' => 0 ), array( 'id' => (int) $lp['id'] ) ); // Legacy paused link (Pause no longer exists).
 wp_trash_post( $trash );
@@ -136,8 +136,6 @@ ok( 'success' === $res[1] && '4190' === $pa['sale'] && 0 === (int) $pa['link']['
 ok( 'error' === pa_sale( 240, '100' )[1], 'deleted (trashed) product: refused' );
 ok( 0 === $http, '15. no HTTP (supplier feed) request for any sale price save', $http );
 remove_filter( 'pre_http_request', $count_http );
-$sel = ph_text( ph_selected( 'REF000180' ) );
-ok( false !== strpos( $sel, 'Regular: 4,990 kr Sale price' ) && false !== strpos( ph_selected( 'REF000180' ), 'name="do" value="save_sale"' ), 'Selected watches: the same sale price editor as its own small form', $sel );
 
 section( 'PA16. Cron / supplier sync never writes regular or sale price' );
 $writes = array();

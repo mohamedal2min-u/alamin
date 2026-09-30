@@ -48,6 +48,11 @@ class URME_SS_Plugin {
 			// Admin-only Fulfillment column (URME Lager / Dropshipping / Local first / Paused) on WooCommerce > Products.
 			URME_SS_Product_Source::init();
 		}
+		// 1.5.2: URME Lager watches are no longer kept in supplier sync (once).
+		if ( '1' !== get_option( 'urme_ss_lager_links_removed' ) && ! get_option( 'urme_ss_schema_error' ) ) {
+			URME_SS_Inventory::remove_lager_links();
+			update_option( 'urme_ss_lager_links_removed', '1', true ); // Autoloaded: no extra query per request.
+		}
 		// No gift wrap (ThemeComplete options) for Dropshipping watches: storefront, AJAX add to cart and REST alike.
 		URME_SS_Gift_Wrap::init();
 		// Self-heal the schedule if it was lost (e.g. after a migration).

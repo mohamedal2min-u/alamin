@@ -14,9 +14,9 @@
 .urme-ss .urme-count { color: #50575e; }
 .urme-ss .urme-table td, .urme-ss .urme-table th { vertical-align: middle; }
 .urme-ss .urme-table .num { text-align: right; white-space: nowrap; }
-.urme-ss .urme-img-col { width: 64px; }
-.urme-ss .urme-img-col img { width: 56px; height: 56px; object-fit: contain; background: #fff; border: 1px solid #eee; border-radius: 3px; display: block; }
-.urme-ss .urme-noimg { display: block; width: 56px; height: 56px; background: #f0f0f1; border-radius: 3px; }
+.urme-ss .urme-img-col { width: 52px; }
+.urme-ss .urme-img-col img { width: 48px; height: 48px; object-fit: contain; background: #fff; border: 1px solid #eee; border-radius: 3px; display: block; }
+.urme-ss .urme-noimg { display: block; width: 48px; height: 48px; background: #f0f0f1; border-radius: 3px; }
 .urme-ss .urme-actions form { display: block; margin-bottom: 4px; }
 .urme-ss .urme-inline { display: inline; }
 .urme-ss .urme-good { color: #008a20; font-weight: 600; }
@@ -68,6 +68,10 @@
 .urme-ss .urme-table tbody td, .urme-ss .urme-table tbody th { vertical-align: top; padding-top: 10px; padding-bottom: 10px; }
 .urme-ss .urme-table tbody th.check-column { padding-top: 14px; }
 .urme-ss .urme-table code { font-size: 12px; white-space: nowrap; }
+.urme-ss .urme-code-col { width: 1%; }
+.urme-ss .urme-code-col .urme-ean { display: inline-block; margin-top: 3px; font-size: 11px; color: #646970; background: transparent; padding: 0; }
+.urme-ss .urme-brand { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: #50575e; }
+.urme-ss .urme-cost-col .urme-muted { font-size: 12px; }
 .urme-ss .urme-product-col { min-width: 180px; }
 .urme-ss .urme-sync-col { width: 210px; min-width: 210px; }
 .urme-ss .urme-sync-state { font-weight: 600; margin-bottom: 4px; }

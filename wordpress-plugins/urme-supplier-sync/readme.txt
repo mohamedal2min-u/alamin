@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.5.3
+Stable tag: 1.5.4
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -15,6 +15,9 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 * WooCommerce > Supplier Sync shows every supplier watch with image (loaded from the supplier,
   nothing is added to the Media Library), brand, model (PRODUCTNO), EAN (ITEM_ID), supplier stock,
   cost in EUR and cost in SEK.
+* The catalog lists the watches in your store first (linked, or a unique URME match), then Needs
+  review, then Not in URME; brand and model order inside each group. Compact columns: brand above
+  the product name, model (PRODUCTNO) above the EAN, EUR cost above SEK cost.
 * The Brand filter lists only the brands enabled for sync (Settings > Brands enabled for sync);
   "All brands" still shows every watch. A brand filtered on from an old link is shown with
   "– sync off".
@@ -95,7 +98,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.3.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.4.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -210,6 +213,12 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.5.4 =
+* Supplier catalog: watches in your store are listed first (linked or a unique URME match), then
+  Needs review, then Not in URME.
+* Narrower table (13 → 10 columns): brand shown above the product name, model and EAN stacked in
+  one "Model / EAN" column, EUR and SEK cost stacked in one "Cost" column, smaller images.
 
 = 1.5.3 =
 * Supplier catalog: the Brand filter lists only brands enabled for sync ("All brands" unchanged).

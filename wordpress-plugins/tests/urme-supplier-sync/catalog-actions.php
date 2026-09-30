@@ -156,6 +156,27 @@ URME_SS_Settings::set_brand( 'Casio', true );
 $on = ca_brand_options( ph_catalog( array() ) );
 URME_SS_Settings::set_brand( 'Casio', false );
 ok( isset( $on['Casio'] ) && false === strpos( $on['Casio'], 'sync' ) && ! isset( ca_brand_options( ph_catalog( array() ) )['Casio'] ), '   Casio turned on → listed; off again → gone' );
+// 1.5.4: watches in the store first (linked or a unique URME match), then Needs review, then Not in URME.
+$group = static function ( $r ) {
+	return ( (int) $r['product_id'] || 'exists' === $r['match_status'] ) ? 0 : ( 'review' === $r['match_status'] ? 1 : 2 );
+};
+$rows  = URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'per_page' => 200 ) )['rows'];
+$keys  = array();
+foreach ( $rows as $r ) {
+	$keys[] = array( $group( $r ), $r['manufacturer'], $r['product_no'], $r['item_key'] );
+}
+$sorted = $keys;
+sort( $sorted );
+$groups = array_unique( array_column( $keys, 0 ) );
+ok( $keys === $sorted && array( 0, 1, 2 ) === array_values( $groups ), 'catalog order: in the store first, then Needs review, then Not in URME; brand + model inside each group', array_column( $keys, 0 ) );
+$p1 = wp_list_pluck( URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'per_page' => 5, 'page' => 1 ) )['rows'], 'item_key' );
+$p2 = wp_list_pluck( URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'per_page' => 5, 'page' => 2 ) )['rows'], 'item_key' );
+ok( array_merge( $p1, $p2 ) === array_slice( array_column( $keys, 3 ), 0, 10 ), '   paging keeps that order (page 2 continues page 1, no duplicates)' );
+$h = ph_catalog( array( 'brand' => 'BOSS' ) );
+preg_match( '#<thead>(.*?)</thead>#s', $h, $thead );
+ok( 10 === substr_count( $thead[1], '<t' ) - 1 && false !== strpos( $thead[1], '>Model / EAN<' ) && false !== strpos( $thead[1], '<th class="num">Cost</th>' ) && false === strpos( $thead[1], '<th>Brand</th>' ) && false === strpos( $thead[1], 'Cost EUR' ), 'narrower table: 10 columns (brand in Product, model + EAN stacked, EUR + SEK in one Cost column)', $thead[1] );
+$r = ca_row( $h, 'REF000180' );
+ok( false !== strpos( $r, '<span class="urme-brand">BOSS</span>' ) && 1 === preg_match( '#<td class="urme-code-col"><code>REF000180</code><br><code class="urme-ean"[^>]*>' . key_of( 180 ) . '</code></td>#', $r ) && 1 === preg_match( '#<td class="num urme-cost-col">€[\d,.]+<br><span class="urme-muted">[\d,.]+ kr</span></td>#u', $r ), '   row: brand above the name, article number above the barcode, EUR above SEK', ff_text( $r ) );
 $rc = ca_row( $casio, 'REF000204' );
 ok( '0 / Out of stock' === ca_stock_cell( $rc ) && false === strpos( $rc, 'start_' ), 'brand sync disabled (Casio): stock shown, no sync button', ca_stock_cell( $rc ) );
 

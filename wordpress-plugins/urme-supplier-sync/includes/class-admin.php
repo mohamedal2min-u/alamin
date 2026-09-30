@@ -978,26 +978,23 @@ class URME_SS_Admin {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="urme-select-form">
 			<?php echo self::hidden_fields( 'select' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<div class="tablenav top"><button type="submit" class="button button-primary urme-bulk" disabled>Select checked for sync</button>
-				<span class="description">Selecting is always manual. A watch that exists in URME is not synced until you select it. Watches with URME stock start as URME Lager; only URME stock 0 starts Dropshipping.</span></div>
+				<span class="description">Selecting is always manual. Only watches with URME stock 0 can be selected (Dropshipping); watches with URME stock stay URME Lager. Watches in your store are listed first.</span></div>
 			<table class="widefat striped urme-table">
 				<thead><tr>
 					<td class="check-column"><input type="checkbox" class="urme-check-all" aria-label="Select all"></td>
 					<th class="urme-img-col">Image</th>
-					<th>Brand</th>
 					<th class="urme-product-col">Product</th>
-					<th>Model / SKU<br><small>PRODUCTNO</small></th>
-					<th>EAN<br><small>ITEM_ID</small></th>
+					<th class="urme-code-col">Model / EAN</th>
 					<th class="num">Supplier stock</th>
 					<th class="num urme-stock-col">URME stock</th>
-					<th class="num">Cost EUR</th>
-					<th class="num">Cost SEK</th>
+					<th class="num">Cost</th>
 					<th class="urme-hint-col">Price hint</th>
 					<th class="urme-match-col">In URME</th>
 					<th class="urme-sync-col">Sync</th>
 				</tr></thead>
 				<tbody>
 				<?php if ( ! $result['rows'] ) : ?>
-					<tr><td colspan="13">
+					<tr><td colspan="10">
 						<?php
 						echo URME_SS_DB::catalog_counts()['total']
 							? 'No watches match your search.'
@@ -1034,8 +1031,8 @@ class URME_SS_Admin {
 				<?php endif; ?>
 			</th>
 			<td class="urme-img-col"><?php echo self::img( $row['img_url'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-			<td><?php echo esc_html( $row['manufacturer'] ); ?></td>
 			<td class="urme-product-col">
+				<span class="urme-brand"><?php echo esc_html( $row['manufacturer'] ); ?></span><br>
 				<?php
 				$age = URME_SS_DB::new_age( $row );
 				if ( null !== $age ) {
@@ -1046,12 +1043,10 @@ class URME_SS_Admin {
 				<?php if ( $row['subcategory'] ) : ?><br><small class="urme-muted"><?php echo esc_html( $row['subcategory'] ); ?></small><?php endif; ?>
 				<?php if ( ! (int) $row['in_feed'] ) : ?><br><span class="urme-bad">Not in feed since <?php echo esc_html( self::mysql_datetime( $row['missing_since'] ) ); ?></span><?php endif; ?>
 			</td>
-			<td><code><?php echo esc_html( $row['product_no'] ); ?></code></td>
-			<td><code><?php echo esc_html( $row['item_id'] ); ?></code></td>
+			<td class="urme-code-col"><code><?php echo esc_html( $row['product_no'] ); ?></code><br><code class="urme-ean" title="EAN / ITEM_ID"><?php echo esc_html( $row['item_id'] ); ?></code></td>
 			<td class="num"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></td>
 			<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ) . ( isset( $stock[ self::urme_product_id( $row ) ] ) ? '<br>' . URME_SS_Product_Source::html( self::urme_product_id( $row ) ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-			<td class="num"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?></td>
-			<td class="num"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></td>
+			<td class="num urme-cost-col"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span></td>
 			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $hint ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-sync-col">

@@ -86,16 +86,38 @@ class URME_SS_Inventory {
 	}
 
 	/**
-	 * Hook: WooCommerce stock of a product changed. A URME Lager watch at stock 0 becomes
-	 * Dropshipping in this same request (on shutdown, after the order line is booked).
+	 * Hook: WooCommerce stock of a product changed (sale, return, product page, quick edit).
+	 * - A URME Lager watch waiting for its stock (back from Dropshipping, sync off) that gets a
+	 *   stock above 0 becomes an active URME Lager watch.
+	 * - An active URME Lager watch at stock 0 becomes Dropshipping in this same request (on
+	 *   shutdown, after the order line is booked). A waiting watch at 0 stays URME Lager.
 	 */
 	public static function on_stock_set( $product ) {
-		if ( ! $product instanceof WC_Product || true !== $product->get_manage_stock() || (int) $product->get_stock_quantity() > 0 ) {
+		if ( ! $product instanceof WC_Product || true !== $product->get_manage_stock() || ! self::is_linked_product( $product->get_id() ) ) {
 			return;
 		}
+		$qty  = (int) $product->get_stock_quantity();
 		$link = URME_SS_DB::link_for_product( $product->get_id() );
-		if ( ! $link || self::LOCAL !== $link['stock_mode'] || ! (int) $link['sync_enabled'] ) {
+		if ( ! $link || self::LOCAL !== $link['stock_mode'] ) {
 			return;
+		}
+		if ( $qty > 0 ) {
+			if ( ! (int) $link['sync_enabled'] ) {
+				URME_SS_DB::update_link(
+					(int) $link['id'],
+					array(
+						'sync_enabled'    => 1,
+						'local_qty'       => $qty,
+						'mode_changed_at' => current_time( 'mysql', true ),
+						'mode_note'       => sprintf( 'URME Lager stock entered: %d.', $qty ),
+					)
+				);
+				URME_SS_Log::info( sprintf( 'URME Lager stock entered for product #%d: %d. It becomes Dropshipping when this stock is sold.', $link['product_id'], $qty ) );
+			}
+			return;
+		}
+		if ( ! (int) $link['sync_enabled'] ) {
+			return; // Waiting for the admin's stock: never switched at 0.
 		}
 		if ( ! self::$sold_out ) {
 			add_action( 'shutdown', array( __CLASS__, 'switch_sold_out' ) );
@@ -647,6 +669,50 @@ class URME_SS_Inventory {
 		$sku = $product ? $product->get_sku() : ( $link['product_no'] ?? $link['item_key'] );
 		URME_SS_Log::info( sprintf( 'Transition Local first → Supplier for product #%d (%s): local stock sold out, supplier stock and cost now synced.', $link['product_id'], $sku ) );
 		URME_SS_Log::info( sprintf( 'Price review required: SKU %s (product #%d) has switched to Dropshipping. Selling price was not changed.', $sku, $link['product_id'] ) );
+		return true;
+	}
+
+	/**
+	 * Admin: Dropshipping → URME Lager. WooCommerce stock becomes 0 (out of stock) until the
+	 * admin enters the real stock in WooCommerce; the supplier quantity is never kept. Until then
+	 * the watch is a URME Lager link with sync off: supplier sync never writes to it and it is not
+	 * switched back to Dropshipping at 0. Prices and cost are not touched.
+	 *
+	 * @return true|string True or an error message.
+	 */
+	public static function return_to_lager( $link_id ) {
+		$link = URME_SS_DB::get_link_by_id( $link_id );
+		if ( ! $link || ! (int) $link['product_id'] ) {
+			return 'Link a WooCommerce product first.';
+		}
+		$product = wc_get_product( (int) $link['product_id'] );
+		if ( ! $product ) {
+			return 'The linked product no longer exists.';
+		}
+		if ( $product->is_type( 'variable' ) ) {
+			return 'URME Lager works on a simple product or a single variation, not on a variable parent product.';
+		}
+		if ( 'no' !== $product->get_backorders() ) {
+			return sprintf( 'URME Lager was not set: backorders are allowed on "%s". Set Backorders to "Do not allow" and try again. Nothing was changed.', $product->get_name() );
+		}
+		self::baseline( $link ); // Earlier sales stay booked as supplier sales.
+		URME_SS_DB::update_link(
+			(int) $link['id'],
+			array(
+				'stock_mode'        => self::LOCAL,
+				'local_qty'         => 0,
+				'sync_enabled'      => 0,
+				'needs_stock_apply' => 0,
+				'mode_changed_at'   => current_time( 'mysql', true ),
+				'mode_note'         => 'Back to URME Lager – waiting for stock (enter it in WooCommerce).',
+			)
+		);
+		if ( true !== $product->get_manage_stock() ) {
+			$product->set_manage_stock( true );
+			$product->save();
+		}
+		wc_update_product_stock( $product, 0, 'set' );
+		URME_SS_Log::info( sprintf( 'Dropshipping → URME Lager for product #%d (%s): stock 0, out of stock until the real stock is entered.', $link['product_id'], $link['item_key'] ) );
 		return true;
 	}
 

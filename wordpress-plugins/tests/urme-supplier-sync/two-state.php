@@ -74,16 +74,31 @@ URME_SS_Settings::set_brand( 'BOSS', true );
 remove_filter( 'pre_http_request', $hf );
 ok( 0 === $http, 'no HTTP request (no feed download) for the refusals and the automatic switches', $http );
 
-section( 'TS3. Dropshipping → URME Lager: supplier sync stops, the typed quantity is kept' );
-$_POST = array( 'local_qty' => '0' );
-$r0    = admin( 'set_mode', ts_link( 408 ), 'local' );
-$_POST = array( 'local_qty' => '2', 'local_cost' => '650' );
-$r     = admin( 'set_mode', ts_link( 408 ), 'local' );
-$_POST = array();
-ok( 'error' === $r0[1] && 'success' === $r[1] && 'local_first' === ts_link( 408 )['stock_mode'] && 2 === p( $T0 )->get_stock_quantity() && abs( (float) p( $T0 )->get_cogs_value() - 650 ) < 0.001, 'qty 0 refused; qty 2: URME Lager with stock 2 (not the supplier 8) and cost 650', array( $r0, $r ) );
+section( 'TS3. Dropshipping → URME Lager: stock 0 / out of stock until the stock is entered' );
+$c0 = (float) p( $T0 )->get_cogs_value();
+$r  = admin( 'set_mode', ts_link( 408 ), 'local' );
+$l  = ts_link( 408 );
+ok( 'success' === $r[1] && 'local_first' === $l['stock_mode'] && ! (int) $l['sync_enabled'] && 0 === p( $T0 )->get_stock_quantity() && 'outofstock' === p( $T0 )->get_stock_status() && abs( (float) p( $T0 )->get_cogs_value() - $c0 ) < 0.001 && 'URME Lager' === pa_badge( $T0 ), 'Dropshipping (stock 8) → URME Lager: stock 0, out of stock (the supplier 8 is not kept), COGS and prices untouched', array( $r, bs_state( $T0 ) ) );
+URME_SS_Inventory::switch_sold_out();
 nf_feed( $feed_n, array_merge( $BS_SET, $CA_SET, $PA_SET, $AX_SET, $BF_SET, $TS_SET, array( 'REF000408' => array( 'MANUFACTURER' => 'BOSS', 'STOCK' => '9', 'PURCHASE_PRICE' => '190.00' ) ) ) );
 run();
-ok( 2 === p( $T0 )->get_stock_quantity() && abs( (float) p( $T0 )->get_cogs_value() - 650 ) < 0.001 && 'URME Lager' === pa_badge( $T0 ), 'next sync (supplier now 9 / 190 EUR): nothing written, stock 2 / cost 650' );
+$l = ts_link( 408 );
+ok( 'local_first' === $l['stock_mode'] && 0 === p( $T0 )->get_stock_quantity() && 'outofstock' === p( $T0 )->get_stock_status() && abs( (float) p( $T0 )->get_cogs_value() - $c0 ) < 0.001, 'waiting at 0: not switched back to Dropshipping; the next sync (supplier 9 / 190 EUR) writes nothing', bs_state( $T0 ) );
+$r = admin( 'set_mode', ts_link( 408 ), 'local' );
+ok( 'info' === $r[1] && 0 === p( $T0 )->get_stock_quantity(), '   "URME Lager" again: nothing changed', $r );
+bs_set( $T0, 3 ); // The admin enters the real stock in WooCommerce.
+$l = ts_link( 408 );
+ok( 1 === (int) $l['sync_enabled'] && 'local_first' === $l['stock_mode'] && 3 === p( $T0 )->get_stock_quantity() && 'instock' === p( $T0 )->get_stock_status() && 'URME Lager' === pa_badge( $T0 ), 'stock 3 entered in WooCommerce: normal URME Lager, in stock', $l['mode_note'] );
+run( array( 'refresh_feed' => false ) );
+lf_order( $T0, 1 );
+URME_SS_Inventory::switch_sold_out();
+ok( 'local_first' === ts_link( 408 )['stock_mode'] && 2 === p( $T0 )->get_stock_quantity(), '   sync and a sale 3 → 2: still URME Lager, stock 2' );
+lf_order( $T0, 2 );
+URME_SS_Inventory::switch_sold_out();
+ok( 'supplier' === ts_link( 408 )['stock_mode'] && 9 === p( $T0 )->get_stock_quantity() && abs( (float) p( $T0 )->get_cogs_value() - round( 190 * 11.321, 2 ) ) < 0.001, '   that stock sold to 0 → Dropshipping at once: supplier stock 9, cost 190 EUR × rate', bs_state( $T0 ) );
+$r = admin( 'set_mode', ts_link( 402 ), 'local' );                   // Dropshipping → URME Lager (waiting at 0)…
+$r2 = admin( 'run_row_action', 'dropship|' . ts_link( 402 )['id'] ); // …and back to Dropshipping by hand (stock 0).
+ok( 'success' === $r[1] && 'success' === $r2[1] && 'supplier' === ts_link( 402 )['stock_mode'] && 1 === (int) ts_link( 402 )['sync_enabled'], 'a waiting watch (stock 0) can be switched to Dropshipping by hand', array( $r[0], $r2[0] ) );
 
 section( 'TS4. Controls show only URME Lager / Dropshipping' );
 $counts = URME_SS_DB::link_counts();
@@ -96,7 +111,7 @@ $row = array_merge( URME_SS_DB::get_links( array( 'q' => 'REF000402' ) )['rows']
 ob_start();
 $m->invoke( null, $row, p( $T3 ), URME_SS_Store::cost_target() );
 $cell = ob_get_clean();
-ok( 2 === substr_count( $cell, '<option' ) && false !== strpos( $cell, '>URME Lager</option>' ) && false !== strpos( $cell, '>Dropshipping</option>' ) && false === strpos( $cell, 'Paused' ) && false === strpos( $cell, 'Local first' ) && false !== strpos( $cell, 'name="local_qty" min="1" step="1" value=""' ), 'mode switcher: URME Lager / Dropshipping only; a Dropshipping watch offers no prefilled quantity (never the supplier stock)', ff_text( $cell ) );
+ok( 2 === substr_count( $cell, '<option' ) && false !== strpos( $cell, '>URME Lager</option>' ) && false !== strpos( $cell, '>Dropshipping</option>' ) && false === strpos( $cell, 'Paused' ) && false === strpos( $cell, 'Local first' ) && false === strpos( $cell, 'local_qty' ), 'mode switcher: URME Lager / Dropshipping only, no quantity field', ff_text( $cell ) );
 $r1 = admin( 'set_mode', ts_link( 402 ), 'paused' );
 $r2 = admin( 'run_row_action', 'resume|' . ts_link( 402 )['id'] );
 ok( 'error' === $r1[1] && 'error' === $r2[1] && 1 === (int) ts_link( 402 )['sync_enabled'], 'Pause / Resume requests: refused, nothing changed', array( $r1[0], $r2[0] ) );

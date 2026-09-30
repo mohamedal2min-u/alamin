@@ -511,12 +511,12 @@ class URME_SS_Admin {
 		}
 		switch ( $mode ) {
 			case 'local':
-				$qty  = absint( $_POST['local_qty'] ?? 0 );
-				$raw  = str_replace( array( ' ', ',' ), array( '', '.' ), sanitize_text_field( wp_unslash( $_POST['local_cost'] ?? '' ) ) );
-				$cost = ( '' !== $raw && is_numeric( $raw ) && (float) $raw >= 0 ) ? (float) $raw : null;
-				$ok   = URME_SS_Inventory::enable_local( (int) $link['id'], $qty, $cost );
+				if ( URME_SS_Inventory::LOCAL === $link['stock_mode'] ) {
+					return array( 'Already URME Lager; nothing was changed. Change its stock in WooCommerce.', 'info' );
+				}
+				$ok = URME_SS_Inventory::return_to_lager( (int) $link['id'] );
 				return true === $ok
-					? array( sprintf( 'URME Lager: WooCommerce stock set to %d%s; supplier stock and cost are no longer synced. It becomes Dropshipping automatically when the stock reaches 0.', $qty, null === $cost ? '' : ', cost ' . wc_format_decimal( $cost, 2 ) . ' SEK' ), 'success' )
+					? array( 'URME Lager: stock set to 0 (out of stock); supplier stock and cost are no longer synced. Enter the real stock in WooCommerce when you have it; it becomes Dropshipping again only after that stock is sold.', 'success' )
 					: array( $ok, 'error' );
 
 			case 'supplier':
@@ -1780,15 +1780,15 @@ class URME_SS_Admin {
 			echo '</ul>';
 			if ( $product && 'no' !== $product->get_backorders() ) {
 				echo '<small class="urme-bad">On hold: backorders are allowed on this product.</small>';
-			} elseif ( URME_SS_Inventory::LOCAL === $row['stock_mode'] && (int) $row['sync_enabled'] && URME_SS_Settings::brand_enabled( (string) $row['manufacturer'] ) ) {
+			} elseif ( URME_SS_Inventory::LOCAL === $row['stock_mode'] && ! (int) $row['sync_enabled'] ) {
+				echo '<small class="urme-warn">' . esc_html( 'Waiting for stock: out of stock until you enter the real stock in WooCommerce.' ) . '</small>';
+			} elseif ( URME_SS_Inventory::LOCAL === $row['stock_mode'] && URME_SS_Settings::brand_enabled( (string) $row['manufacturer'] ) ) {
 				echo '<small>' . esc_html( 'Becomes Dropshipping automatically when the stock reaches 0.' ) . '</small>';
 			}
 		}
 		if ( ! (int) $row['product_id'] ) {
 			return;
 		}
-		$def_qty  = $drop ? '' : ( null === $woo ? '' : max( 1, $woo ) ); // Never the supplier's quantity.
-		$def_cost = null !== $row['local_cost'] ? $row['local_cost'] : ( ( $product && $target['type'] ) ? URME_SS_Store::get_cost( $product, $target ) : null );
 		?>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="urme-mode-form" data-local-units="<?php echo (int) ( $drop ? 0 : max( 0, (int) $woo ) ); ?>">
 			<?php echo self::hidden_fields( 'set_mode' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
@@ -1797,10 +1797,6 @@ class URME_SS_Admin {
 				<option value="local" <?php selected( ! $drop ); ?>>URME Lager</option>
 				<option value="supplier" <?php selected( $drop ); ?>>Dropshipping</option>
 			</select>
-			<span class="urme-local-fields">
-				<label>URME units <input type="number" name="local_qty" min="1" step="1" value="<?php echo esc_attr( (string) $def_qty ); ?>" class="small-text" required></label>
-				<label>Cost SEK <input type="text" name="local_cost" value="<?php echo esc_attr( null === $def_cost ? '' : wc_format_decimal( $def_cost, 2 ) ); ?>" class="small-text" inputmode="decimal"></label>
-			</span>
 			<button type="submit" class="button button-small">Apply</button>
 		</form>
 		<?php

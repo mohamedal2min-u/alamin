@@ -408,9 +408,10 @@ ok( 'success' === $out[1] && 'supplier' === lf_link( 78 )['stock_mode'] && 0 ===
 ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), 'manual switch to Supplier now creates no price review' );
 run();
 ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), '...and the next sync does not create one either' );
-$_POST = array( 'local_qty' => '2', 'local_cost' => '1 234,50' );
-$out   = $res->invoke( null, lf_link( 78 ), 'local' );
-ok( 'success' === $out[1] && 2 === (int) lf_link( 78 )['local_qty'] && 1234.5 === (float) lf_link( 78 )['local_cost'] && 2 === lf_stock( $LC5 ), 'Local first via admin: qty 2, cost 1 234,50 parsed, Woo stock 2', $out );
+$out = $res->invoke( null, lf_link( 78 ), 'local' );
+ok( 'success' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'] && ! (int) lf_link( 78 )['sync_enabled'] && 0 === lf_stock( $LC5 ), '(1.5.1) back to URME Lager via admin: stock 0, waiting for the real stock', $out );
+wc_update_product_stock( wc_get_product( $LC5 ), 2, 'set' ); // The admin enters 2 in WooCommerce.
+ok( 1 === (int) lf_link( 78 )['sync_enabled'] && 2 === (int) lf_link( 78 )['local_qty'] && 2 === lf_stock( $LC5 ), '   stock 2 entered: active URME Lager with 2' );
 $out = $res->invoke( null, lf_link( 78 ), 'paused' );
 ok( 'error' === $out[1] && '1' === (string) lf_link( 78 )['sync_enabled'] && 'local_first' === lf_link( 78 )['stock_mode'] && 2 === lf_stock( $LC5 ), '(1.5) Pause no longer exists: refused, URME Lager unchanged', $out );
 $_POST = array();

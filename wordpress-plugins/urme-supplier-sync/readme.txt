@@ -22,6 +22,20 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   - Needs review (several products could match)
   - Manually linked
   This is information only. Nothing is synced because a product exists.
+* "URME stock" column: the current WooCommerce stock of the linked product, or of the unique
+  confirmed URME match (the exact product or variation): green quantity, red "0 / Out of stock",
+  "Not managed", and a note when backorders are allowed. Filters: URME stock (In stock / Out of
+  stock / Not managed) and "Ready for supplier sync" (brand on, unique match, URME stock 0, not
+  selected, still in the feed).
+* Per-product controls in the Sync column, only for an enabled brand, a unique confirmed match and
+  a watch still in the feed (never for Not in URME / Needs review):
+  - URME stock 0: "Start supplier sync" selects and links the watch (Supplier now) and syncs its
+    supplier stock and cost at once, with the normal safety rules.
+  - URME stock above 0: "Use Local first" selects and links it as Local first with the current
+    WooCommerce stock as local units and the current cost as local cost (nothing is overwritten).
+    Not offered while backorders are allowed.
+  - Selected watches show their mode with "Sync now"; paused ones show "Resume" (same mode).
+  Prices are never changed. Every condition is checked again when the button is clicked.
 * A product is synced only when all of these are true:
   1. its supplier CATEGORY is WATCH,
   2. its brand (MANUFACTURER) is enabled in Settings > Brands enabled for sync,

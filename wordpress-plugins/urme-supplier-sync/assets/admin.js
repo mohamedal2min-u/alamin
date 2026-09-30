@@ -10,6 +10,13 @@
 		refresh();
 	} );
 
+	// Confirmation for per-row catalog buttons (they submit the catalog form).
+	$( document ).on( 'click', 'button[data-confirm]', function ( e ) {
+		if ( ! window.confirm( $( this ).data( 'confirm' ) ) ) {
+			e.preventDefault();
+		}
+	} );
+
 	// Confirmation for destructive-looking actions.
 	$( document ).on( 'submit', 'form[data-confirm]', function ( e ) {
 		if ( ! window.confirm( $( this ).data( 'confirm' ) ) ) {

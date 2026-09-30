@@ -7,10 +7,11 @@ against a generated supplier feed. Not part of the plugin zip.
 
 | File | What it covers |
 |---|---|
-| `scenarios.php` | Feed parsing and every feed-failure mode, stock and cost sync, linking, brand allowlist, "In URME" match status, locking, cron, exchange-rate fallbacks, protected fields. Includes `local-first.php` at the end. |
+| `scenarios.php` | Feed parsing and every feed-failure mode, stock and cost sync, linking, brand allowlist, "In URME" match status, locking, cron, exchange-rate fallbacks, protected fields. Includes `local-first.php`, `fulfillment-review.php`, `new-products.php` and `price-hint.php` at the end. |
 | `local-first.php` | 1.1.0 Local first → Supplier: local stock kept, handover only in safe runs, cancellations, refunds with restock, returns after the switch, admin line edits, brand off, backorders, and interrupted bookings (exceptions, a real process kill via `crash-child.php`, missed hooks, concurrent changes). |
 | `fulfillment-review.php` | 1.1.0 admin-only features: URME Lager / Dropshipping / Mixed labels (frozen at sale time, legacy orders, list column and filter; the orders list loads them in one query per page, never per row) and price reviews (one per switch, no duplicates, atomic with the switch), plus privacy checks on customer emails, My Account, thank-you page, order meta/notes, REST and Store API, structured data. |
 | `new-products.php` | 1.1.0 NEW supplier product badge: 4-day window from first_seen, unchanged by refreshes, stock/cost changes, missing/return and brand toggles; filter and count; nothing NEW after a first import or an upgrade; nothing on the storefront. |
+| `price-hint.php` | 1.2.0 admin-only selling price hint: the formula (VAT-0% cost + 12 EUR, 10% coupon, 25% VAT, 5% Klarna fee on the paid amount, ≥ 500 SEK profit, rounded up to 10 SEK), missing price or rate, settings changes, prices never changed, nothing customer-facing, no per-row queries. |
 | `migration-populate.php`, `migration-verify.php`, `run-migration.sh` | Upgrade 1.0.0 → 1.1.0: catalog, links, paused state, match data and settings are kept, and nothing changes behaviour. |
 
 Use MySQL/MariaDB for results that match production (row locks, InnoDB transactions).

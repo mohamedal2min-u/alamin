@@ -60,3 +60,5 @@
 .urme-ss .urme-local-fields input[name=local_cost] { width: 90px; }
 .urme-ss .urme-new { display: inline-block; padding: 0 6px; border-radius: 3px; background: #d63638; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .03em; line-height: 18px; }
 .urme-ss .urme-new-age { color: #b32d2e; }
+.urme-ss .urme-hint-col { min-width: 170px; }
+.urme-ss .urme-hint { font-size: 12px; line-height: 1.5; text-align: left; white-space: nowrap; }

@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -36,13 +36,35 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.1.0.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.2.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
 4. Settings > "Brands enabled for sync": tick the brands you sell. (None are enabled at first.)
 5. Supplier catalog: tick watches > "Select checked for sync". Watches with a unique SKU/EAN match
    are linked automatically; others are linked under "Selected watches" with the product search.
+
+== Selling price hint (admin only) ==
+
+Supplier catalog has a "Price hint" column (and Selected watches a short version) with a
+suggested selling price for each supplier watch:
+
+  Cost SEK        = (PURCHASE_PRICE EUR + 12 EUR) x EUR/SEK   (PURCHASE_PRICE is VAT 0%)
+  Customer pays   = price x 0.90                               (10% coupon allowance)
+  Excl. VAT       = customer pays / 1.25                       (25% Swedish VAT)
+  Klarna fee      = customer pays x 0.05
+  Profit          = excl. VAT - Klarna fee - cost SEK
+  Suggested price = lowest price with profit >= 500 SEK, i.e. (cost SEK + 500) / 0.675,
+                    rounded UP to the next 10 SEK (never down)
+
+Example: 176 EUR at 11.321 -> cost 2,128 kr -> suggested 3,900 kr (customer pays 3,510 kr,
+Klarna 176 kr, estimated profit 504 kr).
+
+Extra supplier cost, coupon, fee, VAT, target profit and rounding step are in Settings >
+Selling price hint and apply on the next page load. It uses the rate already in use (automatic
+or manual override) and never makes a request. Without a PURCHASE_PRICE or a rate it shows
+"Price hint unavailable". It is a hint only: selling prices, sale prices, coupons and products
+are never changed, and nothing is shown to customers.
 
 == NEW supplier products (admin only) ==
 

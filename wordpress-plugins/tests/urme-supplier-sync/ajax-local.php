@@ -81,12 +81,12 @@ section( 'AX11–12. URME stock > 0: Start supplier sync is rejected' );
 $before = ax_state( $A3, 246 );
 $r      = ax_key( 'start_supplier', 246 );
 $after  = ax_state( $A3, 246 );
-ok( false === $r['success'] && 'error' === $r['data']['type'] && 'Local URME stock exists (3 units). Dropshipping cannot start while local stock remains. Use Local first.' === $r['data']['message'] && 'start_local' === $r['data']['suggest'], '11. URME stock 3: direct Dropshipping rejected with the local-stock message, suggests Local first', $r['data'] );
+ok( false === $r['success'] && 'error' === $r['data']['type'] && 'Local URME stock exists (3 units). Dropshipping can only start when the URME Lager stock is 0.' === $r['data']['message'] && 'start_local' === $r['data']['suggest'], '11. URME stock 3: direct Dropshipping rejected with the local-stock message, suggests URME Lager', $r['data'] );
 ok( $before === $after && null === $after['link'], '   stock 3, COGS, prices and every other field unchanged; not selected or linked', $after );
-ok( false !== strpos( $r['data']['row_html'], 'value="start_local|' . key_of( 246 ) . '"' ) && false === strpos( $r['data']['row_html'], 'start_supplier|' ), '   the returned row offers "Use Local first" (no supplier button)' );
+ok( false !== strpos( $r['data']['row_html'], 'value="start_local|' . key_of( 246 ) . '"' ) && false === strpos( $r['data']['row_html'], 'start_supplier|' ), '   the returned row offers "URME Lager" (no Dropshipping button)' );
 $b1 = ax_state( $A1, 252 );
 $r  = ax_key( 'start_supplier', 252 );
-ok( false === $r['success'] && 'Local URME stock exists (1 unit). Dropshipping cannot start while local stock remains. Use Local first.' === $r['data']['message'] && $b1 === ax_state( $A1, 252 ), '12. URME stock 1: same rejection, nothing changed', $r['data'] );
+ok( false === $r['success'] && 'Local URME stock exists (1 unit). Dropshipping can only start when the URME Lager stock is 0.' === $r['data']['message'] && $b1 === ax_state( $A1, 252 ), '12. URME stock 1: same rejection, nothing changed', $r['data'] );
 
 section( 'AX13. URME stock 0: Supplier now allowed (AJAX)' );
 $r = ax_key( 'start_supplier', 258 );
@@ -94,13 +94,13 @@ $s = ax_state( $A0, 258 );
 ok( true === $r['success'] && 'success' === $r['data']['type'] && 8 === $s['stock'] && 'instock' === $s['stock_st'] && abs( $s['cogs'] - $sek ) < 0.001, '13. stock 0 → 8, COGS 480 → ' . $sek . ': ' . $r['data']['message'], $r['data'] );
 ok( '4990' === $s['regular'] && '4490' === $s['sale'] && 'supplier' === $s['link']['stock_mode'], '   prices unchanged; Supplier now' );
 $row = $r['data']['row_html'];
-ok( 0 === strpos( $row, '<tr' ) && false !== strpos( $row, 'data-urme-key="' . key_of( 258 ) . '"' ) && '8' === ca_stock_cell( $row ) && 'Dropshipping' === ax_badge( $row ) && false !== strpos( ff_text( $row ), 'Syncing (Supplier now)' ) && false !== strpos( $row, 'value="sync|' ), '   returned row: URME stock 8, badge Dropshipping, "Syncing (Supplier now)", Sync now button', ff_text( $row ) );
+ok( 0 === strpos( $row, '<tr' ) && false !== strpos( $row, 'data-urme-key="' . key_of( 258 ) . '"' ) && '8' === ca_stock_cell( $row ) && 'Dropshipping' === ax_badge( $row ) && false === strpos( ff_text( $row ), 'Supplier now' ) && false !== strpos( $row, 'value="sync|' ), '   returned row: URME stock 8, badge Dropshipping, Sync now button', ff_text( $row ) );
 
 section( 'AX14. URME stock 3: Use Local first (AJAX)' );
 $r = ax_key( 'start_local', 246 );
 $s = ax_state( $A3, 246 );
 ok( true === $r['success'] && 3 === $s['stock'] && abs( $s['cogs'] - 650 ) < 0.001 && 'local_first' === $s['link']['stock_mode'] && 3 === (int) $s['link']['local_qty'] && abs( (float) $s['link']['local_cost'] - 650 ) < 0.001, '14. Local first: local_qty 3, local COGS 650 kept, Woo stock stays 3', $r['data'] );
-ok( 'Local first (3)' === ax_badge( $r['data']['row_html'] ) && '4990' === $s['regular'] && '4490' === $s['sale'], '   row badge Local first (3); prices unchanged', ax_badge( $r['data']['row_html'] ) );
+ok( 'URME Lager' === ax_badge( $r['data']['row_html'] ) && '4990' === $s['regular'] && '4490' === $s['sale'], '   row badge URME Lager; prices unchanged', ax_badge( $r['data']['row_html'] ) );
 
 section( 'AX15–17. Local first → Supplier now needs 0 local units' );
 lf_order( $A3, 1 ); // 3 → 2 local units.
@@ -167,13 +167,17 @@ ok( 0 === $http, '10. no supplier feed HTTP request for any sale price save', $h
 
 section( 'AX18–21. Paused, brand off, ambiguous, deleted' );
 $la = URME_SS_DB::get_link( key_of( 258 ) );
-admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $la['id'] ), 'paused' );
+$wpdb->update( URME_SS_DB::links_table(), array( 'sync_enabled' => 0 ), array( 'id' => (int) $la['id'] ) ); // Paused by an earlier version.
 bs_set( $A0, 5, 700 );
 $r = ax( 'sync|' . $la['id'] );
-ok( false === $r['success'] && false !== strpos( $r['data']['message'], 'Paused' ) && 5 === p( $A0 )->get_stock_quantity() && abs( (float) p( $A0 )->get_cogs_value() - 700 ) < 0.001, '18. paused: Sync now refused, stock 5 / COGS 700 untouched', $r['data'] );
-ok( 'Paused' === ax_badge( $r['data']['row_html'] ) && false !== strpos( $r['data']['row_html'], 'value="resume|' . $la['id'] . '"' ), '   row: Paused badge + Resume' );
-$r = ax( 'resume|' . $la['id'] );
-ok( true === $r['success'] && 'Dropshipping' === ax_badge( $r['data']['row_html'] ), '   Resume (AJAX): back to Dropshipping in the same mode', $r['data'] );
+ok( false === $r['success'] && false !== strpos( $r['data']['message'], 'URME Lager' ) && 5 === p( $A0 )->get_stock_quantity() && abs( (float) p( $A0 )->get_cogs_value() - 700 ) < 0.001, '18. legacy paused link = URME Lager: Sync now refused, stock 5 / COGS 700 untouched', $r['data'] );
+ok( 'URME Lager' === ax_badge( $r['data']['row_html'] ) && false !== strpos( $r['data']['row_html'], 'value="dropship|' . $la['id'] . '"' ) && false === strpos( $r['data']['row_html'], 'resume|' ), '   row: URME Lager badge + "Dropshipping" button (no Resume)' );
+$r1 = ax( 'resume|' . $la['id'] );
+$r2 = ax( 'dropship|' . $la['id'] );
+ok( false === $r1['success'] && false === $r2['success'] && 5 === p( $A0 )->get_stock_quantity() && ! (int) URME_SS_DB::get_link( key_of( 258 ) )['sync_enabled'], '   Resume no longer exists; Dropshipping at stock 5 refused; nothing changed', array( $r1['data']['message'], $r2['data']['message'] ) );
+bs_set( $A0, 0 );
+$r = ax( 'dropship|' . $la['id'] );
+ok( true === $r['success'] && 'Dropshipping' === ax_badge( $r['data']['row_html'] ), '   at stock 0: Dropshipping (AJAX)', $r['data'] );
 URME_SS_Settings::set_brand( 'BOSS', false );
 $r = ax_key( 'start_supplier', 264 );
 ok( false === $r['success'] && null === URME_SS_DB::get_link( key_of( 264 ) ) && 0 === p( $AB )->get_stock_quantity(), '19. brand sync off: supplier sync refused, nothing linked or written', $r['data'] );

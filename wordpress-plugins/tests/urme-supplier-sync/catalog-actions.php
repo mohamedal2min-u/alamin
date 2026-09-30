@@ -121,7 +121,7 @@ ok( false !== strpos( $r, 'value="start_local|' . key_of( 186 ) . '"' ) && false
 $r = ca_row( $html, 'REF000210' );
 ok( '0 / Out of stock' === ca_stock_cell( $r ) && false !== strpos( $r, 'start_supplier|' . key_of( 210 ) ), 'variation: its own stock (0) shown, Start supplier sync offered', ca_stock_cell( $r ) );
 $r = ca_row( $html, 'REF000216' );
-ok( '2 Backorders allowed' === ca_stock_cell( $r ) && false === strpos( $r, 'start_local|' ) && false === strpos( $r, 'start_supplier|' ) && false !== strpos( $r, 'Local first needs backorders off' ), 'backorders: stock 2 + "Backorders allowed"; no button, note shown', ca_stock_cell( $r ) );
+ok( '2 Backorders allowed' === ca_stock_cell( $r ) && false === strpos( $r, 'start_local|' ) && false === strpos( $r, 'start_supplier|' ) && false !== strpos( $r, 'URME Lager needs backorders off' ), 'backorders: stock 2 + "Backorders allowed"; no button, note shown', ca_stock_cell( $r ) );
 $r = ca_row( $html, 'REF000222' );
 ok( 0 === strpos( (string) ca_stock_cell( $r ), 'Not managed' ) && false === strpos( $r, 'start_' ), 'stock not managed: "Not managed", no button', ca_stock_cell( $r ) );
 $r = ca_row( $html, 'REF000192' );
@@ -129,7 +129,7 @@ ok( '—' === ca_stock_cell( $r ) && false === strpos( $r, 'start_' ), 'Not in U
 $r = ca_row( $html, 'REF000198' );
 ok( '—' === ca_stock_cell( $r ) && false === strpos( $r, 'start_' ) && false !== strpos( $r, 'Needs review' ), 'Needs review: no stock, no button' );
 $r = ca_row( $html, 'REF000132' );
-ok( false !== strpos( ff_text( $r ), 'Syncing (Supplier now)' ) && false !== strpos( $r, 'value="sync|' ), 'already syncing: mode + "Sync now"', ff_text( $r ) );
+ok( false !== strpos( ff_text( $r ), 'Dropshipping' ) && false !== strpos( $r, 'value="sync|' ), 'already Dropshipping: "Dropshipping" + "Sync now"', ff_text( $r ) );
 $rc = ca_row( ph_catalog( array( 'brand' => 'Casio' ) ), 'REF000204' );
 ok( '0 / Out of stock' === ca_stock_cell( $rc ) && false === strpos( $rc, 'start_' ), 'brand sync disabled (Casio): stock shown, no sync button', ca_stock_cell( $rc ) );
 
@@ -164,34 +164,28 @@ run();
 $st = bs_state( $Z3 );
 ok( 3 === $st['stock'] && abs( $st['cogs'] - 650 ) < 0.001, '   next sync: still 3 / 650 (supplier values not written while local units remain)', $st );
 
-section( 'CA5. Paused and Resume' );
-admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $l['id'] ), 'paused' );
+section( 'CA5. Two states only: URME Lager / Dropshipping' );
 $r = ca_row( ph_catalog( array( 'brand' => 'BOSS' ) ), 'REF000186' );
-ok( false !== strpos( ff_text( $r ), 'Paused (Local first, 3 local)' ) && false !== strpos( $r, 'value="resume|' . $l['id'] . '"' ) && false === strpos( $r, 'value="sync|' ), 'paused: "Paused" + Resume, no Sync now', ff_text( $r ) );
-bs_set( $Z3, 2, 600 ); // Admin's own change while paused.
-run();
-ok( 2 === bs_state( $Z3 )['stock'] && abs( bs_state( $Z3 )['cogs'] - 600 ) < 0.001, 'paused: no stock/cost writes', bs_state( $Z3 ) );
-$res = admin( 'run_row_action', 'resume|' . $l['id'] );
-$l   = URME_SS_DB::get_link( key_of( 186 ) );
-ok( 'success' === $res[1] && 1 === (int) $l['sync_enabled'] && 'local_first' === $l['stock_mode'] && 3 === (int) $l['local_qty'], 'Resume: sync on again in the existing mode (Local first, 3 local)', $l );
+ok( false !== strpos( ff_text( $r ), 'URME Lager' ) && false !== strpos( $r, 'value="dropship|' . $l['id'] . '"' ) && false === strpos( $r, 'value="sync|' ) && false === strpos( $r, 'resume|' ) && false === strpos( ff_text( $r ), 'Local first' ), 'URME Lager row: "URME Lager" + "Dropshipping" button; no Sync now, Resume or "Local first"', ff_text( $r ) );
+$res  = admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $l['id'] ), 'paused' );
+$res2 = admin( 'run_row_action', 'resume|' . $l['id'] );
+$res3 = admin( 'run_row_action', 'dropship|' . $l['id'] );
+$l    = URME_SS_DB::get_link( key_of( 186 ) );
+ok( 'error' === $res[1] && 'error' === $res2[1] && 'error' === $res3[1] && 1 === (int) $l['sync_enabled'] && 'local_first' === $l['stock_mode'] && 3 === bs_state( $Z3 )['stock'], 'Pause and Resume no longer exist; Dropshipping at stock 3 refused; nothing changed', array( $res[0], $res2[0], $res3[0] ) );
 $lz = URME_SS_DB::get_link( key_of( 180 ) );
-admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lz['id'] ), 'paused' );
 nf_feed( $feed_n, array_merge( $BS_SET, $CA_SET, array( 'REF000180' => array( 'MANUFACTURER' => 'BOSS', 'STOCK' => '12', 'PURCHASE_PRICE' => '200.00' ) ) ) );
 run();
-ok( 8 === bs_state( $Z0 )['stock'] && abs( bs_state( $Z0 )['cogs'] - round( 176 * $rate, 2 ) ) < 0.001, 'paused Supplier now: supplier 12 / 200 EUR not applied', bs_state( $Z0 ) );
-admin( 'run_row_action', 'resume|' . $lz['id'] );
-run();
-ok( 12 === bs_state( $Z0 )['stock'] && abs( bs_state( $Z0 )['cogs'] - round( 200 * $rate, 2 ) ) < 0.001 && 'supplier' === URME_SS_DB::get_link( key_of( 180 ) )['stock_mode'], 'resumed Supplier now: 12 / 200 EUR × rate', bs_state( $Z0 ) );
+ok( 12 === bs_state( $Z0 )['stock'] && abs( bs_state( $Z0 )['cogs'] - round( 200 * $rate, 2 ) ) < 0.001 && 'supplier' === URME_SS_DB::get_link( key_of( 180 ) )['stock_mode'], 'Dropshipping: supplier 12 / 200 EUR × rate synced', bs_state( $Z0 ) );
 $res = admin( 'run_row_action', 'sync|' . $lz['id'] );
 ok( 'success' === $res[1], '"Sync now" on the row runs the single-product sync', $res );
 
 section( 'CA6. Local first → Supplier when the local units are sold' );
-lf_order( $Z3, 2 ); // Admin had set stock 2 while paused; the link still counts 3 local units.
-lf_order( $Z3, 1 ); // Oversold beyond WooCommerce stock is not possible here, but the ledger counts 3 local units in total.
+lf_order( $Z3, 2 ); // URME Lager stock 3 → 1…
+lf_order( $Z3, 1 ); // …→ 0.
 $l = URME_SS_DB::get_link( key_of( 186 ) );
 run();
 $st = bs_state( $Z3 );
-ok( 0 === (int) $l['local_qty'] && 'supplier' === URME_SS_DB::get_link( key_of( 186 ) )['stock_mode'] && 5 === $st['stock'] && abs( $st['cogs'] - round( 100 * $rate, 2 ) ) < 0.001, 'last local unit sold → existing safe switch: supplier stock 5, COGS 100 EUR × rate', array( $l['local_qty'], $st ) );
+ok( 0 === (int) $l['local_qty'] && 'supplier' === URME_SS_DB::get_link( key_of( 186 ) )['stock_mode'] && 5 === $st['stock'] && abs( $st['cogs'] - round( 100 * $rate, 2 ) ) < 0.001, 'URME Lager stock 0 → Dropshipping: supplier stock 5, COGS 100 EUR × rate', array( $l['local_qty'], $st ) );
 
 section( 'CA7. Variation: read and written on the matched variation' );
 $res = ca_act( 'start_supplier', 210 );

@@ -708,6 +708,12 @@ class URME_SS_DB {
 			case 'local':
 				$where[] = "l.stock_mode = 'local_first'";
 				break;
+			case 'dropship':
+				$where[] = "l.product_id > 0 AND l.sync_enabled = 1 AND l.stock_mode <> 'local_first' AND " . self::brand_condition( true, $params );
+				break;
+			case 'lager':
+				$where[] = "l.product_id > 0 AND (l.sync_enabled = 0 OR l.stock_mode = 'local_first' OR COALESCE((" . self::brand_condition( false, $params ) . '), 1) = 1)';
+				break;
 		}
 		if ( ! empty( $args['enabled_brands_only'] ) ) {
 			// Sync scope: enabled brand AND an enabled supplier category (WATCH in version 1).
@@ -757,9 +763,13 @@ class URME_SS_DB {
 		global $wpdb;
 		$c      = self::catalog_table();
 		$l      = self::links_table();
-		$params = array();
-		$off    = self::brand_condition( false, $params );
+		$p_on   = array();
+		$p_off  = array();
+		$on     = self::brand_condition( true, $p_on );
+		$off    = self::brand_condition( false, $p_off );
+		$params = array_merge( $p_on, $p_off );
 		$sql    = "SELECT COUNT(*) AS selected,
+				SUM(l.product_id > 0 AND l.sync_enabled = 1 AND l.stock_mode <> 'local_first' AND {$on}) AS dropship,
 				SUM(l.product_id > 0) AS linked,
 				SUM(l.product_id = 0) AS unlinked,
 				SUM(l.sync_enabled = 0) AS paused,
@@ -768,7 +778,9 @@ class URME_SS_DB {
 				SUM(l.stock_mode = 'local_first') AS local_first,
 				SUM({$off}) AS brand_off
 			FROM {$l} l LEFT JOIN {$c} c ON c.item_key = l.item_key";
-		$row    = $wpdb->get_row( $params ? $wpdb->prepare( $sql, $params ) : $sql, ARRAY_A ); // phpcs:ignore WordPress.DB
-		return array_map( 'intval', $row ? $row : array() );
+		$row    = array_map( 'intval', (array) $wpdb->get_row( $params ? $wpdb->prepare( $sql, $params ) : $sql, ARRAY_A ) ); // phpcs:ignore WordPress.DB
+		// Every linked watch is Dropshipping or URME Lager.
+		$row['lager'] = max( 0, ( $row['linked'] ?? 0 ) - ( $row['dropship'] ?? 0 ) );
+		return $row;
 	}
 }

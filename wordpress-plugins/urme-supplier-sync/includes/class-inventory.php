@@ -648,7 +648,32 @@ class URME_SS_Inventory {
 	}
 
 	/**
-	 * Admin: switch to Supplier now. Remaining local units are dropped (the admin confirmed).
+	 * Local URME stock always has priority over Dropshipping: the units that must be sold before
+	 * Supplier now may start. Tracked Local first units, and the product's current WooCommerce
+	 * stock (for a stock managed by the parent product, the parent's stock).
+	 *
+	 * @param array|null      $link    Supplier link, or null when not linked yet.
+	 * @param WC_Product|null $product The WooCommerce product or variation.
+	 */
+	public static function local_units_before_supplier( $link, $product ) {
+		$tracked = ( $link && self::LOCAL === ( $link['stock_mode'] ?? '' ) ) ? max( 0, (int) $link['local_qty'] ) : 0;
+		$woo     = 0;
+		if ( $product instanceof WC_Product ) {
+			$by    = (int) $product->get_stock_managed_by_id();
+			$stock = ( $by && $by !== $product->get_id() ) ? wc_get_product( $by ) : $product;
+			if ( $stock && true === $stock->get_manage_stock() ) {
+				$woo = max( 0, (int) $stock->get_stock_quantity() );
+			}
+		}
+		return max( $tracked, $woo );
+	}
+
+	public static function local_priority_message( $units ) {
+		return sprintf( 'Local URME stock exists (%d unit%s). Dropshipping cannot start while local stock remains. Use Local first.', $units, 1 === (int) $units ? '' : 's' );
+	}
+
+	/**
+	 * Admin: switch to Supplier now. Callers must check local_units_before_supplier() first.
 	 */
 	public static function enable_supplier( $link_id ) {
 		global $wpdb;

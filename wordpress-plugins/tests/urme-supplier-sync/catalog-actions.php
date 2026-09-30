@@ -211,7 +211,7 @@ $res6 = ca_act( 'start_supplier', 222 ); // Stock not managed.
 ok( 'error' === $res1[1] && 0 === bs_state( $ZC )['stock'] && abs( bs_state( $ZC )['cogs'] - 300 ) < 0.001, 'brand disabled: refused, stock 0 / COGS 300 untouched', $res1 );
 ok( 'error' === $res2[1] && 'error' === $res3[1], 'Not in URME / Needs review: refused', array( $res2, $res3 ) );
 ok( 'error' === $res4[1] && 2 === bs_state( $ZB )['stock'] && abs( bs_state( $ZB )['cogs'] - 400 ) < 0.001, 'backorders allowed: Local first refused (existing rule), nothing changed', $res4 );
-ok( 'warning' === $res5[1] && 2 === bs_state( $ZB )['stock'], 'stock no longer 0: Start supplier sync refused', $res5 );
+ok( 'error' === $res5[1] && false !== strpos( $res5[0], 'Local URME stock exists (2 units)' ) && 2 === bs_state( $ZB )['stock'], 'local stock 2: Start supplier sync refused (local stock has priority)', $res5 );
 ok( 'error' === $res6[1] && 'instock' === p( $ZU )->get_stock_status() && true !== p( $ZU )->get_manage_stock(), 'stock not managed: refused, product unchanged', $res6 );
 ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_DB::links_table() ) === $links_before, '   no selection created by any refused action' );
 

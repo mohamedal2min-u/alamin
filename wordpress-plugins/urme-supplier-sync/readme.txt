@@ -36,6 +36,12 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
     Not offered while backorders are allowed.
   - Selected watches show their mode with "Sync now"; paused ones show "Resume" (same mode).
   Supplier sync never changes prices. Every condition is checked again when the button is clicked.
+  These row actions and the sale price Save run without reloading the page; the row is updated in
+  place with the result (bulk "Select checked for sync" is a normal form).
+* Local URME stock always has priority over Dropshipping: "Start supplier sync" is refused while the
+  product has WooCommerce stock ("Local URME stock exists (N units)... Use Local first."), and a
+  Local first watch cannot be switched to Supplier now by hand while it has local units or stock.
+  After the last local unit is sold, the automatic Local first -> Supplier switch works as before.
 * Manual sale price: for every linked or uniquely matched product (also when Paused), the catalog and
   Selected watches show the regular price (read-only) and an editable sale price with Save. Only the
   sale price of that exact product or variation is saved (WooCommerce product API); an empty field

@@ -577,5 +577,7 @@ require __DIR__ . '/brand-sync.php';
 require __DIR__ . '/catalog-actions.php';
 // Fulfillment badge (Products list + catalog) and manual sale price editor.
 require __DIR__ . '/product-admin.php';
+// AJAX row actions; local URME stock always has priority over Dropshipping.
+require __DIR__ . '/ajax-local.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

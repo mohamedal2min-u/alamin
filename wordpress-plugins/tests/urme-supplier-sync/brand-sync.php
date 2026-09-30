@@ -244,10 +244,11 @@ ok( 8 === $b['stock'] && abs( $b['cogs'] - 555 ) < 0.001, 'P2. paused: only WooC
 run();
 $b = bs_state( $B2 );
 ok( 8 === $b['stock'] && abs( $b['cogs'] - 555 ) < 0.001, '   still unchanged after the next sync', $b );
-$_POST['confirm_drop'] = '1';
-admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb2['id'] ), 'supplier' );
+$_POST['confirm_drop'] = '1'; // The old override field no longer does anything.
+$res = admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb2['id'] ), 'supplier' );
 unset( $_POST['confirm_drop'] );
 run();
 $b = bs_state( $B2 );
-ok( 3 === $b['stock'] && abs( $b['cogs'] - round( 150 * 11.321, 2 ) ) < 0.001, '   resumed with "Supplier now": supplier stock 3 and 150 EUR × rate', $b );
+$l = URME_SS_DB::get_link( key_of( 138 ) );
+ok( 'error' === $res[1] && 'local_first' === $l['stock_mode'] && 1 === (int) $l['local_qty'] && 8 === $b['stock'] && abs( $b['cogs'] - 555 ) < 0.001, '   returned local unit: Supplier now refused (no override), 1 local unit kept, stock 8 / COGS 555 unchanged', array( $res, $l['stock_mode'], $l['local_qty'], $b ) );
 settings( array( 'rate_override' => '' ) );

@@ -410,6 +410,10 @@ class URME_SS_DB {
 				$params  = array_merge( $params, $cats );
 			}
 		}
+		if ( '' !== ( $args['item_key'] ?? '' ) ) {
+			$where[]  = 'c.item_key = %s';
+			$params[] = $args['item_key'];
+		}
 		if ( '' !== ( $args['brand'] ?? '' ) ) {
 			$where[]  = 'c.manufacturer = %s';
 			$params[] = $args['brand'];
@@ -493,7 +497,7 @@ class URME_SS_DB {
 		$from     = "FROM {$c} c LEFT JOIN {$l} l ON l.item_key = c.item_key{$joins} WHERE " . implode( ' AND ', $where );
 
 		$count_sql = "SELECT COUNT(*) {$from}";
-		$rows_sql  = "SELECT c.*, l.id AS link_id, l.product_id, l.sync_enabled, l.match_method AS link_method, l.stock_mode, l.local_qty, l.last_status AS link_status {$from} ORDER BY c.manufacturer ASC, c.product_no ASC LIMIT %d OFFSET %d";
+		$rows_sql  = "SELECT c.*, l.id AS link_id, l.product_id, l.sync_enabled, l.match_method AS link_method, l.stock_mode, l.local_qty, l.last_status AS link_status, l.last_message AS link_message {$from} ORDER BY c.manufacturer ASC, c.product_no ASC LIMIT %d OFFSET %d";
 
 		// phpcs:disable WordPress.DB
 		$total = (int) $wpdb->get_var( $params ? $wpdb->prepare( $count_sql, $params ) : $count_sql );

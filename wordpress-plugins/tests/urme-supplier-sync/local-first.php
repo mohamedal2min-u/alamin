@@ -383,10 +383,15 @@ $_POST = array( 'link_id' => $lg['id'] );
 $res = ( new ReflectionMethod( 'URME_SS_Admin', 'set_mode' ) );
 $res->setAccessible( true );
 $out = $res->invoke( null, $lg, 'supplier' );
-ok( 'error' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'], 'Supplier now needs confirmation while local units remain', $out );
+ok( 'error' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'], 'Supplier now refused while local units remain', $out );
 $_POST['confirm_drop'] = '1';
 $out = $res->invoke( null, $lg, 'supplier' );
-ok( 'success' === $out[1] && 'supplier' === lf_link( 78 )['stock_mode'] && 0 === (int) lf_link( 78 )['local_qty'], 'confirmed: Supplier now, local count dropped' );
+ok( 'error' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'] && (int) $lg['local_qty'] === (int) lf_link( 78 )['local_qty'], '   no confirmation can override it: local units kept', $out );
+// The local units are gone (count 0, WooCommerce stock 0): now the manual switch is allowed.
+$wpdb->update( URME_SS_DB::links_table(), array( 'local_qty' => 0 ), array( 'id' => $lg['id'] ) );
+wc_update_product_stock( wc_get_product( $LC5 ), 0, 'set' );
+$out = $res->invoke( null, lf_link( 78 ), 'supplier' );
+ok( 'success' === $out[1] && 'supplier' === lf_link( 78 )['stock_mode'] && 0 === (int) lf_link( 78 )['local_qty'], '0 local units and stock 0: Supplier now allowed', $out );
 ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), 'manual switch to Supplier now creates no price review' );
 run();
 ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), '...and the next sync does not create one either' );

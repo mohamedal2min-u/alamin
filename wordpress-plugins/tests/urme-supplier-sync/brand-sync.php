@@ -111,13 +111,13 @@ $msg = admin( 'select_items', array( key_of( 132 ), key_of( 138 ) ) );
 ok( 'supplier' === URME_SS_DB::get_link( key_of( 132 ) )['stock_mode'] && 'supplier' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'], '   at URME stock 0 both are selected again as Dropshipping', $msg );
 bs_set( $B1, 2 );
 ok( 1 === lf_log_count( 'Brands enabled for sync changed (brand button): enabled BOSS' ), '   the change is logged with its source' );
-$stale['hint_profit_sek'] = '550'; // …then the open settings page is saved for something unrelated.
+$stale['hint_profit_pct'] = '22'; // …then the open settings page is saved for something unrelated.
 $logged = lf_log_count( 'Brands enabled for sync changed (settings page)' );
 URME_SS_Settings::save( $stale );
 ok( in_array( 'BOSS', bs_brands(), true ), 'A1. saving a settings page opened before BOSS was enabled keeps BOSS', bs_brands() );
-ok( 550.0 === (float) URME_SS_Settings::get( 'hint_profit_sek' ), '   the unrelated change itself is saved' );
+ok( 22.0 === (float) URME_SS_Settings::get( 'hint_profit_pct' ), '   the unrelated change itself is saved' );
 ok( lf_log_count( 'Brands enabled for sync changed (settings page)' ) === $logged, '   no brand change logged for that save' );
-settings( array( 'hint_profit_sek' => 500 ) );
+settings( array( 'hint_profit_pct' => 20 ) );
 URME_SS_Settings::set_brand( 'BOSS', true );
 
 section( 'BS-A2. Enabled brands persist across settings saves' );

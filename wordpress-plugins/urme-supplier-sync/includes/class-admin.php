@@ -1043,7 +1043,7 @@ class URME_SS_Admin {
 			<td class="num"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></td>
 			<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ) . ( isset( $stock[ self::urme_product_id( $row ) ] ) ? '<br>' . URME_SS_Product_Source::html( self::urme_product_id( $row ) ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="num urme-cost-col"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span></td>
-			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $hint ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-sync-col">
 				<?php
@@ -1509,7 +1509,7 @@ class URME_SS_Admin {
 			</table>
 			<h2>Selling price hint</h2>
 			<p class="description">A suggested selling price shown in the Supplier catalog, for you only. It never changes any price, coupon or product.
-				Suggested price = the lowest price, rounded up, where (price after coupon ÷ (1 + VAT)) − payment fee − cost ≥ target profit. Cost = (PURCHASE_PRICE + extra cost) × EUR/SEK; PURCHASE_PRICE is VAT 0%.</p>
+				Suggested price = the lowest price, rounded up, where (price after coupon ÷ (1 + VAT)) − payment fee − cost ≥ target profit (a percentage of the cost). Cost = (PURCHASE_PRICE + extra cost) × EUR/SEK; PURCHASE_PRICE is VAT 0%.</p>
 			<table class="form-table">
 				<tr><th><label for="urme-h-extra">Extra supplier cost</label></th>
 					<td><input type="number" id="urme-h-extra" name="settings[hint_extra_eur]" min="0" max="1000" step="0.01" value="<?php echo esc_attr( $s['hint_extra_eur'] ); ?>" class="small-text"> EUR per watch, added to PURCHASE_PRICE</td></tr>
@@ -1520,7 +1520,7 @@ class URME_SS_Admin {
 				<tr><th><label for="urme-h-vat">VAT</label></th>
 					<td><input type="number" id="urme-h-vat" name="settings[hint_vat_pct]" min="0" max="100" step="0.01" value="<?php echo esc_attr( $s['hint_vat_pct'] ); ?>" class="small-text"> % included in the selling price</td></tr>
 				<tr><th><label for="urme-h-profit">Target profit</label></th>
-					<td><input type="number" id="urme-h-profit" name="settings[hint_profit_sek]" min="0" step="1" value="<?php echo esc_attr( $s['hint_profit_sek'] ); ?>" class="small-text"> SEK per watch</td></tr>
+					<td><input type="number" id="urme-h-profit" name="settings[hint_profit_pct]" min="0" max="1000" step="0.01" value="<?php echo esc_attr( $s['hint_profit_pct'] ); ?>" class="small-text"> % of the cost per watch (cost incl. the extra supplier cost)</td></tr>
 				<tr><th><label for="urme-h-round">Rounding</label></th>
 					<td>Round up to the next <input type="number" id="urme-h-round" name="settings[hint_round_sek]" min="1" max="1000" step="1" value="<?php echo esc_attr( $s['hint_round_sek'] ); ?>" class="small-text"> SEK (never down)</td></tr>
 			</table>

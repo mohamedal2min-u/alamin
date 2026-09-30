@@ -306,6 +306,7 @@ class URME_SS_Store {
 				'variable'   => is_array( $types ) && in_array( 'variable', wp_list_pluck( $types, 'slug' ), true ),
 				'regular'    => (string) get_post_meta( $id, '_regular_price', true ),
 				'sale'       => (string) get_post_meta( $id, '_sale_price', true ),
+				'price'      => (string) get_post_meta( $id, '_price', true ), // WooCommerce's active price (sale or regular).
 			);
 		}
 		return $out;

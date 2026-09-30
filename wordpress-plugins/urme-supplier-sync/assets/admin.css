@@ -54,6 +54,8 @@
 .urme-ss .urme-hint-col { min-width: 170px; }
 .urme-ss .urme-hint { font-size: 12px; line-height: 1.45; text-align: left; white-space: nowrap; }
 .urme-ss .urme-hint-detail { color: #646970; font-size: 11px; }
+.urme-ss .urme-hint-now { margin-top: 4px; padding-top: 4px; border-top: 1px solid #f0f0f1; font-size: 12px; font-weight: 400; }
+.urme-ss .urme-hint-now strong { font-weight: 700; }
 .urme-ss .urme-stock-col { min-width: 90px; }
 .urme-ss .urme-warn { color: #996800; }
 .urme-ss .urme-price-edit { margin-top: 8px; padding-top: 6px; border-top: 1px solid #f0f0f1; font-size: 12px; }

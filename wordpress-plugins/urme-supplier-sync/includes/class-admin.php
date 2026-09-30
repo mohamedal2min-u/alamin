@@ -1010,7 +1010,7 @@ class URME_SS_Admin {
 					echo '<br><small>' . esc_html( $row['last_message'] ) . '</small>';
 				}
 				if ( $row['last_synced_at'] ) {
-					echo '<br><small>Last change ' . esc_html( self::mysql_datetime( $row['last_synced_at'] ) ) . '</small>';
+					echo '<br><small>Last synced ' . esc_html( self::mysql_datetime( $row['last_synced_at'] ) ) . '</small>';
 				}
 				if ( null !== $row['last_cost_sek'] ) {
 					echo '<br><small>' . esc_html( sprintf( '%s × %s = %s', self::eur( $row['last_cost_eur'] ), number_format_i18n( (float) $row['last_rate'], 4 ), self::sek( $row['last_cost_sek'] ) ) ) . '</small>';
@@ -1323,6 +1323,8 @@ class URME_SS_Admin {
 		}
 		ksort( $brands );
 		echo '<input type="hidden" name="settings[brands_present]" value="1">';
+		// Brands ticked as shown: on save only the changes made on this page are applied.
+		echo '<input type="hidden" name="settings[brands_before]" value="' . esc_attr( wp_json_encode( array_values( (array) $s['enabled_brands'] ) ) ) . '">';
 		if ( ! $brands ) {
 			echo '<p class="description">Brands appear here after the first feed download.</p>';
 			return;

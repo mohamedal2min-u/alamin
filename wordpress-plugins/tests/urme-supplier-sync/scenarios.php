@@ -571,5 +571,7 @@ require __DIR__ . '/fulfillment-review.php';
 require __DIR__ . '/new-products.php';
 // Admin-only selling price hint (1.2.0).
 require __DIR__ . '/price-hint.php';
+// Regression: brand kept on settings save; linked Supplier-now watch gets stock and cost (production SKU 1513905).
+require __DIR__ . '/brand-sync.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

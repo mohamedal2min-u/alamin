@@ -422,6 +422,9 @@ class URME_SS_Inventory {
 		if ( ! $link || ! (int) $link['needs_stock_apply'] ) {
 			return true;
 		}
+		if ( ! (int) $link['sync_enabled'] ) {
+			return true; // Paused: the product's stock and cost are left exactly as they are; the request stays queued.
+		}
 		if ( self::LOCAL === $link['stock_mode'] ) {
 			$product = wc_get_product( (int) $link['product_id'] );
 			if ( ! $product ) {

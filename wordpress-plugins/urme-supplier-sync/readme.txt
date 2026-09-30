@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.4.1
+Stable tag: 1.5.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -27,58 +27,53 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   "Not managed", and a note when backorders are allowed. Filters: URME stock (In stock / Out of
   stock / Not managed) and "Ready for supplier sync" (brand on, unique match, URME stock 0, not
   selected, still in the feed).
+* Two Fulfillment states only: **URME Lager** and **Dropshipping**. WooCommerce's current stock is
+  the URME count (no order history decides anything).
+  - URME Lager -> Dropshipping only at URME stock 0; at 1 or more it is refused with a clear error
+    and nothing changes ("Local URME stock exists (N units). Dropshipping can only start when the
+    URME Lager stock is 0."). No confirmation overrides it.
+  - When a URME Lager watch's stock reaches 0 (last unit sold, or set by hand) it becomes
+    Dropshipping in the same request: supplier stock and cost are written from the stored
+    catalog, and a "Price review required" notice asks to check the selling price.
+  - Dropshipping -> URME Lager (Selected watches): you type the units URME owns (at least 1) and
+    optionally the cost; supplier stock and cost sync stops at once. The supplier quantity is
+    never used as URME stock.
+  - Older states (Local first, Paused, supplier link with brand sync off) are shown as URME Lager.
+    Pause / Resume no longer exist.
 * Per-product controls in the Sync column, only for an enabled brand, a unique confirmed match and
   a watch still in the feed (never for Not in URME / Needs review):
-  - URME stock 0: "Start supplier sync" selects and links the watch (Supplier now) and syncs its
-    supplier stock and cost at once, with the normal safety rules.
-  - URME stock above 0: "Use Local first" selects and links it as Local first with the current
-    WooCommerce stock as local units and the current cost as local cost (nothing is overwritten).
-    Not offered while backorders are allowed.
-  - Selected watches show their mode with "Sync now"; paused ones show "Resume" (same mode).
+  - URME stock 0: "Dropshipping" selects and links the watch and syncs its supplier stock and
+    cost at once, with the normal safety rules.
+  - URME stock above 0: "URME Lager" selects and links it with the current WooCommerce stock and
+    cost kept. Not offered while backorders are allowed.
+  - Selected watches show "Dropshipping" with "Sync now", or "URME Lager" with a "Dropshipping"
+    button (allowed only at stock 0).
   Supplier sync never changes prices. Every condition is checked again when the button is clicked.
   These row actions and the sale price Save run without reloading the page; the row is updated in
   place with the result (bulk "Select checked for sync" is a normal form).
-* Local URME stock always has priority over Dropshipping, on every manual path:
-  - "Start supplier sync" is refused while the product has WooCommerce stock ("Local URME stock
-    exists (N units)... Use Local first.").
-  - "Select checked for sync" handles each checked watch on its own: WooCommerce stock above 0 ->
-    Local first (that stock as local units, the current COGS as local cost; stock, cost and prices
-    kept); stock 0 -> Supplier now. Needs review (several URME products), brand sync off, not in
-    the feed, or local stock that cannot be Local first (backorders allowed, variable parent,
-    stock managed by the parent) -> that watch is not selected and is listed in the notice; the
-    others are still processed. A watch with no URME product yet is selected without a product.
-  - Linking a product under Selected watches (manually or "Link automatically") applies the same
-    rule: a product with stock is linked as Local first.
-  - A Local first watch cannot be switched to Supplier now by hand while it has local units or
-    stock (no confirmation overrides it).
-  - "Resume" of a paused Supplier-now watch is refused when its WooCommerce stock is above the
-    stock supplier sync last set (units added by hand while paused, or never synced).
-  - Turning a brand on again (brand button or Settings) runs the same check on each of its
-    Supplier-now watches before the brand is saved: a watch with local units stays paused (no
-    supplier stock or cost is written) and is listed in the notice with "use Local first"; the
-    others resume normally.
-  After the last local unit is sold, the automatic Local first -> Supplier switch works as before.
-* Manual sale price: for every linked or uniquely matched product (also when Paused), the catalog and
+* "Select checked for sync" handles each checked watch on its own: WooCommerce stock above 0 ->
+  URME Lager (stock and COGS kept); stock 0 -> Dropshipping. Needs review (several URME products),
+  brand sync off, not in the feed, or stock that cannot be URME Lager (backorders allowed, variable
+  parent, stock managed by the parent) -> not selected and listed in the notice; the others are
+  still processed. Linking a product under Selected watches applies the same rule. Turning a
+  brand on again keeps its watches with URME stock as URME Lager (listed in the notice).
+* Manual sale price: for every linked or uniquely matched product, the catalog and
   Selected watches show the regular price (read-only) and an editable sale price with Save. Only the
   sale price of that exact product or variation is saved (WooCommerce product API); an empty field
   removes the sale. It must be a number in SEK, not above the regular price. Nothing else changes
   and no sync is started.
 * WooCommerce > Products gets a "Fulfillment" column from the Supplier Sync link (never from the
-  stock quantity): Dropshipping (Supplier now), Local first (units left), Paused, or URME Lager (not
-  supplier-linked). The Supplier catalog shows the same badge for matched products.
-* A "Fulfillment" filter in WooCommerce's product filter row: All / Dropshipping / URME Lager /
-  Local first / Paused / Supplier – brand sync off, each with its current count (read live from
-  the links, one aggregate query). Same states as the badge: Dropshipping = sync on + Supplier
-  now + brand sync on; Local first = sync on + Local first; Paused = sync off; Supplier – brand
-  sync off = sync on + Supplier now + brand sync off; URME Lager = not supplier-linked at all.
-  Counts are products (list rows); a variable product whose variations are in different states
-  is counted, and listed once, under each of them. It combines with the stock status, category,
+  stock quantity): Dropshipping or URME Lager. The Supplier catalog shows the same badge.
+* A "Fulfillment" filter in WooCommerce's product filter row: All / Dropshipping / URME Lager,
+  each with its current count (read live from the links, one aggregate query). Same states as the
+  badge: Dropshipping = supplier-linked, sync on, brand sync on and not URME Lager; URME Lager =
+  everything else. Counts are products (list rows); a variable product with both kinds of
+  variation is counted, and listed once, under each. It combines with the stock status, category,
   product type, brand and search filters, sorting and paging.
 * Gift wrap (ThemeComplete Extra Product Options, "Presentinslagning") is not offered for a true
   Dropshipping product or variation: ThemeComplete's options are switched off for it with
   ThemeComplete's `wc_epo_disable` filter, and an add-to-cart request that still posts its option
-  fields (tmcp_*) for a Dropshipping item is refused. Local first, URME Lager, Paused and brand
-  sync off keep it. A variable product keeps it; the selected variation decides at add to cart.
+  fields (tmcp_*) for a Dropshipping item is refused. URME Lager keeps it. A variable product keeps it; the selected variation decides at add to cart.
   When a product's Fulfillment state changes, its page is cleaned from caches (clean_post_cache).
   ThemeComplete forms are never changed.
 * A product is synced only when all of these are true:
@@ -95,7 +90,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.4.1.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -134,30 +129,28 @@ first_seen date, which refreshes, stock/cost changes, brand toggles and a tempor
 from the feed never reset. The first import and the upgrade to 1.1.0 mark nothing as NEW.
 Nothing is selected, linked or changed in WooCommerce because a watch is new.
 
-== Local first → Supplier automatically ==
+== URME Lager → Dropshipping automatically ==
 
 Per selected watch, under Selected watches > Mode:
 
-* Supplier now (default): stock and cost follow the supplier.
-* Local first: you own N units. They are sold first; supplier stock and cost are shown
-  but never written while local units remain. When the last local unit is sold, the next
-  safe sync (fresh, successful feed) switches the watch to Supplier now and syncs supplier
-  stock and EUR -> SEK cost. Until then the product is out of stock.
-* Paused: nothing is synced. The product's current WooCommerce stock and cost stay exactly as they
-  are (nothing is restored); the link is kept, so sync can be turned on again later. Local first
-  state is kept.
+* Dropshipping: stock and cost follow the supplier.
+* URME Lager: WooCommerce stock is URME's own stock; supplier stock and cost are shown but never
+  written. When the stock reaches 0 the watch becomes Dropshipping at once (in that same request)
+  and supplier stock and EUR -> SEK cost are written. The hourly sync does the same for anything
+  missed.
 
 Every order line of a linked product is booked in a ledger table (urme_ss_alloc) as local or
 supplier units, in one database transaction together with the local stock count, so a crash
 can never count a unit twice. Cancellations, refunds with restock and admin quantity edits
-return units to local first. A returned local unit on a watch that is already on Supplier now
-switches it back to Local first (WooCommerce stock = local units, cost = saved local cost).
+return units to URME Lager. A returned URME unit on a watch that is already Dropshipping switches it
+back to URME Lager (WooCommerce stock = returned units, cost = saved URME cost). The ledger only
+labels orders; the switch itself is decided by WooCommerce's stock.
 Anything that cannot be booked is logged and retried by the next sync, and that watch is not
 switched until it is booked.
 
-Local first cannot be enabled while backorders are allowed on the product (WooCommerce could
-otherwise sell supplier units before the local ones). If backorders are turned on later, the
-watch is put on hold and flagged until they are turned off again.
+URME Lager cannot be set while backorders are allowed on the product (WooCommerce could otherwise
+sell supplier units before URME's own). If backorders are turned on later, the watch is put on
+hold and flagged until they are turned off again.
 
 == Fulfillment source (admin only) ==
 
@@ -173,7 +166,7 @@ customer pages, My Account, emails, invoices, packing slips, the REST/Store API 
 
 == Price review (admin only) ==
 
-When a watch switches automatically from Local first to Supplier (its last local unit was sold),
+When a watch switches automatically from URME Lager to Dropshipping (its stock reached 0),
 an admin notice "Price review required: SKU … has switched to Dropshipping." appears with the
 product, SKU, previous local cost, supplier cost EUR/SEK, supplier stock, current selling price,
 the switch time, a "Review price" button and "Mark as reviewed". It stays until marked as
@@ -222,6 +215,17 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.5.0 =
+* Two Fulfillment states only: URME Lager and Dropshipping. Local first, Paused and supplier links
+  with brand sync off are shown as URME Lager; Pause / Resume are removed.
+* WooCommerce stock is the URME count (no order history decides the state). URME Lager ->
+  Dropshipping only at stock 0 (refused with a clear error otherwise, nothing changed).
+* A URME Lager watch whose stock reaches 0 becomes Dropshipping in the same request, with supplier
+  stock and cost from the stored catalog and a "Price review required" notice for the selling price.
+* Dropshipping -> URME Lager takes the typed quantity (at least 1), never the supplier quantity, and
+  stops supplier stock and cost sync at once.
+* Products filter, badges, catalog and Selected watches show only the two states.
 
 = 1.4.1 =
 * Gift wrap (ThemeComplete "Presentinslagning") is no longer offered for true Dropshipping products:

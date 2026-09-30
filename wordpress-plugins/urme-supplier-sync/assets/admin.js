@@ -18,7 +18,7 @@
 		}
 	} );
 
-	// Per-row catalog actions (Save sale price, Start supplier sync, Use Local first, Sync now, Resume)
+	// Per-row catalog actions (Save sale price, Dropshipping, URME Lager, Sync now)
 	// run over AJAX: the server does the work and returns the row re-rendered from current data.
 	// Without JavaScript the buttons still submit the catalog form (same server logic).
 	$( document ).on( 'click', '#urme-select-form button[name=row_action]', function ( e ) {
@@ -111,7 +111,7 @@
 } )( jQuery );
 
 ( function ( $ ) {
-	// Mode switcher on Selected watches: local fields only for "Local first".
+	// Fulfillment switcher on Selected watches: quantity and cost fields only for "URME Lager".
 	function sync( $form ) {
 		$form.find( '.urme-local-fields' ).toggle( 'local' === $form.find( 'select[name=mode]' ).val() );
 	}
@@ -121,13 +121,13 @@
 	$( document ).on( 'change', '.urme-mode-form select[name=mode]', function () {
 		sync( $( this ).closest( 'form' ) );
 	} );
-	// Local stock has priority: Supplier now is refused by the server while local units remain (no override).
+	// URME Lager stock has priority: the server refuses Dropshipping while the stock is above 0 (no override).
 	$( document ).on( 'submit', '.urme-mode-form', function ( e ) {
 		var $form = $( this ),
 			units = parseInt( $form.data( 'local-units' ), 10 ) || 0;
 		if ( 'supplier' === $form.find( 'select[name=mode]' ).val() && units > 0 ) {
 			e.preventDefault();
-			window.alert( 'Local first still has ' + units + ' local unit(s). Supplier now (Dropshipping) cannot start while local stock remains.' );
+			window.alert( 'URME Lager stock is ' + units + '. Dropshipping can only start when the URME Lager stock is 0.' );
 		}
 	} );
 } )( jQuery );

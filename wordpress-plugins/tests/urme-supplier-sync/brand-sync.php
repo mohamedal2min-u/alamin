@@ -107,7 +107,7 @@ ok( array( 'REF000132 (2 units)', 'REF000138 (1 unit)' ) === URME_SS_Settings::h
 // The admin checks: those units are not URME's own. Stock to 0, Resume (allowed at 0), then the old values back for the checks below.
 bs_set( $B1, 0 );
 bs_set( $B2, 0 );
-ok( 'success' === admin( 'run_row_action', 'resume|' . URME_SS_DB::get_link( key_of( 132 ) )['id'] )[1] && 'success' === admin( 'run_row_action', 'resume|' . URME_SS_DB::get_link( key_of( 138 ) )['id'] )[1], '   (1.4) at URME stock 0 both resume' );
+ok( 'success' === admin( 'run_row_action', 'dropship|' . URME_SS_DB::get_link( key_of( 132 ) )['id'] )[1] && 'success' === admin( 'run_row_action', 'dropship|' . URME_SS_DB::get_link( key_of( 138 ) )['id'] )[1], '   at URME stock 0 both become Dropshipping' );
 bs_set( $B1, 2 );
 ok( 1 === lf_log_count( 'Brands enabled for sync changed (brand button): enabled BOSS' ), '   the change is logged with its source' );
 $stale['hint_profit_sek'] = '550'; // …then the open settings page is saved for something unrelated.
@@ -221,44 +221,47 @@ run( array( 'trigger' => 'manual' ) ); // What "Sync now" calls.
 $b = bs_state( $B1 );
 ok( 8 === $b['stock'] && abs( $b['cogs'] - $sek ) < 0.001 && 'manual' === sync_stats()['trigger'], 'manual Sync now: same result', $b );
 
-section( 'BS-P1. Paused: supplier stock and cost stop, current values kept, link kept' );
-$lb1 = URME_SS_DB::get_link( key_of( 132 ) );
-bs_set( $B1, 6, 777 ); // The admin's own values at the moment of pausing.
-admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb1['id'] ), 'paused' );
+section( 'BS-P1. Dropshipping → URME Lager: supplier stock and cost stop, the typed quantity is kept' );
+$lb1   = URME_SS_DB::get_link( key_of( 132 ) );
+$_POST = array( 'local_qty' => '3', 'local_cost' => '777' ); // The admin types the units URME owns.
+$r     = admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb1['id'] ), 'local' );
+$_POST = array();
 nf_feed( $feed_n, array_merge( $BS_SET, array( 'REF000132' => array( 'MANUFACTURER' => 'BOSS', 'STOCK' => '11', 'PURCHASE_PRICE' => '200.00' ) ) ) );
 run();
 do_action( URME_SS_Plugin::CRON_HOOK );
 URME_SS_Log::flush();
 $b = bs_state( $B1 );
 $l = URME_SS_DB::get_link( key_of( 132 ) );
-ok( 6 === $b['stock'] && abs( $b['cogs'] - 777 ) < 0.001, 'P1. paused: supplier stock 11 and cost 200 EUR not applied; stock 6 and COGS 777 kept as they were', $b );
-ok( 2 !== $b['stock'] && abs( $b['cogs'] - 480 ) > 1, '   no old/original values restored (not 2 / 480)', $b );
-ok( $l && (int) $l['product_id'] === $B1 && 0 === (int) $l['sync_enabled'] && 'supplier' === $l['stock_mode'], '   link kept (same product), sync off', $l );
+ok( 'success' === $r[1] && 3 === $b['stock'] && abs( $b['cogs'] - 777 ) < 0.001, 'P1. URME Lager: stock 3 (typed, not the supplier 8 or 11) and COGS 777 kept through sync and cron', array( $r, $b ) );
+ok( $l && (int) $l['product_id'] === $B1 && 'local_first' === $l['stock_mode'] && false !== strpos( URME_SS_Product_Source::html( $B1 ), '>URME Lager<' ), '   link kept (same product), badge URME Lager', $l );
 ok( '4990' === $b['regular'] && '4490' === $b['sale'], '   selling prices unchanged' );
-admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb1['id'] ), 'supplier' );
+$r = admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb1['id'] ), 'supplier' );
+ok( 'error' === $r[1] && 'local_first' === URME_SS_DB::get_link( key_of( 132 ) )['stock_mode'] && 3 === bs_state( $B1 )['stock'], '   back to Dropshipping at stock 3: refused, nothing changed', $r );
+bs_set( $B1, 0 );
+$r = admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb1['id'] ), 'supplier' );
 run();
 $b = bs_state( $B1 );
-ok( 11 === $b['stock'] && abs( $b['cogs'] - round( 200 * 11.321, 2 ) ) < 0.001, '   resumed with "Supplier now": supplier stock 11 and 200 EUR × rate synced again', $b );
+ok( 'success' === $r[1] && 11 === $b['stock'] && abs( $b['cogs'] - round( 200 * 11.321, 2 ) ) < 0.001, '   at stock 0: Dropshipping again, supplier stock 11 and 200 EUR × rate synced', $b );
 
-section( 'BS-P2. Paused: a returned local unit does not overwrite stock or cost' );
+section( 'BS-P2. URME Lager sold out → Dropshipping; the returned URME unit → URME Lager again' );
 $lb2 = URME_SS_DB::get_link( key_of( 138 ) );
 URME_SS_Inventory::enable_local( (int) $lb2['id'], 1, 900 ); // One own unit, local cost 900.
-$o = lf_order( $B2, 1 );                                      // Sold from local stock…
-run();                                                        // …then switched to supplier in a safe sync.
-ok( 'supplier' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'] && 3 === bs_state( $B2 )['stock'], '   (setup: local unit sold, watch switched to supplier, stock 3)', bs_state( $B2 ) );
-admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb2['id'] ), 'paused' );
-bs_set( $B2, 7, 555 );                                        // Admin's own values while paused.
-wc_get_order( $o->get_id() )->update_status( 'cancelled' );   // The local unit comes back; WooCommerce restocks it (+1).
-$b = bs_state( $B2 );
-ok( 8 === $b['stock'] && abs( $b['cogs'] - 555 ) < 0.001, 'P2. paused: only WooCommerce\'s own restock (7 → 8); the plugin does not set stock to the local count (1) or cost to 900', $b );
+$o = lf_order( $B2, 1 );                                      // Sold: stock 0…
+run();                                                        // …Dropshipping (here via the sync; on the site in the same request).
+ok( 'supplier' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'] && 3 === bs_state( $B2 )['stock'], '   (setup: last URME unit sold, now Dropshipping with supplier stock 3)', bs_state( $B2 ) );
+wc_get_order( $o->get_id() )->update_status( 'cancelled' );   // The URME unit comes back (WooCommerce restocks it).
+run();
+ok( 'local_first' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'] && 1 === bs_state( $B2 )['stock'] && abs( bs_state( $B2 )['cogs'] - 900 ) < 0.001, 'P2. the returned URME unit: back to URME Lager with 1 unit and its cost 900 (never the supplier stock 3)', bs_state( $B2 ) );
+$_POST = array( 'local_qty' => '1', 'local_cost' => '900' );
+$r     = admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb2['id'] ), 'local' );
+$_POST = array();
 run();
 $b = bs_state( $B2 );
-ok( 8 === $b['stock'] && abs( $b['cogs'] - 555 ) < 0.001, '   still unchanged after the next sync', $b );
-$_POST['confirm_drop'] = '1'; // The old override field no longer does anything.
+ok( 'success' === $r[1] && 1 === $b['stock'] && abs( $b['cogs'] - 900 ) < 0.001 && 'local_first' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'], '   URME Lager with 1 unit, cost 900: kept after the next sync', $b );
+$_POST['confirm_drop'] = '1'; // The old override field does nothing.
 $res = admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lb2['id'] ), 'supplier' );
 unset( $_POST['confirm_drop'] );
 run();
 $b = bs_state( $B2 );
-$l = URME_SS_DB::get_link( key_of( 138 ) );
-ok( 'error' === $res[1] && 'local_first' === $l['stock_mode'] && 1 === (int) $l['local_qty'] && 8 === $b['stock'] && abs( $b['cogs'] - 555 ) < 0.001, '   returned local unit: Supplier now refused (no override), 1 local unit kept, stock 8 / COGS 555 unchanged', array( $res, $l['stock_mode'], $l['local_qty'], $b ) );
+ok( 'error' === $res[1] && 'local_first' === URME_SS_DB::get_link( key_of( 138 ) )['stock_mode'] && 1 === $b['stock'] && abs( $b['cogs'] - 900 ) < 0.001, '   Dropshipping at stock 1: refused (no override), stock 1 / COGS 900 unchanged', array( $res, $b ) );
 settings( array( 'rate_override' => '' ) );

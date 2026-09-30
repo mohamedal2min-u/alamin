@@ -1,7 +1,7 @@
 <?php
 /**
- * Fulfillment / stock source of a WooCommerce product (admin only), from the Supplier Sync link:
- * Dropshipping (Supplier now), Local first (N), Paused, or URME Lager (not supplier-linked).
+ * Fulfillment of a WooCommerce product, from the Supplier Sync link. Two states are shown:
+ * Dropshipping (supplier stock synced) or URME Lager (everything else).
  * Never guessed from the stock quantity. Links are loaded in bulk for the visible products.
  *
  * @package URME_Supplier_Sync
@@ -30,11 +30,8 @@ class URME_SS_Product_Source {
 	 * Fulfillment filter values on WooCommerce > Products.
 	 */
 	const FILTERS = array(
-		self::DROPSHIP  => 'Dropshipping',
-		self::LAGER     => 'URME Lager',
-		self::LOCAL     => 'Local first',
-		self::PAUSED    => 'Paused',
-		self::BRAND_OFF => 'Supplier – brand sync off',
+		self::DROPSHIP => 'Dropshipping',
+		self::LAGER    => 'URME Lager',
 	);
 
 	/**
@@ -210,29 +207,16 @@ class URME_SS_Product_Source {
 		return implode( '<br>', $out ) . self::styles();
 	}
 
+	/**
+	 * Only two Fulfillment states are shown: Dropshipping, or URME Lager for everything else
+	 * (not linked, Local first, Paused, supplier-linked with brand sync off).
+	 */
 	private static function badge( $link ) {
-		$state = self::state( $link );
-		switch ( $state ) {
-			case self::DROPSHIP:
-				$label = 'Dropshipping';
-				break;
-			case self::LOCAL:
-				$label = sprintf( 'Local first (%d)', (int) $link['local_qty'] );
-				break;
-			case self::PAUSED:
-				$label = 'Paused';
-				break;
-			case self::BRAND_OFF:
-				$label = 'Supplier – brand sync off';
-				break;
-			default:
-				$label = 'URME Lager';
-		}
-		$out = '<span class="urme-src urme-src-' . esc_attr( $state ) . '">' . esc_html( $label ) . '</span>';
-		if ( $link && self::LOCAL === $state && ! URME_SS_Settings::brand_enabled( (string) $link['manufacturer'] ) ) {
-			$out .= ' <small class="urme-src-note">brand sync off</small>';
-		}
-		if ( $link && self::PAUSED !== $state && isset( $link['in_feed'] ) && ! (int) $link['in_feed'] ) {
+		$drop = self::DROPSHIP === self::state( $link );
+		$out  = $drop
+			? '<span class="urme-src urme-src-dropship">Dropshipping</span>'
+			: '<span class="urme-src urme-src-lager">URME Lager</span>';
+		if ( $drop && isset( $link['in_feed'] ) && ! (int) $link['in_feed'] ) {
 			$out .= ' <small class="urme-src-note">not in supplier feed</small>';
 		}
 		return $out;
@@ -295,31 +279,32 @@ class URME_SS_Product_Source {
 	}
 
 	/**
-	 * WHERE fragment keeping only the products in one fulfillment state. A product is in a
-	 * supplier state (Dropshipping, Local first, Paused, brand sync off) when it, or one of its
-	 * variations, is; URME Lager when neither it nor any of its variations is supplier-linked.
-	 * A variable product whose variations are in different states is in each of those states
-	 * (still one row per filter).
+	 * WHERE fragment keeping only the products in one of the two fulfillment states. Dropshipping
+	 * when it, or one of its variations, is; URME Lager when it is not Dropshipping, or has a
+	 * linked variation that is not (a variable product with both is in both, one row each).
 	 *
 	 * @param string $state One of the FILTERS keys.
 	 */
 	public static function where_sql( $state ) {
 		global $wpdb;
-		$sql = self::state_sql();
+		$sql  = self::state_sql();
+		$drop = $sql[ self::DROPSHIP ];
+		unset( $sql[ self::DROPSHIP ] );
+		$sel = 'SELECT ' . self::owner_col() . ' ' . self::owner_sql();
+		if ( self::DROPSHIP === $state ) {
+			return " AND {$wpdb->posts}.ID IN ({$sel} AND ({$drop}))";
+		}
 		if ( self::LAGER === $state ) {
-			return " AND {$wpdb->posts}.ID NOT IN (SELECT " . self::owner_col() . ' ' . self::owner_sql() . ' AND ((' . implode( ') OR (', $sql ) . ')))';
+			// Not Dropshipping, or with a variation that is not (a mixed variable product is in both).
+			return " AND ({$wpdb->posts}.ID NOT IN ({$sel} AND ({$drop})) OR {$wpdb->posts}.ID IN ({$sel} AND ((" . implode( ') OR (', $sql ) . '))))';
 		}
-		if ( ! isset( $sql[ $state ] ) ) {
-			return '';
-		}
-		return " AND {$wpdb->posts}.ID IN (SELECT " . self::owner_col() . ' ' . self::owner_sql() . " AND ({$sql[ $state ]}))";
+		return '';
 	}
 
 	/**
 	 * Products (list rows) per fulfillment state, from the current links (not cached): one
-	 * aggregate query, plus WordPress's own post counts. URME Lager = all products minus the
-	 * supplier-linked ones. A product is counted once per state; a variable product whose
-	 * variations are in different states is counted in each of them.
+	 * aggregate query, plus WordPress's own post counts. URME Lager = all products minus those
+	 * that are only Dropshipping; a variable product with both kinds of variation counts in both.
 	 *
 	 * @param string[] $statuses Post statuses counted (default: those of the "All" view).
 	 * @return array<string, int>
@@ -331,15 +316,15 @@ class URME_SS_Product_Source {
 		}
 		$in    = $wpdb->prepare( implode( ',', array_fill( 0, count( $statuses ), '%s' ) ), array_values( $statuses ) ); // phpcs:ignore WordPress.DB
 		$sql   = self::state_sql();
+		$drop  = $sql[ self::DROPSHIP ];
+		unset( $sql[ self::DROPSHIP ] );
 		$owner = self::owner_col();
-		$cols  = array();
-		foreach ( $sql as $state => $cond ) {
-			$cols[] = "COUNT(DISTINCT CASE WHEN {$cond} THEN {$owner} END) AS n_{$state}";
-		}
-		$cols[] = 'COUNT(DISTINCT CASE WHEN (' . implode( ') OR (', $sql ) . ") THEN {$owner} END) AS n_active";
-		$row    = $wpdb->get_row( // phpcs:ignore WordPress.DB
-			'SELECT ' . implode( ', ', $cols ) . ' ' . self::owner_sql() . "
-			AND EXISTS (SELECT 1 FROM {$wpdb->posts} o WHERE o.ID = {$owner} AND o.post_type = 'product' AND o.post_status IN ({$in}))",
+		$row   = $wpdb->get_row( // phpcs:ignore WordPress.DB
+			"SELECT SUM(d) AS n_dropship, SUM(CASE WHEN d = 1 AND o = 0 THEN 1 ELSE 0 END) AS n_dropship_only FROM (
+				SELECT {$owner} AS owner, MAX(CASE WHEN {$drop} THEN 1 ELSE 0 END) AS d, MAX(CASE WHEN (" . implode( ') OR (', $sql ) . ') THEN 1 ELSE 0 END) AS o ' . self::owner_sql() . "
+				AND EXISTS (SELECT 1 FROM {$wpdb->posts} p2 WHERE p2.ID = {$owner} AND p2.post_type = 'product' AND p2.post_status IN ({$in}))
+				GROUP BY {$owner}
+			) t",
 			ARRAY_A
 		);
 		$all = 0;
@@ -349,12 +334,9 @@ class URME_SS_Product_Source {
 			}
 		}
 		return array(
-			'all'           => $all,
-			self::DROPSHIP  => (int) ( $row[ 'n_' . self::DROPSHIP ] ?? 0 ),
-			self::LAGER     => max( 0, $all - (int) ( $row['n_active'] ?? 0 ) ),
-			self::LOCAL     => (int) ( $row[ 'n_' . self::LOCAL ] ?? 0 ),
-			self::PAUSED    => (int) ( $row[ 'n_' . self::PAUSED ] ?? 0 ),
-			self::BRAND_OFF => (int) ( $row[ 'n_' . self::BRAND_OFF ] ?? 0 ),
+			'all'          => $all,
+			self::DROPSHIP => (int) ( $row['n_dropship'] ?? 0 ),
+			self::LAGER    => max( 0, $all - (int) ( $row['n_dropship_only'] ?? 0 ) ),
 		);
 	}
 
@@ -380,7 +362,7 @@ class URME_SS_Product_Source {
 		$counts   = self::counts( ( '' !== $status && 'all' !== $status && get_post_status_object( $status ) ) ? array( $status ) : array() );
 		$current  = self::current_filter();
 		$out      = '<label for="urme-fulfillment-filter" class="screen-reader-text">Filter by fulfillment</label>';
-		$out     .= '<select name="urme_fulfillment" id="urme-fulfillment-filter" title="Counts are products. A variable product whose variations are fulfilled differently is counted under each of those states."><option value="">' . esc_html( sprintf( 'Fulfillment: All (%d)', $counts['all'] ) ) . '</option>';
+		$out     .= '<select name="urme_fulfillment" id="urme-fulfillment-filter" title="Counts are products. A variable product with both Dropshipping and URME Lager variations is counted under both."><option value="">' . esc_html( sprintf( 'Fulfillment: All (%d)', $counts['all'] ) ) . '</option>';
 		foreach ( self::FILTERS as $value => $label ) {
 			$out .= '<option value="' . esc_attr( $value ) . '"' . selected( $value, $current, false ) . '>' . esc_html( sprintf( '%s (%d)', $label, $counts[ $value ] ) ) . '</option>';
 		}

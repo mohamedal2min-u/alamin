@@ -134,7 +134,7 @@ ok( 1 === lf_stock( $L1 ), 'Woo stock stays 1 (supplier has 8)', lf_stock( $L1 )
 ok( abs( lf_cogs( $L1 ) - 900 ) < 0.001, 'COGS stays local 900 (not 200 x rate)', lf_cogs( $L1 ) );
 $l = lf_link( 36 );
 ok( 'local' === $l['last_status'] && 8 === (int) $l['last_stock'] && abs( (float) $l['last_cost_sek'] - round( 200 * lf_rate(), 2 ) ) < 0.01, 'supplier stock/cost still read and shown', $l );
-ok( false !== strpos( $l['last_message'], 'Waiting for local stock to sell' ), 'status: waiting for local stock to sell' );
+ok( false !== strpos( $l['last_message'], 'URME Lager: 1 in stock; switches to Dropshipping at 0.' ), 'status: URME Lager, 1 in stock, switches at 0', $l['last_message'] );
 ok( 1 === sync_stats()['local_waiting'] && 0 === sync_stats()['handovers'], 'stats: 1 waiting, 0 switched', sync_stats() );
 ok( '4990' === p( $L1 )->get_regular_price() && '4490' === p( $L1 )->get_sale_price(), 'prices untouched' );
 
@@ -412,11 +412,13 @@ $_POST = array( 'local_qty' => '2', 'local_cost' => '1 234,50' );
 $out   = $res->invoke( null, lf_link( 78 ), 'local' );
 ok( 'success' === $out[1] && 2 === (int) lf_link( 78 )['local_qty'] && 1234.5 === (float) lf_link( 78 )['local_cost'] && 2 === lf_stock( $LC5 ), 'Local first via admin: qty 2, cost 1 234,50 parsed, Woo stock 2', $out );
 $out = $res->invoke( null, lf_link( 78 ), 'paused' );
-ok( '0' === (string) lf_link( 78 )['sync_enabled'] && 'local_first' === lf_link( 78 )['stock_mode'] && 2 === (int) lf_link( 78 )['local_qty'], 'Paused keeps Local first state' );
+ok( 'error' === $out[1] && '1' === (string) lf_link( 78 )['sync_enabled'] && 'local_first' === lf_link( 78 )['stock_mode'] && 2 === lf_stock( $LC5 ), '(1.5) Pause no longer exists: refused, URME Lager unchanged', $out );
 $_POST = array();
-ok( true === URME_SS_Inventory::has_local_units( lf_link( 78 ) ), 'Unlink/Remove are blocked while local units are tracked' );
+// 1.5: no order history, so relinking is allowed; a product with stock is linked as URME Lager.
 $msg = admin( 'link_product', lf_link( 78 ), $P8 );
-ok( false !== strpos( $msg, 'Not changed' ) && (int) lf_link( 78 )['product_id'] === $LC5, 'relinking to another product blocked', $msg );
+ok( (int) lf_link( 78 )['product_id'] === $P8 && 'local_first' === lf_link( 78 )['stock_mode'] && 2 === lf_stock( $LC5 ), '(1.5) relinking a URME Lager watch to a product with stock: linked as URME Lager, the old product keeps its stock', $msg );
+$msg = admin( 'link_product', lf_link( 78 ), $LC5 ); // Back to its own product for the tests below.
+ok( (int) lf_link( 78 )['product_id'] === $LC5 && 'local_first' === lf_link( 78 )['stock_mode'], '   linked back', $msg );
 
 /* ------------------------------------------------------------------ hard crash */
 section( 'LF-K. Process killed mid-transaction: database discards it, booked once later' );

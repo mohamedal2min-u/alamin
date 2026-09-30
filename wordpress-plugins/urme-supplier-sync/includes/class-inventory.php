@@ -71,9 +71,64 @@ class URME_SS_Inventory {
 		return isset( self::$linked[ (int) $product_id ] );
 	}
 
+	/**
+	 * URME Lager links whose WooCommerce stock reached 0 in this request (switched on shutdown).
+	 *
+	 * @var int[]
+	 */
+	private static $sold_out = array();
+
 	public static function init() {
 		add_action( 'woocommerce_new_order_item', array( __CLASS__, 'on_item_saved' ), 20, 3 );
 		add_action( 'woocommerce_update_order_item', array( __CLASS__, 'on_item_saved' ), 20, 3 );
+		add_action( 'woocommerce_product_set_stock', array( __CLASS__, 'on_stock_set' ) );
+		add_action( 'woocommerce_variation_set_stock', array( __CLASS__, 'on_stock_set' ) );
+	}
+
+	/**
+	 * Hook: WooCommerce stock of a product changed. A URME Lager watch at stock 0 becomes
+	 * Dropshipping in this same request (on shutdown, after the order line is booked).
+	 */
+	public static function on_stock_set( $product ) {
+		if ( ! $product instanceof WC_Product || true !== $product->get_manage_stock() || (int) $product->get_stock_quantity() > 0 ) {
+			return;
+		}
+		$link = URME_SS_DB::link_for_product( $product->get_id() );
+		if ( ! $link || self::LOCAL !== $link['stock_mode'] || ! (int) $link['sync_enabled'] ) {
+			return;
+		}
+		if ( ! self::$sold_out ) {
+			add_action( 'shutdown', array( __CLASS__, 'switch_sold_out' ) );
+		}
+		self::$sold_out[ (int) $link['id'] ] = (int) $link['id'];
+	}
+
+	/**
+	 * URME Lager → Dropshipping for the watches that sold out in this request: the switch (with
+	 * its price-review notice to adjust the selling price), then supplier stock and cost from the
+	 * stored catalog (no feed download). Stock above 0 again, backorders or brand off: no switch.
+	 */
+	public static function switch_sold_out() {
+		global $wpdb;
+		$ids            = self::$sold_out;
+		self::$sold_out = array();
+		foreach ( $ids as $id ) {
+			$link    = $wpdb->get_row( $wpdb->prepare( 'SELECT l.*, c.product_no, c.manufacturer, c.purchase_price, c.stock FROM ' . URME_SS_DB::links_table() . ' l LEFT JOIN ' . URME_SS_DB::catalog_table() . ' c ON c.item_key = l.item_key WHERE l.id = %d', $id ), ARRAY_A ); // phpcs:ignore WordPress.DB
+			$product = $link ? wc_get_product( (int) $link['product_id'] ) : null;
+			if ( ! $link || ! $product || self::LOCAL !== $link['stock_mode'] || ! (int) $link['sync_enabled'] || 'no' !== $product->get_backorders()
+				|| self::local_units_before_supplier( null, $product ) > 0 || ! URME_SS_Settings::brand_enabled( (string) $link['manufacturer'] ) ) {
+				continue;
+			}
+			if ( self::handover( $link, $product, URME_SS_Rates::current() ) ) {
+				URME_SS_Sync::run(
+					array(
+						'refresh_feed' => false,
+						'link_id'      => $id,
+						'trigger'      => 'stock 0',
+					)
+				);
+			}
+		}
 	}
 
 	/**
@@ -565,10 +620,10 @@ class URME_SS_Inventory {
 			$now    = current_time( 'mysql', true );
 			$result = $wpdb->query( // phpcs:ignore WordPress.DB
 				$wpdb->prepare(
-					'UPDATE ' . URME_SS_DB::links_table() . " SET stock_mode = 'supplier', mode_changed_at = %s, mode_note = %s
-					WHERE id = %d AND stock_mode = 'local_first' AND local_qty = 0 AND needs_stock_apply = 0",
+					'UPDATE ' . URME_SS_DB::links_table() . " SET stock_mode = 'supplier', local_qty = 0, mode_changed_at = %s, mode_note = %s
+					WHERE id = %d AND stock_mode = 'local_first' AND needs_stock_apply = 0",
 					$now,
-					'Local stock sold out; switched to supplier stock.',
+					'URME Lager stock reached 0; switched to Dropshipping.',
 					$link['id']
 				)
 			);
@@ -650,16 +705,15 @@ class URME_SS_Inventory {
 	}
 
 	/**
-	 * Local URME stock always has priority over Dropshipping: the units that must be sold before
-	 * Supplier now may start. Tracked Local first units, and the product's current WooCommerce
-	 * stock (for a stock managed by the parent product, the parent's stock).
+	 * URME Lager stock always has priority over Dropshipping: the product's current WooCommerce
+	 * stock (for a stock managed by the parent product, the parent's stock). No order history is
+	 * used: WooCommerce's stock is the local count.
 	 *
-	 * @param array|null      $link    Supplier link, or null when not linked yet.
+	 * @param array|null      $link    Supplier link (unused; kept for callers).
 	 * @param WC_Product|null $product The WooCommerce product or variation.
 	 */
 	public static function local_units_before_supplier( $link, $product ) {
-		$tracked = ( $link && self::LOCAL === ( $link['stock_mode'] ?? '' ) ) ? max( 0, (int) $link['local_qty'] ) : 0;
-		$woo     = 0;
+		$woo = 0;
 		if ( $product instanceof WC_Product ) {
 			$by    = (int) $product->get_stock_managed_by_id();
 			$stock = ( $by && $by !== $product->get_id() ) ? wc_get_product( $by ) : $product;
@@ -667,7 +721,7 @@ class URME_SS_Inventory {
 				$woo = max( 0, (int) $stock->get_stock_quantity() );
 			}
 		}
-		return max( $tracked, $woo );
+		return $woo;
 	}
 
 	/**
@@ -742,7 +796,7 @@ class URME_SS_Inventory {
 	}
 
 	public static function local_priority_message( $units ) {
-		return sprintf( 'Local URME stock exists (%d unit%s). Dropshipping cannot start while local stock remains. Use Local first.', $units, 1 === (int) $units ? '' : 's' );
+		return sprintf( 'Local URME stock exists (%d unit%s). Dropshipping can only start when the URME Lager stock is 0.', $units, 1 === (int) $units ? '' : 's' );
 	}
 
 	/**

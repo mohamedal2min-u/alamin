@@ -44,8 +44,8 @@ section( 'PA0. Fulfillment badge and sale price editor setup' );
 wp_set_current_user( $GLOBALS['FF_ADMIN'] );
 settings( array( 'cost_target' => 'wc_cogs', 'rate_override' => '11.321' ) );
 URME_SS_Product_Source::init();
-$ZL = bs_product( 'REF000228', key_of( 228 ), 3, 700 );  // → Local first (3).
-$ZP = bs_product( 'REF000234', key_of( 234 ), 0, 500 );  // → Supplier now, then Paused.
+$ZL = bs_product( 'REF000228', key_of( 228 ), 3, 700 );  // → URME Lager (3).
+$ZP = bs_product( 'REF000234', key_of( 234 ), 0, 500 );  // → Dropshipping, then paused as an earlier version could.
 $ZO = bs_product( 'OWN-0001', '', 0, 900 );              // URME's own watch, no supplier link, stock 0.
 $v2 = new WC_Product_Variation();                        // A second variation of the variable product.
 $v2->set_parent_id( $VP );
@@ -67,7 +67,7 @@ nf_feed( $feed_n, array_merge( $BS_SET, $CA_SET, $PA_SET ) );
 run( array( 'force_feed' => true ) );
 ok( 'success' === ca_act( 'start_local', 228 )[1] && 'success' === ca_act( 'start_supplier', 234 )[1], '   (REF000228 Local first with 3 units, REF000234 Supplier now)' );
 $lp = URME_SS_DB::get_link( key_of( 234 ) );
-admin( 'set_mode', URME_SS_DB::get_link_by_id( (int) $lp['id'] ), 'paused' );
+$wpdb->update( URME_SS_DB::links_table(), array( 'sync_enabled' => 0 ), array( 'id' => (int) $lp['id'] ) ); // Legacy paused link (Pause no longer exists).
 wp_trash_post( $trash );
 $http = 0;
 $count_http = static function ( $pre ) use ( &$http ) {
@@ -80,15 +80,15 @@ section( 'PA1–4. Fulfillment badge (WooCommerce > Products)' );
 $cols = apply_filters( 'manage_edit-product_columns', array( 'cb' => '', 'name' => 'Name', 'sku' => 'SKU', 'is_in_stock' => 'Stock', 'price' => 'Price', 'date' => 'Date' ) );
 ok( array( 'cb', 'name', 'sku', 'is_in_stock', 'urme_source', 'price', 'date' ) === array_keys( $cols ) && 'Fulfillment' === $cols['urme_source'], '"Fulfillment" column after Stock', array_keys( $cols ) );
 ok( 'Dropshipping' === pa_badge( $Z0 ), '1. Supplier now, brand on → Dropshipping', pa_badge( $Z0 ) );
-ok( 'Local first (3)' === pa_badge( $ZL ), '2. Local first with 3 units → Local first (3)', pa_badge( $ZL ) );
-ok( 'Paused' === pa_badge( $ZP ), '3. Paused → Paused', pa_badge( $ZP ) );
+ok( 'URME Lager' === pa_badge( $ZL ), '2. URME Lager link with 3 units → URME Lager', pa_badge( $ZL ) );
+ok( 'URME Lager' === pa_badge( $ZP ), '3. legacy paused link → URME Lager', pa_badge( $ZP ) );
 ok( 'URME Lager' === pa_badge( $ZO ) && 'URME Lager' === pa_badge( $ZB ), '4. no Supplier Sync link → URME Lager (also at stock 0, and for a matched but not selected product)', array( pa_badge( $ZO ), pa_badge( $ZB ) ) );
 ok( false !== strpos( pa_column( $VP ), 'Dropshipping</span> <small class="urme-src-note">1 variation</small>' ), '   variable product: shows its supplier-linked variation (Dropshipping, 1 variation)', ff_text( pa_column( $VP ) ) );
 URME_SS_Settings::set_brand( 'BOSS', false );
-ok( 'Supplier – brand sync off' === pa_badge( $Z0 ), '   Supplier now but brand sync off → not shown as Dropshipping', pa_badge( $Z0 ) );
+ok( 'URME Lager' === pa_badge( $Z0 ), '   supplier link with brand sync off → URME Lager (not Dropshipping)', pa_badge( $Z0 ) );
 URME_SS_Settings::set_brand( 'BOSS', true );
 $html = ph_catalog( array( 'brand' => 'BOSS' ) );
-ok( array( 'Dropshipping' ) === pa_badges( ca_row( $html, 'REF000180' ) ) && array( 'Local first (3)' ) === pa_badges( ca_row( $html, 'REF000228' ) ) && array( 'Paused' ) === pa_badges( ca_row( $html, 'REF000234' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000216' ) ), 'Supplier catalog shows the same badge for matched products' );
+ok( array( 'Dropshipping' ) === pa_badges( ca_row( $html, 'REF000180' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000228' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000234' ) ) && array( 'URME Lager' ) === pa_badges( ca_row( $html, 'REF000216' ) ), 'Supplier catalog shows the same badge for matched products' );
 ok( array() === pa_badges( ca_row( $html, 'REF000192' ) ) && array() === pa_badges( ca_row( $html, 'REF000198' ) ), '   no badge for Not in URME / Needs review' );
 
 section( 'PA5–10. Manual sale price: 4490 → 4290' );
@@ -132,7 +132,7 @@ ok( 'error' === pa_sale( 192, '100' )[1] && 'error' === pa_sale( 198, '100' )[1]
 $pp = pa_snapshot( $ZP, 234 );
 $res = pa_sale( 234, '4190' );
 $pa  = pa_snapshot( $ZP, 234 );
-ok( 'success' === $res[1] && '4190' === $pa['sale'] && 0 === (int) $pa['link']['sync_enabled'] && $pp['stock'] === $pa['stock'] && abs( $pp['cogs'] - $pa['cogs'] ) < 0.0001, 'Paused product: sale price saved; still paused, stock and COGS unchanged', $res );
+ok( 'success' === $res[1] && '4190' === $pa['sale'] && 0 === (int) $pa['link']['sync_enabled'] && $pp['stock'] === $pa['stock'] && abs( $pp['cogs'] - $pa['cogs'] ) < 0.0001, 'legacy paused product: sale price saved; still not synced, stock and COGS unchanged', $res );
 ok( 'error' === pa_sale( 240, '100' )[1], 'deleted (trashed) product: refused' );
 ok( 0 === $http, '15. no HTTP (supplier feed) request for any sale price save', $http );
 remove_filter( 'pre_http_request', $count_http );

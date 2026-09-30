@@ -513,8 +513,8 @@ class URME_SS_Sync {
 		if ( 'no' !== $product->get_backorders() ) {
 			++$stats['local_blocked'];
 			++$stats['errors'];
-			$stats['error_list'][] = sprintf( '%s (#%d): backorders are allowed; Local first is on hold.', $link['product_no'], $link['product_id'] );
-			self::set_link_status( $link, 'error', 'Backorders are allowed on this product. Local first is on hold (no stock/cost changes, no switch to supplier) until backorders are set to "Do not allow".' );
+			$stats['error_list'][] = sprintf( '%s (#%d): backorders are allowed; URME Lager is on hold.', $link['product_no'], $link['product_id'] );
+			self::set_link_status( $link, 'error', 'Backorders are allowed on this product. URME Lager is on hold (no stock/cost changes, no switch to Dropshipping) until backorders are set to "Do not allow".' );
 			return 'hold';
 		}
 		if ( in_array( (int) $link['id'], $ledger_failed, true ) || (int) $link['needs_stock_apply'] ) {
@@ -523,7 +523,9 @@ class URME_SS_Sync {
 			self::set_link_status( $link, 'error', 'Local inventory is not reconciled yet (see log). Nothing changed; retried on the next sync.' );
 			return 'hold';
 		}
-		if ( (int) $link['local_qty'] > 0 ) {
+		// URME Lager: the WooCommerce stock is the local count (no order history). At 0 → Dropshipping.
+		$units = true === $product->get_manage_stock() ? (int) $product->get_stock_quantity() : (int) $link['local_qty'];
+		if ( $units > 0 ) {
 			++$stats['local_waiting'];
 			// Supplier data is still read and shown, never written.
 			self::update_link_if_changed(
@@ -534,7 +536,7 @@ class URME_SS_Sync {
 					'last_cost_sek' => ( null !== $link['purchase_price'] && $rate ) ? round( (float) $link['purchase_price'] * $rate['rate'], 2 ) : null,
 					'last_rate'     => $rate ? $rate['rate'] : null,
 					'last_status'   => 'local',
-					'last_message'  => sprintf( 'Waiting for local stock to sell (%d local unit(s) left).', $link['local_qty'] ),
+					'last_message'  => sprintf( 'URME Lager: %d in stock; switches to Dropshipping at 0.', $units ),
 				)
 			);
 			return 'hold';

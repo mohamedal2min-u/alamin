@@ -587,5 +587,7 @@ require __DIR__ . '/ajax-local.php';
 require __DIR__ . '/bulk-fulfillment.php';
 // 1.4.1: no ThemeComplete gift wrap (Presentinslagning) for true Dropshipping products.
 require __DIR__ . '/gift-wrap.php';
+// 1.5: two Fulfillment states only (URME Lager / Dropshipping).
+require __DIR__ . '/two-state.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

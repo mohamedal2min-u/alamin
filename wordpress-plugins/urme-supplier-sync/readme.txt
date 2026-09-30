@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -95,7 +95,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.4.0.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.4.1.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -222,6 +222,13 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.4.1 =
+* Gift wrap (ThemeComplete "Presentinslagning") is no longer offered for true Dropshipping products:
+  ThemeComplete's options are switched off for them (wc_epo_disable), and an add-to-cart request
+  that still posts the option fields for a Dropshipping item (the selected variation) is refused.
+  Local first, URME Lager, Paused and brand sync off keep it. A product page is cleaned from
+  caches when its Fulfillment state changes. ThemeComplete forms are never changed.
 
 = 1.4.0 =
 * Supplier catalog row actions (Save sale price, Start supplier sync, Use Local first, Sync now,

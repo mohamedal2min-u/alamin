@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.5.6
+Stable tag: 1.5.7
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -18,8 +18,10 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 * The catalog lists the watches in your store first (linked, or a unique URME match), then Needs
   review, then Not in URME; brand and model order inside each group. Compact columns: brand above
   the product name, model (PRODUCTNO) above the EAN, EUR cost above SEK cost.
-* The catalog opens with the brands enabled for sync only (Settings > Brands enabled for sync);
-  "Brand sync: All brands" shows every watch, "Disabled brands" the others. The Brand filter lists
+* The catalog opens with the brands enabled for sync only (Settings > Brands enabled for sync) when
+  no filter is used; any search (Model, EAN, Text), a Brand choice or a dashboard link looks in all
+  brands, so a watch you look for is always found. "Brand sync" can also be set to Enabled brands
+  only, Disabled brands or All brands. The Brand filter lists
   only enabled brands (a brand filtered on from an old link is shown with "– sync off").
 * "In URME" column: whether the watch already exists in the store, found by SKU/PRODUCTNO and
   EAN/ITEM_ID:
@@ -76,7 +78,8 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   Prices and cost are not changed by the plugin. Not shown for URME Lager or variable products.
 * WooCommerce > Products gets a narrow "Fulfillment" column from the Supplier Sync link (never
   from the stock quantity): a blue "D" = Dropshipping, a green "U" = URME Lager (full name on
-  hover). The Supplier catalog shows the same state in full words.
+  hover and for screen readers). The Supplier catalog and orders use the same colours in full
+  words: blue = Dropshipping, green = URME Lager.
 * A "Fulfillment" filter in WooCommerce's product filter row: All / Dropshipping / URME Lager,
   each with its current count (read live from the links, one aggregate query). Same states as the
   badge: Dropshipping = supplier-linked, sync on, brand sync on; URME Lager = everything else.
@@ -103,7 +106,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.6.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.7.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -218,6 +221,18 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.5.7 =
+* Review fixes: a search for a watch of a disabled brand finds it again (the enabled-brands view
+  applies only when the catalog is opened without a filter); after "Disable brand sync" the
+  brand's list is not empty; dashboard links list every brand.
+* The red "!" (not in supplier feed) on the Products list is red again; screen readers read
+  "Dropshipping" / "URME Lager" instead of "D" / "U".
+* One colour system: blue = Dropshipping, green = URME Lager (catalog, Products list, orders).
+* Lighter: no plugin database query on store pages (the version check is autoloaded); a shop or
+  category page loads the gift-wrap state of all its products in one query; admin pages skip the
+  price-review query when nothing is pending, and the empty Price Review tab is hidden.
+* Uninstall also removes the 1.5.2 cleanup flag.
 
 = 1.5.6 =
 * WooCommerce > Products: the Fulfillment column shows a blue "D" (Dropshipping) or a green "U"

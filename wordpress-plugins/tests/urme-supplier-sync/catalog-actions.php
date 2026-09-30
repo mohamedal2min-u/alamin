@@ -149,13 +149,23 @@ ok( array( '' => 'All' ) + $enabled === $opts && isset( $opts['BOSS'] ) && ! iss
 ok( 1 === preg_match( '#<option value="BOSS"\s+selected=\'selected\'>BOSS \(\d+\)</option>#', ph_catalog( array( 'brand' => 'BOSS' ) ) ), '   an enabled brand is listed without a suffix and stays selected' );
 $all = URME_SS_DB::search_catalog( array( 'per_page' => 1 ) )['total'];
 ok( $all === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_DB::catalog_table() . " WHERE in_feed = 1 AND category = 'WATCH'" ) && 0 < URME_SS_DB::search_catalog( array( 'brand' => 'Casio', 'per_page' => 1 ) )['total'], '   "All brands" still lists every watch, disabled brands included', $all );
-// 1.5.6: opening the catalog (no brand choice) shows only the brands enabled for sync.
+// 1.5.6: opening the catalog (no filter at all) shows only the brands enabled for sync.
 $open = ph_catalog( array() );
 $want = URME_SS_DB::search_catalog( array( 'brand_sync' => 'on', 'per_page' => 1 ) )['total'];
-ok( '' === ca_row( $open, 'REF000204' ) && '' !== ca_row( $open, 'REF000180' ) && false !== strpos( $open, number_format_i18n( $want ) . ' watches found' ) && 1 === preg_match( '#<option value="on"\s+selected=\'selected\'>Enabled brands</option>#', $open ), sprintf( 'catalog opens with the enabled brands only (%d watches; Casio, disabled, not listed); "Brand sync: Enabled brands" selected', $want ) );
+ok( '' === ca_row( $open, 'REF000204' ) && '' !== ca_row( $open, 'REF000180' ) && false !== strpos( $open, number_format_i18n( $want ) . ' watches found' ) && false !== strpos( $open, 'Brands enabled for sync only (a search looks in all brands)' ) && 0 === preg_match( '#<select name="brand_sync">(?:(?!</select>).)*selected=#s', $open ), sprintf( 'catalog opens with the enabled brands only (%d watches; Casio, disabled, not listed); "Brand sync: Default (enabled brands)"', $want ) );
 $anyb = ph_catalog( array( 'brand_sync' => 'any', 'brand' => '' ) );
-ok( '' !== ca_row( $anyb, 'REF000204' ) && false !== strpos( $anyb, number_format_i18n( $all ) . ' watches found' ) && 1 === preg_match( '#<option value="any"\s+selected=\'selected\'>All brands</option>#', $anyb ), '   "Brand sync: All brands" lists every watch, disabled brands included' );
-ok( 1 === preg_match( '#brand_sync=on#', $open ) || false === strpos( $open, 'page-numbers' ), '   paging keeps the enabled-brands filter' );
+ok( '' !== ca_row( $anyb, 'REF000204' ) && false !== strpos( $anyb, number_format_i18n( $all ) . ' watches found' ) && 1 === preg_match( '#<option value="any"\s+selected=\'selected\'>All brands</option>#', $anyb ) && false === strpos( $anyb, 'Brands enabled for sync only' ), '   "Brand sync: All brands" lists every watch, disabled brands included' );
+$p2    = ph_catalog( array( 'paged' => 2 ) );
+preg_match_all( '#<span class="urme-brand">([^<]+)</span>#', $p2, $b2 );
+$p2_on = array_filter( $b2[1], static function ( $b ) { return URME_SS_Settings::brand_enabled( html_entity_decode( $b ) ); } );
+ok( $b2[1] && count( $p2_on ) === count( $b2[1] ) && preg_match_all( '#class="page-numbers[^"]*" href="[^"]*paged=\d#', $open ) > 0, '   (1.5.7) paging: the page links keep the default view; page 2 lists enabled brands only', array_unique( $b2[1] ) );
+// 1.5.7: the default never hides a watch someone looks for.
+$srch = ph_catalog( array( 'productno' => 'REF000204', 'brand_sync' => '' ) );
+ok( '' !== ca_row( $srch, 'REF000204' ) && false === strpos( $srch, 'Brands enabled for sync only' ), '   (1.5.7) a Model search finds the watch of a disabled brand (Casio)' );
+ok( '' !== ca_row( ph_catalog( array( 'q' => '204', 'brand_sync' => '' ) ), 'REF000204' ) && '' !== ca_row( ph_catalog( array( 'ean' => key_of( 204 ), 'brand_sync' => '' ) ), 'REF000204' ), '   ... and so do Text and EAN searches' );
+$dep = URME_SS_DB::search_catalog( array( 'selected' => 'yes', 'per_page' => 1 ) )['total'];
+ok( false !== strpos( ph_catalog( array( 'selected' => 'yes' ) ), number_format_i18n( $dep ) . ' watches found' ), '   dashboard links (selected=yes) count every brand, as their cards do' );
+ok( '' !== ca_row( ph_catalog( array( 'brand' => 'Casio', 'brand_sync' => '' ) ), 'REF000204' ), '   a brand filter (e.g. after "Disable brand sync") keeps listing that brand' );
 $casio = ph_catalog( array( 'brand' => 'Casio' ) );
 $co    = ca_brand_options( $casio );
 ok( isset( $co['Casio'] ) && false !== strpos( $co['Casio'], '– sync off' ) && 1 === preg_match( '#<option value="Casio"\s+selected=\'selected\'>#', $casio ) && count( $co ) === count( $opts ) + 1, '   filtered on disabled Casio (old link): Casio shown selected, "– sync off"', $co );

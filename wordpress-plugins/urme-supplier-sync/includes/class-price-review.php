@@ -67,6 +67,14 @@ class URME_SS_Price_Review {
 	}
 
 	/**
+	 * Whether any review exists at all (pending or reviewed).
+	 */
+	public static function has_any() {
+		global $wpdb;
+		return (bool) $wpdb->get_var( 'SELECT 1 FROM ' . self::table() . ' LIMIT 1' ); // phpcs:ignore WordPress.DB
+	}
+
+	/**
 	 * Reviews, newest first, with the live supplier data from the catalog.
 	 */
 	public static function rows( $status = self::PENDING, $limit = 200 ) {
@@ -145,6 +153,9 @@ class URME_SS_Price_Review {
 	public static function render_notice() {
 		if ( ! self::allowed() ) {
 			return;
+		}
+		if ( ! self::pending_count() ) {
+			return; // One cached count per request (also used by the menu badge); no rows query.
 		}
 		$rows = self::rows( self::PENDING, 6 );
 		if ( ! $rows ) {

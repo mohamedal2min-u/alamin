@@ -137,9 +137,29 @@ class URME_SS_Product_Source {
 			return self::LAGER;
 		}
 		if ( ! isset( self::$map[ $product_id ] ) ) {
-			self::prime( array( $product_id ) );
+			// Asked for one product of a shop / category page (gift wrap): load the whole page at once.
+			self::prime( array_merge( array( $product_id ), self::page_products() ) );
 		}
 		return self::state( self::$map[ $product_id ]['own'] );
+	}
+
+	/**
+	 * Store front: the products of the main query (shop, category, search) not loaded yet.
+	 * Nothing in the admin, where the lists prime themselves.
+	 *
+	 * @return int[]
+	 */
+	private static function page_products() {
+		if ( is_admin() || empty( $GLOBALS['wp_query'] ) || ! $GLOBALS['wp_query'] instanceof WP_Query ) {
+			return array();
+		}
+		$ids = array();
+		foreach ( (array) $GLOBALS['wp_query']->posts as $post ) {
+			if ( $post instanceof WP_Post && 'product' === $post->post_type && ! isset( self::$map[ (int) $post->ID ] ) ) {
+				$ids[] = (int) $post->ID;
+			}
+		}
+		return $ids;
 	}
 
 	/**
@@ -220,19 +240,15 @@ class URME_SS_Product_Source {
 	 */
 	private static function badge( $link, $short = false ) {
 		$drop = self::DROPSHIP === self::state( $link );
-		if ( $short ) {
-			// Products list: one letter, full name on hover and for screen readers.
-			$out = $drop
-				? '<span class="urme-src urme-src-dropship urme-src-short" title="Dropshipping" aria-label="Dropshipping">D</span>'
-				: '<span class="urme-src urme-src-lager urme-src-short" title="URME Lager" aria-label="URME Lager">U</span>';
-		} else {
-			$out = $drop
-				? '<span class="urme-src urme-src-dropship">Dropshipping</span>'
-				: '<span class="urme-src urme-src-lager">URME Lager</span>';
-		}
+		$key  = $drop ? self::DROPSHIP : self::LAGER;
+		$name = self::FILTERS[ $key ];
+		// Products list: one letter (D / U); the full name on hover and for screen readers.
+		$out = $short
+			? sprintf( '<span class="urme-src urme-src-%1$s urme-src-short" title="%2$s"><span aria-hidden="true">%3$s</span><span class="screen-reader-text">%2$s</span></span>', $key, esc_attr( $name ), $drop ? 'D' : 'U' )
+			: sprintf( '<span class="urme-src urme-src-%1$s">%2$s</span>', $key, esc_html( $name ) );
 		if ( $drop && isset( $link['in_feed'] ) && ! (int) $link['in_feed'] ) {
 			$out .= $short
-				? ' <small class="urme-src-note urme-bad-note" title="not in supplier feed">!</small>'
+				? ' <small class="urme-src-note urme-bad-note" title="not in supplier feed"><span aria-hidden="true">!</span><span class="screen-reader-text">not in supplier feed</span></small>'
 				: ' <small class="urme-src-note">not in supplier feed</small>';
 		}
 		return $out;
@@ -243,10 +259,10 @@ class URME_SS_Product_Source {
 			return '';
 		}
 		self::$styled = true;
-		return '<style>.wp-list-table .column-urme_source{width:6em}.urme-src-short{min-width:12px;padding:1px 6px;text-align:center;cursor:help}.urme-bad-note{color:#b32d2e;font-weight:700}.urme-src{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap}'
-			. '.urme-src-dropship{background:#e5f0fa;color:#135e96}.urme-src-local{background:#edfaef;color:#00701a}'
-			. '.urme-src-paused{background:#f0f0f1;color:#50575e}.urme-src-lager{background:#edfaef;color:#00701a}'
-			. '.urme-src-brand_off{background:#f0f0f1;color:#8c1f1f}.urme-src-note{color:#646970}</style>';
+		// Base rules first, the compact / warning variants after them (same specificity: order decides).
+		return '<style>.wp-list-table .column-urme_source{width:6em}.urme-src{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap}'
+			. '.urme-src-dropship{background:#e5f0fa;color:#135e96}.urme-src-lager{background:#edfaef;color:#00701a}.urme-src-note{color:#646970}'
+			. '.urme-src-short{min-width:12px;padding:1px 6px;text-align:center;cursor:help}.urme-src-note.urme-bad-note{color:#b32d2e;font-weight:700}</style>';
 	}
 
 	/* --- Fulfillment in SQL (same rules as state()) -------------------------- */

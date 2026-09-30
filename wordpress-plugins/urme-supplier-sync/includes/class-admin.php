@@ -670,6 +670,8 @@ class URME_SS_Admin {
 		$pending = URME_SS_Price_Review::pending_count();
 		if ( $pending ) {
 			$tabs['reviews'] .= sprintf( ' (%d)', $pending );
+		} elseif ( ! URME_SS_Price_Review::has_any() ) {
+			unset( $tabs['reviews'] ); // Reviews come only from the old automatic switch (before 1.5.2).
 		}
 		if ( ! isset( $tabs[ $tab ] ) ) {
 			$tab = 'catalog';
@@ -850,13 +852,13 @@ class URME_SS_Admin {
 		);
 		$page = max( 1, absint( $_GET['paged'] ?? 1 ) );
 		// phpcs:enable
-		// Opened without a brand choice: only the brands enabled for sync ("All brands" = brand_sync any).
-		if ( '' === $f['brand_sync'] && '' === $f['brand'] ) {
-			$f['brand_sync'] = URME_SS_Settings::enabled_brand_keys() ? 'on' : 'any';
-		}
-		$per_page = $f['per_page'] ? (int) $f['per_page'] : 50;
+		// Default view (opened or Reset, no filter at all): only the brands enabled for sync. Any
+		// search, brand or dashboard link looks in all brands, so a specific watch is always found.
+		$narrowed     = (bool) array_filter( array_diff_key( $f, array_flip( array( 'brand_sync', 'per_page' ) ) ) );
+		$default_view = '' === $f['brand_sync'] && ! $narrowed && URME_SS_Settings::enabled_brand_keys();
+		$per_page     = $f['per_page'] ? (int) $f['per_page'] : 50;
 
-		$result  = URME_SS_DB::search_catalog( array_merge( $f, array( 'page' => $page, 'per_page' => $per_page ) ) );
+		$result  = URME_SS_DB::search_catalog( array_merge( $f, array( 'brand_sync' => $default_view ? 'on' : $f['brand_sync'], 'page' => $page, 'per_page' => $per_page ) ) );
 		// Brand filter: only brands enabled for sync, plus the one filtered on now (e.g. from an old link).
 		$brands  = array_filter(
 			URME_SS_DB::brands(),
@@ -909,9 +911,10 @@ class URME_SS_Admin {
 			</label>
 			<label>Brand sync
 				<select name="brand_sync">
-					<option value="on" <?php selected( $f['brand_sync'], 'on' ); ?>>Enabled brands</option>
+					<option value="">Default (enabled brands)</option>
+					<option value="on" <?php selected( $f['brand_sync'], 'on' ); ?>>Enabled brands only</option>
 					<option value="off" <?php selected( $f['brand_sync'], 'off' ); ?>>Disabled brands</option>
-					<option value="any" <?php selected( in_array( $f['brand_sync'], array( 'any', '' ), true ) ); ?>>All brands</option>
+					<option value="any" <?php selected( $f['brand_sync'], 'any' ); ?>>All brands</option>
 				</select>
 			</label>
 			<label>In URME
@@ -967,6 +970,9 @@ class URME_SS_Admin {
 		<div class="urme-catalog-bar">
 			<span class="urme-count"><?php echo esc_html( sprintf( '%s watches found', number_format_i18n( $result['total'] ) ) ); ?>
 				<?php if ( $rate ) : ?>· SEK at <?php echo esc_html( number_format_i18n( $rate['rate'], 4 ) ); ?><?php endif; ?></span>
+			<?php if ( $default_view ) : ?>
+				<span class="urme-muted urme-default-view">Brands enabled for sync only (a search looks in all brands) · <a href="<?php echo esc_url( self::url( array( 'brand_sync' => 'any' ) ) ); ?>">Show all brands</a></span>
+			<?php endif; ?>
 			<?php
 			if ( '' !== $f['brand'] ) {
 				$on = URME_SS_Settings::brand_enabled( $f['brand'] );
@@ -1075,7 +1081,7 @@ class URME_SS_Admin {
 						$buttons[] = self::row_button( 'dropship|' . (int) $row['link_id'], 'Dropshipping', 'button button-small', 'Switch ' . $row['product_no'] . ' to Dropshipping? Only allowed when its URME Lager stock is 0.' );
 					}
 				} else {
-					$state = '<span class="urme-good">Dropshipping</span>';
+					$state = '<span class="urme-drop">Dropshipping</span>';
 					if ( (int) $row['in_feed'] ) {
 						$buttons[] = self::row_button( 'sync|' . (int) $row['link_id'], 'Sync now', 'button button-small' );
 					}

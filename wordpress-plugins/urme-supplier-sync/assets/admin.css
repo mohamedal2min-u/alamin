@@ -20,6 +20,7 @@
 .urme-ss .urme-actions form { display: block; margin-bottom: 4px; }
 .urme-ss .urme-inline { display: inline; }
 .urme-ss .urme-good { color: #008a20; font-weight: 600; }
+.urme-ss .urme-drop { color: #135e96; font-weight: 600; } /* Dropshipping = blue, URME Lager = green, everywhere. */
 .urme-ss .urme-bad { color: #b32d2e; }
 .urme-ss .urme-muted { color: #8c8f94; }
 .urme-ss .urme-danger { color: #b32d2e; }

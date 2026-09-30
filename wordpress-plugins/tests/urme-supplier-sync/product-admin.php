@@ -8,7 +8,7 @@ global $wpdb;
 
 function pa_badges( $html ) {
 	// Full badge text, or the full state name in the title of the compact D / U badge.
-	preg_match_all( '#<span class="urme-src urme-src-[a-z_]+(?: urme-src-short)?"(?: title="([^"]+)")?[^>]*>([^<]+)</span>#', $html, $m, PREG_SET_ORDER );
+	preg_match_all( '#<span class="urme-src urme-src-[a-z_]+(?: urme-src-short)?"(?: title="([^"]+)")?>(?:<span aria-hidden="true">[^<]*</span><span class="screen-reader-text">[^<]*</span>|([^<]+))</span>#', $html, $m, PREG_SET_ORDER );
 	return array_map( static function ( $x ) { return '' !== $x[1] ? $x[1] : $x[2]; }, $m );
 }
 function pa_column( $pid ) {
@@ -84,7 +84,7 @@ ok( 'Dropshipping' === pa_badge( $Z0 ), '1. Supplier now, brand on → Dropshipp
 ok( 'URME Lager' === pa_badge( $ZL ), '2. URME Lager link with 3 units → URME Lager', pa_badge( $ZL ) );
 ok( 'URME Lager' === pa_badge( $ZP ), '3. legacy paused link → URME Lager', pa_badge( $ZP ) );
 ok( 'URME Lager' === pa_badge( $ZO ) && 'URME Lager' === pa_badge( $ZB ), '4. no Supplier Sync link → URME Lager (also at stock 0, and for a matched but not selected product)', array( pa_badge( $ZO ), pa_badge( $ZB ) ) );
-ok( false !== strpos( pa_column( $VP ), '>D</span> <small class="urme-src-note" title="1 variation">×1</small>' ), '   variable product: shows its supplier-linked variation (Dropshipping, 1 variation)', ff_text( pa_column( $VP ) ) );
+ok( false !== strpos( pa_column( $VP ), '<span class="screen-reader-text">Dropshipping</span></span> <small class="urme-src-note" title="1 variation">×1</small>' ), '   variable product: shows its supplier-linked variation (Dropshipping, 1 variation)', ff_text( pa_column( $VP ) ) );
 URME_SS_Settings::set_brand( 'BOSS', false );
 ok( 'URME Lager' === pa_badge( $Z0 ), '   supplier link with brand sync off → URME Lager (not Dropshipping)', pa_badge( $Z0 ) );
 URME_SS_Settings::set_brand( 'BOSS', true );
@@ -93,8 +93,10 @@ $sp = new ReflectionProperty( 'URME_SS_Product_Source', 'styled' ); // Styles pr
 $sp->setAccessible( true );
 $sp->setValue( null, false );
 $cu = pa_column( $ZO );
-ok( false !== strpos( $cd, '<span class="urme-src urme-src-dropship urme-src-short" title="Dropshipping" aria-label="Dropshipping">D</span>' ) && false === strpos( $cd, '>Dropshipping<' ), '(1.5.6) Products list: Dropshipping shown as a blue "D" (full name on hover / screen readers)', $cd );
-ok( false !== strpos( $cu, '<span class="urme-src urme-src-lager urme-src-short" title="URME Lager" aria-label="URME Lager">U</span>' ) && false !== strpos( $cu, '.urme-src-lager{background:#edfaef;color:#00701a}' ) && false !== strpos( $cu, '.column-urme_source{width:6em}' ), '   URME Lager shown as a green "U"; narrower column (6em)', $cu );
+ok( false !== strpos( $cd, '<span class="urme-src urme-src-dropship urme-src-short" title="Dropshipping"><span aria-hidden="true">D</span><span class="screen-reader-text">Dropshipping</span></span>' ), '(1.5.6) Products list: Dropshipping shown as a blue "D"; (1.5.7) the full name for screen readers, the letter hidden from them', $cd );
+ok( false !== strpos( $cu, '<span class="urme-src urme-src-lager urme-src-short" title="URME Lager"><span aria-hidden="true">U</span><span class="screen-reader-text">URME Lager</span></span>' ) && false !== strpos( $cu, '.urme-src-lager{background:#edfaef;color:#00701a}' ) && false !== strpos( $cu, '.column-urme_source{width:6em}' ), '   URME Lager shown as a green "U"; narrower column (6em)', $cu );
+$css = substr( $cu, strpos( $cu, '<style>' ) );
+ok( strpos( $css, '.urme-src-note{' ) < strpos( $css, '.urme-src-note.urme-bad-note{color:#b32d2e' ) && strpos( $css, '.urme-src{' ) < strpos( $css, '.urme-src-short{' ), '   (1.5.7) CSS order: the red "!" and the compact padding come after the base rules (they are no longer overridden)' );
 ok( false !== strpos( URME_SS_Product_Source::html( $Z0 ), '>Dropshipping</span>' ), '   the Supplier catalog keeps the full word' );
 URME_SS_Settings::set_brand( 'BOSS', false );
 URME_SS_Settings::set_brand( 'BOSS', true );

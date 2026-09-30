@@ -588,5 +588,7 @@ require __DIR__ . '/gift-wrap.php';
 require __DIR__ . '/two-state.php';
 // 1.5.5: "Move to URME Lager" in WooCommerce Quick Edit.
 require __DIR__ . '/quick-edit.php';
+// 1.5.7: cost of the plugin on store and admin pages.
+require __DIR__ . '/light.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

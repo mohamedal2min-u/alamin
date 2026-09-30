@@ -161,7 +161,7 @@ class URME_SS_DB {
 		add_option( 'urme_ss_ledger_since', time(), '', false );
 		// Catalog rows that already exist (e.g. from 1.0.0) are never shown as NEW.
 		add_option( 'urme_ss_new_since', current_time( 'mysql', true ), '', false );
-		update_option( 'urme_ss_db_version', URME_SS_DB_VERSION, false );
+		update_option( 'urme_ss_db_version', URME_SS_DB_VERSION, true ); // Autoloaded: read on every request.
 	}
 
 	/**
@@ -255,6 +255,16 @@ class URME_SS_DB {
 	public static function maybe_upgrade() {
 		if ( get_option( 'urme_ss_db_version' ) !== URME_SS_DB_VERSION ) {
 			self::install();
+		}
+		// Versions before 1.5.7 stored the version without autoload: one query on every page. Switch once.
+		$all = wp_load_alloptions();
+		if ( ! isset( $all['urme_ss_db_version'] ) && URME_SS_DB_VERSION === get_option( 'urme_ss_db_version' ) ) {
+			if ( function_exists( 'wp_set_option_autoload' ) ) {
+				wp_set_option_autoload( 'urme_ss_db_version', true );
+			} else {
+				delete_option( 'urme_ss_db_version' );
+				add_option( 'urme_ss_db_version', URME_SS_DB_VERSION, '', true );
+			}
 		}
 	}
 

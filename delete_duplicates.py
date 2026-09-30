@@ -1,8 +1,9 @@
+import os
 import paramiko
 
-HOST = '82.29.181.61'
+HOST = os.environ['DEPLOY_HOST']
 USER = 'alamin-api'
-PASS = 'a550055A!'
+PASS = os.environ['DEPLOY_PASSWORD']
 PATH = '/home/alamin-api/app/backend'
 
 php_script = """

@@ -43,7 +43,7 @@ class URME_SS_Settings {
 			'hint_coupon_pct'    => 10,  // Discount a customer may use.
 			'hint_fee_pct'       => 5,   // Klarna/payment fee, % of what the customer pays.
 			'hint_vat_pct'       => 25,  // Swedish VAT included in the listed price.
-			'hint_profit_sek'    => 500, // Target profit per watch.
+			'hint_profit_pct'    => 20,  // Target profit per watch, % of its cost (cost incl. the extra supplier cost).
 			'hint_round_sek'     => 10,  // Round the suggested price up to this step.
 		);
 	}
@@ -85,7 +85,7 @@ class URME_SS_Settings {
 			'hint_coupon_pct'    => self::number( $input, $current, 'hint_coupon_pct', 0, 90 ),
 			'hint_fee_pct'       => self::number( $input, $current, 'hint_fee_pct', 0, 50 ),
 			'hint_vat_pct'       => self::number( $input, $current, 'hint_vat_pct', 0, 100 ),
-			'hint_profit_sek'    => self::number( $input, $current, 'hint_profit_sek', 0, 1000000 ),
+			'hint_profit_pct'    => self::number( $input, $current, 'hint_profit_pct', 0, 1000 ),
 			'hint_round_sek'     => (int) self::number( $input, $current, 'hint_round_sek', 1, 1000 ),
 		);
 

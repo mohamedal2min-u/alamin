@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -106,7 +106,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.6.0.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.6.1.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -125,11 +125,16 @@ suggested selling price for each supplier watch:
   Excl. VAT       = customer pays / 1.25                       (25% Swedish VAT)
   Klarna fee      = customer pays x 0.05
   Profit          = excl. VAT - Klarna fee - cost SEK
-  Suggested price = lowest price with profit >= 500 SEK, i.e. (cost SEK + 500) / 0.675,
+  Target profit   = 20% of the cost SEK (setting)
+  Suggested price = lowest price with profit >= target, i.e. cost SEK x 1.20 / 0.675,
                     rounded UP to the next 10 SEK (never down)
 
-Example: 176 EUR at 11.321 -> cost 2,128 kr -> suggested 3,900 kr (customer pays 3,510 kr,
-Klarna 176 kr, estimated profit 504 kr).
+Example: 176 EUR at 11.321 -> cost 2,128 kr -> target 426 kr -> suggested 3,790 kr (customer
+pays 3,411 kr, Klarna 171 kr, estimated profit 430 kr = 20% of the cost).
+
+Under the suggestion, a watch that exists in URME also shows the profit at its current selling
+price (sale price, else regular price) with the same formula: "Your price 4,490 kr: profit 902 kr
+(42% of cost)", green when it reaches the target percentage, red when it is below.
 
 Extra supplier cost, coupon, fee, VAT, target profit and rounding step are in Settings >
 Selling price hint and apply on the next page load. It uses the rate already in use (automatic
@@ -213,6 +218,12 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.6.1 =
+* Selling price hint: the target profit is a percentage of the cost (default 20%, Settings >
+  Selling price hint) instead of a fixed 500 SEK. The estimated profit also shows its % of cost.
+* Supplier catalog: the profit of each watch at its current selling price is shown under the
+  suggestion (green at or above the target, red below). Prices are never changed.
 
 = 1.6.0 =
 * The old "Local first" engine is removed (unused since 1.5.2): local stock counting, automatic

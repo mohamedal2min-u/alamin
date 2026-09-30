@@ -567,5 +567,7 @@ ok( 7 === URME_SS_DB::search_catalog( array( 'selected' => 'yes' ) )['total'], '
 require __DIR__ . '/local-first.php';
 // Admin-only fulfilment source and price reviews (1.1.0).
 require __DIR__ . '/fulfillment-review.php';
+// Admin-only NEW supplier product indicator (1.1.0).
+require __DIR__ . '/new-products.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

@@ -44,6 +44,15 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 5. Supplier catalog: tick watches > "Select checked for sync". Watches with a unique SKU/EAN match
    are linked automatically; others are linked under "Selected watches" with the product search.
 
+== NEW supplier products (admin only) ==
+
+Watches the supplier adds to the feed get a NEW badge in Supplier Sync > Supplier catalog for
+4 full days after URME first saw them ("Added today", "Added 1 day ago", ...), plus a
+"New products (N)" filter and a count on the Supplier watches card. Based on the catalog's
+first_seen date, which refreshes, stock/cost changes, brand toggles and a temporary absence
+from the feed never reset. The first import and the upgrade to 1.1.0 mark nothing as NEW.
+Nothing is selected, linked or changed in WooCommerce because a watch is new.
+
 == Local first → Supplier automatically ==
 
 Per selected watch, under Selected watches > Mode:

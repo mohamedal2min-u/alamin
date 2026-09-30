@@ -480,7 +480,13 @@ class URME_SS_Admin {
 		}
 		self::card( 'Last successful feed update', self::ago( $feed['last_success'] ?? 0 ), $feed_sub, ! empty( $feed['last_error'] ) );
 
-		self::card( 'Supplier watches', number_format_i18n( $counts['in_feed'] ), $counts['missing'] ? number_format_i18n( $counts['missing'] ) . ' no longer in feed' : 'in local catalog' );
+		$new = URME_SS_DB::new_count();
+		self::card(
+			'Supplier watches',
+			number_format_i18n( $counts['in_feed'] ),
+			( $counts['missing'] ? number_format_i18n( $counts['missing'] ) . ' no longer in feed' : 'in local catalog' )
+				. ( $new ? sprintf( '<br><a href="%s">%d new in the last %d days</a>', esc_url( self::url( array( 'new_only' => 1 ) ) ), $new, URME_SS_DB::NEW_DAYS ) : '' )
+		);
 
 		self::card(
 			'Selected for sync',
@@ -598,6 +604,7 @@ class URME_SS_Admin {
 			'match'        => in_array( $_GET['match'] ?? '', array( 'exists', 'none', 'review', 'manual' ), true ) ? sanitize_key( $_GET['match'] ) : '',
 			'brand_sync'   => in_array( $_GET['brand_sync'] ?? '', array( 'on', 'off' ), true ) ? sanitize_key( $_GET['brand_sync'] ) : '',
 			'show_missing' => empty( $_GET['show_missing'] ) ? '' : '1',
+			'new_only'     => empty( $_GET['new_only'] ) ? '' : '1',
 			'category'     => sanitize_text_field( wp_unslash( $_GET['category'] ?? '' ) ),
 		);
 		$page = max( 1, absint( $_GET['paged'] ?? 1 ) );
@@ -673,6 +680,7 @@ class URME_SS_Admin {
 					<option value="no" <?php selected( $f['selected'], 'no' ); ?>>Not selected</option>
 				</select>
 			</label>
+			<label class="urme-check"><input type="checkbox" name="new_only" value="1" <?php checked( $f['new_only'], '1' ); ?>> <?php echo esc_html( sprintf( 'New products (%d)', URME_SS_DB::new_count() ) ); ?></label>
 			<label class="urme-check"><input type="checkbox" name="in_stock" value="1" <?php checked( $f['in_stock'], '1' ); ?>> In stock only</label>
 			<label class="urme-check"><input type="checkbox" name="show_missing" value="1" <?php checked( $f['show_missing'], '1' ); ?>> Include items no longer in feed</label>
 			<button class="button">Search</button>
@@ -731,7 +739,14 @@ class URME_SS_Admin {
 						</th>
 						<td class="urme-img-col"><?php echo self::img( $row['img_url'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 						<td><?php echo esc_html( $row['manufacturer'] ); ?></td>
-						<td><?php echo esc_html( $row['product_name'] ); ?>
+						<td>
+							<?php
+							$age = URME_SS_DB::new_age( $row );
+							if ( null !== $age ) {
+								printf( '<span class="urme-new">NEW</span> <small class="urme-new-age">%s</small><br>', esc_html( 0 === $age ? 'Added today' : sprintf( 'Added %d day%s ago', $age, 1 === $age ? '' : 's' ) ) );
+							}
+							echo esc_html( $row['product_name'] );
+							?>
 							<?php if ( $row['subcategory'] ) : ?><br><small><?php echo esc_html( $row['subcategory'] ); ?></small><?php endif; ?>
 							<?php if ( ! (int) $row['in_feed'] ) : ?><br><span class="urme-bad">Not in feed since <?php echo esc_html( self::mysql_datetime( $row['missing_since'] ) ); ?></span><?php endif; ?>
 						</td>

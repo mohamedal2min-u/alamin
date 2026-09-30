@@ -67,6 +67,7 @@ class URME_SS_DB {
   KEY product_no (product_no),
   KEY manufacturer (manufacturer),
   KEY category (category,in_feed),
+  KEY first_seen (first_seen),
   KEY match_status (match_status)
 ) {$charset};"
 		);
@@ -158,6 +159,8 @@ class URME_SS_DB {
 		delete_option( 'urme_ss_schema_error' );
 		// Orders whose stock was taken before the ledger existed have no known fulfilment source.
 		add_option( 'urme_ss_ledger_since', time(), '', false );
+		// Catalog rows that already exist (e.g. from 1.0.0) are never shown as NEW.
+		add_option( 'urme_ss_new_since', current_time( 'mysql', true ), '', false );
 		update_option( 'urme_ss_db_version', URME_SS_DB_VERSION, false );
 	}
 
@@ -427,6 +430,9 @@ class URME_SS_DB {
 			$params[] = $like;
 			$params[] = $like;
 		}
+		if ( ! empty( $args['new_only'] ) ) {
+			$where[] = self::new_condition( $params );
+		}
 		if ( ! empty( $args['in_stock'] ) ) {
 			$where[] = 'c.stock > 0';
 		}
@@ -506,6 +512,56 @@ class URME_SS_DB {
 		global $wpdb;
 		$c = self::catalog_table();
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$c} WHERE item_key = %s", $item_key ), ARRAY_A ); // phpcs:ignore WordPress.DB
+	}
+
+	/* ---------------------------------------------------------------------
+	 * NEW supplier products (admin only)
+	 * ------------------------------------------------------------------- */
+
+	const NEW_DAYS = 4;
+
+	/**
+	 * A watch is NEW for 4 full days after it first appeared in the feed, but only if it
+	 * appeared after the catalog baseline (first import / upgrade), so an initial import
+	 * or an upgrade never marks the whole catalog as new. Uses first_seen, which is only
+	 * set when a catalog row is first inserted.
+	 */
+	private static function new_condition( array &$params ) {
+		$params[] = (string) get_option( 'urme_ss_new_since', '9999-12-31 00:00:00' );
+		$params[] = gmdate( 'Y-m-d H:i:s', time() - self::NEW_DAYS * DAY_IN_SECONDS );
+		return '(c.first_seen > %s AND c.first_seen > %s)';
+	}
+
+	/**
+	 * Whole days since first seen (0 = within 24 h) if the row is NEW, else null.
+	 */
+	public static function new_age( array $row ) {
+		$first = strtotime( $row['first_seen'] . ' UTC' );
+		$since = strtotime( get_option( 'urme_ss_new_since', '9999-12-31 00:00:00' ) . ' UTC' );
+		$age   = time() - $first;
+		if ( ! $first || $first <= $since || $age >= self::NEW_DAYS * DAY_IN_SECONDS ) {
+			return null;
+		}
+		return (int) floor( max( 0, $age ) / DAY_IN_SECONDS );
+	}
+
+	public static function new_count() {
+		global $wpdb;
+		$params = array();
+		$cond   = self::new_condition( $params );
+		$cats   = (array) URME_SS_Settings::get( 'categories' );
+		$params = array_merge( $params, $cats );
+		// phpcs:ignore WordPress.DB
+		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::catalog_table() . " c WHERE c.in_feed = 1 AND {$cond} AND c.category IN (" . implode( ',', array_fill( 0, count( $cats ), '%s' ) ) . ')', $params ) );
+	}
+
+	/**
+	 * Called before a feed is written: if the catalog is empty this is a first import,
+	 * and none of its rows should count as NEW.
+	 */
+	public static function catalog_is_empty() {
+		global $wpdb;
+		return ! $wpdb->get_var( 'SELECT 1 FROM ' . self::catalog_table() . ' LIMIT 1' ); // phpcs:ignore WordPress.DB
 	}
 
 	public static function catalog_counts() {

@@ -387,6 +387,9 @@ ok( 'error' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'], 'Suppl
 $_POST['confirm_drop'] = '1';
 $out = $res->invoke( null, $lg, 'supplier' );
 ok( 'success' === $out[1] && 'supplier' === lf_link( 78 )['stock_mode'] && 0 === (int) lf_link( 78 )['local_qty'], 'confirmed: Supplier now, local count dropped' );
+ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), 'manual switch to Supplier now creates no price review' );
+run();
+ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), '...and the next sync does not create one either' );
 $_POST = array( 'local_qty' => '2', 'local_cost' => '1 234,50' );
 $out   = $res->invoke( null, lf_link( 78 ), 'local' );
 ok( 'success' === $out[1] && 2 === (int) lf_link( 78 )['local_qty'] && 1234.5 === (float) lf_link( 78 )['local_cost'] && 2 === lf_stock( $LC5 ), 'Local first via admin: qty 2, cost 1 234,50 parsed, Woo stock 2', $out );

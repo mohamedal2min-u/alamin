@@ -205,7 +205,12 @@ class URME_SS_Sync {
 				);
 			}
 
-			$applied = URME_SS_DB::apply_feed( $parsed['items'], $force );
+			$first_import = URME_SS_DB::catalog_is_empty();
+			$applied      = URME_SS_DB::apply_feed( $parsed['items'], $force );
+			if ( $first_import ) {
+				// Everything in a first import is the existing supplier range, not "new".
+				update_option( 'urme_ss_new_since', current_time( 'mysql', true ), false );
+			}
 			$kept    = $parsed['kept'];
 			unset( $parsed['items'] );
 

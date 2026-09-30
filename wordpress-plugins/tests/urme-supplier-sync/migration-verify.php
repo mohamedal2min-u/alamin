@@ -63,6 +63,7 @@ $ok( ! in_array( 'local_first', $wpdb->get_col( 'SELECT stock_mode FROM ' . URME
 $ok( array() === URME_SS_DB::missing_columns(), 'all new columns present (links, ledger incl. frozen source, price reviews)', URME_SS_DB::missing_columns() );
 $ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() ) && 0 === URME_SS_Price_Review::pending_count(), 'no price reviews created by the upgrade or the syncs after it' );
 $ok( (int) get_option( 'urme_ss_ledger_since' ) > 0, 'ledger start time recorded (older orders show Unknown / Legacy order)' );
+$ok( '' !== (string) get_option( 'urme_ss_new_since' ) && 0 === URME_SS_DB::new_count(), sprintf( 'existing %d catalog watches are not shown as NEW after the upgrade', count( $snap['catalog'] ) ), URME_SS_DB::new_count() );
 $old_orders = wc_get_orders( array( 'limit' => 5, 'return' => 'ids' ) );
 $legacy_ok  = true;
 foreach ( $old_orders as $oid ) {

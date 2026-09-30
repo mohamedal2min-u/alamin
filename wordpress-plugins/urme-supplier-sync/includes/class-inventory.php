@@ -45,6 +45,14 @@ class URME_SS_Inventory {
 	 */
 	private static $linked = null;
 
+	/**
+	 * Per request: order line ID => `_reduced_stock` value already booked (or irrelevant).
+	 * WooCommerce saves a line many times per checkout; unchanged saves need no database work.
+	 *
+	 * @var array<int,int>
+	 */
+	private static $seen = array();
+
 	public static function flush_cache() {
 		self::$linked = null;
 	}
@@ -75,12 +83,22 @@ class URME_SS_Inventory {
 		if ( self::$busy || ! $item instanceof WC_Order_Item_Product ) {
 			return;
 		}
+		// Saved again with the stock count this request already booked: nothing can have changed.
+		$item_id = (int) $item_id;
+		$reduced = (int) wc_stock_amount( $item->get_meta( '_reduced_stock', true ) );
+		if ( isset( self::$seen[ $item_id ] ) && self::$seen[ $item_id ] === $reduced ) {
+			return;
+		}
 		// Cheap filter: only lines of linked products, or lines already in the ledger.
 		$product_id = $item->get_variation_id() ? $item->get_variation_id() : $item->get_product_id();
 		if ( ! self::is_linked_product( $product_id ) && ! self::in_ledger( $item_id ) ) {
+			self::$seen[ $item_id ] = $reduced;
 			return;
 		}
-		self::reconcile_item( (int) $item_id );
+		// A failed booking (null) is not remembered, so the next save retries it.
+		if ( null !== self::reconcile_item( $item_id ) ) {
+			self::$seen[ $item_id ] = $reduced;
+		}
 	}
 
 	/* ---------------------------------------------------------------------

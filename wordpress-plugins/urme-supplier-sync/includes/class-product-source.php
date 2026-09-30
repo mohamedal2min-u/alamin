@@ -70,6 +70,20 @@ class URME_SS_Product_Source {
 		}
 	}
 
+	/**
+	 * Whether this exact product/variation is linked to a supplier item (from the same bulk load).
+	 */
+	public static function is_linked( $product_id ) {
+		$product_id = (int) $product_id;
+		if ( ! $product_id ) {
+			return false;
+		}
+		if ( ! isset( self::$map[ $product_id ] ) ) {
+			self::prime( array( $product_id ) );
+		}
+		return null !== self::$map[ $product_id ]['own'];
+	}
+
 	public static function flush() {
 		self::$map = array();
 	}

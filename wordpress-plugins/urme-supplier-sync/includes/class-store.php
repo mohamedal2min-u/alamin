@@ -247,7 +247,14 @@ class URME_SS_Store {
 	 * @param int[] $ids Exact product or variation IDs.
 	 * @return array<int, array{managed: bool, qty: int|null, backorders: string, status: string, by_parent: bool, variable: bool, regular: string, sale: string}|null>
 	 */
-	public static function stock_info( array $ids ) {
+	/**
+	 * Load posts, meta and terms of many products (and of their variations' parents) in a
+	 * constant number of queries, so reading them afterwards costs no query per product.
+	 *
+	 * @param int[] $ids Product or variation IDs.
+	 * @return int[] The IDs, cleaned.
+	 */
+	public static function prime_products( array $ids ) {
 		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
 		if ( ! $ids ) {
 			return array();
@@ -264,7 +271,15 @@ class URME_SS_Store {
 			_prime_post_caches( $parents, false, false );
 		}
 		update_meta_cache( 'post', array_merge( $ids, $parents ) );
-		update_object_term_cache( $ids, 'product' );
+		update_object_term_cache( array_merge( $ids, $parents ), 'product' );
+		return $ids;
+	}
+
+	public static function stock_info( array $ids ) {
+		$ids = self::prime_products( $ids );
+		if ( ! $ids ) {
+			return array();
+		}
 
 		$out = array();
 		foreach ( $ids as $id ) {

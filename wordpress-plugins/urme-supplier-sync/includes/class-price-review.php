@@ -14,6 +14,13 @@ defined( 'ABSPATH' ) || exit;
 
 class URME_SS_Price_Review {
 
+	/**
+	 * Pending count for this request (null = not read yet).
+	 *
+	 * @var int|null
+	 */
+	private static $pending = null;
+
 	const PENDING  = 'pending';
 	const REVIEWED = 'reviewed';
 
@@ -29,7 +36,8 @@ class URME_SS_Price_Review {
 	 */
 	public static function create( array $link, $product, $rate, $transitioned_at ) {
 		global $wpdb;
-		$eur = null === ( $link['purchase_price'] ?? null ) ? null : (float) $link['purchase_price'];
+		$eur           = null === ( $link['purchase_price'] ?? null ) ? null : (float) $link['purchase_price'];
+		self::$pending = null;
 		return (bool) $wpdb->insert(
 			self::table(),
 			array(
@@ -51,7 +59,11 @@ class URME_SS_Price_Review {
 
 	public static function pending_count() {
 		global $wpdb;
-		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::table() . ' WHERE status = %s', self::PENDING ) ); // phpcs:ignore WordPress.DB
+		// One count per request (menu badge, notice, tab label); create() and mark_reviewed() reset it.
+		if ( null === self::$pending ) {
+			self::$pending = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::table() . ' WHERE status = %s', self::PENDING ) ); // phpcs:ignore WordPress.DB
+		}
+		return self::$pending;
 	}
 
 	/**
@@ -73,7 +85,8 @@ class URME_SS_Price_Review {
 
 	public static function mark_reviewed( $id ) {
 		global $wpdb;
-		$done = $wpdb->update(
+		self::$pending = null;
+		$done          = $wpdb->update(
 			self::table(),
 			array(
 				'status'      => self::REVIEWED,
@@ -137,7 +150,9 @@ class URME_SS_Price_Review {
 		if ( ! $rows ) {
 			return;
 		}
-		$total = self::pending_count();
+		// Up to 5 are shown; the count is only needed from the database when there are more.
+		$total = count( $rows ) < 6 ? count( $rows ) : self::pending_count();
+		URME_SS_Store::prime_products( wp_list_pluck( array_slice( $rows, 0, 5 ), 'product_id' ) );
 		echo '<div class="notice notice-warning urme-price-review-notice"><p><strong>URME Supplier Sync – price review required</strong></p><ul>';
 		foreach ( array_slice( $rows, 0, 5 ) as $r ) {
 			$v = self::view( $r );

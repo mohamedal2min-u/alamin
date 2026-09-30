@@ -15,6 +15,20 @@ class URME_SS_Admin {
 	const SLUG = 'urme-supplier-sync';
 	const CAP  = 'manage_woocommerce';
 
+	/**
+	 * Set while one admin page is being rendered.
+	 *
+	 * @var bool
+	 */
+	private static $in_render = false;
+
+	/**
+	 * NEW count for the page being rendered.
+	 *
+	 * @var int|null
+	 */
+	private static $new_count = null;
+
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ), 60 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ), 20 );
@@ -679,6 +693,8 @@ class URME_SS_Admin {
 
 		echo '<div class="wrap urme-ss"><h1>Supplier Sync</h1>';
 		self::print_notice();
+		self::$in_render = true; // Values read once for the whole page (see page_new_count()).
+		self::$new_count = null;
 		self::render_summary();
 
 		echo '<nav class="nav-tab-wrapper">';
@@ -688,6 +704,8 @@ class URME_SS_Admin {
 		echo '</nav><div class="urme-tab">';
 		call_user_func( array( __CLASS__, 'render_' . $tab ) );
 		echo '</div></div>';
+		self::$in_render = false;
+		self::$new_count = null;
 	}
 
 	private static function render_summary() {
@@ -716,7 +734,7 @@ class URME_SS_Admin {
 		}
 		self::card( 'Last successful feed update', self::ago( $feed['last_success'] ?? 0 ), $feed_sub, ! empty( $feed['last_error'] ) );
 
-		$new = URME_SS_DB::new_count();
+		$new = self::page_new_count();
 		self::card(
 			'Supplier watches',
 			number_format_i18n( $counts['in_feed'] ),
@@ -872,9 +890,9 @@ class URME_SS_Admin {
 		foreach ( $result['rows'] as $row ) {
 			$stock_ids[] = self::urme_product_id( $row );
 		}
-		$stock  = URME_SS_Store::stock_info( $stock_ids );
-		$linked = URME_SS_DB::links_by_product( $stock_ids );
-		URME_SS_Product_Source::prime( $stock_ids ); // Fulfillment badges, one query.
+		$stock = URME_SS_Store::stock_info( $stock_ids );
+		URME_SS_Product_Source::flush(); // Always current for this page.
+		URME_SS_Product_Source::prime( $stock_ids ); // Fulfillment badges and "linked elsewhere", one query.
 
 		$match_filters = array(
 			''       => 'Any',
@@ -929,7 +947,7 @@ class URME_SS_Admin {
 					<option value="no" <?php selected( $f['selected'], 'no' ); ?>>Not selected</option>
 				</select>
 			</label>
-			<label class="urme-check"><input type="checkbox" name="new_only" value="1" <?php checked( $f['new_only'], '1' ); ?>> <?php echo esc_html( sprintf( 'New products (%d)', URME_SS_DB::new_count() ) ); ?></label>
+			<label class="urme-check"><input type="checkbox" name="new_only" value="1" <?php checked( $f['new_only'], '1' ); ?>> <?php echo esc_html( sprintf( 'New products (%d)', self::page_new_count() ) ); ?></label>
 			<label>URME stock
 				<select name="urme_stock">
 					<option value="">Any</option>
@@ -1030,7 +1048,7 @@ class URME_SS_Admin {
 							$brand_on = URME_SS_Settings::brand_enabled( $row['manufacturer'] );
 							if ( ! $row['link_id'] ) {
 								echo '<span class="urme-muted">Not selected</span>';
-								echo self::start_control( $row, $stock[ self::urme_product_id( $row ) ] ?? null, $brand_on, isset( $linked[ self::urme_product_id( $row ) ] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+								echo self::start_control( $row, $stock[ self::urme_product_id( $row ) ] ?? null, $brand_on, URME_SS_Product_Source::is_linked( self::urme_product_id( $row ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput
 							} elseif ( ! (int) $row['product_id'] ) {
 								printf( '<span class="urme-bad">Selected, not linked</span><br><a href="%s">Link product</a>', esc_url( self::url( array( 'tab' => 'selected', 'status' => 'unlinked' ) ) ) );
 							} elseif ( ! $brand_on ) {
@@ -1060,6 +1078,20 @@ class URME_SS_Admin {
 		</form>
 		<?php
 		self::pagination( $result['total'], $per_page, $page, array_merge( array( 'page' => self::SLUG, 'tab' => 'catalog' ), array_filter( $f ) ) );
+	}
+
+	/**
+	 * NEW supplier watches count: shown on the summary card and in the catalog filter, read once
+	 * per page. Outside a page render (direct calls) it is always read fresh.
+	 */
+	private static function page_new_count() {
+		if ( ! self::$in_render ) {
+			return URME_SS_DB::new_count();
+		}
+		if ( null === self::$new_count ) {
+			self::$new_count = URME_SS_DB::new_count();
+		}
+		return self::$new_count;
 	}
 
 	/**
@@ -1499,6 +1531,7 @@ class URME_SS_Admin {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$show = 'all' === sanitize_key( $_GET['show'] ?? '' ) ? 'all' : URME_SS_Price_Review::PENDING;
 		$rows = URME_SS_Price_Review::rows( $show );
+		URME_SS_Store::prime_products( wp_list_pluck( $rows, 'product_id' ) ); // One load for all rows, not one per row.
 		printf(
 			'<p>Watches that switched automatically from Local first to Dropshipping. Check the selling price; the plugin never changes it. <a href="%s">%s</a></p>',
 			esc_url( self::url( array( 'tab' => 'reviews', 'show' => 'all' === $show ? '' : 'all' ) ) ),

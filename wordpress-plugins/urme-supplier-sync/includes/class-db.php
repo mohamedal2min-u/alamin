@@ -623,23 +623,6 @@ class URME_SS_DB {
 	/**
 	 * Return the item_key already linked to a product, if any.
 	 */
-	/**
-	 * Which of these products are already linked to a supplier item (one query).
-	 *
-	 * @param int[] $product_ids Product/variation IDs.
-	 * @return array<int, string> product_id => item_key.
-	 */
-	public static function links_by_product( array $product_ids ) {
-		global $wpdb;
-		$ids = array_values( array_unique( array_filter( array_map( 'intval', $product_ids ) ) ) );
-		if ( ! $ids ) {
-			return array();
-		}
-		$l    = self::links_table();
-		$rows = $wpdb->get_results( "SELECT product_id, item_key FROM {$l} WHERE product_id IN (" . implode( ',', $ids ) . ')', ARRAY_A ); // phpcs:ignore WordPress.DB
-		return array_column( (array) $rows, 'item_key', 'product_id' );
-	}
-
 	public static function item_key_for_product( $product_id, $exclude_link_id = 0 ) {
 		global $wpdb;
 		$l = self::links_table();

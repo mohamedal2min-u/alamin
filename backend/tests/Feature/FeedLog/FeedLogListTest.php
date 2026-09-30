@@ -139,6 +139,8 @@ class FeedLogListTest extends TestCase
         $user  = $this->actingAsMember($farm);
         $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
         $item  = $this->makeFeedItem($farm);
+        // FarmObserver creates a default warehouse; remove it so the log is not inventory-linked
+        \App\Models\Warehouse::where('farm_id', $farm->id)->delete();
 
         $this->actingAs($user, 'sanctum')
             ->withHeaders(['X-Farm-Id' => $farm->id])

@@ -15,4 +15,4 @@ conn.on('ready', () => {
       });
     });
   });
-}).connect({host: '82.29.181.61', port: 22, username: 'alamin-api', password: 'a550055A!'});
+}).connect({host: process.env.DEPLOY_HOST, port: 22, username: 'alamin-api', password: process.env.DEPLOY_PASSWORD});

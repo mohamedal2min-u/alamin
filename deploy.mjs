@@ -8,8 +8,8 @@ try { await import('ssh2') } catch {
 
 const { Client } = await import('ssh2')
 
-const HOST = '82.29.181.61'
-const PASS = 'a550055A!'
+const HOST = process.env.DEPLOY_HOST
+const PASS = process.env.DEPLOY_PASSWORD
 
 const BACKEND_CMDS = [
   'cd /home/alamin-api/app && git fetch origin && git reset --hard origin/main',

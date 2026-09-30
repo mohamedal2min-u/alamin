@@ -1,7 +1,7 @@
 import { Client } from 'ssh2';
 
-const HOST = '82.29.181.61';
-const PASS = 'a550055A!';
+const HOST = process.env.DEPLOY_HOST;
+const PASS = process.env.DEPLOY_PASSWORD;
 
 const CMDS = [
   'echo "--- RECENT NGINX ERRORS (api.alamin.se) ---"',

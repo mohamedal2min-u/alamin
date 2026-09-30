@@ -1,3 +1,4 @@
+import os
 import subprocess, sys
 
 # Try to import paramiko, install if missing
@@ -7,9 +8,9 @@ except ImportError:
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'paramiko'])
     import paramiko
 
-HOST = '82.29.181.61'
+HOST = os.environ['DEPLOY_HOST']
 USER = 'alamin-api'
-PASS = 'a550055A!'
+PASS = os.environ['DEPLOY_PASSWORD']
 PATH = '/home/alamin-api/htdocs/api.alamin.se'
 
 COMMANDS = [

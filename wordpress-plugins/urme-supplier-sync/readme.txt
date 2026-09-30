@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.5.4
+Stable tag: 1.5.5
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -70,6 +70,10 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   sale price of that exact product or variation is saved (WooCommerce product API); an empty field
   removes the sale. It must be a number in SEK, not above the regular price. Nothing else changes
   and no sync is started.
+* Quick Edit on WooCommerce > Products: a Dropshipping product shows "Move to URME Lager (stop
+  Dropshipping)" above Stock qty. Ticking it empties Stock qty so you type URME's own count; on
+  Update the watch leaves supplier sync and its stock becomes that count (empty = 0, out of stock).
+  Prices and cost are not changed by the plugin. Not shown for URME Lager or variable products.
 * WooCommerce > Products gets a "Fulfillment" column from the Supplier Sync link (never from the
   stock quantity): Dropshipping or URME Lager. The Supplier catalog shows the same badge.
 * A "Fulfillment" filter in WooCommerce's product filter row: All / Dropshipping / URME Lager,
@@ -98,7 +102,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.4.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.5.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -213,6 +217,11 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.5.5 =
+* Quick Edit (WooCommerce > Products): "Move to URME Lager" above Stock qty for Dropshipping
+  products. The watch leaves supplier sync and keeps the stock you type (empty = 0, out of stock),
+  in one save. Checked again on the server; prices and cost untouched.
 
 = 1.5.4 =
 * Supplier catalog: watches in your store are listed first (linked or a unique URME match), then

@@ -48,6 +48,10 @@ class URME_SS_Product_Source {
 		add_filter( 'woocommerce_products_admin_list_table_filters', array( __CLASS__, 'add_filter_dropdown' ) );
 		add_action( 'pre_get_posts', array( __CLASS__, 'read_filter' ) );
 		add_filter( 'posts_where', array( __CLASS__, 'filter_where' ), 10, 2 );
+		// Quick Edit: "Move to URME Lager" above the stock quantity, for Dropshipping products.
+		add_action( 'quick_edit_custom_box', array( __CLASS__, 'quick_edit_box' ), 10, 2 );
+		add_action( 'woocommerce_product_quick_edit_save', array( __CLASS__, 'quick_edit_save' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'quick_edit_script' ) );
 	}
 
 	/**
@@ -413,7 +417,57 @@ class URME_SS_Product_Source {
 	public static function render_column( $column, $post_id ) {
 		if ( 'urme_source' === $column && self::allowed() ) {
 			echo self::html( (int) $post_id ); // phpcs:ignore WordPress.Security.EscapeOutput
+			$own = self::$map[ (int) $post_id ]['own'] ?? null;
+			if ( $own && self::DROPSHIP === self::state( $own ) ) {
+				// Read by assets/quick-edit.js: this product may be moved to URME Lager in Quick Edit.
+				echo '<span class="hidden urme-qe-dropship"></span>';
+			}
 		}
+	}
+
+	/**
+	 * Quick Edit field (moved above "Stock qty" by assets/quick-edit.js, shown only for a
+	 * Dropshipping product). Ticking it empties the stock field for URME's own count.
+	 */
+	public static function quick_edit_box( $column, $post_type ) {
+		if ( 'urme_source' !== $column || 'product' !== $post_type || ! self::allowed() ) {
+			return;
+		}
+		echo '<div class="urme-qe-lager" style="display:none;clear:both;width:100%;padding:6px 0 8px">'
+			. '<label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" name="urme_ss_to_lager" value="1">'
+			. '<span><strong>Move to URME Lager</strong> (stop Dropshipping)</span></label>'
+			. '<div class="description" style="margin:2px 0 0 24px;font-size:12px">Enter your own stock in Stock qty below (empty = 0, out of stock).</div>'
+			. '</div>';
+	}
+
+	/**
+	 * Quick Edit save (after WooCommerce saved its own fields and verified its nonce): a
+	 * Dropshipping product leaves supplier sync; its stock becomes the typed Stock qty.
+	 */
+	public static function quick_edit_save( $product ) {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- WooCommerce verified woocommerce_quick_edit_nonce before this action.
+		if ( empty( $_REQUEST['urme_ss_to_lager'] ) || ! $product instanceof WC_Product || ! self::allowed() || $product->is_type( 'variable' ) ) {
+			return;
+		}
+		$qty = isset( $_REQUEST['_stock'] ) && is_numeric( wp_unslash( $_REQUEST['_stock'] ) ) ? (int) wc_stock_amount( wp_unslash( $_REQUEST['_stock'] ) ) : 0; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		// phpcs:enable
+		unset( self::$map[ $product->get_id() ] ); // Re-read: act only on the current state, never on a stale form.
+		$link = URME_SS_DB::link_for_product( $product->get_id() );
+		if ( ! $link || self::DROPSHIP !== self::product_state( $product->get_id() ) ) {
+			return;
+		}
+		$ok = URME_SS_Inventory::return_to_lager( (int) $link['id'], $qty );
+		if ( true === $ok ) {
+			URME_SS_Log::info( sprintf( 'Quick Edit: product #%d moved to URME Lager with stock %d.', $product->get_id(), max( 0, $qty ) ) );
+		}
+	}
+
+	public static function quick_edit_script( $hook ) {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( 'edit.php' !== $hook || ! $screen || 'product' !== $screen->post_type || ! self::allowed() ) {
+			return;
+		}
+		wp_enqueue_script( 'urme-ss-quick-edit', URME_SS_URL . 'assets/quick-edit.js', array( 'jquery', 'inline-edit-post' ), URME_SS_VERSION, true );
 	}
 
 	/**

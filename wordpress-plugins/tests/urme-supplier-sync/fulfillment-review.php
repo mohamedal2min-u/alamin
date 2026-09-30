@@ -73,7 +73,7 @@ $FL = lf_product( 'FF local', 'REF000090', 3, 800 );
 $fl = lf_select( 90 );
 URME_SS_Inventory::enable_local( (int) $fl['id'], 3, 800 );
 $FD = lf_product( 'FF dropship', 'REF000096', 6, null );
-lf_select( 96 );
+lf_legacy_select( 96 ); // Supplier now with stock 6 (the supplier's).
 
 $o_local = lf_order( $FL, 1 );
 $t       = ff_text( ff_line_html( $o_local ) );

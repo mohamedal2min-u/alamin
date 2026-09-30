@@ -138,12 +138,12 @@ function mk( $name, $sku, $gtin = '', $manage = false, $qty = null ) {
 	return $p->save();
 }
 $P1  = mk( 'P1 exact sku', 'REF000000' );
-$P2  = mk( 'P2 normalized sku', 'ref-000001', '', true, 7 );
+$P2  = mk( 'P2 normalized sku', 'ref-000001', '', true, 0 ); // URME stock 0: may start as Supplier now.
 $P3  = mk( 'P3 ean only', '', '04900000000002' );
-$P4  = mk( 'P4 manual', 'OTHER1', '', true, 3 );
+$P4  = mk( 'P4 manual', 'OTHER1', '', true, 0 );
 $P5a = mk( 'P5a conflict sku', 'REF000012' );
 $P5b = mk( 'P5b conflict ean', 'XYZ', '4900000000012' );
-$P7  = mk( 'P7 will be trashed', 'REF000024', '', true, 1 );
+$P7  = mk( 'P7 will be trashed', 'REF000024', '', true, 0 );
 $P8  = mk( 'P8 unrelated', 'UNRELATED', '', true, 4 );
 
 $parent = new WC_Product_Variable();
@@ -154,7 +154,7 @@ $var->set_parent_id( $parent_id );
 $var->set_sku( 'REF000018' );
 $var->set_regular_price( '1999' );
 $var->set_manage_stock( true );
-$var->set_stock_quantity( 1 );
+$var->set_stock_quantity( 0 );
 $V6 = $var->save();
 
 $snapshot = function ( $id ) {
@@ -186,15 +186,19 @@ ok( ! $insp['cogs_enabled'] && $insp['with_gtin'] >= 2, 'inspection sees GTIN va
 
 /* ------------------------------------------------------------------ C */
 section( 'C. Select + automatic matching' );
-$msg = admin( 'select_items', array( key_of( 0 ), key_of( 1 ), key_of( 2 ), key_of( 6 ), key_of( 12 ), key_of( 18 ), key_of( 24 ) ) );
-echo "  ($msg)\n";
+$res = admin( 'select_items', array( key_of( 0 ), key_of( 1 ), key_of( 2 ), key_of( 6 ), key_of( 12 ), key_of( 18 ), key_of( 24 ) ) );
+echo "  ({$res[0]})\n";
+ok( 'warning' === $res[1] && false !== strpos( $res[0], 'REF000012 – several URME products match (Needs review' ) && null === link_of( 12 ), 'bulk: SKU/EAN conflict (Needs review) rejected, the others selected', $res );
+// A selection without a product from an earlier version (1.3.0 selected conflicts unlinked); the rest of the scenario uses it.
+$l12 = URME_SS_DB::insert_link( key_of( 12 ), 0, '' );
+URME_SS_DB::update_link( $l12, array( 'last_status' => 'unlinked', 'last_message' => URME_SS_Store::auto_match( cat( 12 ) )['message'] ) );
 ok( (int) link_of( 0 )['product_id'] === $P1 && 'sku' === link_of( 0 )['match_method'], 'exact SKU match' );
 ok( (int) link_of( 1 )['product_id'] === $P2, 'normalized SKU match (ref-000001)' );
 ok( (int) link_of( 2 )['product_id'] === $P3 && 'ean' === link_of( 2 )['match_method'], 'EAN match via GTIN-14 variant' );
 ok( 0 === (int) link_of( 6 )['product_id'], 'no match stays unlinked' );
 ok( 0 === (int) link_of( 12 )['product_id'] && false !== strpos( link_of( 12 )['last_message'], 'Several' ), 'SKU/EAN conflict -> not linked', link_of( 12 )['last_message'] );
 ok( (int) link_of( 18 )['product_id'] === $V6, 'variation matched by SKU' );
-ok( 'Nothing new was selected.' === admin( 'select_items', array( key_of( 0 ) ) ), 'selecting twice is a no-op' );
+ok( array( 'Nothing new was selected.', 'info' ) === admin( 'select_items', array( key_of( 0 ) ) ), 'selecting twice is a no-op' );
 
 /* ------------------------------------------------------------------ D */
 section( 'D. Manual linking' );
@@ -577,5 +581,9 @@ require __DIR__ . '/brand-sync.php';
 require __DIR__ . '/catalog-actions.php';
 // Fulfillment badge (Products list + catalog) and manual sale price editor.
 require __DIR__ . '/product-admin.php';
+// AJAX row actions; local URME stock always has priority over Dropshipping.
+require __DIR__ . '/ajax-local.php';
+// Bulk selection follows local stock priority; Fulfillment filter and counts on WooCommerce > Products.
+require __DIR__ . '/bulk-fulfillment.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

@@ -18,12 +18,77 @@
 		}
 	} );
 
-	// Confirmation for per-row catalog buttons (they submit the catalog form).
-	$( document ).on( 'click', 'button[data-confirm]', function ( e ) {
-		if ( ! window.confirm( $( this ).data( 'confirm' ) ) ) {
-			e.preventDefault();
+	// Per-row catalog actions (Save sale price, Start supplier sync, Use Local first, Sync now, Resume)
+	// run over AJAX: the server does the work and returns the row re-rendered from current data.
+	// Without JavaScript the buttons still submit the catalog form (same server logic).
+	$( document ).on( 'click', '#urme-select-form button[name=row_action]', function ( e ) {
+		var $btn = $( this ),
+			$tr = $btn.closest( 'tr' ),
+			action = String( $btn.val() ),
+			isSale = 0 === action.indexOf( 'sale|' ),
+			confirmText = $btn.data( 'confirm' ),
+			cfg = window.urmeSS,
+			data;
+		if ( ! cfg || ! cfg.ajaxurl ) {
+			if ( confirmText && ! window.confirm( confirmText ) ) {
+				e.preventDefault();
+			}
+			return; // No AJAX config: normal form submit.
 		}
+		e.preventDefault();
+		if ( $tr.data( 'urmeBusy' ) ) {
+			return; // One request per row at a time (no double writes).
+		}
+		if ( confirmText && ! window.confirm( confirmText ) ) {
+			return;
+		}
+		data = { action: 'urme_ss_row', nonce: cfg.nonce, row_action: action };
+		if ( isSale ) {
+			data.sale_price = $btn.closest( '.urme-price-edit' ).find( 'input' ).val();
+		}
+		$tr.data( 'urmeBusy', true ).addClass( 'urme-busy' );
+		var $controls = $tr.find( 'button, .urme-price-edit input' ).prop( 'disabled', true );
+		var label = $btn.text();
+		$btn.text( isSale ? 'Saving…' : 'Working…' );
+		rowMessage( $tr, '', '' );
+
+		$.post( cfg.ajaxurl, data )
+			.done( function ( res ) {
+				var d = ( res && res.data ) || {},
+					ok = !! ( res && res.success ),
+					text = ok && isSale && 'success' === d.type ? 'Saved ✓' : ( d.message || ( ok ? 'Done.' : 'Something went wrong.' ) );
+				if ( d.row_html ) {
+					var checked = $tr.find( 'input[name="item_keys[]"]' ).prop( 'checked' ),
+						$new = $( $.parseHTML( d.row_html ) ).filter( 'tr' );
+					if ( $new.length ) {
+						$tr.replaceWith( $new );
+						$tr = $new;
+						$tr.find( 'input[name="item_keys[]"]' ).prop( 'checked', !! checked );
+						refresh();
+					}
+				}
+				rowMessage( $tr, text, ok ? 'ok' : 'error' );
+			} )
+			.fail( function ( xhr ) {
+				var d = xhr && xhr.responseJSON && xhr.responseJSON.data;
+				rowMessage( $tr, ( d && d.message ) || 'Request failed (' + ( xhr ? xhr.status : '?' ) + '). Nothing was changed by this page; reload to see the current state.', 'error' );
+			} )
+			.always( function () {
+				$tr.removeData( 'urmeBusy' ).removeClass( 'urme-busy' );
+				if ( $.contains( document, $btn[ 0 ] ) ) {
+					$controls.prop( 'disabled', false );
+					$btn.text( label );
+				}
+			} );
 	} );
+
+	function rowMessage( $tr, text, kind ) {
+		var $m = $tr.find( '.urme-row-msg' );
+		$m.text( text ).removeClass( 'urme-row-ok urme-row-error' );
+		if ( kind ) {
+			$m.addClass( 'ok' === kind ? 'urme-row-ok' : 'urme-row-error' );
+		}
+	}
 
 	// Confirmation for destructive-looking actions.
 	$( document ).on( 'submit', 'form[data-confirm]', function ( e ) {
@@ -46,8 +111,7 @@
 } )( jQuery );
 
 ( function ( $ ) {
-	// Mode switcher on Selected watches: local fields only for "Local first";
-	// confirm before local units are dropped by switching to "Supplier now".
+	// Mode switcher on Selected watches: local fields only for "Local first".
 	function sync( $form ) {
 		$form.find( '.urme-local-fields' ).toggle( 'local' === $form.find( 'select[name=mode]' ).val() );
 	}
@@ -57,15 +121,13 @@
 	$( document ).on( 'change', '.urme-mode-form select[name=mode]', function () {
 		sync( $( this ).closest( 'form' ) );
 	} );
+	// Local stock has priority: Supplier now is refused by the server while local units remain (no override).
 	$( document ).on( 'submit', '.urme-mode-form', function ( e ) {
 		var $form = $( this ),
 			units = parseInt( $form.data( 'local-units' ), 10 ) || 0;
 		if ( 'supplier' === $form.find( 'select[name=mode]' ).val() && units > 0 ) {
-			if ( ! window.confirm( units + ' local unit(s) are still tracked. Switch to Supplier now and stop tracking them?' ) ) {
-				e.preventDefault();
-				return;
-			}
-			$form.find( 'input[name=confirm_drop]' ).val( '1' );
+			e.preventDefault();
+			window.alert( 'Local first still has ' + units + ' local unit(s). Supplier now (Dropshipping) cannot start while local stock remains.' );
 		}
 	} );
 } )( jQuery );

@@ -43,6 +43,17 @@ function lf_select( $i ) {
 	admin( 'select_items', array( key_of( $i ) ) );
 	return link_of( $i );
 }
+/**
+ * A Supplier-now link as earlier versions made it (bulk selection linked any matched product as
+ * Supplier now, whatever its stock). Since 1.4 selection starts a product with stock as Local
+ * first; tests about the sync of an existing Supplier-now link over stock use this.
+ */
+function lf_legacy_select( $i ) {
+	URME_SS_Matcher::reset();
+	$match = URME_SS_Store::auto_match( URME_SS_DB::get_item( key_of( $i ) ) );
+	URME_SS_DB::insert_link( key_of( $i ), $match['product_id'], $match['method'] );
+	return link_of( $i );
+}
 function lf_link( $i ) {
 	return link_of( $i );
 }
@@ -111,7 +122,7 @@ ok( 8 === (int) cat( 36 )['stock'] && 200.0 === (float) cat( 36 )['purchase_pric
 
 $L1 = lf_product( 'SKU 1513905 (local 1)', 'REF000036', 1, 900 );
 $l  = lf_select( 36 );
-ok( (int) $l['product_id'] === $L1 && 'supplier' === $l['stock_mode'] && 0 === (int) $l['local_qty'], 'new link defaults to Supplier now' );
+ok( (int) $l['product_id'] === $L1 && 'local_first' === $l['stock_mode'] && 1 === (int) $l['local_qty'] && 900.0 === (float) $l['local_cost'], 'selected with URME stock 1: starts as Local first (1 unit, cost 900), never Supplier now', $l );
 ok( true === URME_SS_Inventory::enable_local( (int) $l['id'], 1, 900 ), 'Local first enabled (1 local unit, cost 900)' );
 $l = lf_link( 36 );
 ok( 'local_first' === $l['stock_mode'] && 1 === (int) $l['local_qty'] && 900.0 === (float) $l['local_cost'] && 0 === (int) $l['needs_stock_apply'], 'link state: local_first, 1 unit, cost 900' );
@@ -272,6 +283,8 @@ ok( 'supplier' === link_of( 1 )['stock_mode'], 'cancel of a supplier sale does n
 section( 'LF-B. Backorders cannot oversell local inventory' );
 $LB = lf_product( 'Backorders on', 'REF000066', 1, 300, 'notify' );
 $lb = lf_select( 66 );
+ok( null === $lb && 1 === lf_stock( $LB ), 'selection refused: 1 local unit, but backorders are allowed (neither Local first nor Supplier now)' );
+$lb = lf_legacy_select( 66 ); // An existing Supplier-now link (earlier version).
 $r  = URME_SS_Inventory::enable_local( (int) $lb['id'], 1, 300 );
 ok( is_string( $r ) && false !== stripos( $r, 'backorders' ), 'Local first refused while backorders are allowed', $r );
 ok( 'supplier' === lf_link( 66 )['stock_mode'] && 'notify' === p( $LB )->get_backorders(), 'link unchanged; backorders setting not touched' );
@@ -383,10 +396,15 @@ $_POST = array( 'link_id' => $lg['id'] );
 $res = ( new ReflectionMethod( 'URME_SS_Admin', 'set_mode' ) );
 $res->setAccessible( true );
 $out = $res->invoke( null, $lg, 'supplier' );
-ok( 'error' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'], 'Supplier now needs confirmation while local units remain', $out );
+ok( 'error' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'], 'Supplier now refused while local units remain', $out );
 $_POST['confirm_drop'] = '1';
 $out = $res->invoke( null, $lg, 'supplier' );
-ok( 'success' === $out[1] && 'supplier' === lf_link( 78 )['stock_mode'] && 0 === (int) lf_link( 78 )['local_qty'], 'confirmed: Supplier now, local count dropped' );
+ok( 'error' === $out[1] && 'local_first' === lf_link( 78 )['stock_mode'] && (int) $lg['local_qty'] === (int) lf_link( 78 )['local_qty'], '   no confirmation can override it: local units kept', $out );
+// The local units are gone (count 0, WooCommerce stock 0): now the manual switch is allowed.
+$wpdb->update( URME_SS_DB::links_table(), array( 'local_qty' => 0 ), array( 'id' => $lg['id'] ) );
+wc_update_product_stock( wc_get_product( $LC5 ), 0, 'set' );
+$out = $res->invoke( null, lf_link( 78 ), 'supplier' );
+ok( 'success' === $out[1] && 'supplier' === lf_link( 78 )['stock_mode'] && 0 === (int) lf_link( 78 )['local_qty'], '0 local units and stock 0: Supplier now allowed', $out );
 ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), 'manual switch to Supplier now creates no price review' );
 run();
 ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d', $lg['id'] ) ), '...and the next sync does not create one either' );

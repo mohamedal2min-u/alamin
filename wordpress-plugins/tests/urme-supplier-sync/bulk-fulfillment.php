@@ -1,0 +1,434 @@
+<?php
+/**
+ * "Select checked for sync" follows local URME stock priority per watch (and so do manual
+ * linking, automatch and Resume); the Fulfillment filter and counts on WooCommerce > Products.
+ * Included after ajax-local.php; uses the helpers of the files before it.
+ */
+
+global $wpdb;
+
+function bf_variation( $parent, $sku, $gtin, $qty, $cogs ) {
+	$v = new WC_Product_Variation();
+	$v->set_parent_id( $parent );
+	$v->set_sku( $sku );
+	if ( $gtin ) {
+		$v->set_global_unique_id( $gtin );
+	}
+	$v->set_regular_price( '3990' );
+	$v->set_sale_price( '3490' );
+	$v->set_manage_stock( true );
+	$v->set_stock_quantity( $qty );
+	$v->set_cogs_value( (float) $cogs );
+	return $v->save();
+}
+function bf_state( $pid, $i ) {
+	$s         = bs_state( $pid );
+	$l         = URME_SS_DB::get_link( key_of( $i ) );
+	$s['mode'] = $l ? $l['stock_mode'] : null;
+	$s['qty']  = $l ? (int) $l['local_qty'] : null;
+	$s['lc']   = ( $l && null !== $l['local_cost'] ) ? (float) $l['local_cost'] : null;
+	return $s;
+}
+/**
+ * Product IDs in one fulfillment state, through a normal WP_Query (as the products list runs it).
+ */
+function bf_ids( $state, array $args = array() ) {
+	$q = new WP_Query(
+		array_merge(
+			array(
+				'post_type'        => 'product',
+				'post_status'      => get_post_stati( array( 'show_in_admin_all_list' => true ) ),
+				'posts_per_page'   => -1,
+				'fields'           => 'ids',
+				'orderby'          => 'ID',
+				'order'            => 'ASC',
+				'urme_fulfillment' => $state,
+			),
+			$args
+		)
+	);
+	return array_map( 'intval', $q->posts );
+}
+/**
+ * The expected buckets, computed in PHP from each link with URME_SS_Product_Source::state() (the
+ * Fulfillment badge's own rule), independently of the filter's SQL.
+ */
+function bf_expected() {
+	global $wpdb;
+	$all  = array_map( 'intval', get_posts( array( 'post_type' => 'product', 'post_status' => get_post_stati( array( 'show_in_admin_all_list' => true ) ), 'posts_per_page' => -1, 'fields' => 'ids' ) ) );
+	$out  = array_fill_keys( array( 'dropship', 'local', 'paused', 'brand_off', 'lager' ), array() );
+	$rows = $wpdb->get_results( 'SELECT l.product_id, l.sync_enabled, l.stock_mode, l.local_qty, c.manufacturer FROM ' . URME_SS_DB::links_table() . ' l LEFT JOIN ' . URME_SS_DB::catalog_table() . ' c ON c.item_key = l.item_key WHERE l.product_id > 0', ARRAY_A );
+	$active = array();
+	foreach ( $rows as $r ) {
+		$post = get_post( (int) $r['product_id'] );
+		if ( ! $post ) {
+			continue;
+		}
+		$owner = 'product_variation' === $post->post_type ? (int) $post->post_parent : (int) $post->ID;
+		if ( ! in_array( $owner, $all, true ) ) {
+			continue;
+		}
+		$state = URME_SS_Product_Source::state( $r );
+		if ( isset( $out[ $state ] ) && 'lager' !== $state ) {
+			$out[ $state ][ $owner ] = $owner;
+			$active[ $owner ]        = $owner;
+		}
+	}
+	foreach ( $all as $id ) {
+		if ( ! isset( $active[ $id ] ) ) {
+			$out['lager'][ $id ] = $id;
+		}
+	}
+	foreach ( $out as $k => $v ) {
+		$v = array_values( $v );
+		sort( $v );
+		$out[ $k ] = $v;
+	}
+	sort( $all );
+	$out['all'] = $all;
+	return $out;
+}
+
+/* ------------------------------------------------------------------ setup */
+section( 'BF0. Bulk selection and Fulfillment filter: setup' );
+wp_set_current_user( $GLOBALS['FF_ADMIN'] );
+settings( array( 'cost_target' => 'wc_cogs', 'rate_override' => '11.321' ) );
+URME_SS_Settings::set_brand( 'BOSS', true );
+$sek = round( 176 * 11.321, 2 );
+$K3  = bs_product( 'REF000282', key_of( 282 ), 3, 650 ); // URME stock 3.
+$K1  = bs_product( 'REF000288', key_of( 288 ), 1, 610 ); // URME stock 1.
+$K0  = bs_product( 'REF000294', key_of( 294 ), 0, 480 ); // URME stock 0.
+$KRa = bs_product( 'REF000300', '', 0, 300 );            // Two URME products match REF000300 (Needs review).
+$KRb = bs_product( 'OTHER300', key_of( 300 ), 0, 300 );
+$KC  = bs_product( 'REF000306', key_of( 306 ), 0, 300 ); // Casio: brand sync off.
+$KB  = bs_product( 'REF000318', key_of( 318 ), 2, 300 ); // Backorders allowed.
+$kb  = wc_get_product( $KB );
+$kb->set_backorders( 'notify' );
+$kb->save();
+$KP  = bs_product( 'REF000336', key_of( 336 ), 0, 300 ); // Paused later.
+$KT  = bs_product( 'REF000343', key_of( 343 ), 0, 300 ); // Tissot: brand switched off later.
+$vp  = new WC_Product_Variable();
+$vp->set_name( 'BOSS variable mixed' );
+$vp->set_manage_stock( false );
+$KV  = $vp->save();
+$KVL = bf_variation( $KV, 'REF000324', key_of( 324 ), 2, 520 ); // Variation with URME stock 2.
+$KVS = bf_variation( $KV, 'REF000330', key_of( 330 ), 0, 520 ); // Variation with URME stock 0.
+$KVU = bf_variation( $KV, 'VAR-UNLINKED', '', 5, 520 );          // Never linked.
+$BF_SET = array();
+foreach ( array( 282, 288, 294, 300, 312, 318, 324, 330, 336, 348, 354 ) as $i ) {
+	$BF_SET[ sprintf( 'REF%06d', $i ) ] = array( 'MANUFACTURER' => 'BOSS', 'STOCK' => '8', 'PURCHASE_PRICE' => '176.00' );
+}
+$BF_SET['REF000306'] = array( 'MANUFACTURER' => 'Casio', 'STOCK' => '6', 'PURCHASE_PRICE' => '176.00' );
+$BF_SET['REF000343'] = array( 'MANUFACTURER' => 'Tissot', 'STOCK' => '6', 'PURCHASE_PRICE' => '176.00' );
+nf_feed( $feed_n, array_merge( $BS_SET, $CA_SET, $PA_SET, $AX_SET, $BF_SET ) );
+run( array( 'force_feed' => true ) );
+$before = array();
+foreach ( array( 282 => $K3, 288 => $K1, 294 => $K0, 300 => $KRa, 306 => $KC, 318 => $KB, 324 => $KVL, 330 => $KVS ) as $i => $pid ) {
+	$before[ $i ] = bf_state( $pid, $i );
+}
+$before_b = bs_state( $KRb );
+ok( 3 === $before[282]['stock'] && 1 === $before[288]['stock'] && 0 === $before[294]['stock'] && null === $before[282]['mode'], 'BOSS REF000282 / 288 / 294 have URME stock 3 / 1 / 0, supplier stock 8, not selected' );
+
+/* ------------------------------------------------------------------ bulk */
+section( 'BF1–10. "Select checked for sync": each checked watch on its own' );
+$writes    = array();
+$watch     = static function ( $mid, $object_id, $key ) use ( &$writes ) {
+	$writes[] = $object_id . ':' . $key;
+};
+add_action( 'updated_post_meta', $watch, 10, 3 );
+add_action( 'added_post_meta', $watch, 10, 3 );
+add_action( 'deleted_post_meta', $watch, 10, 3 );
+$http = 0;
+$hf   = static function ( $pre ) use ( &$http ) {
+	++$http;
+	return $pre;
+};
+add_filter( 'pre_http_request', $hf );
+$res = admin( 'select_items', array( key_of( 282 ), key_of( 288 ), key_of( 294 ), key_of( 300 ), key_of( 306 ), key_of( 312 ), key_of( 318 ), key_of( 324 ), key_of( 330 ), key_of( 282 ), '' ) );
+remove_filter( 'pre_http_request', $hf );
+remove_action( 'updated_post_meta', $watch, 10 );
+remove_action( 'added_post_meta', $watch, 10 );
+remove_action( 'deleted_post_meta', $watch, 10 );
+echo "  ({$res[1]}: {$res[0]})\n";
+$a3 = bf_state( $K3, 282 );
+$a1 = bf_state( $K1, 288 );
+$a0 = bf_state( $K0, 294 );
+ok( 'local_first' === $a3['mode'] && 3 === $a3['qty'] && abs( $a3['lc'] - 650 ) < 0.001 && 3 === $a3['stock'] && abs( $a3['cogs'] - 650 ) < 0.001, '1. bulk, URME stock 3 → Local first (3): local_qty 3, local_cost 650 = current COGS, stock 3 and COGS 650 kept', $a3 );
+ok( 'local_first' === $a1['mode'] && 1 === $a1['qty'] && abs( $a1['lc'] - 610 ) < 0.001 && 1 === $a1['stock'] && abs( $a1['cogs'] - 610 ) < 0.001, '2. bulk, URME stock 1 → Local first (1), cost 610 kept', $a1 );
+ok( 'supplier' === $a0['mode'] && 0 === $a0['stock'], '3. bulk, URME stock 0 → Supplier now (updated on the next sync, as before)', $a0 );
+ok( false !== strpos( $res[0], 'Local first – local URME stock and cost kept, sold before supplier stock (3): REF000282 (3), REF000288 (1), REF000324 (2).' ) && false !== strpos( $res[0], 'Supplier now – URME stock 0, updated on the next sync or with "Sync now" (2): REF000294, REF000330.' ), '4. mixed selection: each watch handled on its own and reported', $res[0] );
+ok( null === URME_SS_DB::get_link( key_of( 300 ) ) && false !== strpos( $res[0], 'REF000300 – several URME products match (Needs review: IDs ' ) && bs_state( $KRa ) === array_intersect_key( $before[300], bs_state( $KRa ) ) && bs_state( $KRb ) === $before_b, '5. Needs review rejected (no link, both products untouched), the other watches still processed', $res[0] );
+ok( null === URME_SS_DB::get_link( key_of( 306 ) ) && false !== strpos( $res[0], 'REF000306 – sync is disabled for Casio' ) && bs_state( $KC ) === array_intersect_key( $before[306], bs_state( $KC ) ), '6. brand sync off (Casio) rejected safely, nothing changed' );
+ok( null === URME_SS_DB::get_link( key_of( 318 ) ) && false !== strpos( $res[0], 'REF000318 – local URME stock exists (2) but backorders are allowed' ) && 2 === p( $KB )->get_stock_quantity(), '   local stock 2 with backorders allowed: rejected (never Supplier now), stock 2 kept' );
+ok( 0 === (int) URME_SS_DB::get_link( key_of( 312 ) )['product_id'] && false !== strpos( $res[0], 'Selected without a URME product – link it under Selected watches (1): REF000312.' ), '   no URME product yet: selected without a product (nothing written until linked)' );
+ok( 'warning' === $res[1] && false !== strpos( $res[0], 'Not selected, nothing changed (3):' ), '   one notice: started, selected and rejected watches listed; type warning' );
+$vl = bf_state( $KVL, 324 );
+$vs = bf_state( $KVS, 330 );
+ok( 'local_first' === $vl['mode'] && 2 === $vl['qty'] && 2 === $vl['stock'] && 'supplier' === $vs['mode'], '   variable product: its variation with stock 2 → Local first (2), its variation with stock 0 → Supplier now', array( $vl, $vs ) );
+ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . URME_SS_DB::links_table() . ' WHERE item_key = %s', key_of( 282 ) ) ), '   a key checked twice is selected once' );
+$price_writes = array_filter( $writes, static function ( $w ) { return preg_match( '/:(_regular_price|_sale_price|_price|_stock|_cogs_total_value|_cogs_value)$/', $w ); } );
+ok( ! $price_writes, '9. bulk selection wrote no price, stock or COGS meta at all', array_values( $writes ) );
+ok( 0 === $http, '   no HTTP request (no feed download) during bulk selection', $http );
+
+run( array( 'refresh_feed' => false ) );
+$s3 = bf_state( $K3, 282 );
+$s1 = bf_state( $K1, 288 );
+$s0 = bf_state( $K0, 294 );
+ok( 3 === $s3['stock'] && abs( $s3['cogs'] - 650 ) < 0.001 && 1 === $s1['stock'] && abs( $s1['cogs'] - 610 ) < 0.001 && 2 === p( $KVL )->get_stock_quantity(), '7–8. after a full sync: local stock (3, 1, 2) and local COGS (650, 610) not overwritten by supplier stock 8 / cost', array( $s3, $s1 ) );
+ok( 8 === $s0['stock'] && abs( $s0['cogs'] - $sek ) < 0.001 && 8 === p( $KVS )->get_stock_quantity(), '   Supplier now (URME stock 0): supplier stock 8 and cost 176 EUR × rate synced', $s0 );
+$prices_ok = true;
+foreach ( array( 282 => $K3, 288 => $K1, 294 => $K0, 306 => $KC, 318 => $KB, 324 => $KVL, 330 => $KVS ) as $i => $pid ) {
+	$now       = bs_state( $pid );
+	$prices_ok = $prices_ok && $now['regular'] === $before[ $i ]['regular'] && $now['sale'] === $before[ $i ]['sale'];
+}
+ok( $prices_ok, '9. Regular and Sale prices unchanged on every checked product (started, rejected and synced)' );
+
+$r = admin( 'set_mode', URME_SS_DB::get_link( key_of( 282 ) ), 'supplier' );
+$again = admin( 'select_items', array( key_of( 282 ), key_of( 288 ) ) );
+$row   = admin( 'run_row_action', 'start_supplier|' . key_of( 282 ) );
+ok( 'error' === $r[1] && 'warning' === $row[1] && false !== strpos( $again[0], 'Nothing new was selected' ) && 'local_first' === URME_SS_DB::get_link( key_of( 282 ) )['stock_mode'] && 3 === p( $K3 )->get_stock_quantity(), '10. no bypass to Supplier now with local units: mode switch refused, re-select and row start are no-ops, stock 3 kept', array( $r, $again, $row ) );
+
+section( 'BF10b. Manual linking, automatch and Resume follow the same rule' );
+$KN = bs_product( 'REF000312-B', '', 4, 700 ); // A URME product with stock 4 for the selection without a product.
+$m  = admin( 'link_product', URME_SS_DB::get_link( key_of( 312 ) ), $KN );
+$ln = URME_SS_DB::get_link( key_of( 312 ) );
+ok( (int) $ln['product_id'] === $KN && 'local_first' === $ln['stock_mode'] && 4 === (int) $ln['local_qty'] && abs( (float) $ln['local_cost'] - 700 ) < 0.001 && 4 === p( $KN )->get_stock_quantity() && abs( (float) p( $KN )->get_cogs_value() - 700 ) < 0.001, 'manual link to a product with URME stock 4 → Local first (4), stock and COGS kept', $m );
+$sel = admin( 'select_items', array( key_of( 348 ), key_of( 354 ) ) ); // Not in URME yet.
+$KA  = bs_product( 'REF000348', '', 2, 710 );
+$KZ  = bs_product( 'REF000354', '', 0, 710 );
+URME_SS_Matcher::reset();
+$m  = admin( 'automatch', 0 );
+$la = URME_SS_DB::get_link( key_of( 348 ) );
+$lz = URME_SS_DB::get_link( key_of( 354 ) );
+ok( (int) $la['product_id'] === $KA && 'local_first' === $la['stock_mode'] && 2 === (int) $la['local_qty'] && 2 === p( $KA )->get_stock_quantity() && (int) $lz['product_id'] === $KZ && 'supplier' === $lz['stock_mode'], 'automatch: product with stock 2 → Local first (2); product with stock 0 → Supplier now', array( $m, $la['stock_mode'], $lz['stock_mode'] ) );
+$KBk = bs_product( 'REF000999-BK', '', 3, 300 );
+$kbk = wc_get_product( $KBk );
+$kbk->set_backorders( 'yes' );
+$kbk->save();
+$l360 = URME_SS_DB::insert_link( key_of( 360 ), 0, '' );
+$m    = admin( 'link_product', URME_SS_DB::get_link_by_id( $l360 ), $KBk );
+ok( 0 === (int) URME_SS_DB::get_link_by_id( $l360 )['product_id'] && 0 === strpos( $m, 'Not linked, nothing changed: local URME stock exists (3)' ) && 3 === p( $KBk )->get_stock_quantity(), 'manual link refused when local stock cannot become Local first (backorders); nothing linked, stock 3 kept', $m );
+URME_SS_DB::delete_link( $l360 );
+
+$l0 = URME_SS_DB::get_link( key_of( 294 ) );
+admin( 'set_mode', $l0, 'paused' );
+$r = admin( 'run_row_action', 'resume|' . $l0['id'] );
+ok( 'success' === $r[1] && 8 === p( $K0 )->get_stock_quantity(), 'Resume of a paused Supplier-now watch whose stock is the synced supplier stock (8): allowed', $r );
+admin( 'set_mode', URME_SS_DB::get_link( key_of( 294 ) ), 'paused' );
+bs_set( $K0, 11 ); // 3 local units added by hand while paused.
+$r1 = admin( 'run_row_action', 'resume|' . $l0['id'] );
+$r2 = admin( 'set_mode', URME_SS_DB::get_link( key_of( 294 ) ), 'supplier' );
+$r3 = ax( 'resume|' . $l0['id'] );
+ok( 'error' === $r1[1] && 0 === strpos( $r1[0], 'Not resumed: Local URME stock exists (11 units).' ) && 'error' === $r2[1] && false === $r3['success'] && ! (int) URME_SS_DB::get_link( key_of( 294 ) )['sync_enabled'] && 11 === p( $K0 )->get_stock_quantity(), 'stock raised to 11 while paused: Resume refused (row action, mode switch and AJAX), stays Paused, stock 11 kept', array( $r1[0], $r2[0], $r3['data']['message'] ) );
+run( array( 'refresh_feed' => false ) );
+ok( 11 === p( $K0 )->get_stock_quantity(), '   and the cron sync leaves the paused watch alone' );
+bs_set( $K0, 8 );
+$r = admin( 'run_row_action', 'resume|' . $l0['id'] );
+ok( 'success' === $r[1], '   back at the synced supplier stock (8): Resume allowed again', $r );
+run( array( 'refresh_feed' => false ) );
+admin( 'set_mode', URME_SS_DB::get_link( key_of( 294 ) ), 'paused' );
+$KR = bs_product( 'REF000294-R', '', 5, 400 ); // Paused watch relinked to another product with stock 5.
+$m  = admin( 'link_product', URME_SS_DB::get_link( key_of( 294 ) ), $KR );
+$r  = admin( 'run_row_action', 'resume|' . $l0['id'] );
+ok( (int) URME_SS_DB::get_link( key_of( 294 ) )['product_id'] === $KR && 'error' === $r[1] && 5 === p( $KR )->get_stock_quantity(), '   paused watch relinked to a product with stock 5: Resume refused (the old product\'s synced stock does not count)', array( $m, $r ) );
+admin( 'link_product', URME_SS_DB::get_link( key_of( 294 ) ), $K0 );
+bs_set( $K0, 0 );
+$r = admin( 'run_row_action', 'resume|' . $l0['id'] );
+ok( 'success' === $r[1], '   linked back, URME stock 0: Resume allowed', $r );
+
+/* ------------------------------------------------------------------ brand on */
+section( 'BR. Turning a brand on again respects local URME stock' );
+// Rado and Oris: brands used only here. Five Supplier-now watches, synced to supplier stock 6.
+$BR = array();
+foreach ( array( 362, 368, 374, 380, 386 ) as $i ) {
+	$BF_SET[ sprintf( 'REF%06d', $i ) ] = array( 'MANUFACTURER' => 'Rado', 'STOCK' => '6', 'PURCHASE_PRICE' => '176.00' );
+	$BR[ $i ]                           = bs_product( sprintf( 'REF%06d', $i ), key_of( $i ), 0, 400 );
+}
+$BF_SET['REF000392'] = array( 'MANUFACTURER' => 'Oris', 'STOCK' => '6', 'PURCHASE_PRICE' => '176.00' );
+$BRO                 = bs_product( 'REF000392', key_of( 392 ), 0, 400 );
+nf_feed( $feed_n, array_merge( $BS_SET, $CA_SET, $PA_SET, $AX_SET, $BF_SET ) );
+run( array( 'force_feed' => true ) );
+URME_SS_Settings::set_brand( 'Rado', true );
+URME_SS_Settings::set_brand( 'Oris', true );
+admin( 'select_items', array_merge( array_map( 'key_of', array_keys( $BR ) ), array( key_of( 392 ) ) ) );
+run( array( 'refresh_feed' => false ) );
+$synced = true;
+foreach ( $BR as $pid ) {
+	$synced = $synced && 6 === p( $pid )->get_stock_quantity() && abs( (float) p( $pid )->get_cogs_value() - $sek ) < 0.001;
+}
+ok( $synced && 6 === p( $BRO )->get_stock_quantity(), 'setup: 5 Rado watches and 1 Oris watch in Supplier now, synced to stock 6 / 176 EUR × rate' );
+URME_SS_Settings::set_brand( 'Rado', false );
+URME_SS_Settings::set_brand( 'Oris', false );
+bs_set( $BR[362], 9, 900 ); // 3 local units put in by hand while Rado was off, with their own cost.
+bs_set( $BR[368], 2, 700 ); // A local watch counted as 2 (below the synced 6): sold-down supplier stock, not local.
+bs_set( $BR[374], 4 );      // 2 dropship units sold while off.
+bs_set( $BR[380], 11 );     // 5 local units added.
+$before_br = array();
+foreach ( $BR as $i => $pid ) {
+	$before_br[ $i ] = bs_state( $pid );
+}
+$res = admin( 'toggle_brand', 'Rado', true );
+echo "  ({$res[1]}: {$res[0]})\n";
+$l = static function ( $i ) {
+	return URME_SS_DB::get_link( key_of( $i ) );
+};
+ok( ! (int) $l( 362 )['sync_enabled'] && ! (int) $l( 380 )['sync_enabled'] && 'supplier' === $l( 362 )['stock_mode'] && false !== strpos( $l( 362 )['last_message'], 'Local URME stock exists (9 units)' ), 'brand ON: the watches with local units added while off (stock 9 > 6, 11 > 6) stay paused, reason on the link', $l( 362 )['last_message'] );
+ok( (int) $l( 368 )['sync_enabled'] && (int) $l( 374 )['sync_enabled'] && (int) $l( 386 )['sync_enabled'], 'the others of the same brand (stock 2, 4, unchanged 6) resume normally, each decided on its own' );
+ok( 'warning' === $res[1] && false !== strpos( $res[0], 'Sync enabled for Rado.' ) && false !== strpos( $res[0], 'Kept paused because local URME stock exists (2): REF000362 (9 units), REF000380 (11 units). Supplier stock and cost were not written; use Local first for these watches.' ), 'clear admin notice listing the watches kept paused and telling to use Local first', $res[0] );
+run( array( 'refresh_feed' => false ) );
+ok( bs_state( $BR[362] ) === $before_br[362] && bs_state( $BR[380] ) === $before_br[380], 'after the next sync: stock 9 / COGS 900 and stock 11 unchanged (no supplier stock or cost written)', array( bs_state( $BR[362] ), bs_state( $BR[380] ) ) );
+ok( 6 === p( $BR[368] )->get_stock_quantity() && 6 === p( $BR[374] )->get_stock_quantity() && 6 === p( $BR[386] )->get_stock_quantity() && abs( (float) p( $BR[368] )->get_cogs_value() - $sek ) < 0.001, 'no local stock: supplier sync resumed normally (stock 6, cost 176 EUR × rate)' );
+ok( 'Paused' === pa_badge( $BR[362] ), 'badge: Paused' );
+$r = admin( 'run_row_action', 'resume|' . $l( 362 )['id'] );
+ok( 'error' === $r[1] && ! (int) $l( 362 )['sync_enabled'], 'a later Resume is refused by the same check', $r );
+
+// Settings page save path, and no N+1: the check reads all of a brand's watches in bulk.
+URME_SS_Settings::set_brand( 'Oris', false );
+bs_set( $BRO, 8 );
+$saved = URME_SS_Settings::get( 'enabled_brands' );
+URME_SS_Settings::save( array_merge( URME_SS_Settings::all(), array( 'brands_present' => 1, 'enabled_brands' => array_merge( $saved, array( 'Oris' ) ), 'categories' => 'WATCH' ) ) );
+ok( array( 'REF000392 (8 units)' ) === URME_SS_Settings::held_on_enable() && ! (int) $l( 392 )['sync_enabled'] && 8 === p( $BRO )->get_stock_quantity(), 'Settings page: enabling Oris with 8 local units keeps its watch paused and reports it', URME_SS_Settings::held_on_enable() );
+URME_SS_Settings::set_brand( 'Oris', false );
+bs_set( $BRO, 6 ); // Back at the synced supplier stock: no local units.
+$r = admin( 'run_row_action', 'resume|' . $l( 392 )['id'] );
+// Warm-up cycle each, so WooCommerce's own one-off term-count transient refresh is not measured.
+foreach ( array( 'Rado', 'Oris' ) as $brand ) {
+	URME_SS_Settings::set_brand( $brand, false );
+	URME_SS_Settings::set_brand( $brand, true );
+}
+URME_SS_Settings::set_brand( 'Oris', false );
+URME_SS_Settings::set_brand( 'Rado', false );
+wp_cache_flush();
+$q0 = $wpdb->num_queries;
+URME_SS_Settings::set_brand( 'Rado', true ); // 3 active Rado watches, nothing to hold.
+$q_rado3 = $wpdb->num_queries - $q0;
+wp_cache_flush();
+$q0 = $wpdb->num_queries;
+URME_SS_Settings::set_brand( 'Oris', true ); // 1 active Oris watch, nothing to hold.
+$q_oris1 = $wpdb->num_queries - $q0;
+ok( $q_rado3 === $q_oris1 && array() === URME_SS_Settings::held_on_enable(), sprintf( 'no N+1: turning on a brand with 3 or with 1 active watch costs the same %d / %d queries', $q_rado3, $q_oris1 ), array( $q_rado3, $q_oris1 ) );
+ok( 'success' === $r[1] && (int) $l( 392 )['sync_enabled'] && array() === URME_SS_Settings::held_on_enable(), 'brand OFF, no local stock added, brand ON: normal resume' );
+run( array( 'refresh_feed' => false ) );
+ok( 6 === p( $BRO )->get_stock_quantity() && abs( (float) p( $BRO )->get_cogs_value() - $sek ) < 0.001, '   and supplier stock / cost are synced as before' );
+// Rado and Oris stay off: their 4 active watches are "Supplier – brand sync off", the 2 held ones Paused (used by the filter below).
+URME_SS_Settings::set_brand( 'Rado', false );
+URME_SS_Settings::set_brand( 'Oris', false );
+
+/* ------------------------------------------------------------------ filter */
+section( 'BF24–40. Fulfillment filter on WooCommerce > Products' );
+admin( 'select_items', array( key_of( 336 ), key_of( 343 ) ) );
+admin( 'set_mode', URME_SS_DB::get_link( key_of( 336 ) ), 'paused' );
+run( array( 'refresh_feed' => false ) );
+URME_SS_Product_Source::flush();
+$exp    = bf_expected();
+$got    = array();
+foreach ( array( 'dropship', 'lager', 'local', 'paused', 'brand_off' ) as $st ) {
+	$got[ $st ] = bf_ids( $st );
+}
+$got['all'] = bf_ids( '' );
+ok( $got['dropship'] === $exp['dropship'] && in_array( $K0, $got['dropship'], true ) && in_array( $KT, $got['dropship'], true ), '24. Dropshipping filter = the products whose badge says Dropshipping', array( count( $got['dropship'] ), count( $exp['dropship'] ) ) );
+ok( $got['lager'] === $exp['lager'] && in_array( $KRa, $got['lager'], true ) && in_array( $KC, $got['lager'], true ) && ! in_array( $K3, $got['lager'], true ), '25. URME Lager filter = products with no supplier link at all (never linked; rejected ones)', array( count( $got['lager'] ), count( $exp['lager'] ) ) );
+ok( $got['local'] === $exp['local'] && in_array( $K3, $got['local'], true ) && in_array( $K1, $got['local'], true ) && in_array( $KN, $got['local'], true ), '26. Local first filter', array( count( $got['local'] ), count( $exp['local'] ) ) );
+ok( $got['paused'] === $exp['paused'] && in_array( $KP, $got['paused'], true ), '27. Paused filter', $got['paused'] );
+ok( $got['all'] === $exp['all'] && ! array_diff( $got['all'], array_merge( $got['dropship'], $got['lager'], $got['local'], $got['paused'], $got['brand_off'] ) ), '28. All (no filter): every product; each is in at least one state', count( $got['all'] ) );
+$in  = bf_ids( 'lager', array( 'meta_query' => array( array( 'key' => '_stock_status', 'value' => 'instock' ) ) ) );
+$exp_in = array_values( array_filter( $exp['lager'], static function ( $id ) { return 'instock' === get_post_meta( $id, '_stock_status', true ); } ) );
+ok( $in === $exp_in && in_array( $KB, $in, true ) && ! in_array( $K3, $in, true ), '29. URME Lager + In stock: only products fulfilled from URME and in stock (Local first excluded)', count( $in ) );
+$out    = bf_ids( 'dropship', array( 'meta_query' => array( array( 'key' => '_stock_status', 'value' => 'outofstock' ) ) ) );
+$exp_o  = array_values( array_filter( $exp['dropship'], static function ( $id ) { return 'outofstock' === get_post_meta( $id, '_stock_status', true ); } ) );
+ok( $out === $exp_o, '30. Dropshipping + Out of stock', count( $out ) );
+if ( taxonomy_exists( 'product_brand' ) ) {
+	wp_set_object_terms( $K3, 'BOSS', 'product_brand' );
+	wp_set_object_terms( $K0, 'BOSS', 'product_brand' );
+	wp_set_object_terms( $KC, 'Casio', 'product_brand' );
+	$boss_local = bf_ids( 'local', array( 'tax_query' => array( array( 'taxonomy' => 'product_brand', 'field' => 'name', 'terms' => 'BOSS' ) ) ) );
+	$boss_drop  = bf_ids( 'dropship', array( 'tax_query' => array( array( 'taxonomy' => 'product_brand', 'field' => 'name', 'terms' => 'BOSS' ) ) ) );
+	ok( array( $K3 ) === $boss_local && array( $K0 ) === $boss_drop, '31. Fulfillment + Brand (product_brand BOSS): Local first → REF000282 only, Dropshipping → REF000294 only', array( $boss_local, $boss_drop ) );
+} else {
+	ok( false, '31. product_brand taxonomy missing' );
+}
+$cat = term_exists( 'BF watches', 'product_cat' ) ? term_exists( 'BF watches', 'product_cat' ) : wp_insert_term( 'BF watches', 'product_cat' );
+wp_set_object_terms( $K1, (int) $cat['term_id'], 'product_cat' );
+wp_set_object_terms( $KP, (int) $cat['term_id'], 'product_cat' );
+wp_set_object_terms( $KC, (int) $cat['term_id'], 'product_cat' );
+$tq = array( 'tax_query' => array( array( 'taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => (int) $cat['term_id'] ) ) );
+ok( array( $K1 ) === bf_ids( 'local', $tq ) && array( $KP ) === bf_ids( 'paused', $tq ) && array( $KC ) === bf_ids( 'lager', $tq ) && array() === bf_ids( 'dropship', $tq ), '32. Fulfillment + Category' );
+ok( array( $K3 ) === bf_ids( 'local', array( 's' => 'REF000282' ) ) && array() === bf_ids( 'dropship', array( 's' => 'REF000282' ) ), '33. Fulfillment + product search' );
+$tv = array( 'tax_query' => array( array( 'taxonomy' => 'product_type', 'field' => 'slug', 'terms' => 'variable' ) ) );
+ok( in_array( $KV, bf_ids( 'local', $tv ), true ) && in_array( $KV, bf_ids( 'dropship', $tv ), true ) && ! in_array( $KV, bf_ids( 'lager', $tv ), true ), '   Fulfillment + Product type (variable)' );
+$asc  = bf_ids( 'lager', array( 'orderby' => 'title', 'order' => 'ASC' ) );
+$desc = bf_ids( 'lager', array( 'orderby' => 'title', 'order' => 'DESC' ) );
+ok( array_reverse( $asc ) === $desc || ( count( $asc ) === count( $desc ) && ! array_diff( $asc, $desc ) ), '   Fulfillment + sorting: same products in either order', array( count( $asc ), count( $desc ) ) );
+
+$c = URME_SS_Product_Source::counts();
+ok( $c['dropship'] === count( $exp['dropship'] ) && $c['lager'] === count( $exp['lager'] ) && $c['local'] === count( $exp['local'] ) && $c['paused'] === count( $exp['paused'] ) && $c['brand_off'] === count( $exp['brand_off'] ) && $c['all'] === count( $exp['all'] ), sprintf( '34. counts = the badge buckets: Dropshipping %d, URME Lager %d, Local first %d, Paused %d, Supplier – brand sync off %d (All %d)', $c['dropship'], $c['lager'], $c['local'], $c['paused'], $c['brand_off'], $c['all'] ), $c );
+ok( 4 === $c['brand_off'] && in_array( $BR[368], $exp['brand_off'], true ) && in_array( $BRO, $exp['brand_off'], true ) && in_array( $BR[362], $exp['paused'], true ) && ! in_array( $BR[368], $exp['lager'], true ), '   the Rado / Oris watches with brand sync off: 4 in "Supplier – brand sync off" (not URME Lager), the 2 held ones Paused', $c );
+
+URME_SS_Settings::set_brand( 'Tissot', false );
+URME_SS_Product_Source::flush();
+$c2 = URME_SS_Product_Source::counts();
+$bo = bf_ids( 'brand_off' );
+ok( ! in_array( $KT, bf_ids( 'dropship' ), true ) && in_array( $KT, $bo, true ) && $c2['dropship'] < $c['dropship'] && $c2['brand_off'] > $c['brand_off'] && 'Supplier – brand sync off' === pa_badge( $KT ), '35. true Dropshipping respects brand sync: Tissot off → its watch leaves Dropshipping for "Supplier – brand sync off", counts updated at once', array( $c, $c2 ) );
+ok( ! in_array( $KT, bf_ids( 'lager' ), true ) && $c2['lager'] === $c['lager'], 'BO1. a brand-sync-off link is NOT URME Lager (URME Lager count unchanged)', array( $c['lager'], $c2['lager'] ) );
+$bo_badges = true;
+foreach ( $bo as $id ) {
+	$bo_badges = $bo_badges && false !== strpos( pa_badge( $id ), 'Supplier – brand sync off' );
+}
+$exp2 = bf_expected();
+ok( $bo === $exp2['brand_off'] && $bo_badges && count( $bo ) === $c2['brand_off'] && $c2['dropship'] === count( $exp2['dropship'] ) && $c2['lager'] === count( $exp2['lager'] ), sprintf( 'BO2. Supplier – brand sync off filter: %d products, each with the badge "Supplier – brand sync off"; all counts = the badge buckets', count( $bo ) ), $bo );
+ok( in_array( $KT, bf_ids( 'brand_off', array( 'meta_query' => array( array( 'key' => '_stock_status', 'value' => p( $KT )->get_stock_status() ) ) ) ), true ) && array( $KT ) === bf_ids( 'brand_off', array( 's' => 'REF000343' ) ) && array() === bf_ids( 'lager', array( 's' => 'REF000343' ) ), 'BO3. brand sync off + stock status, + search' );
+wp_set_object_terms( $KT, 'Tissot', 'product_brand' );
+wp_set_object_terms( $KT, (int) $cat['term_id'], 'product_cat', true );
+ok( array( $KT ) === bf_ids( 'brand_off', array( 'tax_query' => array( array( 'taxonomy' => 'product_brand', 'field' => 'name', 'terms' => 'Tissot' ) ) ) ) && in_array( $KT, bf_ids( 'brand_off', $tq ), true ) && ! in_array( $KT, bf_ids( 'dropship', $tq ), true ), 'BO4. brand sync off + Brand, + Category' );
+ok( count( $bo ) === count( array_unique( $bo ) ), 'BO5. no duplicate rows' );
+URME_SS_Settings::set_brand( 'Tissot', true );
+URME_SS_Product_Source::flush();
+ok( ! in_array( $KP, bf_ids( 'dropship' ), true ) && 'Paused' === pa_badge( $KP ), '36. a paused supplier watch is not counted as Dropshipping' );
+ok( ! in_array( $K3, bf_ids( 'lager' ), true ) && 0 === strpos( pa_badge( $K3 ), 'Local first (3)' ), '37. Local first is not counted as URME Lager', pa_badge( $K3 ) );
+ok( in_array( $KV, $got['local'], true ) && in_array( $KV, $got['dropship'], true ) && ! in_array( $KV, $got['lager'], true ) && ! in_array( $KVL, $got['all'], true ), '38. variable product with a Local first and a Dropshipping variation: listed (as the parent) under both, not as URME Lager; variations never listed as rows' );
+$dup = true;
+foreach ( $got as $ids ) {
+	$dup = $dup && count( $ids ) === count( array_unique( $ids ) );
+}
+ok( $dup, '39. no duplicate product rows in any filter (a product with several linked variations appears once)' );
+$q = new WP_Query( array( 'post_type' => 'product', 'post_status' => get_post_stati( array( 'show_in_admin_all_list' => true ) ), 'posts_per_page' => 2, 'urme_fulfillment' => 'local' ) );
+ok( count( $exp['local'] ) === (int) $q->found_posts && 2 === count( $q->posts ) && (int) ceil( count( $exp['local'] ) / 2 ) === (int) $q->max_num_pages, '40. paged query: found_posts (the "N items" count) and pages = the filtered total', array( $q->found_posts, count( $exp['local'] ) ) );
+
+section( 'BF-UI. Dropdown in the WooCommerce filter row' );
+$filters = apply_filters( 'woocommerce_products_admin_list_table_filters', array( 'stock_status' => '__return_null' ) );
+ok( array( 'stock_status', 'urme_fulfillment' ) === array_keys( $filters ), 'added to WooCommerce\'s product filters, after the stock status filter' );
+$_GET['urme_fulfillment'] = 'local';
+ob_start();
+URME_SS_Product_Source::render_filter_dropdown();
+$html = ob_get_clean();
+unset( $_GET['urme_fulfillment'] );
+ok( false !== strpos( $html, '<select name="urme_fulfillment"' ) && false !== strpos( $html, sprintf( '>Fulfillment: All (%d)<', $c['all'] ) ) && false !== strpos( $html, sprintf( '>Dropshipping (%d)<', $c['dropship'] ) ) && false !== strpos( $html, sprintf( '>URME Lager (%d)<', $c['lager'] ) ) && false !== strpos( $html, sprintf( 'value="local" selected=\'selected\'>Local first (%d)<', $c['local'] ) ) && false !== strpos( $html, sprintf( '>Paused (%d)<', $c['paused'] ) ) && false !== strpos( $html, sprintf( 'value="brand_off">Supplier – brand sync off (%d)<', $c['brand_off'] ) ), 'options All / Dropshipping / URME Lager / Local first / Paused / Supplier – brand sync off with counts; the current one selected', $html );
+$_GET['urme_fulfillment'] = 'bogus';
+ok( '' === bf_ids( 'bogus' ) || bf_ids( 'bogus' ) === $got['all'], 'an unknown value filters nothing' );
+unset( $_GET['urme_fulfillment'] );
+wp_set_current_user( (int) username_exists( 'ax_subscriber' ) );
+ok( array( 'stock_status' ) === array_keys( apply_filters( 'woocommerce_products_admin_list_table_filters', array( 'stock_status' => '__return_null' ) ) ), 'no dropdown without manage_woocommerce' );
+wp_set_current_user( $GLOBALS['FF_ADMIN'] );
+
+section( 'BF-PERF. Constant queries, no HTTP' );
+$http = 0;
+add_filter( 'pre_http_request', $hf );
+URME_SS_Product_Source::flush();
+wp_cache_delete( _count_posts_cache_key( 'product', '' ), 'counts' );
+$q0 = $wpdb->num_queries;
+URME_SS_Product_Source::counts();
+$qc = $wpdb->num_queries - $q0;
+ok( $qc <= 3, sprintf( 'dropdown counts (5 states): %d queries (linked brands, one aggregate, WordPress post counts), independent of the number of products', $qc ), $qc );
+$per = array();
+foreach ( array( 20, 50, 100 ) as $n ) {
+	$args      = array( 'post_type' => 'product', 'post_status' => 'any', 'posts_per_page' => $n, 'urme_fulfillment' => 'lager' );
+	new WP_Query( $args ); // Warm WordPress's post caches for these rows.
+	URME_SS_Product_Source::flush();
+	$q0        = $wpdb->num_queries;
+	new WP_Query( $args );
+	$per[ $n ] = $wpdb->num_queries - $q0;
+}
+ok( $per[20] === $per[50] && $per[50] === $per[100], sprintf( 'filtered list query 20 / 50 / 100 rows: %d / %d / %d queries (same)', $per[20], $per[50], $per[100] ), $per );
+remove_filter( 'pre_http_request', $hf );
+ok( 0 === $http, 'no HTTP request while counting or filtering', $http );
+settings( array( 'rate_override' => '' ) );

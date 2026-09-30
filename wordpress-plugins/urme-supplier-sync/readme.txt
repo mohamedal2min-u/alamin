@@ -53,6 +53,10 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
     stock (no confirmation overrides it).
   - "Resume" of a paused Supplier-now watch is refused when its WooCommerce stock is above the
     stock supplier sync last set (units added by hand while paused, or never synced).
+  - Turning a brand on again (brand button or Settings) runs the same check on each of its
+    Supplier-now watches before the brand is saved: a watch with local units stays paused (no
+    supplier stock or cost is written) and is listed in the notice with "use Local first"; the
+    others resume normally.
   After the last local unit is sold, the automatic Local first -> Supplier switch works as before.
 * Manual sale price: for every linked or uniquely matched product (also when Paused), the catalog and
   Selected watches show the regular price (read-only) and an editable sale price with Save. Only the
@@ -63,11 +67,13 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   stock quantity): Dropshipping (Supplier now), Local first (units left), Paused, or URME Lager (not
   supplier-linked). The Supplier catalog shows the same badge for matched products.
 * A "Fulfillment" filter in WooCommerce's product filter row: All / Dropshipping / URME Lager /
-  Local first / Paused, each with its current count (read live from the links, one aggregate
-  query). Same rules as the badge: Dropshipping = sync on + Supplier now + brand sync on; Local
-  first; Paused = sync off; URME Lager = none of these (not linked, or linked with brand sync off).
-  A variable product counts under each state one of its variations has. It combines with the
-  stock status, category, product type, brand and search filters, sorting and paging.
+  Local first / Paused / Supplier – brand sync off, each with its current count (read live from
+  the links, one aggregate query). Same states as the badge: Dropshipping = sync on + Supplier
+  now + brand sync on; Local first = sync on + Local first; Paused = sync off; Supplier – brand
+  sync off = sync on + Supplier now + brand sync off; URME Lager = not supplier-linked at all.
+  Counts are products (list rows); a variable product whose variations are in different states
+  is counted, and listed once, under each of them. It combines with the stock status, category,
+  product type, brand and search filters, sorting and paging.
 * A product is synced only when all of these are true:
   1. its supplier CATEGORY is WATCH,
   2. its brand (MANUFACTURER) is enabled in Settings > Brands enabled for sync,

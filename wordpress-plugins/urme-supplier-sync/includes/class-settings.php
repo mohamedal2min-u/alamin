@@ -12,6 +12,13 @@ class URME_SS_Settings {
 	const OPTION = 'urme_ss_settings';
 
 	/**
+	 * Watches paused by the last brand enable because they have local URME stock.
+	 *
+	 * @var string[]
+	 */
+	private static $held = array();
+
+	/**
 	 * Default values for every setting.
 	 */
 	public static function defaults() {
@@ -82,9 +89,29 @@ class URME_SS_Settings {
 			'hint_round_sek'     => (int) self::number( $input, $current, 'hint_round_sek', 1, 1000 ),
 		);
 
+		self::guard_enabled_brands( (array) $current['enabled_brands'], $new['enabled_brands'] );
 		update_option( self::OPTION, $new );
 		self::log_brand_change( (array) $current['enabled_brands'], $new['enabled_brands'], 'settings page' );
 		return $new;
+	}
+
+	/**
+	 * Local URME stock has priority also when a brand is turned on again: its Supplier-now links
+	 * are checked (and paused where local stock is found) before the brand is saved, so no sync
+	 * can write supplier stock or cost to them in between.
+	 */
+	private static function guard_enabled_brands( array $old, array $new ) {
+		$added      = array_values( array_diff( array_map( array( __CLASS__, 'brand_key' ), $new ), array_map( array( __CLASS__, 'brand_key' ), $old ) ) );
+		self::$held = $added ? URME_SS_Inventory::hold_on_brand_enable( $added ) : array();
+	}
+
+	/**
+	 * Watches paused by the last brand enable (product number and local units), for the notice.
+	 *
+	 * @return string[]
+	 */
+	public static function held_on_enable() {
+		return self::$held;
 	}
 
 	/**
@@ -189,6 +216,7 @@ class URME_SS_Settings {
 		}
 		$old                   = (array) $all['enabled_brands'];
 		$all['enabled_brands'] = self::sanitize_brands( $list );
+		self::guard_enabled_brands( $old, $all['enabled_brands'] );
 		update_option( self::OPTION, $all );
 		self::log_brand_change( $old, $all['enabled_brands'], 'brand button' );
 	}

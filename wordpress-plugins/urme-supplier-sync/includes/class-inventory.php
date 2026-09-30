@@ -680,11 +680,63 @@ class URME_SS_Inventory {
 		if ( self::LOCAL === ( $link['stock_mode'] ?? '' ) ) {
 			return 0;
 		}
-		$woo = self::local_units_before_supplier( null, $product );
-		if ( $woo < 1 ) {
+		return self::extra_units( $link, self::local_units_before_supplier( null, $product ) );
+	}
+
+	/**
+	 * The resume rule on a WooCommerce stock already read: local units when the stock is above
+	 * what supplier sync last set (or it never set one), else 0.
+	 *
+	 * @param array $link Supplier link.
+	 * @param int   $woo  Current WooCommerce stock (0 when not managed).
+	 */
+	private static function extra_units( array $link, $woo ) {
+		if ( self::LOCAL === ( $link['stock_mode'] ?? '' ) || (int) $woo < 1 ) {
 			return 0;
 		}
-		return ( null === $link['last_stock'] || $woo > (int) $link['last_stock'] ) ? $woo : 0;
+		return ( null === $link['last_stock'] || (int) $woo > (int) $link['last_stock'] ) ? (int) $woo : 0;
+	}
+
+	/**
+	 * A brand is turned on again: its Supplier-now links would start writing supplier stock and
+	 * cost at the next sync. Each one is checked like a manual Resume, before the brand is saved;
+	 * a link whose product has local URME stock (stock above what supplier sync last set) is paused
+	 * so nothing is written to it. Stock is read in bulk (constant queries for any number of links).
+	 *
+	 * @param string[] $brand_keys Upper-cased brands being enabled.
+	 * @return string[] The paused watches, for the admin notice.
+	 */
+	public static function hold_on_brand_enable( array $brand_keys ) {
+		global $wpdb;
+		$rows = array();
+		foreach ( (array) $wpdb->get_results( $wpdb->prepare( 'SELECT l.id, l.item_key, l.product_id, l.stock_mode, l.last_stock, c.manufacturer, c.product_no FROM ' . URME_SS_DB::links_table() . ' l INNER JOIN ' . URME_SS_DB::catalog_table() . ' c ON c.item_key = l.item_key WHERE l.product_id > 0 AND l.sync_enabled = 1 AND l.stock_mode <> %s', self::LOCAL ), ARRAY_A ) as $r ) { // phpcs:ignore WordPress.DB
+			if ( in_array( URME_SS_Settings::brand_key( $r['manufacturer'] ), $brand_keys, true ) ) {
+				$rows[] = $r;
+			}
+		}
+		if ( ! $rows ) {
+			return array();
+		}
+		$info = URME_SS_Store::stock_info( wp_list_pluck( $rows, 'product_id' ) );
+		$held = array();
+		foreach ( $rows as $r ) {
+			$stock = $info[ (int) $r['product_id'] ] ?? null;
+			$units = self::extra_units( $r, ( $stock && $stock['managed'] ) ? max( 0, (int) $stock['qty'] ) : 0 );
+			if ( $units < 1 ) {
+				continue;
+			}
+			URME_SS_DB::update_link(
+				$r['id'],
+				array(
+					'sync_enabled' => 0,
+					'last_status'  => 'error',
+					'last_message' => sprintf( 'Paused when %s sync was turned on: %s', $r['manufacturer'], self::local_priority_message( $units ) ),
+				)
+			);
+			URME_SS_Log::info( sprintf( 'Brand %s enabled: product #%d (%s) paused, %d local unit(s) found; supplier stock and cost not written.', $r['manufacturer'], $r['product_id'], $r['product_no'], $units ) );
+			$held[] = sprintf( '%s (%d unit%s)', $r['product_no'], $units, 1 === $units ? '' : 's' );
+		}
+		return $held;
 	}
 
 	public static function local_priority_message( $units ) {

@@ -30,10 +30,11 @@ class URME_SS_Product_Source {
 	 * Fulfillment filter values on WooCommerce > Products.
 	 */
 	const FILTERS = array(
-		self::DROPSHIP => 'Dropshipping',
-		self::LAGER    => 'URME Lager',
-		self::LOCAL    => 'Local first',
-		self::PAUSED   => 'Paused',
+		self::DROPSHIP  => 'Dropshipping',
+		self::LAGER     => 'URME Lager',
+		self::LOCAL     => 'Local first',
+		self::PAUSED    => 'Paused',
+		self::BRAND_OFF => 'Supplier – brand sync off',
 	);
 
 	/**
@@ -194,7 +195,8 @@ class URME_SS_Product_Source {
 	/**
 	 * SQL conditions on a link row "l" (joined with its catalog row "c") for each state, exactly
 	 * as state() decides it: Paused = sync off; Local first = sync on + Local first mode;
-	 * Dropshipping = sync on + Supplier now mode + brand sync on. Never from stock quantities.
+	 * Dropshipping = sync on + Supplier now mode + brand sync on; brand sync off = sync on +
+	 * Supplier now mode + brand sync off. Every link is in exactly one. Never from stock.
 	 *
 	 * @return array<string, string>
 	 */
@@ -207,12 +209,13 @@ class URME_SS_Product_Source {
 		}
 		$local = esc_sql( URME_SS_Inventory::LOCAL );
 		$brand = self::$enabled_makers
-			? 'c.manufacturer IN (' . $wpdb->prepare( implode( ',', array_fill( 0, count( self::$enabled_makers ), '%s' ) ), self::$enabled_makers ) . ')' // phpcs:ignore WordPress.DB
+			? 'COALESCE(c.manufacturer, \'\') IN (' . $wpdb->prepare( implode( ',', array_fill( 0, count( self::$enabled_makers ), '%s' ) ), self::$enabled_makers ) . ')' // phpcs:ignore WordPress.DB
 			: '1 = 0';
 		return array(
 			self::PAUSED   => 'l.sync_enabled = 0',
 			self::LOCAL    => "l.sync_enabled <> 0 AND l.stock_mode = '{$local}'",
-			self::DROPSHIP => "l.sync_enabled <> 0 AND l.stock_mode <> '{$local}' AND {$brand}",
+			self::DROPSHIP  => "l.sync_enabled <> 0 AND l.stock_mode <> '{$local}' AND {$brand}",
+			self::BRAND_OFF => "l.sync_enabled <> 0 AND l.stock_mode <> '{$local}' AND NOT ({$brand})",
 		);
 	}
 
@@ -233,9 +236,11 @@ class URME_SS_Product_Source {
 	}
 
 	/**
-	 * WHERE fragment keeping only the products in one fulfillment state. A product counts as
-	 * Dropshipping, Local first or Paused when it, or one of its variations, is; URME Lager when
-	 * neither it nor any variation is (not supplier-linked, or linked only with brand sync off).
+	 * WHERE fragment keeping only the products in one fulfillment state. A product is in a
+	 * supplier state (Dropshipping, Local first, Paused, brand sync off) when it, or one of its
+	 * variations, is; URME Lager when neither it nor any of its variations is supplier-linked.
+	 * A variable product whose variations are in different states is in each of those states
+	 * (still one row per filter).
 	 *
 	 * @param string $state One of the FILTERS keys.
 	 */
@@ -252,8 +257,10 @@ class URME_SS_Product_Source {
 	}
 
 	/**
-	 * Products per fulfillment state, from the current links (not cached): one aggregate query,
-	 * plus WordPress's own post counts. URME Lager = all products minus those in another state.
+	 * Products (list rows) per fulfillment state, from the current links (not cached): one
+	 * aggregate query, plus WordPress's own post counts. URME Lager = all products minus the
+	 * supplier-linked ones. A product is counted once per state; a variable product whose
+	 * variations are in different states is counted in each of them.
 	 *
 	 * @param string[] $statuses Post statuses counted (default: those of the "All" view).
 	 * @return array<string, int>
@@ -283,11 +290,12 @@ class URME_SS_Product_Source {
 			}
 		}
 		return array(
-			'all'          => $all,
-			self::DROPSHIP => (int) ( $row[ 'n_' . self::DROPSHIP ] ?? 0 ),
-			self::LAGER    => max( 0, $all - (int) ( $row['n_active'] ?? 0 ) ),
-			self::LOCAL    => (int) ( $row[ 'n_' . self::LOCAL ] ?? 0 ),
-			self::PAUSED   => (int) ( $row[ 'n_' . self::PAUSED ] ?? 0 ),
+			'all'           => $all,
+			self::DROPSHIP  => (int) ( $row[ 'n_' . self::DROPSHIP ] ?? 0 ),
+			self::LAGER     => max( 0, $all - (int) ( $row['n_active'] ?? 0 ) ),
+			self::LOCAL     => (int) ( $row[ 'n_' . self::LOCAL ] ?? 0 ),
+			self::PAUSED    => (int) ( $row[ 'n_' . self::PAUSED ] ?? 0 ),
+			self::BRAND_OFF => (int) ( $row[ 'n_' . self::BRAND_OFF ] ?? 0 ),
 		);
 	}
 
@@ -313,7 +321,7 @@ class URME_SS_Product_Source {
 		$counts   = self::counts( ( '' !== $status && 'all' !== $status && get_post_status_object( $status ) ) ? array( $status ) : array() );
 		$current  = self::current_filter();
 		$out      = '<label for="urme-fulfillment-filter" class="screen-reader-text">Filter by fulfillment</label>';
-		$out     .= '<select name="urme_fulfillment" id="urme-fulfillment-filter"><option value="">' . esc_html( sprintf( 'Fulfillment: All (%d)', $counts['all'] ) ) . '</option>';
+		$out     .= '<select name="urme_fulfillment" id="urme-fulfillment-filter" title="Counts are products. A variable product whose variations are fulfilled differently is counted under each of those states."><option value="">' . esc_html( sprintf( 'Fulfillment: All (%d)', $counts['all'] ) ) . '</option>';
 		foreach ( self::FILTERS as $value => $label ) {
 			$out .= '<option value="' . esc_attr( $value ) . '"' . selected( $value, $current, false ) . '>' . esc_html( sprintf( '%s (%d)', $label, $counts[ $value ] ) ) . '</option>';
 		}

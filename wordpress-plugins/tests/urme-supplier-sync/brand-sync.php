@@ -101,6 +101,14 @@ section( 'BS-A. Enabled brand lost by a settings save (reproduction)' );
 $stale = bs_form_post( bs_settings_form() ); // Settings page opened before BOSS was enabled…
 URME_SS_Settings::set_brand( 'BOSS', true ); // …BOSS enabled with "Enable brand sync" in the catalog…
 ok( in_array( 'BOSS', bs_brands(), true ), '   BOSS enabled', bs_brands() );
+// Since 1.4 turning a brand on checks its Supplier-now watches like a manual Resume: these two were
+// never synced and have WooCommerce stock 2 and 1, so they stay paused (local URME stock priority).
+ok( array( 'REF000132 (2 units)', 'REF000138 (1 unit)' ) === URME_SS_Settings::held_on_enable() && ! (int) URME_SS_DB::get_link( key_of( 132 ) )['sync_enabled'] && 2 === bs_state( $B1 )['stock'] && abs( bs_state( $B1 )['cogs'] - 480 ) < 0.001, '   (1.4) never-synced Supplier-now watches with stock 2 / 1 kept paused when BOSS is turned on; stock and COGS untouched', URME_SS_Settings::held_on_enable() );
+// The admin checks: those units are not URME's own. Stock to 0, Resume (allowed at 0), then the old values back for the checks below.
+bs_set( $B1, 0 );
+bs_set( $B2, 0 );
+ok( 'success' === admin( 'run_row_action', 'resume|' . URME_SS_DB::get_link( key_of( 132 ) )['id'] )[1] && 'success' === admin( 'run_row_action', 'resume|' . URME_SS_DB::get_link( key_of( 138 ) )['id'] )[1], '   (1.4) at URME stock 0 both resume' );
+bs_set( $B1, 2 );
 ok( 1 === lf_log_count( 'Brands enabled for sync changed (brand button): enabled BOSS' ), '   the change is logged with its source' );
 $stale['hint_profit_sek'] = '550'; // …then the open settings page is saved for something unrelated.
 $logged = lf_log_count( 'Brands enabled for sync changed (settings page)' );
@@ -147,7 +155,9 @@ ok( 2 === $b['stock'] && abs( $b['cogs'] - 480 ) < 0.001, 'disabled brand → st
 ok( null === URME_SS_DB::get_link( key_of( 132 ) )['last_stock'], '   link not processed' );
 
 section( 'BS-B1. Brand enabled: stock unchanged (manual 8) but cost stale → cost updates' );
+bs_set( $B1, 0 ); // (1.4) Not URME's own units: stock 0 first, or turning BOSS on keeps the never-synced watch paused.
 URME_SS_Settings::set_brand( 'BOSS', true );
+ok( array() === URME_SS_Settings::held_on_enable(), '   (1.4) BOSS on at URME stock 0: nothing held' );
 bs_set( $B1, 8 ); // Manual stock correction to the supplier value.
 $writes = array();
 $watch  = static function ( $check, $object_id, $meta_key ) use ( &$writes ) {

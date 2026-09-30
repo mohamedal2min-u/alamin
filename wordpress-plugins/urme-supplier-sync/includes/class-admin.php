@@ -277,15 +277,9 @@ class URME_SS_Admin {
 				break;
 
 			case 'toggle_brand':
-				$brand  = sanitize_text_field( wp_unslash( $_POST['brand'] ?? '' ) );
-				$enable = ! empty( $_POST['enable'] );
+				$brand = sanitize_text_field( wp_unslash( $_POST['brand'] ?? '' ) );
 				if ( '' !== $brand ) {
-					URME_SS_Settings::set_brand( $brand, $enable );
-					self::notice(
-						$enable
-							? sprintf( 'Sync enabled for %s. Selected %s watches are updated on the next sync.', $brand, $brand )
-							: sprintf( 'Sync disabled for %s. Its selections and links are kept; its products are no longer updated.', $brand )
-					);
+					self::notice_result( self::toggle_brand( $brand, ! empty( $_POST['enable'] ) ) );
 				}
 				break;
 
@@ -329,19 +323,40 @@ class URME_SS_Admin {
 				break;
 
 			case 'save_settings':
-				$old = URME_SS_Settings::all();
-				$new = URME_SS_Settings::save( wp_unslash( (array) ( $_POST['settings'] ?? array() ) ) );
-				if ( $old['categories'] !== $new['categories'] || $old['feed_url'] !== $new['feed_url'] ) {
-					self::notice( 'Settings saved. Click "Sync now" to reload the catalog with the new feed settings.' );
-				} else {
-					self::notice( 'Settings saved.' );
-				}
+				$old  = URME_SS_Settings::all();
+				$new  = URME_SS_Settings::save( wp_unslash( (array) ( $_POST['settings'] ?? array() ) ) );
+				$msg  = ( $old['categories'] !== $new['categories'] || $old['feed_url'] !== $new['feed_url'] ) ? 'Settings saved. Click "Sync now" to reload the catalog with the new feed settings.' : 'Settings saved.';
+				$held = self::held_message();
+				self::notice( $msg . $held, '' === $held ? 'success' : 'warning' );
 				break;
 		}
 		// phpcs:enable
 
 		wp_safe_redirect( $redirect );
 		exit;
+	}
+
+	/**
+	 * Brand button in the catalog. Turning a brand on checks its Supplier-now watches first (see
+	 * URME_SS_Settings::set_brand()); the ones with local URME stock stay paused and are listed.
+	 *
+	 * @return array{0: string, 1: string} Message and notice type.
+	 */
+	private static function toggle_brand( $brand, $enable ) {
+		URME_SS_Settings::set_brand( $brand, $enable );
+		if ( ! $enable ) {
+			return array( sprintf( 'Sync disabled for %s. Its selections and links are kept; its products are no longer updated.', $brand ), 'success' );
+		}
+		$held = self::held_message();
+		return array( sprintf( 'Sync enabled for %s. Selected %s watches are updated on the next sync.', $brand, $brand ) . $held, '' === $held ? 'success' : 'warning' );
+	}
+
+	/**
+	 * Notice text for the watches the last brand enable kept paused ('' when none).
+	 */
+	private static function held_message() {
+		$held = URME_SS_Settings::held_on_enable();
+		return $held ? sprintf( ' Kept paused because local URME stock exists (%d): %s. Supplier stock and cost were not written; use Local first for these watches.', count( $held ), implode( ', ', $held ) ) : '';
 	}
 
 	/**

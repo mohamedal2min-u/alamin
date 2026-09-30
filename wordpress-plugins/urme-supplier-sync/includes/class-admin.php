@@ -41,9 +41,7 @@ class URME_SS_Admin {
 	}
 
 	public static function menu() {
-		$pending = URME_SS_Price_Review::pending_count();
-		$badge   = $pending ? sprintf( ' <span class="awaiting-mod count-%1$d"><span class="pending-count">%1$d</span></span>', $pending ) : '';
-		add_submenu_page( 'woocommerce', 'Supplier Sync', 'Supplier Sync' . $badge, self::CAP, self::SLUG, array( __CLASS__, 'render' ) );
+		add_submenu_page( 'woocommerce', 'Supplier Sync', 'Supplier Sync', self::CAP, self::SLUG, array( __CLASS__, 'render' ) );
 	}
 
 	public static function action_links( $links ) {
@@ -193,11 +191,6 @@ class URME_SS_Admin {
 			case 'select':
 				$keys = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['item_keys'] ?? array() ) );
 				self::notice_result( self::select_items( $keys ) );
-				break;
-
-			case 'review_done':
-				$ok = URME_SS_Price_Review::mark_reviewed( absint( $_POST['review_id'] ?? 0 ) );
-				self::notice( $ok ? 'Marked as reviewed. The selling price was not changed by the plugin.' : 'Already reviewed.' );
 				break;
 
 			case 'toggle_brand':
@@ -663,16 +656,9 @@ class URME_SS_Admin {
 		$tab  = sanitize_key( $_GET['tab'] ?? 'catalog' );
 		$tabs = array(
 			'catalog'  => 'Supplier catalog',
-			'reviews'  => 'Price Review',
 			'status'   => 'Status & log',
 			'settings' => 'Settings',
 		);
-		$pending = URME_SS_Price_Review::pending_count();
-		if ( $pending ) {
-			$tabs['reviews'] .= sprintf( ' (%d)', $pending );
-		} elseif ( ! URME_SS_Price_Review::has_any() ) {
-			unset( $tabs['reviews'] ); // Reviews come only from the old automatic switch (before 1.5.2).
-		}
 		if ( ! isset( $tabs[ $tab ] ) ) {
 			$tab = 'catalog';
 		}
@@ -1289,64 +1275,6 @@ class URME_SS_Admin {
 		return $parent ? $parent : $product_id;
 	}
 
-	/* --- Selected tab --------------------------------------------------- */
-
-	/* --- Price Review tab ----------------------------------------------- */
-
-	private static function render_reviews() {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$show = 'all' === sanitize_key( $_GET['show'] ?? '' ) ? 'all' : URME_SS_Price_Review::PENDING;
-		$rows = URME_SS_Price_Review::rows( $show );
-		URME_SS_Store::prime_products( wp_list_pluck( $rows, 'product_id' ) ); // One load for all rows, not one per row.
-		printf(
-			'<p>Watches that switched automatically from URME Lager to Dropshipping. Check the selling price; the plugin never changes it. <a href="%s">%s</a></p>',
-			esc_url( self::url( array( 'tab' => 'reviews', 'show' => 'all' === $show ? '' : 'all' ) ) ),
-			'all' === $show ? 'Show only those needing review' : 'Show reviewed too'
-		);
-		?>
-		<table class="widefat striped urme-table">
-			<thead><tr>
-				<th>Product</th><th>SKU</th><th>Transition date</th><th class="num">Supplier stock</th>
-				<th class="num">Supplier cost EUR</th><th class="num">Supplier cost SEK</th><th class="num">Previous local cost</th>
-				<th class="num">Current selling price</th><th>Status</th><th></th>
-			</tr></thead>
-			<tbody>
-			<?php if ( ! $rows ) : ?>
-				<tr><td colspan="10"><?php echo esc_html( 'all' === $show ? 'No price reviews yet.' : 'Nothing waiting for price review.' ); ?></td></tr>
-			<?php endif; ?>
-			<?php foreach ( $rows as $r ) : ?>
-				<?php $v = URME_SS_Price_Review::view( $r ); ?>
-				<tr>
-					<td><?php echo $v['edit'] ? '<a href="' . esc_url( $v['edit'] ) . '">' . esc_html( $v['name'] ) . '</a>' : esc_html( $v['name'] ); ?></td>
-					<td><code><?php echo esc_html( '' !== $v['sku'] ? $v['sku'] : '—' ); ?></code></td>
-					<td><?php echo esc_html( $v['when'] ); ?></td>
-					<td class="num"><?php echo esc_html( null === $v['stock'] ? '—' : (string) $v['stock'] ); ?></td>
-					<td class="num"><?php echo esc_html( self::eur( $v['eur'] ) ); ?></td>
-					<td class="num"><?php echo esc_html( self::sek( $v['sek'] ) ); ?></td>
-					<td class="num"><?php echo esc_html( self::sek( $v['local_cost'] ) ); ?></td>
-					<td class="num"><?php echo esc_html( URME_SS_Price_Review::price_text( $v ) ); ?></td>
-					<td>
-						<?php
-						echo URME_SS_Price_Review::PENDING === $r['status'] // phpcs:ignore WordPress.Security.EscapeOutput
-							? self::status_badge( 'review', 'Needs review' )
-							: self::status_badge( 'exists', 'Reviewed' ) . '<br><small>' . esc_html( self::mysql_datetime( $r['reviewed_at'] ) ) . '</small>';
-						?>
-					</td>
-					<td>
-						<?php if ( $v['edit'] ) : ?><a class="button button-primary button-small" href="<?php echo esc_url( $v['edit'] ); ?>">Review price</a><?php endif; ?>
-						<?php
-						if ( URME_SS_Price_Review::PENDING === $r['status'] ) {
-							echo URME_SS_Price_Review::reviewed_button( (int) $r['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-						}
-						?>
-					</td>
-				</tr>
-			<?php endforeach; ?>
-			</tbody>
-		</table>
-		<?php
-	}
-
 	/* --- Status tab ----------------------------------------------------- */
 
 	private static function render_status() {
@@ -1398,9 +1326,6 @@ class URME_SS_Admin {
 				<tr><th>Unmatched (not linked)</th><td><?php echo esc_html( $sync['unmatched'] ?? 0 ); ?></td></tr>
 				<tr><th>Missing from supplier feed</th><td><?php echo esc_html( $sync['missing'] ?? 0 ); ?></td></tr>
 				<tr><th>In disabled brands (not processed)</th><td><?php echo esc_html( $sync['brand_off'] ?? 0 ); ?></td></tr>
-				<tr><th>URME Lager (stock above 0, not synced)</th><td><?php echo esc_html( $sync['local_waiting'] ?? 0 ); ?></td></tr>
-				<tr><th>URME Lager → Dropshipping switches</th><td><?php echo esc_html( $sync['handovers'] ?? 0 ); ?></td></tr>
-				<tr class="<?php echo empty( $sync['local_blocked'] ) ? '' : 'urme-error-row'; ?>"><th>URME Lager on hold (backorders allowed)</th><td><?php echo esc_html( $sync['local_blocked'] ?? 0 ); ?></td></tr>
 				<tr class="<?php echo empty( $sync['errors'] ) ? '' : 'urme-error-row'; ?>"><th>Errors</th><td><?php echo esc_html( $sync['errors'] ?? 0 ); ?>
 					<?php foreach ( (array) ( $sync['error_list'] ?? array() ) as $err ) : ?>
 						<br><small><?php echo esc_html( $err ); ?></small>

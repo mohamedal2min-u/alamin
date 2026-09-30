@@ -35,7 +35,7 @@ class URME_SS_Plugin {
 			add_action(
 				'admin_notices',
 				static function () {
-					printf( '<div class="notice notice-error"><p>URME Supplier Sync: the database upgrade to 1.1.0 is incomplete (missing %s). Local first is unavailable; the upgrade is retried automatically. Check WooCommerce > Status > Logs (urme-supplier-sync).</p></div>', esc_html( get_option( 'urme_ss_schema_error' ) ) );
+					printf( '<div class="notice notice-error"><p>URME Supplier Sync: the database upgrade to 1.1.0 is incomplete (missing %s). Order fulfillment labels are unavailable; the upgrade is retried automatically. Check WooCommerce > Status > Logs (urme-supplier-sync).</p></div>', esc_html( get_option( 'urme_ss_schema_error' ) ) );
 				}
 			);
 		}
@@ -43,9 +43,7 @@ class URME_SS_Plugin {
 			URME_SS_Admin::init();
 			// Admin-only "URME Lager / Dropshipping" labels on orders; never registered on the front end or REST.
 			URME_SS_Fulfillment::init();
-			// Admin-only "Price review required" notices.
-			URME_SS_Price_Review::init();
-			// Admin-only Fulfillment column (URME Lager / Dropshipping / Local first / Paused) on WooCommerce > Products.
+			// Admin-only Fulfillment column (D = Dropshipping / U = URME Lager) on WooCommerce > Products.
 			URME_SS_Product_Source::init();
 		}
 		// 1.5.2: URME Lager watches are no longer kept in supplier sync (once).

@@ -281,7 +281,7 @@ class URME_SS_Fulfillment {
 			self::MIXED    => array( 'Mixed', 'Mixed fulfillment', 'dashicons-randomize' ),
 			self::LEGACY   => array( 'Unknown / Legacy order', 'Unknown / Legacy order', 'dashicons-backup' ),
 			self::PENDING  => array( 'Not allocated yet', 'Not allocated yet (stock not taken)', 'dashicons-clock' ),
-			self::UNTRACK  => array( 'Not tracked', 'Not tracked (no supplier-linked watches)', 'dashicons-minus' ),
+			self::UNTRACK  => array( 'Not tracked', 'Not tracked (no stock taken yet, or placed before 1.6.0)', 'dashicons-minus' ),
 		);
 	}
 

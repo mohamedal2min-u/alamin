@@ -1,7 +1,8 @@
 <?php
 /**
- * 1.1.0: admin-only fulfilment source (URME Lager / Dropshipping / Mixed) and price reviews.
- * Included after local-first.php; uses its helpers.
+ * Admin-only fulfilment source per order line and order (URME Lager / Dropshipping / Mixed),
+ * frozen at sale time. 1.6.0: every product line is booked (Dropshipping if the watch is
+ * Dropshipping when its stock is taken, else URME Lager). Included after helpers-orders.php.
  */
 
 global $wpdb;
@@ -48,20 +49,11 @@ function ff_column_html( $order ) {
 function ff_text( $html ) {
 	return trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( $html ) ) );
 }
-function pr_rows( $link_id ) {
-	global $wpdb;
-	return $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . URME_SS_Price_Review::table() . ' WHERE link_id = %d ORDER BY id', $link_id ), ARRAY_A );
-}
-function pr_notice_html() {
-	return ff_admin_html(
-		static function () {
-			do_action( 'admin_notices' );
-		}
-	);
-}
 // Admin hooks are only registered in wp-admin; WP-CLI is not wp-admin, so register them once here.
 URME_SS_Fulfillment::init();
-URME_SS_Price_Review::init();
+cogs( true );
+settings( array( 'cost_target' => 'wc_cogs', 'enabled_brands' => array( 'Seiko', 'Tissot', 'Guess' ), 'rate_override' => '' ) );
+mode( 'ok' );
 
 /* ------------------------------------------------------------ fulfilment */
 section( 'FF1–3. Admin shows URME Lager / Dropshipping / Mixed per line and per order' );
@@ -69,28 +61,32 @@ $GLOBALS['LF_SET']['REF000090'] = array( 'STOCK' => '6', 'PURCHASE_PRICE' => '15
 $GLOBALS['LF_SET']['REF000096'] = array( 'STOCK' => '6', 'PURCHASE_PRICE' => '150.00' );
 lf_feed();
 run( array( 'force_feed' => true ) );
-$FL = lf_product( 'FF local', 'REF000090', 3, 800 );
-$fl = lf_select( 90 );
-URME_SS_Inventory::enable_local( (int) $fl['id'], 3, 800 );
+$FL = lf_product( 'FF local', 'REF000090', 3, 800 );  // URME Lager: not in supplier sync.
 $FD = lf_product( 'FF dropship', 'REF000096', 6, null );
-lf_legacy_select( 96 ); // Supplier now with stock 6 (the supplier's).
+lf_legacy_select( 96 ); // Dropshipping (supplier stock 6).
+ok( null === lf_link( 90 ) && 'supplier' === lf_link( 96 )['stock_mode'], '   (setup: REF000090 URME Lager with 3, REF000096 Dropshipping)' );
 
 $o_local = lf_order( $FL, 1 );
 $t       = ff_text( ff_line_html( $o_local ) );
-ok( false !== strpos( $t, 'URME Lager' ) && false !== strpos( $t, 'URME Lager: 1' ) && false === strpos( $t, 'Dropshipping' ), '1. local sale: line shows URME Lager: 1', $t );
+ok( false !== strpos( $t, 'URME Lager' ) && false !== strpos( $t, 'URME Lager: 1' ) && false === strpos( $t, 'Dropshipping' ), '1. sale of a URME Lager watch: line shows URME Lager: 1', $t );
 ok( false !== strpos( ff_text( ff_order_html( $o_local ) ), 'URME stock only' ), '   order summary: URME stock only', ff_text( ff_order_html( $o_local ) ) );
 ok( 'URME Lager' === ff_text( ff_column_html( $o_local ) ), '   orders list column: URME Lager', ff_text( ff_column_html( $o_local ) ) );
 
 $o_drop = lf_order( $FD, 2 );
 $t      = ff_text( ff_line_html( $o_drop ) );
-ok( false !== strpos( $t, 'Dropshipping: 2' ) && false === strpos( $t, 'URME Lager' ), '2. supplier sale: line shows Dropshipping: 2', $t );
+ok( false !== strpos( $t, 'Dropshipping: 2' ) && false === strpos( $t, 'URME Lager' ), '2. sale of a Dropshipping watch: line shows Dropshipping: 2', $t );
 ok( false !== strpos( ff_text( ff_order_html( $o_drop ) ), 'Dropshipping required' ) && 'Dropshipping' === ff_text( ff_column_html( $o_drop ) ), '   order summary + column: Dropshipping', ff_text( ff_order_html( $o_drop ) ) );
 
-// Mixed line: 2 local units left, order of 3 (programmatic, as an admin-created order could).
-$o_mixed = lf_order( $FL, 3 );
+// Mixed order: one URME Lager line and one Dropshipping line.
+$o_mixed = wc_create_order();
+$o_mixed->add_product( wc_get_product( $FL ), 2 );
+$o_mixed->add_product( wc_get_product( $FD ), 1 );
+$o_mixed->calculate_totals();
+$o_mixed->save();
+$o_mixed->update_status( 'processing' );
+$o_mixed = wc_get_order( $o_mixed->get_id() );
 $t       = ff_text( ff_line_html( $o_mixed ) );
-ok( false !== strpos( $t, 'Mixed' ) && false !== strpos( $t, 'URME Lager: 2' ) && false !== strpos( $t, 'Dropshipping: 1' ), '3. mixed line: Mixed, URME Lager: 2 · Dropshipping: 1', $t );
-ok( false !== strpos( ff_text( ff_order_html( $o_mixed ) ), 'Mixed fulfillment' ) && 'Mixed' === ff_text( ff_column_html( $o_mixed ) ), '   order summary + column: Mixed' );
+ok( false !== strpos( $t, 'URME Lager: 2' ) && false !== strpos( ff_text( ff_order_html( $o_mixed ) ), 'Mixed fulfillment' ) && 'Mixed' === ff_text( ff_column_html( $o_mixed ) ), '3. order with a URME Lager and a Dropshipping line: Mixed', ff_text( ff_order_html( $o_mixed ) ) );
 
 // Orders list filter.
 $ids = URME_SS_Fulfillment::order_ids( 'local' );
@@ -120,7 +116,7 @@ ok( false !== strpos( $t, 'URME Lager: 1' ) && false !== strpos( $t, '1 returned
 ok( 'URME Lager' === ff_text( ff_column_html( $o_local ) ), '   column unchanged' );
 lf_refund( $o_mixed, 2 );
 $t = ff_text( ff_line_html( $o_mixed ) );
-ok( false !== strpos( $t, 'URME Lager: 2' ) && false !== strpos( $t, 'Dropshipping: 1' ) && false !== strpos( $t, '2 returned/restocked: 2 URME Lager, 0 Dropshipping' ), 'refund with restock of mixed line: source kept, returns shown (local first)', $t );
+ok( false !== strpos( $t, 'URME Lager: 2' ) && false !== strpos( $t, '2 returned/restocked: 2 URME Lager, 0 Dropshipping' ) && 'Mixed' === ff_text( ff_column_html( $o_mixed ) ), 'refund with restock of the URME Lager line of a Mixed order: source kept, returns shown, order still Mixed', $t );
 lf_refund( $o_drop, 1 );
 ok( false !== strpos( ff_text( ff_line_html( $o_drop ) ), 'Dropshipping: 2' ) && false !== strpos( ff_text( ff_line_html( $o_drop ) ), '1 returned/restocked: 0 URME Lager, 1 Dropshipping' ), 'refund of dropship unit: still Dropshipping: 2' );
 
@@ -139,9 +135,11 @@ $o_plain->add_product( wc_get_product( $P8 ), 1 ); // P8 is not linked to the su
 $o_plain->set_date_created( '2023-05-01 09:00:00' );
 $o_plain->save();
 $o_plain->update_status( 'processing' );
-ok( 'Unknown / Legacy order' === ff_text( ff_column_html( $o_plain ) ) && '' === ff_text( ff_line_html( $o_plain ) ), 'legacy order without supplier watches: neutral status, no line label' );
+ok( 'Unknown / Legacy order' === ff_text( ff_column_html( $o_plain ) ), 'legacy order of a URME Lager watch: Unknown / Legacy order (never guessed)' );
 $o_new_plain = lf_order( $P8, 1 );
-ok( '–' === ff_text( ff_column_html( $o_new_plain ) ), 'new order without supplier watches: no fulfilment label' );
+ok( 'URME Lager' === ff_text( ff_column_html( $o_new_plain ) ), '(1.6.0) new order of a watch not in supplier sync: URME Lager (was "Not tracked")' );
+$o_unpaid = lf_order( $P8, 1, 'pending' );
+ok( '–' === ff_text( ff_column_html( $o_unpaid ) ) && ! lf_alloc( lf_line( $o_unpaid )->get_id() ), '   unpaid order (no stock taken yet): no label and no ledger row' );
 
 /* ------------------------------------------------ orders list performance */
 section( 'FF-P. Orders list: fulfilment data loaded in bulk, zero queries per row' );
@@ -151,8 +149,6 @@ $FP = lf_product( 'FF perf local', 'REF000114', 200, 500 );
 $GLOBALS['LF_SET']['REF000114'] = array( 'STOCK' => '9', 'PURCHASE_PRICE' => '80.00' );
 lf_feed();
 run( array( 'force_feed' => true ) );
-$fp = lf_select( 114 );
-URME_SS_Inventory::enable_local( (int) $fp['id'], 200, 500 );
 for ( $k = 0; $k < 110; $k++ ) {
 	$kind = $k % 5;
 	if ( 4 === $kind ) {
@@ -170,7 +166,7 @@ for ( $k = 0; $k < 110; $k++ ) {
 		$o->save();
 		$o->update_status( 'processing' );
 	} else {
-		$o = lf_order( array( $FP, $FD, $P8 )[ $kind ], 1 ); // URME Lager / Dropshipping / untracked.
+		$o = lf_order( array( $FP, $FD, $P8 )[ $kind ], 1, 2 === $kind ? 'pending' : 'processing' ); // URME Lager / Dropshipping / untracked (unpaid).
 		if ( 106 === $k ) {
 			// A refunded order on the first page: HPOS then runs a nested refund query inside the list query.
 			wc_create_refund( array( 'order_id' => $o->get_id(), 'amount' => 1 ) );
@@ -251,85 +247,42 @@ ok( 'dropship' === $full && URME_SS_Fulfillment::list_status( $o->get_id(), $o->
 remove_filter( 'pre_http_request', $count_http );
 ok( 0 === $http, 'no HTTP (feed) request while rendering the orders list', $http );
 
-/* ---------------------------------------------------------- price review */
-section( 'PR1–3. Automatic Local → Supplier creates exactly one price review' );
+section( 'FF9. 1.6.0 ledger: frozen at sale time, booked once' );
+$FS = lf_product( 'FF switch later', 'REF000102', 2, 700 ); // URME Lager with 2…
 $GLOBALS['LF_SET']['REF000102'] = array( 'STOCK' => '7', 'PURCHASE_PRICE' => '210.00' );
 lf_feed();
 run( array( 'force_feed' => true ) );
-$PR = lf_product( 'Price review watch', 'REF000102', 1, 1200 );
-$pr = lf_select( 102 );
-URME_SS_Inventory::enable_local( (int) $pr['id'], 1, 1200 );
-$price_before = array( p( $PR )->get_regular_price(), p( $PR )->get_sale_price() );
-ok( array() === pr_rows( $pr['id'] ), 'no review while in Local first' );
-$o_pr = lf_order( $PR, 1 );
-ok( array() === pr_rows( $pr['id'] ), 'no review yet when local reaches 0 (switch waits for a safe sync)' );
-run();
-$rows = pr_rows( $pr['id'] );
-ok( 1 === count( $rows ) && 'pending' === $rows[0]['status'] && 'supplier' === lf_link( 102 )['stock_mode'], '1. switched → exactly one pending price review', $rows );
-ok( 1 === lf_log_count( 'Price review required: SKU REF000102' ), '   transition and review logged' );
-run();
-do_action( URME_SS_Plugin::CRON_HOOK );
-ok( 1 === count( pr_rows( $pr['id'] ) ), '2. next syncs/cron: no duplicate' );
-$html = pr_notice_html();
-$t    = ff_text( $html );
-$sek  = number_format_i18n( round( 210 * lf_rate(), 2 ), 2 );
-ok( false !== strpos( $t, 'Price review required: SKU REF000102 has switched to Dropshipping.' ), '3. notice headline with SKU', $t );
-ok( false !== strpos( $t, 'Price review watch' ) && false !== strpos( $html, 'post.php?post=' . $PR ), '   product name + edit link' );
-ok( false !== strpos( $t, 'Supplier stock: 7' ) && false !== strpos( $t, '€210.00' ) && false !== strpos( $t, $sek . ' kr' ), '   supplier stock, EUR and SEK cost', $t );
-ok( false !== strpos( $t, 'Previous local cost: 1,200.00 kr' ) && false !== strpos( $t, 'Current price: 4,490.00 kr (sale; regular 4,990.00 kr)' ), '   previous local cost and current selling price', $t );
-ok( false !== strpos( $t, 'Switched ' . wp_date( 'Y-m-d' ) ) && false !== strpos( $t, 'Review price' ) && false !== strpos( $t, 'Mark as reviewed' ), '   transition date, Review price + Mark as reviewed buttons' );
-ok( false === strpos( $html, 'is-dismissible' ), '   not dismissible with ×; stays until marked as reviewed' );
-ok( URME_SS_Price_Review::pending_count() >= 1, '   pending count for the menu badge / tab' );
+$o_before = lf_order( $FS, 2 );                            // …both sold as URME Lager…
+ok( 0 === lf_stock( $FS ) && 'success' === admin( 'run_row_action', 'start_supplier|' . key_of( 102 ) )[1], '   (setup: 2 URME Lager units sold, then Dropshipping started at stock 0)' );
+$o_after = lf_order( $FS, 1 );                             // …then one sold as Dropshipping.
+ok( 'URME Lager' === ff_text( ff_column_html( $o_before ) ) && 'Dropshipping' === ff_text( ff_column_html( $o_after ) ), 'the old order stays URME Lager; the new one is Dropshipping' );
+$line = lf_line( $o_after );
+$row0 = lf_alloc( $line->get_id() );
+$line->save();
+$line->save();
+URME_SS_Inventory::reconcile_item( $line->get_id() );
+ok( lf_alloc( $line->get_id() ) === $row0 && 1 === (int) $row0['src_supplier'] && 0 === (int) $row0['src_local'], 'repeated saves and reconciles book nothing twice', $row0 );
+$o_before = wc_get_order( $o_before->get_id() );
+$item     = lf_line( $o_before );
+$item->set_quantity( 1 ); // Admin lowers the quantity 2 → 1.
+wc_maybe_adjust_line_item_product_stock( $item, 1 );
+$item->save();
+$ra = lf_alloc( $item->get_id() );
+ok( 1 === (int) $ra['ret_local'] && 2 === (int) $ra['src_local'] && 'URME Lager' === ff_text( ff_column_html( $o_before ) ), 'admin lowers the quantity 2 → 1: 1 URME Lager unit returned, label kept', $ra );
+$q0 = $wpdb->num_queries;
+$o_q = lf_order( $P8, 1 );
+ok( lf_alloc( lf_line( $o_q )->get_id() ) && 'URME Lager' === ff_text( ff_column_html( $o_q ) ), sprintf( '   a checkout with one line: booked (%d queries for the whole order incl. WooCommerce)', $wpdb->num_queries - $q0 ) );
 
-section( 'PR4. Marking as reviewed removes it from pending' );
-$pending_before = URME_SS_Price_Review::pending_count();
-wp_set_current_user( $GLOBALS['FF_ADMIN'] );
-URME_SS_Price_Review::mark_reviewed( (int) $rows[0]['id'] );
-$rows = pr_rows( $pr['id'] );
-ok( 'reviewed' === $rows[0]['status'] && null !== $rows[0]['reviewed_at'] && (int) $rows[0]['reviewed_by'] === (int) $GLOBALS['FF_ADMIN'], 'status Reviewed, time and user recorded' );
-ok( URME_SS_Price_Review::pending_count() === $pending_before - 1 && false === strpos( ff_text( pr_notice_html() ), 'SKU REF000102' ), 'gone from pending and from the dashboard notice' );
-ok( false === URME_SS_Price_Review::mark_reviewed( (int) $rows[0]['id'] ), 'marking again is a no-op' );
-run();
-ok( 1 === count( pr_rows( $pr['id'] ) ) && 'reviewed' === pr_rows( $pr['id'] )[0]['status'], 'not shown again after later syncs' );
-
-section( 'PR5. Local unit returned after the switch: stays Dropshipping, no new review (1.5.2)' );
-lf_refund( $o_pr, 1 );
-ok( 'supplier' === lf_link( 102 )['stock_mode'], 'local unit returned → still Dropshipping' );
-run();
-$rows = pr_rows( $pr['id'] );
-ok( 1 === count( $rows ) && 'reviewed' === $rows[0]['status'], 'no second transition, no new review', $rows );
-
-section( 'PR-A. Switch and review are atomic' );
-$PA = lf_product( 'Price review atomic', 'REF000108', 1, 700 );
-$GLOBALS['LF_SET']['REF000108'] = array( 'STOCK' => '3', 'PURCHASE_PRICE' => '90.00' );
-lf_feed();
-run( array( 'force_feed' => true ) );
-$pa = lf_select( 108 );
-URME_SS_Inventory::enable_local( (int) $pa['id'], 1, 700 );
-lf_order( $PA, 1 );
-$boom = static function ( $stage ) {
-	if ( 'handover_switched' === $stage ) {
-		throw new RuntimeException( 'crash between switch and review' );
-	}
-};
-add_action( 'urme_ss_inventory_checkpoint', $boom );
-run();
-remove_action( 'urme_ss_inventory_checkpoint', $boom );
-ok( 'local_first' === lf_link( 108 )['stock_mode'] && array() === pr_rows( $pa['id'] ) && 0 === lf_stock( $PA ), 'crash after the switch: switch rolled back, no review, no writes' );
-run();
-ok( 'supplier' === lf_link( 108 )['stock_mode'] && 1 === count( pr_rows( $pa['id'] ) ) && 3 === lf_stock( $PA ), 'next safe sync: switched once with exactly one review' );
-
-section( 'PR8. Selling price and sale price never changed' );
-ok( array( p( $PR )->get_regular_price(), p( $PR )->get_sale_price() ) === $price_before && array( '4990', '4490' ) === $price_before, 'regular 4990 / sale 4490 unchanged through two switches and returns' );
+section( 'FF8. Selling price and sale price never changed' );
 $all_prices = array();
-foreach ( array( $FL, $FD, $PA, $L1 ) as $pid ) {
+foreach ( array( $FL, $FD, $FP ) as $pid ) {
 	$all_prices[ $pid ] = array( p( $pid )->get_regular_price(), p( $pid )->get_sale_price() );
 }
-ok( ! array_filter( $all_prices, static function ( $pp ) { return array( '4990', '4490' ) !== $pp; } ), 'all Local first test products keep regular/sale price', $all_prices );
-ok( '4990' === pr_rows( $pr['id'] )[0]['regular_price'] && '4490' === pr_rows( $pr['id'] )[0]['sale_price'], 'review stores the price it saw (read-only snapshot)' );
+ok( ! array_filter( $all_prices, static function ( $pp ) { return array( '4990', '4490' ) !== $pp; } ), 'regular/sale prices of every test product unchanged by sales, returns and syncs', $all_prices );
+ok( ! class_exists( 'URME_SS_Price_Review' ) && ! is_file( URME_SS_DIR . 'includes/class-price-review.php' ), '(1.6.0) Price Review removed (no class, no file)' );
 
 /* --------------------------------------------------------------- privacy */
-section( 'FF6 / PR7. Nothing reaches customers' );
+section( 'FF6. Nothing reaches customers' );
 $customer = wp_insert_user(
 	array(
 		'user_login' => 'ffcust' . wp_rand(),
@@ -392,7 +345,6 @@ do_action( 'woocommerce_thankyou', $o_c->get_id() );
 $front = ob_get_clean();
 ok( false !== strpos( $front, 'FF dropship' ) && ! $leaks( $front ), 'My Account + thank-you page: product shown, no internal source', $leaks( $front ) );
 ob_start();
-URME_SS_Price_Review::render_notice();
 URME_SS_Fulfillment::render_line( lf_line( $o_c )->get_id(), lf_line( $o_c ) );
 URME_SS_Fulfillment::render_order( wc_get_order( $o_c->get_id() ) );
 URME_SS_Fulfillment::render_column( 'urme_fulfillment', wc_get_order( $o_c->get_id() ) );

@@ -29,6 +29,14 @@ class URME_SS_DB {
 		return $wpdb->prefix . 'urme_ss_alloc';
 	}
 
+	/**
+	 * Price reviews of versions 1.1.0–1.5.1 (the feature was removed in 1.6.0; the table is kept).
+	 */
+	public static function reviews_table() {
+		global $wpdb;
+		return $wpdb->prefix . 'urme_ss_price_reviews';
+	}
+
 	public static function install() {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -122,8 +130,8 @@ class URME_SS_DB {
 ) {$charset};"
 		);
 
-		// Admin-only price reviews after an automatic Local first → Supplier switch.
-		$reviews = URME_SS_Price_Review::table();
+		// Price reviews of versions 1.1.0–1.5.1 (feature removed in 1.6.0; the table is kept).
+		$reviews = self::reviews_table();
 		dbDelta(
 			"CREATE TABLE {$reviews} (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -153,7 +161,7 @@ class URME_SS_DB {
 		$missing = self::missing_columns();
 		if ( $missing ) {
 			update_option( 'urme_ss_schema_error', implode( ', ', $missing ), false );
-			URME_SS_Log::error( 'Database upgrade incomplete, missing: ' . implode( ', ', $missing ) . '. Local first is unavailable until this is fixed; the upgrade is retried on every load.' );
+			URME_SS_Log::error( 'Database upgrade incomplete, missing: ' . implode( ', ', $missing ) . '. Order fulfillment labels are unavailable until this is fixed; the upgrade is retried on every load.' );
 			return;
 		}
 		delete_option( 'urme_ss_schema_error' );
@@ -174,7 +182,7 @@ class URME_SS_DB {
 		$expected = array(
 			self::links_table() => array( 'stock_mode', 'local_qty', 'local_cost', 'needs_stock_apply', 'mode_changed_at', 'mode_note' ),
 			self::alloc_table() => array( 'order_item_id', 'order_id', 'link_id', 'product_id', 'last_reduced_stock', 'local_allocated', 'supplier_allocated', 'src_local', 'src_supplier', 'ret_local', 'ret_supplier', 'origin', 'created_at', 'updated_at' ),
-			URME_SS_Price_Review::table() => array( 'id', 'link_id', 'product_id', 'item_key', 'sku', 'transitioned_at', 'local_cost', 'supplier_cost_eur', 'supplier_cost_sek', 'supplier_stock', 'regular_price', 'sale_price', 'status', 'reviewed_at', 'reviewed_by' ),
+			self::reviews_table() => array( 'id', 'link_id', 'product_id', 'item_key', 'sku', 'transitioned_at', 'local_cost', 'supplier_cost_eur', 'supplier_cost_sek', 'supplier_stock', 'regular_price', 'sale_price', 'status', 'reviewed_at', 'reviewed_by' ),
 		);
 		$missing  = array();
 		foreach ( $expected as $table => $columns ) {
@@ -207,49 +215,12 @@ class URME_SS_DB {
 	}
 
 	/* ---------------------------------------------------------------------
-	 * Transactions (used by the local-inventory ledger)
+	 * Database engine
 	 * ------------------------------------------------------------------- */
 
 	public static function is_sqlite() {
 		global $wpdb;
 		return ( defined( 'DB_ENGINE' ) && 'sqlite' === DB_ENGINE ) || ( class_exists( 'WP_SQLite_DB' ) && $wpdb instanceof WP_SQLite_DB );
-	}
-
-	/**
-	 * Row lock suffix for SELECTs inside a transaction (SQLite locks the whole database instead).
-	 */
-	public static function lock_clause() {
-		return self::is_sqlite() ? '' : ' FOR UPDATE';
-	}
-
-	/**
-	 * Start a transaction, or a savepoint if another plugin already opened one
-	 * (a plain START TRANSACTION would silently commit theirs).
-	 *
-	 * @return string|false Handle for commit()/rollback(), false on failure.
-	 */
-	public static function begin() {
-		global $wpdb;
-		$nested = false;
-		if ( ! self::is_sqlite() ) {
-			$suppress = $wpdb->suppress_errors( true );
-			$nested   = '1' === (string) $wpdb->get_var( 'SELECT @@in_transaction' ); // MariaDB; MySQL returns an error = not nested.
-			$wpdb->suppress_errors( $suppress );
-		}
-		if ( $nested ) {
-			return false === $wpdb->query( 'SAVEPOINT urme_ss' ) ? false : 'savepoint';
-		}
-		return false === $wpdb->query( 'START TRANSACTION' ) ? false : 'transaction';
-	}
-
-	public static function commit( $handle ) {
-		global $wpdb;
-		return false !== $wpdb->query( 'savepoint' === $handle ? 'RELEASE SAVEPOINT urme_ss' : 'COMMIT' );
-	}
-
-	public static function rollback( $handle ) {
-		global $wpdb;
-		$wpdb->query( 'savepoint' === $handle ? 'ROLLBACK TO SAVEPOINT urme_ss' : 'ROLLBACK' );
 	}
 
 	public static function maybe_upgrade() {

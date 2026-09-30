@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.5.7
+Stable tag: 1.6.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -106,7 +106,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.7.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.6.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -154,31 +154,23 @@ Nothing is selected, linked or changed in WooCommerce because a watch is new.
 * "URME Lager" on a Dropshipping row: removed from supplier sync, stock 0 / out of stock until you
   enter the real stock.
 
-Every order line of a supplier-linked product is booked in a ledger table (urme_ss_alloc) as local
-or supplier units, so orders can be labeled (see below). A returned unit on a Dropshipping watch
-does not change its state; use "URME Lager" if it should be sold from URME's own stock.
+Every order line is booked in a small ledger table (urme_ss_alloc) when WooCommerce takes its
+stock: Dropshipping if the watch is Dropshipping at that moment, otherwise URME Lager, so orders
+can be labeled (see below). A returned unit does not change the watch's state; use "URME Lager"
+if a Dropshipping watch should be sold from URME's own stock.
 
 == Fulfillment source (admin only) ==
 
-Each order line of a supplier-linked watch shows, on the order edit screen only:
-URME Lager (own stock), Dropshipping (supplier) or Mixed, with the unit counts. The order shows
+Each order line shows, on the order edit screen only: URME Lager (own stock) or Dropshipping
+(supplier), with the unit counts; an order with both is Mixed. The order shows
 a summary (URME stock only / Dropshipping required / Mixed fulfillment), and WooCommerce > Orders
 gets a Fulfillment column and filter. The source is frozen when stock is taken for the order;
 later supplier changes never alter it, and returns are shown next to it. Orders placed before
-1.1.0 show "Unknown / Legacy order".
+1.1.0 show "Unknown / Legacy order"; lines of watches that were not in supplier sync before 1.6.0
+show "Not tracked", as does an order whose stock has not been taken yet (unpaid).
 
 Nothing is stored on the order (no order or line meta, no order notes), so it cannot appear in
 customer pages, My Account, emails, invoices, packing slips, the REST/Store API or structured data.
-
-== Price review (admin only) ==
-
-When a watch from an earlier version switched automatically from URME Lager to Dropshipping,
-an admin notice "Price review required: SKU … has switched to Dropshipping." appears with the
-product, SKU, previous local cost, supplier cost EUR/SEK, supplier stock, current selling price,
-the switch time, a "Review price" button and "Mark as reviewed". It stays until marked as
-reviewed. Supplier Sync > Price Review lists them (Needs review / Reviewed) with a count badge.
-One switch = one review (created in the same transaction as the switch). Selling prices are
-never changed by the plugin.
 
 == Cost price field ==
 
@@ -221,6 +213,16 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.6.0 =
+* The old "Local first" engine is removed (unused since 1.5.2): local stock counting, automatic
+  switches, crash recovery, transactions and the sweep before each sync. About 900 lines less.
+* Order labels are kept and simpler: every order line is booked when its stock is taken,
+  Dropshipping if the watch is Dropshipping at that moment, otherwise URME Lager. Orders of your
+  own-stock watches now show "URME Lager" instead of "Not tracked".
+* Price Review (tab, notice and menu badge) is removed; it came only from the old automatic
+  switch. Its table is kept and removed on uninstall.
+* No database change; prices, supplier sync, catalog, Quick Edit and gift wrap are unchanged.
 
 = 1.5.7 =
 * Review fixes: a search for a watch of a disabled brand finds it again (the enabled-brands view

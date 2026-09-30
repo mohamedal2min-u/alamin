@@ -48,6 +48,8 @@ class URME_SS_Plugin {
 			// Admin-only Fulfillment column (URME Lager / Dropshipping / Local first / Paused) on WooCommerce > Products.
 			URME_SS_Product_Source::init();
 		}
+		// No gift wrap (ThemeComplete options) for Dropshipping watches: storefront, AJAX add to cart and REST alike.
+		URME_SS_Gift_Wrap::init();
 		// Self-heal the schedule if it was lost (e.g. after a migration).
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
 			self::schedule();

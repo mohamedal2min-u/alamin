@@ -127,6 +127,65 @@ class URME_SS_Product_Source {
 	}
 
 	/**
+	 * Fulfillment state of this exact product or variation (its own link only, not its
+	 * variations'): one small query per request, then served from the same map as the badges.
+	 */
+	public static function product_state( $product_id ) {
+		$product_id = (int) $product_id;
+		if ( ! $product_id ) {
+			return self::LAGER;
+		}
+		if ( ! isset( self::$map[ $product_id ] ) ) {
+			self::prime( array( $product_id ) );
+		}
+		return self::state( self::$map[ $product_id ]['own'] );
+	}
+
+	/**
+	 * The Fulfillment state of these products or variations may have changed: their product pages
+	 * are cleaned from caches through WordPress's own clean_post_cache (which page caches listen
+	 * to), a variation's parent too. Nothing site-wide is purged.
+	 *
+	 * @param int[] $ids Product or variation IDs.
+	 */
+	public static function changed( array $ids ) {
+		self::flush();
+		foreach ( array_unique( array_filter( array_map( 'intval', $ids ) ) ) as $id ) {
+			$post = get_post( $id );
+			if ( ! $post ) {
+				continue;
+			}
+			clean_post_cache( $id );
+			if ( 'product_variation' === $post->post_type && $post->post_parent ) {
+				clean_post_cache( (int) $post->post_parent );
+			}
+		}
+	}
+
+	/**
+	 * Brands turned on or off: the pages of their active Supplier-now products change state
+	 * (Dropshipping / brand sync off); Paused and Local first do not depend on the brand.
+	 *
+	 * @param string[] $brand_keys Upper-cased brands.
+	 */
+	public static function brands_changed( array $brand_keys ) {
+		global $wpdb;
+		if ( ! $brand_keys ) {
+			return;
+		}
+		$ids = array();
+		foreach ( (array) $wpdb->get_results( $wpdb->prepare( 'SELECT l.product_id, c.manufacturer FROM ' . URME_SS_DB::links_table() . ' l INNER JOIN ' . URME_SS_DB::catalog_table() . ' c ON c.item_key = l.item_key WHERE l.product_id > 0 AND l.sync_enabled = 1 AND l.stock_mode <> %s', URME_SS_Inventory::LOCAL ), ARRAY_A ) as $r ) { // phpcs:ignore WordPress.DB
+			if ( in_array( URME_SS_Settings::brand_key( $r['manufacturer'] ), $brand_keys, true ) ) {
+				$ids[] = (int) $r['product_id'];
+			}
+		}
+		if ( $ids ) {
+			_prime_post_caches( $ids, false, false );
+		}
+		self::changed( $ids );
+	}
+
+	/**
 	 * Badge HTML for a product or variation.
 	 */
 	public static function html( $product_id ) {

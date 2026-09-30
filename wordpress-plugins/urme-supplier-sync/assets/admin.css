@@ -17,9 +17,6 @@
 .urme-ss .urme-img-col { width: 64px; }
 .urme-ss .urme-img-col img { width: 56px; height: 56px; object-fit: contain; background: #fff; border: 1px solid #eee; border-radius: 3px; display: block; }
 .urme-ss .urme-noimg { display: block; width: 56px; height: 56px; background: #f0f0f1; border-radius: 3px; }
-.urme-ss .urme-selected .urme-product-col { min-width: 260px; }
-.urme-ss .urme-link-form { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
-.urme-ss .urme-link-form .select2-container { min-width: 200px; }
 .urme-ss .urme-actions form { display: block; margin-bottom: 4px; }
 .urme-ss .urme-inline { display: inline; }
 .urme-ss .urme-good { color: #008a20; font-weight: 600; }
@@ -51,22 +48,28 @@
 .urme-ss .urme-brand-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 16px; max-height: 360px; overflow: auto; padding: 8px; background: #fff; border: 1px solid #dcdcde; }
 .urme-ss .urme-brand-list label { display: block; }
 .urme-ss .urme-badge-local { color: #7a4ec2; }
-.urme-ss .urme-mode-col { min-width: 210px; }
-.urme-ss .urme-mode-facts { margin: 4px 0; }
-.urme-ss .urme-mode-facts li { margin: 0; font-size: 12px; }
-.urme-ss .urme-mode-form { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; }
-.urme-ss .urme-local-fields { display: inline-flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
-.urme-ss .urme-local-fields label { display: inline-flex; align-items: center; gap: 3px; }
-.urme-ss .urme-local-fields input[name=local_cost] { width: 90px; }
 .urme-ss .urme-new { display: inline-block; padding: 0 6px; border-radius: 3px; background: #d63638; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .03em; line-height: 18px; }
 .urme-ss .urme-new-age { color: #b32d2e; }
 .urme-ss .urme-hint-col { min-width: 170px; }
-.urme-ss .urme-hint { font-size: 12px; line-height: 1.5; text-align: left; white-space: nowrap; }
+.urme-ss .urme-hint { font-size: 12px; line-height: 1.45; text-align: left; white-space: nowrap; }
+.urme-ss .urme-hint-detail { color: #646970; font-size: 11px; }
 .urme-ss .urme-stock-col { min-width: 90px; }
 .urme-ss .urme-warn { color: #996800; }
-.urme-ss .urme-price-edit { margin-top: 6px; }
-.urme-ss .urme-price-edit input { width: 80px; }
+.urme-ss .urme-price-edit { margin-top: 8px; padding-top: 6px; border-top: 1px solid #f0f0f1; font-size: 12px; }
+.urme-ss .urme-price-sale { display: flex; align-items: center; gap: 4px; margin-top: 2px; white-space: nowrap; }
+.urme-ss .urme-price-sale label { display: inline-flex; align-items: center; gap: 4px; }
+.urme-ss .urme-price-edit input { width: 72px; min-height: 26px; line-height: 1.4; padding: 0 6px; font-size: 12px; }
 .urme-ss .urme-busy { opacity: .6; }
-.urme-ss .urme-row-msg { margin-top: 4px; font-size: 12px; }
-.urme-ss .urme-row-ok { color: #00701a; font-weight: 600; }
-.urme-ss .urme-row-error { color: #b32d2e; font-weight: 600; }
+.urme-ss .urme-row-msg { margin-top: 4px; font-size: 12px; line-height: 1.4; }
+.urme-ss .urme-row-msg:empty { display: none; }
+.urme-ss .urme-row-ok { color: #00701a; background: #edfaef; border-left: 3px solid #00a32a; padding: 3px 6px; }
+.urme-ss .urme-row-error { color: #b32d2e; background: #fcf0f1; border-left: 3px solid #d63638; padding: 3px 6px; }
+/* Catalog table: top-aligned rows, readable column widths, compact Sync cell. */
+.urme-ss .urme-table tbody td, .urme-ss .urme-table tbody th { vertical-align: top; padding-top: 10px; padding-bottom: 10px; }
+.urme-ss .urme-table tbody th.check-column { padding-top: 14px; }
+.urme-ss .urme-table code { font-size: 12px; white-space: nowrap; }
+.urme-ss .urme-product-col { min-width: 180px; }
+.urme-ss .urme-sync-col { width: 210px; min-width: 210px; }
+.urme-ss .urme-sync-state { font-weight: 600; margin-bottom: 4px; }
+.urme-ss .urme-sync-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.urme-ss .urme-sync-note { margin-top: 4px; font-size: 12px; line-height: 1.4; }

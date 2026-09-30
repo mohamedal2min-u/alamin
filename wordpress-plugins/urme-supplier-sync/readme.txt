@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.5.2
+Stable tag: 1.5.3
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -15,6 +15,9 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 * WooCommerce > Supplier Sync shows every supplier watch with image (loaded from the supplier,
   nothing is added to the Media Library), brand, model (PRODUCTNO), EAN (ITEM_ID), supplier stock,
   cost in EUR and cost in SEK.
+* The Brand filter lists only the brands enabled for sync (Settings > Brands enabled for sync);
+  "All brands" still shows every watch. A brand filtered on from an old link is shown with
+  "– sync off".
 * "In URME" column: whether the watch already exists in the store, found by SKU/PRODUCTNO and
   EAN/ITEM_ID:
   - Exists in URME (one confident match, with a link to the product)
@@ -92,7 +95,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.2.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.5.3.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -207,6 +210,12 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.5.3 =
+* Supplier catalog: the Brand filter lists only brands enabled for sync ("All brands" unchanged).
+* Tidier catalog table: rows aligned to the top, a wider Sync column with the state, its buttons
+  on one line and a compact Regular / Sale price editor; the price-hint breakdown is smaller; a
+  row's success message is shown in a small box and clears itself after a few seconds.
 
 = 1.5.2 =
 * The Selected watches page is removed (also manual linking and automatch). A watch is linked to

@@ -853,7 +853,13 @@ class URME_SS_Admin {
 		$per_page = $f['per_page'] ? (int) $f['per_page'] : 50;
 
 		$result  = URME_SS_DB::search_catalog( array_merge( $f, array( 'page' => $page, 'per_page' => $per_page ) ) );
-		$brands  = URME_SS_DB::brands();
+		// Brand filter: only brands enabled for sync, plus the one filtered on now (e.g. from an old link).
+		$brands  = array_filter(
+			URME_SS_DB::brands(),
+			static function ( $b ) use ( $f ) {
+				return $b['manufacturer'] === $f['brand'] || URME_SS_Settings::brand_enabled( $b['manufacturer'] );
+			}
+		);
 		$rate    = URME_SS_Rates::current();
 		$cats    = URME_SS_Settings::get( 'categories' );
 		$mcounts = URME_SS_DB::match_counts();
@@ -893,7 +899,7 @@ class URME_SS_Admin {
 				<select name="brand">
 					<option value="">All brands</option>
 					<?php foreach ( $brands as $b ) : ?>
-						<option value="<?php echo esc_attr( $b['manufacturer'] ); ?>" <?php selected( $f['brand'], $b['manufacturer'] ); ?>><?php echo esc_html( $b['manufacturer'] . ' (' . (int) $b['n'] . ')' . ( URME_SS_Settings::brand_enabled( $b['manufacturer'] ) ? ' – sync on' : '' ) ); ?></option>
+						<option value="<?php echo esc_attr( $b['manufacturer'] ); ?>" <?php selected( $f['brand'], $b['manufacturer'] ); ?>><?php echo esc_html( $b['manufacturer'] . ' (' . (int) $b['n'] . ')' . ( URME_SS_Settings::brand_enabled( $b['manufacturer'] ) ? '' : ' – sync off' ) ); ?></option>
 					<?php endforeach; ?>
 				</select>
 			</label>
@@ -978,7 +984,7 @@ class URME_SS_Admin {
 					<td class="check-column"><input type="checkbox" class="urme-check-all" aria-label="Select all"></td>
 					<th class="urme-img-col">Image</th>
 					<th>Brand</th>
-					<th>Product</th>
+					<th class="urme-product-col">Product</th>
 					<th>Model / SKU<br><small>PRODUCTNO</small></th>
 					<th>EAN<br><small>ITEM_ID</small></th>
 					<th class="num">Supplier stock</th>
@@ -987,7 +993,7 @@ class URME_SS_Admin {
 					<th class="num">Cost SEK</th>
 					<th class="urme-hint-col">Price hint</th>
 					<th class="urme-match-col">In URME</th>
-					<th>Sync</th>
+					<th class="urme-sync-col">Sync</th>
 				</tr></thead>
 				<tbody>
 				<?php if ( ! $result['rows'] ) : ?>
@@ -1029,7 +1035,7 @@ class URME_SS_Admin {
 			</th>
 			<td class="urme-img-col"><?php echo self::img( $row['img_url'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td><?php echo esc_html( $row['manufacturer'] ); ?></td>
-			<td>
+			<td class="urme-product-col">
 				<?php
 				$age = URME_SS_DB::new_age( $row );
 				if ( null !== $age ) {
@@ -1037,7 +1043,7 @@ class URME_SS_Admin {
 				}
 				echo esc_html( $row['product_name'] );
 				?>
-				<?php if ( $row['subcategory'] ) : ?><br><small><?php echo esc_html( $row['subcategory'] ); ?></small><?php endif; ?>
+				<?php if ( $row['subcategory'] ) : ?><br><small class="urme-muted"><?php echo esc_html( $row['subcategory'] ); ?></small><?php endif; ?>
 				<?php if ( ! (int) $row['in_feed'] ) : ?><br><span class="urme-bad">Not in feed since <?php echo esc_html( self::mysql_datetime( $row['missing_since'] ) ); ?></span><?php endif; ?>
 			</td>
 			<td><code><?php echo esc_html( $row['product_no'] ); ?></code></td>
@@ -1048,31 +1054,46 @@ class URME_SS_Admin {
 			<td class="num"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></td>
 			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $hint ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-			<td>
+			<td class="urme-sync-col">
 				<?php
+				// State on the first line, its buttons on one row below, then the sale price editor.
 				$brand_on = URME_SS_Settings::brand_enabled( $row['manufacturer'] );
+				$buttons  = array();
+				$notes    = array();
 				if ( ! $row['link_id'] ) {
-					echo '<span class="urme-muted">Not selected</span>';
-					echo self::start_control( $row, $stock[ self::urme_product_id( $row ) ] ?? null, $brand_on, URME_SS_Product_Source::is_linked( self::urme_product_id( $row ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+					$state = '<span class="urme-muted">Not selected</span>';
+					$start = self::start_control( $row, $stock[ self::urme_product_id( $row ) ] ?? null, $brand_on, URME_SS_Product_Source::is_linked( self::urme_product_id( $row ) ) );
+					if ( 0 === strpos( $start, '<button' ) ) {
+						$buttons[] = $start;
+					} elseif ( '' !== $start ) {
+						$notes[] = $start;
+					}
 				} elseif ( ! (int) $row['product_id'] ) {
-					echo '<span class="urme-bad">Selected, not linked</span>';
+					$state = '<span class="urme-bad">Selected, not linked</span>';
 				} elseif ( ! $brand_on || ! (int) $row['sync_enabled'] || URME_SS_Inventory::LOCAL === $row['stock_mode'] ) {
-					echo '<span class="urme-muted">URME Lager</span>';
+					$state = '<span class="urme-muted">URME Lager</span>';
 					if ( $brand_on ) {
-						echo '<br>' . self::row_button( 'dropship|' . (int) $row['link_id'], 'Dropshipping', 'button button-small', 'Switch ' . $row['product_no'] . ' to Dropshipping? Only allowed when its URME Lager stock is 0.' ); // phpcs:ignore WordPress.Security.EscapeOutput
+						$buttons[] = self::row_button( 'dropship|' . (int) $row['link_id'], 'Dropshipping', 'button button-small', 'Switch ' . $row['product_no'] . ' to Dropshipping? Only allowed when its URME Lager stock is 0.' );
 					}
 				} else {
-					echo '<span class="urme-good">Dropshipping</span>';
-					echo '<br>' . self::row_button( 'lager|' . (int) $row['link_id'], 'URME Lager', 'button button-small', 'Move ' . $row['product_no'] . ' back to URME Lager? It leaves supplier sync and its stock becomes 0 (out of stock) until you enter the real stock in WooCommerce.' ); // phpcs:ignore WordPress.Security.EscapeOutput
-					if ( 'error' === $row['link_status'] ) {
-						echo '<br><span class="urme-bad">Last sync: error</span>' . ( '' !== (string) $row['link_message'] ? '<br><small class="urme-bad">' . esc_html( $row['link_message'] ) . '</small>' : '' );
-					}
+					$state = '<span class="urme-good">Dropshipping</span>';
 					if ( (int) $row['in_feed'] ) {
-						echo '<br>' . self::row_button( 'sync|' . (int) $row['link_id'], 'Sync now', 'button button-small' ); // phpcs:ignore WordPress.Security.EscapeOutput
+						$buttons[] = self::row_button( 'sync|' . (int) $row['link_id'], 'Sync now', 'button button-small' );
+					}
+					$buttons[] = self::row_button( 'lager|' . (int) $row['link_id'], 'URME Lager', 'button button-small', 'Move ' . $row['product_no'] . ' back to URME Lager? It leaves supplier sync and its stock becomes 0 (out of stock) until you enter the real stock in WooCommerce.' );
+					if ( 'error' === $row['link_status'] ) {
+						$notes[] = '<span class="urme-bad">Last sync: error</span>' . ( '' !== (string) $row['link_message'] ? '<br><small class="urme-bad">' . esc_html( $row['link_message'] ) . '</small>' : '' );
 					}
 				}
 				if ( $row['link_id'] && (int) $row['product_id'] && ( 'manual' !== $row['link_method'] ) && (int) $row['product_id'] !== (int) $row['match_product_id'] ) {
-					echo '<br><small>→ ' . self::product_link( (int) $row['product_id'] ) . '</small>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					$notes[] = '<small>→ ' . self::product_link( (int) $row['product_id'] ) . '</small>';
+				}
+				echo '<div class="urme-sync-state">' . $state . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				if ( $buttons ) {
+					echo '<div class="urme-sync-actions">' . implode( '', $buttons ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				}
+				foreach ( $notes as $note ) {
+					echo '<div class="urme-sync-note">' . $note . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				}
 				echo self::sale_editor( $row, $stock[ self::urme_product_id( $row ) ] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput
 				?>
@@ -1151,7 +1172,7 @@ class URME_SS_Admin {
 		}
 		$key = (string) $row['item_key'];
 		return sprintf(
-			'<div class="urme-price-edit"><small>Regular: %s</small><br><label>Sale price <input type="text" name="sale_price[%s]" value="%s" size="7" inputmode="decimal" autocomplete="off"></label> %s</div>',
+			'<div class="urme-price-edit"><small class="urme-muted">Regular: %s</small><div class="urme-price-sale"><label>Sale price <input type="text" name="sale_price[%s]" value="%s" size="7" inputmode="decimal" autocomplete="off" aria-label="Sale price (SEK)" placeholder="—"></label> %s</div></div>',
 			esc_html( '' === $info['regular'] ? '—' : self::kr( $info['regular'] ) ),
 			esc_attr( $key ),
 			esc_attr( $info['sale'] ),
@@ -1173,21 +1194,21 @@ class URME_SS_Admin {
 			return '';
 		}
 		if ( $linked_elsewhere ) {
-			return '<br><small class="urme-muted">Product already linked to another supplier watch</small>';
+			return '<small class="urme-muted">Product already linked to another supplier watch</small>';
 		}
 		if ( ! $info['managed'] || $info['by_parent'] ) {
-			return '<br><small class="urme-muted">' . ( $info['by_parent'] ? 'Stock managed by the parent product' : 'Stock not managed in WooCommerce' ) . ' – use "Select checked for sync"</small>';
+			return '<small class="urme-muted">' . ( $info['by_parent'] ? 'Stock managed by the parent product' : 'Stock not managed in WooCommerce' ) . ' – use "Select checked for sync"</small>';
 		}
 		$key = (string) $row['item_key'];
 		if ( $info['qty'] <= 0 ) {
-			return '<br>' . self::row_button(
+			return self::row_button(
 				'start_supplier|' . $key,
 				'Dropshipping',
 				'button button-small button-primary',
 				sprintf( 'Start Dropshipping for %s? WooCommerce stock is set to the supplier stock (%s) and the cost to the supplier cost. Prices are not changed.', $row['product_no'], null === $row['stock'] ? '—' : (int) $row['stock'] )
 			);
 		}
-		return '<br><small class="urme-muted">' . esc_html( sprintf( 'URME Lager (%d in stock) – Dropshipping is possible at stock 0', $info['qty'] ) ) . '</small>';
+		return '<small class="urme-muted">' . esc_html( sprintf( 'URME Lager (%d in stock) – Dropshipping is possible at stock 0', $info['qty'] ) ) . '</small>';
 	}
 
 	/**

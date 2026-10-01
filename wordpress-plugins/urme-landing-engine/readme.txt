@@ -3,7 +3,7 @@ Contributors: urme
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 1.0.40
+Stable tag: 1.0.41
 License: GPLv2 or later
 
 Lightweight dynamic WooCommerce landing pages for URME.
@@ -114,6 +114,11 @@ Fixes WoodMart control/PJAX URLs, WooCommerce widget filter state, Rank Math rel
 Improves WooCommerce/WoodMart filter compatibility on URME Landing Engine routes. Test `/klockor/automatiska/`, `/klockor/rea/` and representative filtered URLs after updating.
 
 == Changelog ==
+
+= 1.0.41 =
+* SEO: each landing now shows its own intro text (or the term description) below the products, and the WooCommerce Shop page text is no longer printed on landing routes. Before, every landing showed the same Shop text (duplicate content) and the landing intro was never visible. Shown on page 1 only. Return false from the `urme_le_remove_shop_description` filter to keep the 1.0.40 behaviour.
+* Fix: /marken/{brand}/herrklockor/ and /marken/{brand}/damklockor/ returned 404 for every brand without its own landing record, because only the category slugs `herrklockor`/`damklockor` were accepted. The store's `herr`/`dam` categories are now used too (first existing slug wins; filter `urme_le_gender_category_slugs`).
+* Speed: the hero image is rendered with width/height and srcset/sizes, so phones download a smaller file instead of the full-size original. It stays eager with fetchpriority=high.
 
 = 1.0.40 =
 * Prevents duplicate visible archive descriptions on Landing Engine routes. If WooCommerce/WoodMart already has a non-empty native archive description (including the published WooCommerce Shop page content), the Landing Engine intro is not rendered.

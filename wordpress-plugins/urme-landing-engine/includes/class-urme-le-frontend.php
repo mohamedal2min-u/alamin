@@ -13,6 +13,7 @@ final class URME_LE_Frontend {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ), 30 );
 		add_action( 'woocommerce_sidebar', array( __CLASS__, 'render_header' ), 5 );
 		add_action( 'woocommerce_before_main_content', array( __CLASS__, 'render_header' ), 5 );
+		add_action( 'template_redirect', array( __CLASS__, 'remove_shop_description' ), 20 );
 		add_action( 'woocommerce_after_shop_loop', array( __CLASS__, 'render_intro' ), 15 );
 		add_filter( 'woocommerce_show_page_title', array( __CLASS__, 'hide_default_wc_title' ), 99 );
 		add_filter( 'woocommerce_breadcrumb_defaults', array( __CLASS__, 'breadcrumb_defaults' ), 99 );
@@ -97,7 +98,35 @@ final class URME_LE_Frontend {
 
 		<?php if ( $image ) : ?>
 			<div class="urme-le-hero-image">
-				<img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $title ); ?>" style="object-position: <?php echo esc_attr( $image_position_x . ' ' . $image_position ); ?>;" loading="eager" fetchpriority="high">
+				<?php
+				/*
+				 * Render through wp_get_attachment_image() so WordPress adds
+				 * width/height and srcset/sizes: phones download a ~768px file
+				 * instead of the full-size original. fetchpriority=high keeps it
+				 * the LCP image and also makes WoodMart skip lazy loading it.
+				 */
+				$hero_img = wp_get_attachment_image(
+					$hero['id'],
+					'full',
+					false,
+					array(
+						'alt'           => $title,
+						'style'         => 'object-position: ' . $image_position_x . ' ' . $image_position . ';',
+						'loading'       => 'eager',
+						'fetchpriority' => 'high',
+						'decoding'      => 'async',
+						'sizes'         => '100vw',
+					)
+				);
+
+				if ( $hero_img ) {
+					echo $hero_img; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- core-escaped image markup.
+				} else {
+					?>
+					<img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $title ); ?>" style="object-position: <?php echo esc_attr( $image_position_x . ' ' . $image_position ); ?>;" loading="eager" fetchpriority="high">
+					<?php
+				}
+				?>
 			</div>
 		<?php endif; ?>
 
@@ -128,15 +157,42 @@ final class URME_LE_Frontend {
 		<?php
 	}
 
+	/**
+	 * Landing routes are product archives, so WooCommerce prints the Shop page
+	 * content ("Köp klockor online hos URME ...") on every one of them. That is
+	 * the same text on every landing (duplicate content), and older releases
+	 * also hid the landing's own intro whenever the Shop page had content, so
+	 * no landing intro was ever shown. The Shop text belongs to the Shop page
+	 * only: remove it on landing routes and show the landing intro instead.
+	 */
+	public static function remove_shop_description() {
+		if ( ! URME_LE_Router::is_dynamic() ) {
+			return;
+		}
+
+		if ( ! apply_filters( 'urme_le_remove_shop_description', true ) ) {
+			return;
+		}
+
+		remove_action( 'woocommerce_archive_description', 'woocommerce_taxonomy_archive_description', 10 );
+		remove_action( 'woocommerce_archive_description', 'woocommerce_product_archive_description', 10 );
+	}
+
 	public static function render_intro() {
 		if ( ! URME_LE_Router::is_dynamic() ) {
 			return;
 		}
 
-		// Prefer the description already owned and rendered by WooCommerce/WoodMart.
-		// Landing Engine intro is a fallback only, so dynamic routes never show two
-		// competing archive descriptions below the same product loop.
-		if ( self::has_native_archive_description() ) {
+		// Like WooCommerce archive descriptions, show the intro on page 1 only so
+		// paginated pages don't repeat the same text.
+		$ctx = URME_LE_Router::context();
+		if ( $ctx && $ctx['paged'] > 1 ) {
+			return;
+		}
+
+		// Kept for sites that opt out of removing the Shop description: never
+		// print two competing archive descriptions on the same page.
+		if ( ! apply_filters( 'urme_le_remove_shop_description', true ) && self::has_native_archive_description() ) {
 			return;
 		}
 

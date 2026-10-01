@@ -3,7 +3,7 @@
  * Plugin Name: URME Landing Engine
  * Plugin URI: https://www.urme.se/
  * Description: Lightweight dynamic WooCommerce landing pages for URME: brand, gender, sale, series, attribute pages, hero images, breadcrumbs and SEO integration.
- * Version: 1.0.40
+ * Version: 1.0.41
  * Author: URME
  * License: GPL-2.0-or-later
  * Text Domain: urme-landing-engine
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'URME_LE_VERSION', '1.0.40' );
+define( 'URME_LE_VERSION', '1.0.41' );
 define( 'URME_LE_FILE', __FILE__ );
 define( 'URME_LE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'URME_LE_URL', plugin_dir_url( __FILE__ ) );

@@ -110,9 +110,9 @@ final class URME_LE_Router {
 		if ( isset( $map['brand'][ $key ] ) ) {
 			$kind       = 'configured';
 			$landing_id = (int) $map['brand'][ $key ]['id'];
-		} elseif ( 'herrklockor' === $child_slug && self::get_term( 'product_cat', 'herrklockor' ) ) {
+		} elseif ( 'herrklockor' === $child_slug && self::gender_category_slug( 'herr' ) ) {
 			$kind = 'herr';
-		} elseif ( 'damklockor' === $child_slug && self::get_term( 'product_cat', 'damklockor' ) ) {
+		} elseif ( 'damklockor' === $child_slug && self::gender_category_slug( 'dam' ) ) {
 			$kind = 'dam';
 		} elseif ( 'rea' === $child_slug ) {
 			$kind = 'rea';
@@ -260,6 +260,40 @@ final class URME_LE_Router {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * The product_cat slug that holds men's ('herr') or women's ('dam') watches.
+	 *
+	 * The public routes are always /marken/{brand}/herrklockor/ and
+	 * /marken/{brand}/damklockor/, but the store's own category slugs may differ
+	 * (URME uses `herr` and `dam`). Older releases only looked for `herrklockor`
+	 * and `damklockor`, so every automatic gender route returned 404. The first
+	 * existing candidate wins; filter `urme_le_gender_category_slugs` to change
+	 * the candidates.
+	 *
+	 * @param string $gender 'herr' or 'dam'.
+	 * @return string Existing product_cat slug, or '' when none exists.
+	 */
+	public static function gender_category_slug( $gender ) {
+		$candidates = array(
+			'herr' => array( 'herrklockor', 'herr' ),
+			'dam'  => array( 'damklockor', 'dam' ),
+		);
+
+		if ( ! isset( $candidates[ $gender ] ) ) {
+			return '';
+		}
+
+		$slugs = (array) apply_filters( 'urme_le_gender_category_slugs', $candidates[ $gender ], $gender );
+
+		foreach ( $slugs as $slug ) {
+			if ( self::get_term( 'product_cat', $slug ) ) {
+				return sanitize_title( $slug );
+			}
+		}
+
+		return '';
 	}
 
 	public static function get_term( $taxonomy, $slug ) {
@@ -558,10 +592,9 @@ final class URME_LE_Router {
 			return $scope;
 		}
 
-		if ( 'herr' === $kind ) {
-			$clause = self::taxonomy_clause( 'product_cat', array( 'herrklockor' ), true );
-		} elseif ( 'dam' === $kind ) {
-			$clause = self::taxonomy_clause( 'product_cat', array( 'damklockor' ), true );
+		if ( 'herr' === $kind || 'dam' === $kind ) {
+			$category = self::gender_category_slug( $kind );
+			$clause   = $category ? self::taxonomy_clause( 'product_cat', array( $category ), true ) : false;
 		} elseif ( 'rea' === $kind ) {
 			$scope['sale'] = true;
 			return $scope;

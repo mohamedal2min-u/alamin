@@ -49,6 +49,7 @@ final class URME_LE_SEO {
 		}
 
 		return array(
+			'id'         => $image_id,
 			'url'        => $image_id ? wp_get_attachment_image_url( $image_id, 'full' ) : '',
 			'position'   => $position ? $position : 'center',
 			'position_x' => $position_x ? $position_x : 'center',

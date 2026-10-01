@@ -1,0 +1,227 @@
+
+.urme-le-header-row {
+	grid-column: 1 / -1;
+	width: 100%;
+	min-width: 0;
+}
+.urme-le-dynamic-page .page-title,
+.urme-le-dynamic-page .wd-page-title {
+	display: none !important;
+}
+
+.urme-le-dynamic-page .woocommerce-breadcrumb,
+.urme-le-dynamic-page .wd-breadcrumbs,
+.urme-le-dynamic-page .rank-math-breadcrumb {
+	display: none !important;
+}
+
+.urme-le-hero-image {
+	width: 100%;
+	height: clamp(150px, 16vw, 300px);
+	margin: 0 0 10px;
+	border-radius: 8px;
+	background-color: #f4f4f2;
+	overflow: hidden;
+}
+
+.urme-le-hero-image img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+}
+
+.urme-le-hero {
+	margin: 0 0 16px;
+}
+
+.urme-le-hero-inner {
+	width: 100%;
+	text-align: left;
+}
+
+.urme-le-hero-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+}
+
+.urme-le-title {
+	margin: 0;
+	font-size: clamp(16px, 1.8vw, 20px);
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: -.02em;
+	color: #6e6e73;
+}
+
+.urme-le-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #6e6e73;
+	white-space: nowrap;
+}
+
+.urme-le-badge-icon {
+	flex-shrink: 0;
+}
+
+.urme-le-badge-icon-text {
+	flex-shrink: 0;
+	font-size: 15px;
+	line-height: 1;
+}
+
+.urme-le-subtitle {
+	max-width: 760px;
+	margin: 8px 0 0;
+	font-size: clamp(15px, 1.8vw, 18px);
+	line-height: 1.55;
+	color: rgba(0,0,0,.65);
+}
+
+.urme-le-breadcrumbs {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
+	width: 100%;
+	margin: -32px 0 10px;
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.urme-le-breadcrumbs a {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	border: 1px solid rgba(0,0,0,.10);
+	border-radius: 7px;
+	background: #fff;
+	color: #1d1d1f;
+	font-weight: 600;
+	text-decoration: none;
+	transition: transform .16s ease, border-color .16s ease, background-color .16s ease, color .16s ease;
+}
+
+.urme-le-breadcrumbs a:hover,
+.urme-le-breadcrumbs a:focus-visible {
+	transform: translateY(-1px);
+	border-color: #111;
+	background: #111;
+	color: #fff;
+}
+
+.urme-le-current {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 9px;
+	border-radius: 7px;
+	background: #111;
+	font-weight: 700;
+	color: #fff;
+}
+
+.urme-le-separator {
+	opacity: .45;
+	font-size: 14px;
+}
+
+.urme-le-intro-collapsible {
+	position: relative;
+	width: 100%;
+	margin-top: 32px;
+	padding: 20px 24px;
+	background: #fff;
+	border-radius: 10px;
+}
+
+.urme-le-intro-collapsible .urme-le-intro {
+	max-height: 150px;
+	overflow: hidden;
+	position: relative;
+	color: #767676;
+	font-family: Lato, Arial, Helvetica, sans-serif;
+	font-size: 15px;
+	line-height: 1.6;
+}
+
+.urme-le-intro-collapsible[data-collapsed="true"] .urme-le-intro::after {
+	content: "";
+	position: absolute;
+	inset: auto 0 0 0;
+	height: 56px;
+	background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
+}
+
+.urme-le-intro-collapsible[data-collapsed="false"] .urme-le-intro {
+	max-height: none;
+}
+
+.urme-le-intro-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 14px;
+	padding: 5px 14px;
+	border: 1px solid #3e3e3e;
+	border-radius: 20px;
+	background: transparent;
+	color: #3e3e3e;
+	font-family: Lato, Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	cursor: pointer;
+	transition: background-color .16s ease, color .16s ease;
+}
+
+.urme-le-intro-toggle:hover,
+.urme-le-intro-toggle:focus-visible {
+	background: #3e3e3e;
+	color: #fff;
+}
+
+.urme-le-intro-toggle svg {
+	flex-shrink: 0;
+	transition: transform .2s ease;
+}
+
+.urme-le-intro-collapsible[data-collapsed="false"] .urme-le-intro-toggle svg {
+	transform: rotate(180deg);
+}
+
+@media (max-width: 767px) {
+	.urme-le-hero-image {
+		height: 130px;
+		border-radius: 8px;
+	}
+	.urme-le-hero-image img {
+		object-fit: contain;
+	}
+	.urme-le-title {
+		font-size: 16px;
+	}
+	.urme-le-breadcrumbs {
+		font-size: 11px;
+		margin: 0 0 10px;
+	}
+	.urme-le-breadcrumbs a {
+		padding: 3px 7px;
+	}
+	.urme-le-intro-collapsible {
+		padding: 16px 18px;
+	}
+	.urme-le-badge-icon {
+		width: 19px;
+		height: 19px;
+	}
+	.urme-le-badge-icon-text {
+		font-size: 19px;
+	}
+}

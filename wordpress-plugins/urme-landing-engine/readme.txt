@@ -3,7 +3,7 @@ Contributors: urme
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 1.0.43
+Stable tag: 1.0.44
 License: GPLv2 or later
 
 Lightweight dynamic WooCommerce landing pages for URME.
@@ -114,6 +114,9 @@ Fixes WoodMart control/PJAX URLs, WooCommerce widget filter state, Rank Math rel
 Improves WooCommerce/WoodMart filter compatibility on URME Landing Engine routes. Test `/klockor/automatiska/`, `/klockor/rea/` and representative filtered URLs after updating.
 
 == Changelog ==
+
+= 1.0.44 =
+* Phones: the hero image fills the whole banner (cover) like on desktop, instead of shrinking to fit with empty grey sides.
 
 = 1.0.43 =
 * SEO: new setting WooCommerce > Landing settings > "Minimum products to index" (default 3). Landing pages that list fewer products stay visible to shoppers but get noindex and are left out of the sitemap, so Google does not see near-empty pages (half of the automatic series routes had only 1-2 products).

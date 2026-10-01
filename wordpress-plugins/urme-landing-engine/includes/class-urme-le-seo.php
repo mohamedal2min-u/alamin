@@ -360,8 +360,9 @@ final class URME_LE_SEO {
 			return array();
 		}
 
+		// Same home label as the rest of the site's Rank Math breadcrumbs ("Hem").
 		$items = array(
-			array( 'Startsida', home_url( '/' ) ),
+			array( apply_filters( 'urme_le_breadcrumb_home_label', 'Hem' ), home_url( '/' ) ),
 		);
 
 		if ( 'global' === $ctx['context'] ) {
@@ -388,11 +389,23 @@ final class URME_LE_SEO {
 		if ( ! URME_LE_Router::is_dynamic() ) {
 			return $crumbs;
 		}
-		$out = array();
-		foreach ( self::breadcrumb_items() as $item ) {
+		$items = self::breadcrumb_items();
+		$last  = count( $items ) - 1;
+		$out   = array();
+		foreach ( $items as $index => $item ) {
+			$url = $item[1];
+			/*
+			 * The current page has no link in the visible trail, but Rank Math
+			 * leaves crumbs without a URL out of the BreadcrumbList schema, so
+			 * Google never saw the page itself (e.g. "... > SEIKO" without
+			 * "Herrklockor"). Give the last crumb the page's canonical URL.
+			 */
+			if ( '' === $url && $index === $last ) {
+				$url = URME_LE_Router::canonical_url();
+			}
 			$out[] = array(
 				$item[0],
-				$item[1],
+				$url,
 				'hide_in_schema' => false,
 			);
 		}

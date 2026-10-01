@@ -3,7 +3,7 @@ Contributors: urme
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 1.0.41
+Stable tag: 1.0.42
 License: GPLv2 or later
 
 Lightweight dynamic WooCommerce landing pages for URME.
@@ -114,6 +114,11 @@ Fixes WoodMart control/PJAX URLs, WooCommerce widget filter state, Rank Math rel
 Improves WooCommerce/WoodMart filter compatibility on URME Landing Engine routes. Test `/klockor/automatiska/`, `/klockor/rea/` and representative filtered URLs after updating.
 
 == Changelog ==
+
+= 1.0.42 =
+* SEO: the urme-landing sitemap now also lists the automatic brand routes that show products and have no landing record: /marken/{brand}/herrklockor/, /damklockor/, /rea/ and /{series}/. Only brands' visible products count (not hidden from the catalog; not out of stock when the store hides those), so no listed URL answers 404. The list is cached and rebuilt when a product, a landing or a scheduled sale changes. The sitemap index splits into pages when there are more URLs than Rank Math's per-sitemap limit.
+* SEO: the BreadcrumbList schema now includes the current page. Rank Math dropped the last crumb because it had no URL (Google saw "... > SEIKO" without "Herrklockor"); it now carries the canonical URL. The visible breadcrumb is unchanged.
+* The breadcrumb home label is "Hem", the same as the rest of the site (was "Startsida"). Filter: `urme_le_breadcrumb_home_label`.
 
 = 1.0.41 =
 * SEO: each landing now shows its own intro text (or the term description) below the products, and the WooCommerce Shop page text is no longer printed on landing routes. Before, every landing showed the same Shop text (duplicate content) and the landing intro was never visible. Shown on page 1 only. Return false from the `urme_le_remove_shop_description` filter to keep the 1.0.40 behaviour.

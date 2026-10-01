@@ -26,29 +26,64 @@ final class URME_LE_RankMath_Sitemap_Provider implements \RankMath\Sitemap\Provi
 			)
 		);
 
-		$lastmod = '';
-		if ( $latest ) {
-			$lastmod = mysql2date( DATE_W3C, $latest[0]->post_modified_gmt ?: $latest[0]->post_modified, false );
+		$latest_gmt = $latest ? ( $latest[0]->post_modified_gmt ?: $latest[0]->post_modified ) : '';
+
+		$routes = URME_LE_Sitemap::automatic_routes();
+		foreach ( $routes as $route ) {
+			if ( ! empty( $route['lastmod'] ) && $route['lastmod'] > $latest_gmt ) {
+				$latest_gmt = $route['lastmod'];
+			}
 		}
 
-		return array(
-			array(
-				'loc'     => \RankMath\Sitemap\Router::get_base_url( 'urme-landing-sitemap.xml' ),
+		$lastmod = $latest_gmt ? mysql2date( DATE_W3C, $latest_gmt, false ) : '';
+
+		$landing_count = (int) wp_count_posts( URME_LE_Landing_CPT::POST_TYPE )->publish;
+		$pages         = max( 1, (int) ceil( ( $landing_count + count( $routes ) ) / max( 1, absint( $max_entries ) ) ) );
+
+		$index = array();
+		for ( $page = 1; $page <= $pages; $page++ ) {
+			$index[] = array(
+				'loc'     => \RankMath\Sitemap\Router::get_base_url( 'urme-landing-sitemap' . ( $pages > 1 ? $page : '' ) . '.xml' ),
 				'lastmod' => $lastmod,
-			),
-		);
+			);
+		}
+
+		return $index;
 	}
 
 	public function get_sitemap_links( $type, $max_entries, $current_page ) {
-		$max_entries = max( 1, absint( $max_entries ) );
+		$max_entries  = max( 1, absint( $max_entries ) );
 		$current_page = max( 1, absint( $current_page ) );
 
+		$links = array_merge( $this->landing_links(), $this->automatic_links() );
+
+		return array_slice( $links, ( $current_page - 1 ) * $max_entries, $max_entries );
+	}
+
+	/**
+	 * Automatic brand routes (herrklockor, damklockor, rea, series) that list
+	 * products and have no landing record of their own.
+	 */
+	private function automatic_links() {
+		$links = array();
+		foreach ( URME_LE_Sitemap::automatic_routes() as $route ) {
+			$item = array(
+				'loc' => home_url( '/marken/' . $route['brand_slug'] . '/' . $route['child_slug'] . '/' ),
+			);
+			if ( ! empty( $route['lastmod'] ) ) {
+				$item['mod'] = mysql2date( DATE_W3C, $route['lastmod'], false );
+			}
+			$links[] = $item;
+		}
+		return $links;
+	}
+
+	private function landing_links() {
 		$posts = get_posts(
 			array(
 				'post_type'      => URME_LE_Landing_CPT::POST_TYPE,
 				'post_status'    => 'publish',
-				'posts_per_page' => $max_entries,
-				'paged'          => $current_page,
+				'posts_per_page' => -1,
 				'orderby'        => 'ID',
 				'order'          => 'ASC',
 			)

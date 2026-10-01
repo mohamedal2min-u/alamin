@@ -24,7 +24,7 @@ final class URME_LE_SEO {
 	}
 
 	public static function rank_math_robots( $robots ) {
-		if ( URME_LE_Router::is_dynamic() && URME_LE_Router::is_empty_configured() ) {
+		if ( URME_LE_Router::is_dynamic() && ( URME_LE_Router::is_empty_configured() || URME_LE_Router::is_thin() ) ) {
 			$robots['index'] = 'noindex';
 		}
 		return $robots;

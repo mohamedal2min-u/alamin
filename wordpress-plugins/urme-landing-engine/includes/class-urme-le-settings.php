@@ -11,6 +11,8 @@ final class URME_LE_Settings {
 	const OPTION_DEFAULT_IMAGE_POSITION_X = 'urme_le_default_hero_image_position_x';
 	const OPTION_BADGE_TEXT               = 'urme_le_trust_badge_text';
 	const OPTION_BADGE_ICON               = 'urme_le_trust_badge_icon';
+	const OPTION_MIN_PRODUCTS             = 'urme_le_min_products';
+	const DEFAULT_MIN_PRODUCTS            = 3;
 	const PAGE_SLUG                       = 'urme-le-settings';
 
 	public static function hooks() {
@@ -68,6 +70,15 @@ final class URME_LE_Settings {
 		return in_array( $value, URME_LE_Landing_CPT::IMAGE_POSITIONS_X, true ) ? $value : 'center';
 	}
 
+	/**
+	 * Fewest products a landing must show to be indexed and listed in the
+	 * sitemap. Pages below it stay reachable but get noindex (thin content).
+	 */
+	public static function min_products() {
+		$value = get_option( self::OPTION_MIN_PRODUCTS, self::DEFAULT_MIN_PRODUCTS );
+		return max( 1, absint( $value ) );
+	}
+
 	public static function badge_text() {
 		return (string) get_option( self::OPTION_BADGE_TEXT, '' );
 	}
@@ -101,6 +112,12 @@ final class URME_LE_Settings {
 				$badge_icon = isset( $_POST['urme_le_trust_badge_icon'] ) ? sanitize_text_field( wp_unslash( $_POST['urme_le_trust_badge_icon'] ) ) : '';
 				update_option( self::OPTION_BADGE_ICON, $badge_icon );
 
+				$min_products = isset( $_POST['urme_le_min_products'] ) ? max( 1, absint( $_POST['urme_le_min_products'] ) ) : self::DEFAULT_MIN_PRODUCTS;
+				update_option( self::OPTION_MIN_PRODUCTS, $min_products );
+
+				// The minimum decides which routes the sitemap lists.
+				URME_LE_Sitemap::invalidate();
+
 				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'urme-landing-engine' ) . '</p></div>';
 			}
 		}
@@ -111,6 +128,7 @@ final class URME_LE_Settings {
 		$image_position_x = self::default_image_position_x();
 		$badge_text       = self::badge_text();
 		$badge_icon       = self::badge_icon();
+		$min_products     = self::min_products();
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'URME Landing settings', 'urme-landing-engine' ); ?></h1>
@@ -163,6 +181,13 @@ final class URME_LE_Settings {
 						<td>
 							<input type="text" name="urme_le_trust_badge_icon" id="urme_le_trust_badge_icon" value="<?php echo esc_attr( $badge_icon ); ?>" placeholder="↻" style="width:80px;font-size:18px;text-align:center;">
 							<p class="description"><?php esc_html_e( 'A single character or emoji placed before the badge text (e.g. ↻ ⟳ ✓ ★). Leave empty to use the default refresh icon.', 'urme-landing-engine' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="urme_le_min_products"><?php esc_html_e( 'Minimum products to index', 'urme-landing-engine' ); ?></label></th>
+						<td>
+							<input type="number" min="1" step="1" name="urme_le_min_products" id="urme_le_min_products" value="<?php echo esc_attr( $min_products ); ?>" style="width:80px;">
+							<p class="description"><?php esc_html_e( 'Landing pages with fewer products stay visible to shoppers but get noindex and are left out of the sitemap, so Google does not see near-empty pages.', 'urme-landing-engine' ); ?></p>
 						</td>
 					</tr>
 				</table>

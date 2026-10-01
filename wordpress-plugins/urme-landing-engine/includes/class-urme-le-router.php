@@ -28,6 +28,8 @@ final class URME_LE_Router {
 
 	private static $empty_configured = false;
 
+	private static $thin = false;
+
 	private static $forced_404 = false;
 
 	private static $active_scope = null;
@@ -828,7 +830,15 @@ final class URME_LE_Router {
 		}
 
 		global $wp_query;
-		if ( ! $wp_query || $wp_query->post_count > 0 ) {
+		if ( ! $wp_query ) {
+			return;
+		}
+
+		if ( $wp_query->post_count > 0 ) {
+			// Too few products for a page worth indexing: keep it live, noindex it.
+			if ( (int) $wp_query->found_posts < URME_LE_Settings::min_products() ) {
+				self::$thin = true;
+			}
 			return;
 		}
 
@@ -852,8 +862,19 @@ final class URME_LE_Router {
 	}
 
 	/**
-	 * Cheap existence check used by the sitemap provider so it never submits
-	 * a landing that currently matches zero products.
+	 * True when the route lists fewer products than the "Minimum products to
+	 * index" setting. Such pages stay reachable but are noindex and left out
+	 * of the sitemap (thin content).
+	 */
+	public static function is_thin() {
+		return self::$thin;
+	}
+
+	/**
+	 * Cheap check used by the sitemap provider: a landing is listed only when
+	 * it shows at least the "Minimum products to index" setting, counting
+	 * only products the shop lists (not hidden from the catalog, and not out
+	 * of stock when the store hides those).
 	 */
 	public static function config_has_products( $config ) {
 		if ( ! $config ) {
@@ -863,14 +884,14 @@ final class URME_LE_Router {
 		$args = array(
 			'post_type'              => 'product',
 			'post_status'            => 'publish',
-			'posts_per_page'         => 1,
+			'posts_per_page'         => URME_LE_Settings::min_products(),
 			'fields'                 => 'ids',
 			'no_found_rows'          => true,
 			'update_post_meta_cache' => false,
 			'update_post_term_cache' => false,
 		);
 
-		$tax_clauses = array();
+		$tax_clauses = array( self::visibility_clause() );
 
 		if ( 'brand' === $config['scope'] ) {
 			if ( empty( $config['brand_slug'] ) || ! self::get_term( 'product_brand', $config['brand_slug'] ) ) {
@@ -909,7 +930,26 @@ final class URME_LE_Router {
 		}
 
 		$query = new WP_Query( $args );
-		return $query->post_count > 0;
+		return $query->post_count >= URME_LE_Settings::min_products();
+	}
+
+	/**
+	 * tax_query clause leaving out products the shop does not list.
+	 *
+	 * @return array
+	 */
+	public static function visibility_clause() {
+		$hidden = array( 'exclude-from-catalog' );
+		if ( 'yes' === get_option( 'woocommerce_hide_out_of_stock_items' ) ) {
+			$hidden[] = 'outofstock';
+		}
+
+		return array(
+			'taxonomy' => 'product_visibility',
+			'field'    => 'name',
+			'terms'    => $hidden,
+			'operator' => 'NOT IN',
+		);
 	}
 
 	public static function force_status() {

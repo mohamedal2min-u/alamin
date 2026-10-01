@@ -484,6 +484,16 @@ final class URME_LE_Landing_CPT {
 
 		if ( URME_LE_VERSION !== $installed_version ) {
 			update_option( 'urme_le_version', URME_LE_VERSION, false );
+
+			/*
+			 * Uploading a new version does not run the activation hook, and
+			 * Rank Math keeps serving its cached sitemap, so a release that
+			 * changes which routes are listed would not show up until a
+			 * product or landing was saved. Rebuild it once per update.
+			 */
+			if ( class_exists( 'URME_LE_Sitemap' ) ) {
+				URME_LE_Sitemap::invalidate();
+			}
 		}
 	}
 

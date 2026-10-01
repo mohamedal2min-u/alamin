@@ -52,7 +52,8 @@ final class URME_LE_Sitemap {
 	}
 
 	/**
-	 * Automatic brand routes that currently list products, for the sitemap:
+	 * Automatic brand routes that list at least the minimum number of
+	 * products (Landing settings), for the sitemap:
 	 * /marken/{brand}/herrklockor/, /damklockor/, /rea/ and /{pa_serie term}/.
 	 *
 	 * Routes owned by a published landing record are skipped (the record is
@@ -87,7 +88,8 @@ final class URME_LE_Sitemap {
 			return $routes;
 		}
 
-		$sale_ids = function_exists( 'wc_get_product_ids_on_sale' ) ? wp_parse_id_list( wc_get_product_ids_on_sale() ) : array();
+		$min_products = URME_LE_Settings::min_products();
+		$sale_ids     = function_exists( 'wc_get_product_ids_on_sale' ) ? wp_parse_id_list( wc_get_product_ids_on_sale() ) : array();
 
 		$gender_terms = array();
 		foreach ( array( 'herr' => 'herrklockor', 'dam' => 'damklockor' ) as $gender => $child ) {
@@ -108,32 +110,46 @@ final class URME_LE_Sitemap {
 			}
 
 			$lastmod = self::latest_modified( $product_ids );
-			$children = array();
+			$counts  = array(); // child slug => number of the brand's products.
 
-			// Gender routes: any product of the brand in that category (or a child).
-			$cat_ids = wp_get_object_terms( $product_ids, 'product_cat', array( 'fields' => 'ids' ) );
-			$cat_ids = is_wp_error( $cat_ids ) ? array() : array_map( 'absint', $cat_ids );
-			foreach ( $gender_terms as $child => $ids ) {
-				if ( array_intersect( $cat_ids, $ids ) ) {
-					$children[] = $child;
+			// Gender routes: products of the brand in that category (or a child).
+			$cat_terms = wp_get_object_terms( $product_ids, 'product_cat', array( 'fields' => 'all_with_object_id' ) );
+			if ( ! is_wp_error( $cat_terms ) ) {
+				foreach ( $gender_terms as $child => $ids ) {
+					$products = array();
+					foreach ( $cat_terms as $term ) {
+						if ( in_array( (int) $term->term_id, $ids, true ) ) {
+							$products[ (int) $term->object_id ] = true;
+						}
+					}
+					$counts[ $child ] = count( $products );
 				}
 			}
 
 			// Sale route.
-			if ( $sale_ids && array_intersect( $product_ids, $sale_ids ) ) {
-				$children[] = 'rea';
-			}
+			$counts['rea'] = $sale_ids ? count( array_intersect( $product_ids, $sale_ids ) ) : 0;
 
 			// Series routes: every pa_serie term used by this brand's products.
 			if ( taxonomy_exists( 'pa_serie' ) ) {
-				$series = wp_get_object_terms( $product_ids, 'pa_serie', array( 'fields' => 'slugs' ) );
-				if ( ! is_wp_error( $series ) ) {
-					foreach ( $series as $series_slug ) {
-						// Herr/dam/rea already map to fixed routes; never list a series twice.
-						if ( ! in_array( $series_slug, array( 'herrklockor', 'damklockor', 'rea' ), true ) ) {
-							$children[] = sanitize_title( $series_slug );
+				$series_terms = wp_get_object_terms( $product_ids, 'pa_serie', array( 'fields' => 'all_with_object_id' ) );
+				if ( ! is_wp_error( $series_terms ) ) {
+					$series_products = array();
+					foreach ( $series_terms as $term ) {
+						$series_products[ sanitize_title( $term->slug ) ][ (int) $term->object_id ] = true;
+					}
+					foreach ( $series_products as $series_slug => $products ) {
+						// Herr/dam/rea map to fixed routes; never list a series under them.
+						if ( ! isset( $counts[ $series_slug ] ) ) {
+							$counts[ $series_slug ] = count( $products );
 						}
 					}
+				}
+			}
+
+			$children = array();
+			foreach ( $counts as $child => $count ) {
+				if ( $count >= $min_products ) {
+					$children[] = $child;
 				}
 			}
 
@@ -173,16 +189,7 @@ final class URME_LE_Sitemap {
 			),
 		);
 
-		$hidden = array( 'exclude-from-catalog' );
-		if ( 'yes' === get_option( 'woocommerce_hide_out_of_stock_items' ) ) {
-			$hidden[] = 'outofstock';
-		}
-		$tax_query[] = array(
-			'taxonomy' => 'product_visibility',
-			'field'    => 'name',
-			'terms'    => $hidden,
-			'operator' => 'NOT IN',
-		);
+		$tax_query[] = URME_LE_Router::visibility_clause();
 
 		$query = new WP_Query(
 			array(

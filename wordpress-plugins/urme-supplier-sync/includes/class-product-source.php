@@ -73,7 +73,7 @@ class URME_SS_Product_Source {
 		}
 		$in   = implode( ',', $ids );
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB
-			'SELECT l.product_id, p.post_parent, l.stock_mode, l.sync_enabled, l.local_qty, c.manufacturer, c.in_feed, c.purchase_price
+			'SELECT l.product_id, p.post_parent, l.stock_mode, l.sync_enabled, l.local_qty, c.manufacturer, c.in_feed
 			FROM ' . URME_SS_DB::links_table() . " l
 			LEFT JOIN {$wpdb->posts} p ON p.ID = l.product_id
 			LEFT JOIN " . URME_SS_DB::catalog_table() . " c ON c.item_key = l.item_key
@@ -489,35 +489,6 @@ class URME_SS_Product_Source {
 		return $out;
 	}
 
-	/**
-	 * Estimated profit at the current price under a Dropshipping badge (green at or above the
-	 * minimum profit, red below it: such a watch is kept out of stock by the sync).
-	 */
-	private static function profit_note( $product_id, array $link ) {
-		static $ctx = null;
-		$product = wc_get_product( $product_id );
-		if ( ! $product || null === ( $link['purchase_price'] ?? null ) ) {
-			return '';
-		}
-		if ( null === $ctx ) {
-			$ctx = URME_SS_Price_Hint::context();
-		}
-		$now = URME_SS_Price_Hint::profit_at( $product->get_price(), $link['purchase_price'], $ctx );
-		if ( ! $now ) {
-			return '';
-		}
-		$min  = URME_SS_Sync::min_profit();
-		$ok   = $now['profit'] >= $min;
-		$full = $now['profit'] >= $now['cost'] * $ctx['profit_pct'] - 0.000001;
-		$pct  = round( $now['profit'] / $now['cost'] * 100 );
-		return sprintf(
-			'<br><small style="white-space:nowrap;font-weight:600;%1$s" title="%2$s">%3$s kr</small>',
-			$now['profit'] < 0 ? 'color:#b32d2e' : ( $full ? 'color:#00701a' : 'color:#6b4e00;background:#fcf0c3;padding:0 4px;border-radius:2px' ),
-			esc_attr( ! $ok ? sprintf( '%d%% of cost, below the %d kr minimum profit: kept out of stock', $pct, $min ) : ( $full ? sprintf( '%d%% of cost: stays in stock', $pct ) : sprintf( '%d%% of cost, below the %d%% target but at least %d kr: stays in stock', $pct, round( $ctx['profit_pct'] * 100 ), $min ) ) ),
-			esc_html( number_format_i18n( round( $now['profit'] ) ) )
-		);
-	}
-
 	public static function render_column( $column, $post_id ) {
 		if ( 'urme_source' === $column && self::allowed() ) {
 			echo self::html( (int) $post_id, true ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -525,7 +496,6 @@ class URME_SS_Product_Source {
 			if ( $own && self::DROPSHIP === self::state( $own ) ) {
 				// Read by assets/quick-edit.js: this product may be moved to URME Lager in Quick Edit.
 				echo '<span class="hidden urme-qe-dropship"></span>';
-				echo self::profit_note( (int) $post_id, $own ); // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 		}
 	}

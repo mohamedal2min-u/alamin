@@ -506,12 +506,14 @@ class URME_SS_Product_Source {
 		if ( ! $now ) {
 			return '';
 		}
-		$min = URME_SS_Sync::min_profit();
-		$ok  = $now['profit'] >= $min;
+		$min  = URME_SS_Sync::min_profit();
+		$ok   = $now['profit'] >= $min;
+		$full = $now['profit'] >= $now['cost'] * $ctx['profit_pct'] - 0.000001;
+		$pct  = round( $now['profit'] / $now['cost'] * 100 );
 		return sprintf(
-			'<br><small style="white-space:nowrap;font-weight:600;color:%1$s" title="%2$s">%3$s kr</small>',
-			$ok ? '#00701a' : '#b32d2e',
-			esc_attr( $ok ? sprintf( 'Estimated profit at the current price (minimum %d kr): stays in stock', $min ) : sprintf( 'Below the %d kr minimum profit: kept out of stock', $min ) ),
+			'<br><small style="white-space:nowrap;font-weight:600;%1$s" title="%2$s">%3$s kr</small>',
+			$now['profit'] < 0 ? 'color:#b32d2e' : ( $full ? 'color:#00701a' : 'color:#6b4e00;background:#fcf0c3;padding:0 4px;border-radius:2px' ),
+			esc_attr( ! $ok ? sprintf( '%d%% of cost, below the %d kr minimum profit: kept out of stock', $pct, $min ) : ( $full ? sprintf( '%d%% of cost: stays in stock', $pct ) : sprintf( '%d%% of cost, below the %d%% target but at least %d kr: stays in stock', $pct, round( $ctx['profit_pct'] * 100 ), $min ) ) ),
 			esc_html( number_format_i18n( round( $now['profit'] ) ) )
 		);
 	}

@@ -229,6 +229,8 @@ or `wp cron event run --due-now` from the server.
 * The estimated profit is shown everywhere: under the D badge on WooCommerce > Products (green /
   red), in the Supplier catalog ("OK: at least 500 kr" / "Below 500 kr minimum"), and in the sync
   log and link message ("profit 430 kr, below the 500 kr minimum").
+* Profit colours: green at the 20% target or above, yellow below the target, red only for a real
+  loss (profit below 0).
 
 = 1.6.7 =
 * Loss protection (Settings, on by default): a Dropshipping watch whose current price (sale price

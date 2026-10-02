@@ -440,7 +440,7 @@ class URME_SS_Admin {
 				if ( ! $price ) {
 					return array( 'No suggested price for this watch (cost or exchange rate missing); nothing was changed.', 'error' );
 				}
-				return self::save_sale_price( $arg, (string) $price );
+				return self::auto_price( $arg, $price );
 
 			case 'start_local':
 				return array( 'A watch with URME stock simply stays URME Lager; there is nothing to start.', 'info' );
@@ -572,6 +572,31 @@ class URME_SS_Admin {
 		URME_SS_Matcher::reset();
 		$match = URME_SS_Matcher::match( $item );
 		return ( URME_SS_Matcher::EXISTS === $match['status'] && $match['product_id'] === (int) $item['match_product_id'] ) ? $match['product_id'] : 0;
+	}
+
+	/**
+	 * "Auto …98" button: at or below the regular price it becomes the sale price; above it, the
+	 * regular price is raised to it and any sale price is removed (a sale cannot exceed the regular price).
+	 *
+	 * @param string $item_key Supplier item whose confirmed product is edited.
+	 * @param int    $price    Price ending in 98 (SEK).
+	 */
+	private static function auto_price( $item_key, $price ) {
+		$pid     = self::confirmed_product_id( (string) $item_key );
+		$product = $pid ? wc_get_product( $pid ) : null;
+		if ( ! $product || 'trash' === $product->get_status() || $product->is_type( array( 'variable', 'grouped' ) ) ) {
+			return self::save_sale_price( $item_key, (string) $price ); // Same refusals and messages.
+		}
+		$regular = (string) $product->get_regular_price();
+		if ( '' !== $regular && (float) $price <= (float) $regular ) {
+			return self::save_sale_price( $item_key, (string) $price );
+		}
+		$old_sale = (string) $product->get_sale_price();
+		$product->set_regular_price( (string) $price );
+		$product->set_sale_price( '' );
+		$product->save();
+		URME_SS_Log::info( sprintf( 'Regular price of product #%d raised manually (Auto): %s → %d SEK%s.', $pid, '' === $regular ? '—' : $regular, $price, '' === $old_sale ? '' : ', sale price ' . $old_sale . ' SEK removed' ) );
+		return array( sprintf( 'Regular price of "%s" raised to %s kr (was %s kr)%s.', $product->get_name(), number_format_i18n( $price ), '' === $regular ? '—' : wc_format_decimal( $regular, 2 ), '' === $old_sale ? '' : '; sale price removed' ), 'success' );
 	}
 
 	/**

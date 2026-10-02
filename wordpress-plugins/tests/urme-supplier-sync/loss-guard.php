@@ -57,6 +57,21 @@ $x->save();
 run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
 ok( 5 === (int) p( $lg->get_id() )->get_stock_quantity(), '1.6.8: profit ≈ 565 kr (>= 500 kr): stays in stock' );
 
+// 1.6.9 "Auto …98" above the regular price raises the regular price (and removes a sale price) instead of refusing.
+$x = p( $lg->get_id() );
+$x->set_regular_price( '2990' );
+$x->set_sale_price( '2490' );
+$x->save();
+$a98 = URME_SS_Price_Hint::price_98( 176, URME_SS_Price_Hint::context() );
+$r   = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
+$x   = p( $lg->get_id() );
+ok( 'success' === $r[1] && (string) $a98 === $x->get_regular_price() && '' === $x->get_sale_price(), "1.6.9: Auto {$a98} kr above regular 2 990 kr → regular price {$a98} kr, sale price removed", $r );
+$x->set_regular_price( '9990' );
+$x->save();
+$r = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
+$x = p( $lg->get_id() );
+ok( '9990' === $x->get_regular_price() && (string) $a98 === $x->get_sale_price(), '   Auto below the regular price 9 990 kr → sale price, regular kept', $r );
+
 // Turned off: the supplier stock is synced whatever the price.
 settings( array( 'loss_out_of_stock' => 0 ) );
 run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );

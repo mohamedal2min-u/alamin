@@ -224,6 +224,7 @@ or `wp cron event run --due-now` from the server.
 
 = 1.6.4 =
 * Supplier catalog: the "Auto … kr" button sits on its own line under the sale price field.
+  Enter in the sale price field saves only that price (it never clicks "Auto").
 
 = 1.6.3 =
 * Supplier catalog: an "Auto … kr" button next to the sale price. One click saves the suggested

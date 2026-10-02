@@ -14,7 +14,7 @@
 	$( document ).on( 'keydown', '#urme-select-form .urme-price-edit input', function ( e ) {
 		if ( 13 === e.which ) {
 			e.preventDefault();
-			$( this ).closest( '.urme-price-edit' ).find( 'button' ).trigger( 'click' );
+			$( this ).closest( '.urme-price-edit' ).find( 'button[value^="sale|"]' ).trigger( 'click' );
 		}
 	} );
 

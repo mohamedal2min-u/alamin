@@ -71,6 +71,12 @@ $x->save();
 $r = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
 $x = p( $lg->get_id() );
 ok( '9990' === $x->get_regular_price() && (string) $a98 === $x->get_sale_price(), '   Auto below the regular price 9 990 kr → sale price, regular kept', $r );
+$x->set_regular_price( (string) $a98 );
+$x->set_sale_price( (string) $a98 );
+$x->save();
+$r = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
+$x = p( $lg->get_id() );
+ok( 'info' === $r[1] && (string) $a98 === $x->get_regular_price() && '' === $x->get_sale_price(), '   Auto equal to the regular price → no sale equal to the regular price, nothing else changed', $r );
 
 // Turned off: the supplier stock is synced whatever the price.
 settings( array( 'loss_out_of_stock' => 0 ) );

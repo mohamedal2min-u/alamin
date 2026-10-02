@@ -588,7 +588,18 @@ class URME_SS_Admin {
 			return self::save_sale_price( $item_key, (string) $price ); // Same refusals and messages.
 		}
 		$regular = (string) $product->get_regular_price();
-		if ( '' !== $regular && (float) $price <= (float) $regular ) {
+		$sale    = (string) $product->get_sale_price();
+		if ( '' !== $regular && abs( (float) $price - (float) $regular ) < 0.001 ) {
+			if ( '' === $sale || abs( (float) $sale - (float) $regular ) < 0.001 ) {
+				if ( '' !== $sale ) {
+					$product->set_sale_price( '' ); // A sale equal to the regular price is no sale.
+					$product->save();
+				}
+				return array( sprintf( '"%s" already sells at %s kr; nothing else to change.', $product->get_name(), number_format_i18n( $price ) ), 'info' );
+			}
+			return self::save_sale_price( $item_key, '' ); // Remove the lower sale: sells at the regular …98 price.
+		}
+		if ( '' !== $regular && (float) $price < (float) $regular ) {
 			return self::save_sale_price( $item_key, (string) $price );
 		}
 		$old_sale = (string) $product->get_sale_price();

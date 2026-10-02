@@ -225,7 +225,8 @@ or `wp cron event run --due-now` from the server.
 = 1.6.9 =
 * "Auto …98 kr" button: when the price is above the regular price it now raises the regular
   price to it (and removes a sale price) instead of refusing. At or below the regular price it
-  still sets the sale price.
+  still sets the sale price; equal to the regular price it changes nothing (and removes a sale
+  price equal to the regular price).
 
 = 1.6.8 =
 * Loss protection uses a minimum profit (Settings, default 500 kr): a Dropshipping watch whose

@@ -395,11 +395,11 @@ class URME_SS_Sync {
 				if ( null !== $loss ) {
 					// Never sell at a loss: no stock until the price covers the cost again.
 					++$stats['loss_blocked'];
-					$messages[] = sprintf( 'Price %s kr gives a loss of %s kr: set out of stock.', round( (float) $product->get_price() ), round( -$loss ) );
+					$messages[] = sprintf( 'Price %s kr: profit %s kr, below the %s kr minimum: set out of stock.', round( (float) $product->get_price() ), round( $loss ), round( self::min_profit() ) );
 					$change     = URME_SS_Store::apply_stock( $product, 0, $manage );
 					if ( $change ) {
 						++$stats['stock_updated'];
-						$changes[] = $change . ' (loss)';
+						$changes[] = sprintf( '%s (profit %s kr < %s kr)', $change, round( $loss ), round( self::min_profit() ) );
 					}
 				} elseif ( null !== $link['stock'] ) {
 					$change = URME_SS_Store::apply_stock( $product, (int) $link['stock'], $manage );
@@ -487,7 +487,7 @@ class URME_SS_Sync {
 		if ( $eventful ) {
 			URME_SS_Log::info(
 				sprintf(
-					'Product sync: %d selected (%d in disabled brands, skipped), %d checked, %d stock updates, %d out of stock (loss), %d cost updates, %d unchanged, %d unlinked, %d missing from feed, %d errors.',
+					'Product sync: %d selected (%d in disabled brands, skipped), %d checked, %d stock updates, %d out of stock (low profit), %d cost updates, %d unchanged, %d unlinked, %d missing from feed, %d errors.',
 					$stats['selected'],
 					$stats['brand_off'],
 					$stats['checked'],
@@ -531,19 +531,26 @@ class URME_SS_Sync {
 		$busy = true;
 		try {
 			URME_SS_Store::apply_stock( $product, 0, (bool) URME_SS_Settings::get( 'manage_stock' ) );
-			URME_SS_Log::warning( sprintf( '#%d %s: price %s kr is below cost (loss %s kr), set out of stock.', $product_id, $link['item_key'], round( (float) $product->get_price() ), round( -$loss ) ) );
+			URME_SS_Log::warning( sprintf( '#%d %s: price %s kr gives profit %s kr, below the %s kr minimum: set out of stock.', $product_id, $link['item_key'], round( (float) $product->get_price() ), round( $loss ), round( self::min_profit() ) ) );
 		} finally {
 			$busy = false;
 		}
 	}
 
 	/**
-	 * The negative profit (SEK) when the product's current price is below its cost,
-	 * or null when it makes money or the price, cost or rate is unknown.
+	 * The estimated profit (SEK) when it is below the minimum profit (can be negative),
+	 * or null when it is high enough or the price, cost or rate is unknown.
 	 */
 	public static function loss_at_current_price( WC_Product $product, $purchase_eur, array $hint ) {
 		$now = URME_SS_Price_Hint::profit_at( $product->get_price(), $purchase_eur, $hint );
-		return ( $now && $now['profit'] < 0 ) ? $now['profit'] : null;
+		return ( $now && $now['profit'] < self::min_profit() ) ? $now['profit'] : null;
+	}
+
+	/**
+	 * Minimum estimated profit (SEK) a Dropshipping watch needs to stay in stock.
+	 */
+	public static function min_profit() {
+		return max( 0, (float) URME_SS_Settings::get( 'min_profit_sek' ) );
 	}
 
 	private static function set_link_status( array $link, $status, $message ) {

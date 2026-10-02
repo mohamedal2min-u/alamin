@@ -137,13 +137,16 @@ class URME_SS_Price_Hint {
 		$now = self::profit_at( $current_price, $purchase_eur, $ctx );
 		$own = '';
 		if ( $now ) {
-			$ok  = $now['profit'] >= $h['target'] - 0.000001;
-			$own = sprintf(
-				'<div class="urme-hint-now %1$s">Your price %2$s: profit <strong>%3$s</strong> (%4$s of cost)</div>',
+			$guard = (bool) URME_SS_Settings::get( 'loss_out_of_stock' );
+			$min   = URME_SS_Sync::min_profit();
+			$ok    = $guard ? $now['profit'] >= $min : $now['profit'] >= $h['target'] - 0.000001;
+			$own   = sprintf(
+				'<div class="urme-hint-now %1$s">Your price %2$s: profit <strong>%3$s</strong> (%4$s of cost)%5$s</div>',
 				$ok ? 'urme-good' : 'urme-bad',
 				esc_html( self::kr( $now['price'] ) ),
 				esc_html( self::kr( $now['profit'] ) ),
-				esc_html( self::whole_pct( $now['profit'] / $now['cost'] ) )
+				esc_html( self::whole_pct( $now['profit'] / $now['cost'] ) ),
+				$guard ? '<br>' . esc_html( $ok ? sprintf( 'OK: at least %s, stays in stock', self::kr( $min ) ) : sprintf( 'Below %s minimum: out of stock', self::kr( $min ) ) ) : ''
 			);
 		}
 		$extra = rtrim( rtrim( number_format( $ctx['extra_eur'], 2, '.', '' ), '0' ), '.' );

@@ -7,7 +7,7 @@
 section( 'LG. Loss protection' );
 wp_set_current_user( $GLOBALS['FF_ADMIN'] );
 settings( array( 'rate_override' => '11.321', 'loss_out_of_stock' => 1 ) );
-ok( 1 === URME_SS_Settings::defaults()['loss_out_of_stock'], 'on by default' );
+ok( 1 === URME_SS_Settings::defaults()['loss_out_of_stock'] && 500 == URME_SS_Settings::defaults()['min_profit_sek'], 'on by default, minimum profit 500 kr (1.6.8)' );
 
 // 176 EUR → cost (176 + 12) × 11.321 = 2128 SEK; break-even price ≈ 2128 / (0.9 × (0.8 − 0.05)) ≈ 3153 SEK.
 nf_feed( 3000, array( 'REF000140' => array( 'PURCHASE_PRICE' => '176.00', 'STOCK' => '5' ) ) );
@@ -31,7 +31,7 @@ ok( '2990' === $x->get_regular_price(), '   the price itself is never changed' )
 // The sync keeps it at 0 while the price is too low, even with supplier stock.
 run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
 ok( 0 === (int) p( $lg->get_id() )->get_stock_quantity(), 'sync keeps it out of stock while selling at a loss' );
-ok( false !== strpos( URME_SS_DB::get_link( key_of( 140 ) )['last_message'], 'loss' ), '   link message explains the loss' );
+ok( false !== strpos( URME_SS_DB::get_link( key_of( 140 ) )['last_message'], 'below the 500 kr minimum' ), '   link message explains the loss' );
 
 // A sale price below cost counts too (the active price is what the customer pays).
 $x = p( $lg->get_id() );
@@ -43,6 +43,19 @@ $x = p( $lg->get_id() );
 $x->set_sale_price( '2490' );
 $x->save();
 ok( 0 === (int) p( $lg->get_id() )->get_stock_quantity(), 'sale price 2 490 kr (loss): out of stock' );
+
+// 1.6.8 minimum profit 500 kr: 3 790 kr gives about 430 kr profit (above cost, below 500) → out of stock; 3 990 kr ≈ 565 kr → in stock.
+$x = p( $lg->get_id() );
+$x->set_sale_price( '' );
+$x->set_regular_price( '3790' );
+$x->save();
+run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
+ok( 0 === (int) p( $lg->get_id() )->get_stock_quantity(), '1.6.8: profit ≈ 430 kr (< 500 kr minimum): out of stock' );
+$x = p( $lg->get_id() );
+$x->set_regular_price( '3990' );
+$x->save();
+run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
+ok( 5 === (int) p( $lg->get_id() )->get_stock_quantity(), '1.6.8: profit ≈ 565 kr (>= 500 kr): stays in stock' );
 
 // Turned off: the supplier stock is synced whatever the price.
 settings( array( 'loss_out_of_stock' => 0 ) );

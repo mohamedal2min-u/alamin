@@ -345,7 +345,7 @@ class URME_SS_Admin {
 		}
 		$parts = array();
 		if ( $supplier ) {
-			$parts[] = sprintf( 'Dropshipping – URME stock 0, updated on the next sync or with "Sync now" (%d): %s.', count( $supplier ), implode( ', ', $supplier ) );
+			$parts[] = sprintf( 'Dropshipping – URME stock 0 (%d): %s.', count( $supplier ), implode( ', ', $supplier ) );
 		}
 		if ( $local ) {
 			$parts[] = sprintf( 'Not selected: URME stock exists, they stay URME Lager (%d): %s.', count( $local ), implode( ', ', $local ) );
@@ -357,7 +357,26 @@ class URME_SS_Admin {
 			$parts[] = sprintf( 'Already selected: %s.', implode( ', ', $skipped ) );
 		}
 		$started = count( $supplier );
-		return array( implode( ' ', $parts ), ( $rejected || $local ) ? ( $started ? 'warning' : 'error' ) : 'success' );
+		$type    = ( $rejected || $local ) ? ( $started ? 'warning' : 'error' ) : 'success';
+		if ( $started ) {
+			// Sync the new selection now (cached catalog, no feed download), like "Sync products only".
+			$sync = URME_SS_Sync::run(
+				array(
+					'refresh_feed' => false,
+					'trigger'      => 'select',
+				)
+			);
+			if ( ! $sync['ran'] ) {
+				$parts[] = 'Not synced yet: ' . $sync['message'] . ' They are updated on the next sync.';
+				$type    = 'warning';
+			} elseif ( ! empty( $sync['sync']['skipped'] ) ) {
+				$parts[] = 'Not synced yet: ' . $sync['sync']['skipped'];
+				$type    = 'warning';
+			} else {
+				$parts[] = 'Synced now: supplier stock and cost updated.';
+			}
+		}
+		return array( implode( ' ', $parts ), $type );
 	}
 
 	/**

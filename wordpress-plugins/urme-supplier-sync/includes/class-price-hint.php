@@ -65,6 +65,20 @@ class URME_SS_Price_Hint {
 		return $out;
 	}
 
+	/**
+	 * The suggested price raised to the nearest price ending in 98 at or above it
+	 * (2 910 → 2 998, 4 680 → 4 698), or null when there is no suggested price.
+	 *
+	 * @param mixed $purchase_eur Supplier PURCHASE_PRICE (EUR, VAT 0%).
+	 */
+	public static function price_98( $purchase_eur, array $ctx ) {
+		$h = self::calculate( $purchase_eur, $ctx );
+		if ( ! $h ) {
+			return null;
+		}
+		return (int) ( max( 0, ceil( ( $h['price'] - 98 ) / 100 ) ) * 100 + 98 );
+	}
+
 	private static function breakdown( $price, $cost, array $ctx ) {
 		$paid = $price * ( 1 - $ctx['coupon'] );
 		$net  = $paid / ( 1 + $ctx['vat'] );

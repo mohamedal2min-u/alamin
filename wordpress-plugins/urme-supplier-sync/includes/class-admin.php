@@ -112,7 +112,7 @@ class URME_SS_Admin {
 			$key    = $arg;
 			$raw    = ( isset( $post['sale_price'] ) && is_scalar( $post['sale_price'] ) ) ? sanitize_text_field( (string) $post['sale_price'] ) : null;
 			$result = self::save_sale_price( $key, $raw );
-		} elseif ( in_array( $op, array( 'start_supplier', 'start_local', 'dropship', 'lager', 'resume', 'sync' ), true ) ) {
+		} elseif ( in_array( $op, array( 'start_supplier', 'start_local', 'dropship', 'lager', 'resume', 'sync', 'auto98' ), true ) ) {
 			$key    = in_array( $op, array( 'dropship', 'lager', 'resume', 'sync' ), true ) ? (string) ( URME_SS_DB::get_link_by_id( absint( $arg ) )['item_key'] ?? '' ) : $arg;
 			$result = self::run_row_action( $action );
 		} else {
@@ -414,6 +414,14 @@ class URME_SS_Admin {
 		switch ( $parts[0] ) {
 			case 'start_supplier':
 				return self::start_from_catalog( $arg );
+
+			case 'auto98':
+				$item  = URME_SS_DB::get_item( $arg );
+				$price = $item ? URME_SS_Price_Hint::price_98( $item['purchase_price'], URME_SS_Price_Hint::context() ) : null;
+				if ( ! $price ) {
+					return array( 'No suggested price for this watch (cost or exchange rate missing); nothing was changed.', 'error' );
+				}
+				return self::save_sale_price( $arg, (string) $price );
 
 			case 'start_local':
 				return array( 'A watch with URME stock simply stays URME Lager; there is nothing to start.', 'info' );
@@ -1172,8 +1180,23 @@ class URME_SS_Admin {
 			esc_html( '' === $info['regular'] ? '—' : self::kr( $info['regular'] ) ),
 			esc_attr( $key ),
 			esc_attr( $info['sale'] ),
-			self::row_button( 'sale|' . $key, 'Save', 'button button-small' )
+			self::row_button( 'sale|' . $key, 'Save', 'button button-small' ) . self::auto98_button( $row )
 		);
+	}
+
+	/**
+	 * One-click sale price: the suggested price raised to the next price ending in 98.
+	 */
+	private static function auto98_button( array $row ) {
+		static $ctx = null;
+		if ( null === $ctx ) {
+			$ctx = URME_SS_Price_Hint::context(); // Once per page, like the price hint column.
+		}
+		$price = URME_SS_Price_Hint::price_98( $row['purchase_price'], $ctx );
+		if ( ! $price ) {
+			return '';
+		}
+		return ' ' . self::row_button( 'auto98|' . $row['item_key'], 'Auto ' . number_format_i18n( $price ) . ' kr', 'button button-small button-primary urme-auto98' );
 	}
 
 	private static function kr( $value ) {

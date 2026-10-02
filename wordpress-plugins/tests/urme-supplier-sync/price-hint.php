@@ -86,6 +86,11 @@ ok( 4010 === URME_SS_Price_Hint::calculate( 188.01, ph_ctx( array( 'rate' => 11.
 
 section( 'PH8/9. Missing values: "Price hint unavailable"' );
 ok( null === URME_SS_Price_Hint::calculate( null, $ctx ) && null === URME_SS_Price_Hint::calculate( '', $ctx ) && null === URME_SS_Price_Hint::calculate( 0, $ctx ), '8. no PURCHASE_PRICE → unavailable (nothing guessed)' );
+// 1.6.3 "Auto …98 kr": the suggested price raised to the next price ending in 98.
+$c98 = ph_ctx( array( 'rate' => 11.331, 'profit_pct' => 0.20 ) );
+ok( 2910 === URME_SS_Price_Hint::calculate( 132, $c98 )['price'] && 2998 === URME_SS_Price_Hint::price_98( 132, $c98 ), '8b. auto 98: suggested 2,910 → 2,998' );
+ok( 4698 === URME_SS_Price_Hint::price_98( 220, $c98 ) && 2298 === URME_SS_Price_Hint::price_98( 101.20, $c98 ), '   4,680 → 4,698 and 2,290 → 2,298 (always at or above the suggested price)' );
+ok( null === URME_SS_Price_Hint::price_98( null, $c98 ), '   no PURCHASE_PRICE → no auto price' );
 $html = ph_catalog( array( 'productno' => 'REF000126' ) );
 ok( false !== strpos( ff_text( $html ), 'Price hint unavailable' ) && false === strpos( $html, 'Suggested price' ), '   catalog row without PURCHASE_PRICE shows "Price hint unavailable"' );
 settings( array( 'rate_override' => '' ) );

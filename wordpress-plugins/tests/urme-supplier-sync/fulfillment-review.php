@@ -356,7 +356,8 @@ ok( '' === $hooks, 'plugin notice/labels/column/filter print nothing outside wp-
 $item = lf_line( $o_c );
 ok( ! lf_private_meta( $item->get_id() ) && ! $leaks( wp_json_encode( $item->get_formatted_meta_data( '', true ) ) ), 'order line meta (used by invoices/packing slips): nothing stored' );
 ok( ! $leaks( wp_json_encode( wc_get_order( $o_c->get_id() )->get_meta_data() ) ), 'order meta: nothing stored' );
-ok( ! array_filter( wc_get_order_notes( array( 'order_id' => $o_c->get_id() ) ), static function ( $n ) use ( $leaks ) { return (bool) $leaks( $n->content ); } ), 'order notes: nothing added' );
+ok( ! array_filter( wc_get_order_notes( array( 'order_id' => $o_c->get_id(), 'type' => 'customer' ) ), static function ( $n ) use ( $leaks ) { return (bool) $leaks( $n->content ); } ), 'customer order notes: nothing added' );
+ok( (bool) array_filter( wc_get_order_notes( array( 'order_id' => $o_c->get_id(), 'type' => 'internal' ) ), static function ( $n ) { return 0 === strpos( $n->content, 'URME: Dropshipping' ) && ! $n->customer_note; } ), '1.6.13: private note "URME: Dropshipping – …" for the mobile app (never a customer note)' );
 wp_set_current_user( $GLOBALS['FF_ADMIN'] );
 $rest = rest_do_request( new WP_REST_Request( 'GET', '/wc/v3/orders/' . $o_c->get_id() ) );
 ok( 200 === $rest->get_status() && ! $leaks( wp_json_encode( $rest->get_data() ) ), 'REST API order response: no internal data', $rest->get_status() );

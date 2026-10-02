@@ -1585,6 +1585,9 @@ class URME_SS_Admin {
 				<tr><th>Stock management</th>
 					<td><label><input type="checkbox" name="settings[manage_stock]" value="1" <?php checked( $s['manage_stock'] ); ?>> Turn on "Manage stock" for linked products that don't have it, so the supplier quantity can be stored</label>
 					<p class="description">If off, such products only get "In stock" / "Out of stock".</p></td></tr>
+				<tr><th>Order note</th>
+					<td><label><input type="checkbox" name="settings[order_note]" value="1" <?php checked( $s['order_note'] ); ?>> Add a private order note "URME: Dropshipping / URME Lager – SKU × qty" when a watch is sold</label>
+					<p class="description">Shows the source in the WooCommerce mobile app. Private notes are never shown to the customer.</p></td></tr>
 				<tr><th>Loss protection</th>
 					<td><label><input type="checkbox" name="settings[loss_out_of_stock]" value="1" <?php checked( $s['loss_out_of_stock'] ); ?>> Set Dropshipping watches out of stock when their estimated profit is below <input type="number" name="settings[min_profit_sek]" min="0" max="100000" step="1" value="<?php echo esc_attr( $s['min_profit_sek'] ); ?>" class="small-text"> SEK</label>
 					<p class="description">Same profit calculation as the price hint (coupon, VAT, Klarna fee, cost incl. extra EUR). Stock comes back at the next sync once the price covers the cost.</p></td></tr>

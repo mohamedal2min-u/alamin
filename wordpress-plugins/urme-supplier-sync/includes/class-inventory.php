@@ -128,12 +128,33 @@ class URME_SS_Inventory {
 				);
 			}
 			if ( 1 === (int) $ok ) {
+				if ( $delta > 0 ) {
+					self::note_sale( $facts, $book, $delta );
+				}
 				return true;
 			}
 			// Booked by a concurrent save meanwhile (or a database error): read again once.
 		}
 		URME_SS_Log::error( sprintf( 'Order line #%d (order #%d): its fulfillment could not be recorded; it is retried on the next save of the line.', $item_id, $facts['order_id'] ) );
 		return null;
+	}
+
+	/**
+	 * Private order note "URME: Dropshipping – SKU × 1" when units are taken, so the source shows in
+	 * the WooCommerce mobile app. Private: never on the customer's emails, My Account or invoices.
+	 */
+	private static function note_sale( array $facts, array $book, $delta ) {
+		if ( ! URME_SS_Settings::get( 'order_note' ) ) {
+			return;
+		}
+		$order = wc_get_order( $facts['order_id'] );
+		if ( ! $order ) {
+			return;
+		}
+		$product = wc_get_product( $facts['product_id'] );
+		$sku     = $product ? ( $product->get_sku() ? $product->get_sku() : $product->get_name() ) : '#' . $facts['product_id'];
+		$source  = $book['src_supplier'] > 0 && $book['supplier_allocated'] >= $delta ? 'Dropshipping' : 'URME Lager';
+		$order->add_order_note( sprintf( 'URME: %s – %s × %d', $source, $sku, $delta ), 0, false );
 	}
 
 	/**

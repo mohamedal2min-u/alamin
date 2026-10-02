@@ -36,6 +36,7 @@ class URME_SS_Settings {
 			'manage_stock'       => 1,
 			'loss_out_of_stock'  => 1,  // Never sell a watch below the minimum profit: out of stock until repriced.
 			'min_profit_sek'     => 500, // Minimum estimated profit (SEK) to stay in stock.
+			'order_note'         => 1,   // Private order note with the fulfillment source (mobile app).
 			// Refuse a feed whose watch count drops below this share of the previous good feed.
 			'min_feed_ratio'     => 50,
 			// Do not push stock/cost from a catalog older than this many hours.
@@ -83,6 +84,7 @@ class URME_SS_Settings {
 			'manage_stock'       => empty( $input['manage_stock'] ) ? 0 : 1,
 			'loss_out_of_stock'  => empty( $input['loss_out_of_stock'] ) ? 0 : 1,
 			'min_profit_sek'     => (int) self::number( $input, $current, 'min_profit_sek', 0, 100000 ),
+			'order_note'         => empty( $input['order_note'] ) ? 0 : 1,
 			'min_feed_ratio'     => max( 0, min( 100, (int) ( $input['min_feed_ratio'] ?? 50 ) ) ),
 			'max_feed_age_hours' => max( 1, min( 72, (int) ( $input['max_feed_age_hours'] ?? 3 ) ) ),
 			'hint_extra_eur'     => self::number( $input, $current, 'hint_extra_eur', 0, 1000 ),

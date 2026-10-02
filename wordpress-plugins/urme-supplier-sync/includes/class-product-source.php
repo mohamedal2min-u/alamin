@@ -380,6 +380,50 @@ class URME_SS_Product_Source {
 	}
 
 	/**
+	 * Counts for the dropdown from the products list's own query, so they follow every other
+	 * active filter (stock status, brand, category, product type, search, post status): the list
+	 * SQL without its paging, ordering and Fulfillment condition, counted once per state.
+	 * Null when the list query is not available (the dropdown then shows the overall counts).
+	 *
+	 * @return array<string, int>|null
+	 */
+	private static function list_counts() {
+		global $wp_query, $wpdb;
+		if ( ! ( $wp_query instanceof WP_Query ) || 'product' !== $wp_query->get( 'post_type' ) || ! is_string( $wp_query->request ) || '' === $wp_query->request ) {
+			return null;
+		}
+		$sql   = $wp_query->request;
+		$state = (string) $wp_query->get( 'urme_fulfillment' );
+		if ( '' !== $state && isset( self::FILTERS[ $state ] ) ) {
+			$own = self::where_sql( $state );
+			if ( false === strpos( $sql, $own ) ) {
+				return null;
+			}
+			$sql = str_replace( $own, '', $sql );
+		}
+		$sql = str_replace( 'SQL_CALC_FOUND_ROWS', '', $sql );
+		$sql = preg_replace( '/\s+LIMIT\s+\d+(\s*,\s*\d+)?\s*$/i', '', $sql );
+		$pos = strripos( $sql, ' ORDER BY ' );
+		if ( false !== $pos && false === strpos( substr( $sql, $pos ), ')' ) ) {
+			$sql = substr( $sql, 0, $pos );
+		}
+		$base = "SELECT COUNT(DISTINCT t.ID) FROM ({$sql}) t";
+		$quiet = $wpdb->suppress_errors( true );
+		$out   = array( 'all' => $wpdb->get_var( $base ) ); // phpcs:ignore WordPress.DB
+		foreach ( array_keys( self::FILTERS ) as $value ) {
+			$cond          = preg_replace( '/^\s*AND\s+/i', '', str_replace( "{$wpdb->posts}.ID", 't.ID', self::where_sql( $value ) ) );
+			$out[ $value ] = $wpdb->get_var( "{$base} WHERE {$cond}" ); // phpcs:ignore WordPress.DB
+		}
+		$wpdb->suppress_errors( $quiet );
+		foreach ( $out as $n ) {
+			if ( null === $n ) {
+				return null; // A query failed: fall back to the overall counts.
+			}
+		}
+		return array_map( 'intval', $out );
+	}
+
+	/**
 	 * The Fulfillment dropdown, in WooCommerce's own filter row (after the stock status filter).
 	 */
 	public static function add_filter_dropdown( $filters ) {
@@ -390,11 +434,14 @@ class URME_SS_Product_Source {
 	}
 
 	public static function render_filter_dropdown() {
-		$status   = isset( $_GET['post_status'] ) ? sanitize_key( wp_unslash( $_GET['post_status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$counts   = self::counts( ( '' !== $status && 'all' !== $status && get_post_status_object( $status ) ) ? array( $status ) : array() );
+		$counts = self::list_counts();
+		if ( null === $counts ) {
+			$status = isset( $_GET['post_status'] ) ? sanitize_key( wp_unslash( $_GET['post_status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$counts = self::counts( ( '' !== $status && 'all' !== $status && get_post_status_object( $status ) ) ? array( $status ) : array() );
+		}
 		$current  = self::current_filter();
 		$out      = '<label for="urme-fulfillment-filter" class="screen-reader-text">Filter by fulfillment</label>';
-		$out     .= '<select name="urme_fulfillment" id="urme-fulfillment-filter" title="Counts are products. A variable product with both Dropshipping and URME Lager variations is counted under both."><option value="">' . esc_html( sprintf( 'Fulfillment: All (%d)', $counts['all'] ) ) . '</option>';
+		$out     .= '<select name="urme_fulfillment" id="urme-fulfillment-filter" title="Counts are products and follow the other filters (stock status, brand, category, search…). A variable product with both Dropshipping and URME Lager variations is counted under both."><option value="">' . esc_html( sprintf( 'Fulfillment: All (%d)', $counts['all'] ) ) . '</option>';
 		foreach ( self::FILTERS as $value => $label ) {
 			$out .= '<option value="' . esc_attr( $value ) . '"' . selected( $value, $current, false ) . '>' . esc_html( sprintf( '%s (%d)', $label, $counts[ $value ] ) ) . '</option>';
 		}

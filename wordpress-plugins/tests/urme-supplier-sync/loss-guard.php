@@ -1,0 +1,51 @@
+<?php
+/**
+ * 1.6.7: never sell a Dropshipping watch at a loss. Included last; uses the helpers of the files before it.
+ * Cost model = the price hint: (EUR + 12) × rate, 10% coupon, 25% VAT, 5% Klarna on the paid amount.
+ */
+
+section( 'LG. Loss protection' );
+wp_set_current_user( $GLOBALS['FF_ADMIN'] );
+settings( array( 'rate_override' => '11.321', 'loss_out_of_stock' => 1 ) );
+ok( 1 === URME_SS_Settings::defaults()['loss_out_of_stock'], 'on by default' );
+
+// 176 EUR → cost (176 + 12) × 11.321 = 2128 SEK; break-even price ≈ 2128 / (0.9 × (0.8 − 0.05)) ≈ 3153 SEK.
+nf_feed( 3000, array( 'REF000140' => array( 'PURCHASE_PRICE' => '176.00', 'STOCK' => '5' ) ) );
+run( array( 'force_feed' => true ) );
+$lg = mk( 'Loss guard', 'LG-1', '', true, 0 );
+$lg->set_regular_price( '4990' );
+$lg->set_sale_price( '' );
+$lg->save();
+URME_SS_DB::insert_link( key_of( 140 ), $lg->get_id(), 'manual' );
+run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
+ok( 5 === (int) p( $lg->get_id() )->get_stock_quantity(), 'profitable price 4 990 kr: supplier stock 5 synced' );
+
+// Saving a price below cost takes the watch off sale at once.
+$x = p( $lg->get_id() );
+$x->set_regular_price( '2990' );
+$x->save();
+$x = p( $lg->get_id() );
+ok( 0 === (int) $x->get_stock_quantity() && 'outofstock' === $x->get_stock_status(), 'price saved at 2 990 kr (loss): out of stock immediately' );
+ok( '2990' === $x->get_regular_price(), '   the price itself is never changed' );
+
+// The sync keeps it at 0 while the price is too low, even with supplier stock.
+run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
+ok( 0 === (int) p( $lg->get_id() )->get_stock_quantity(), 'sync keeps it out of stock while selling at a loss' );
+ok( false !== strpos( URME_SS_DB::get_link( key_of( 140 ) )['last_message'], 'loss' ), '   link message explains the loss' );
+
+// A sale price below cost counts too (the active price is what the customer pays).
+$x = p( $lg->get_id() );
+$x->set_regular_price( '4990' );
+$x->save();
+run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
+ok( 5 === (int) p( $lg->get_id() )->get_stock_quantity(), 'repriced to 4 990 kr: stock back at the next sync' );
+$x = p( $lg->get_id() );
+$x->set_sale_price( '2490' );
+$x->save();
+ok( 0 === (int) p( $lg->get_id() )->get_stock_quantity(), 'sale price 2 490 kr (loss): out of stock' );
+
+// Turned off: the supplier stock is synced whatever the price.
+settings( array( 'loss_out_of_stock' => 0 ) );
+run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
+ok( 5 === (int) p( $lg->get_id() )->get_stock_quantity(), 'setting off: supplier stock synced at any price' );
+settings( array( 'loss_out_of_stock' => 1, 'rate_override' => '' ) );

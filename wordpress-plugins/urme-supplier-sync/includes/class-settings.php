@@ -34,6 +34,7 @@ class URME_SS_Settings {
 			'cost_meta_key'      => '',
 			'rate_override'      => '',
 			'manage_stock'       => 1,
+			'loss_out_of_stock'  => 1,  // Never sell a watch below its cost: out of stock until repriced.
 			// Refuse a feed whose watch count drops below this share of the previous good feed.
 			'min_feed_ratio'     => 50,
 			// Do not push stock/cost from a catalog older than this many hours.
@@ -79,6 +80,7 @@ class URME_SS_Settings {
 			'cost_meta_key'      => self::sanitize_meta_key( (string) ( $input['cost_meta_key'] ?? '' ) ),
 			'rate_override'      => ( is_numeric( $override ) && (float) $override > 0 ) ? (string) (float) $override : '',
 			'manage_stock'       => empty( $input['manage_stock'] ) ? 0 : 1,
+			'loss_out_of_stock'  => empty( $input['loss_out_of_stock'] ) ? 0 : 1,
 			'min_feed_ratio'     => max( 0, min( 100, (int) ( $input['min_feed_ratio'] ?? 50 ) ) ),
 			'max_feed_age_hours' => max( 1, min( 72, (int) ( $input['max_feed_age_hours'] ?? 3 ) ) ),
 			'hint_extra_eur'     => self::number( $input, $current, 'hint_extra_eur', 0, 1000 ),

@@ -53,6 +53,9 @@ class URME_SS_Plugin {
 		}
 		// No gift wrap (ThemeComplete options) for Dropshipping watches: storefront, AJAX add to cart and REST alike.
 		URME_SS_Gift_Wrap::init();
+		// Never sell a Dropshipping watch at a loss: out of stock as soon as a price below cost is saved.
+		add_action( 'woocommerce_update_product', array( 'URME_SS_Sync', 'on_product_saved' ), 20, 1 );
+		add_action( 'woocommerce_update_product_variation', array( 'URME_SS_Sync', 'on_product_saved' ), 20, 1 );
 		// Self-heal the schedule if it was lost (e.g. after a migration).
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
 			self::schedule();

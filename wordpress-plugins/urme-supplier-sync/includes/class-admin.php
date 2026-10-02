@@ -1549,6 +1549,9 @@ class URME_SS_Admin {
 				<tr><th>Stock management</th>
 					<td><label><input type="checkbox" name="settings[manage_stock]" value="1" <?php checked( $s['manage_stock'] ); ?>> Turn on "Manage stock" for linked products that don't have it, so the supplier quantity can be stored</label>
 					<p class="description">If off, such products only get "In stock" / "Out of stock".</p></td></tr>
+				<tr><th>Loss protection</th>
+					<td><label><input type="checkbox" name="settings[loss_out_of_stock]" value="1" <?php checked( $s['loss_out_of_stock'] ); ?>> Set Dropshipping watches out of stock when their current price is below cost</label>
+					<p class="description">Same profit calculation as the price hint (coupon, VAT, Klarna fee, cost incl. extra EUR). Stock comes back at the next sync once the price covers the cost.</p></td></tr>
 				<tr><th><label for="urme-ratio">Feed safety check</label></th>
 					<td>Refuse a feed with fewer than <input type="number" id="urme-ratio" name="settings[min_feed_ratio]" min="0" max="100" value="<?php echo esc_attr( $s['min_feed_ratio'] ); ?>" class="small-text"> % of the previous feed's watches
 					<p class="description">Protects against a half-empty feed. 0 disables the check.</p></td></tr>

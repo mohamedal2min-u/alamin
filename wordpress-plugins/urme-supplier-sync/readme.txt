@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.6.6
+Stable tag: 1.6.7
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -109,7 +109,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.6.6.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.6.7.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -221,6 +221,12 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.6.7 =
+* Loss protection (Settings, on by default): a Dropshipping watch whose current price (sale price
+  included) is below its cost is set out of stock, by every sync and as soon as such a price is
+  saved. Same profit calculation as the price hint. Prices are never changed; stock comes back at
+  the next sync once the price covers the cost.
 
 = 1.6.6 =
 * "Select checked for sync" now syncs the selected watches right away (supplier stock and cost,

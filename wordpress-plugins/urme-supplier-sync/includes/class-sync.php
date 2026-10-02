@@ -282,6 +282,7 @@ class URME_SS_Sync {
 			'linked'        => 0,
 			'checked'       => 0,
 			'stock_updated' => 0,
+			'loss_blocked'  => 0,
 			'cost_updated'  => 0,
 			'unchanged'     => 0,
 			'unmatched'     => 0,
@@ -313,6 +314,7 @@ class URME_SS_Sync {
 		$rate   = URME_SS_Rates::current();
 		$target = URME_SS_Store::cost_target();
 		$manage = (bool) URME_SS_Settings::get( 'manage_stock' );
+		$hint   = URME_SS_Settings::get( 'loss_out_of_stock' ) ? URME_SS_Price_Hint::context() : null;
 		$now    = current_time( 'mysql', true );
 		$notes  = array();
 
@@ -389,7 +391,17 @@ class URME_SS_Sync {
 				$messages   = array();
 				$cost_error = '';
 
-				if ( null !== $link['stock'] ) {
+				$loss = $hint ? self::loss_at_current_price( $product, $link['purchase_price'], $hint ) : null;
+				if ( null !== $loss ) {
+					// Never sell at a loss: no stock until the price covers the cost again.
+					++$stats['loss_blocked'];
+					$messages[] = sprintf( 'Price %s kr gives a loss of %s kr: set out of stock.', round( (float) $product->get_price() ), round( -$loss ) );
+					$change     = URME_SS_Store::apply_stock( $product, 0, $manage );
+					if ( $change ) {
+						++$stats['stock_updated'];
+						$changes[] = $change . ' (loss)';
+					}
+				} elseif ( null !== $link['stock'] ) {
 					$change = URME_SS_Store::apply_stock( $product, (int) $link['stock'], $manage );
 					if ( $change ) {
 						++$stats['stock_updated'];
@@ -475,11 +487,12 @@ class URME_SS_Sync {
 		if ( $eventful ) {
 			URME_SS_Log::info(
 				sprintf(
-					'Product sync: %d selected (%d in disabled brands, skipped), %d checked, %d stock updates, %d cost updates, %d unchanged, %d unlinked, %d missing from feed, %d errors.',
+					'Product sync: %d selected (%d in disabled brands, skipped), %d checked, %d stock updates, %d out of stock (loss), %d cost updates, %d unchanged, %d unlinked, %d missing from feed, %d errors.',
 					$stats['selected'],
 					$stats['brand_off'],
 					$stats['checked'],
 					$stats['stock_updated'],
+					$stats['loss_blocked'],
 					$stats['cost_updated'],
 					$stats['unchanged'],
 					$stats['unmatched'],
@@ -490,6 +503,47 @@ class URME_SS_Sync {
 		}
 		self::save_status( 'sync', $stats );
 		return $stats;
+	}
+
+	/**
+	 * After a product save: a supplier-synced watch whose price is now below cost goes
+	 * out of stock at once (the next sync would do the same). Re-entry safe.
+	 *
+	 * @param int $product_id Saved product or variation.
+	 */
+	public static function on_product_saved( $product_id ) {
+		static $busy = false;
+		if ( $busy || ! URME_SS_Settings::get( 'loss_out_of_stock' ) ) {
+			return;
+		}
+		$link = URME_SS_DB::link_for_product( (int) $product_id );
+		if ( ! $link || ! (int) $link['sync_enabled'] || URME_SS_Inventory::LOCAL === $link['stock_mode'] || null === $link['last_cost_eur'] ) {
+			return;
+		}
+		$product = wc_get_product( (int) $product_id );
+		if ( ! $product || 'outofstock' === $product->get_stock_status() ) {
+			return;
+		}
+		$loss = self::loss_at_current_price( $product, $link['last_cost_eur'], URME_SS_Price_Hint::context() );
+		if ( null === $loss ) {
+			return;
+		}
+		$busy = true;
+		try {
+			URME_SS_Store::apply_stock( $product, 0, (bool) URME_SS_Settings::get( 'manage_stock' ) );
+			URME_SS_Log::warning( sprintf( '#%d %s: price %s kr is below cost (loss %s kr), set out of stock.', $product_id, $link['item_key'], round( (float) $product->get_price() ), round( -$loss ) ) );
+		} finally {
+			$busy = false;
+		}
+	}
+
+	/**
+	 * The negative profit (SEK) when the product's current price is below its cost,
+	 * or null when it makes money or the price, cost or rate is unknown.
+	 */
+	public static function loss_at_current_price( WC_Product $product, $purchase_eur, array $hint ) {
+		$now = URME_SS_Price_Hint::profit_at( $product->get_price(), $purchase_eur, $hint );
+		return ( $now && $now['profit'] < 0 ) ? $now['profit'] : null;
 	}
 
 	private static function set_link_status( array $link, $status, $message ) {

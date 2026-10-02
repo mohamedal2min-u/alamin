@@ -116,6 +116,8 @@ update_option( 'urme_test_rate_mode', 'ecb' );
 cogs( false );
 mode( 'ok' );
 feed();
+// 1.6.7 loss protection is on by default; the older sections use random feed costs, so it is tested on its own in loss-guard.php.
+settings( array( 'loss_out_of_stock' => 0 ) );
 
 function mk( $name, $sku, $gtin = '', $manage = false, $qty = null ) {
 	$p = new WC_Product_Simple();
@@ -590,5 +592,7 @@ require __DIR__ . '/two-state.php';
 require __DIR__ . '/quick-edit.php';
 // 1.5.7: cost of the plugin on store and admin pages.
 require __DIR__ . '/light.php';
+// 1.6.7: a Dropshipping watch priced below cost goes out of stock (sync and product save).
+require __DIR__ . '/loss-guard.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

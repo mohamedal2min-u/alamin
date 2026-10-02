@@ -318,7 +318,7 @@ $before_p2 = array( p( $P2 )->get_stock_quantity(), p( $P2 )->get_cogs_value(), 
 feed( array( 'drop' => array( 'REF000001' ), 'set' => array( 'REF000000' => array( 'STOCK' => '3' ) ) ) );
 run();
 ok( '0' === cat( 1 )['in_feed'] && null !== cat( 1 )['missing_since'], 'catalog row flagged, not deleted' );
-ok( array( p( $P2 )->get_stock_quantity(), p( $P2 )->get_cogs_value(), p( $P2 )->get_stock_status() ) === $before_p2, 'P2 untouched while missing' );
+ok( 0 === (int) p( $P2 )->get_stock_quantity() && 'outofstock' === p( $P2 )->get_stock_status() && p( $P2 )->get_cogs_value() === $before_p2[1], '1.6.12: P2 out of stock while missing from the feed (cost kept)' );
 ok( 1 === sync_stats()['missing'] && 'missing' === link_of( 1 )['last_status'], 'reported as missing', sync_stats() );
 ok( null !== link_of( 1 ), 'selection/link kept' );
 feed( array( 'set' => array( 'REF000000' => array( 'STOCK' => '3' ) ) ) );

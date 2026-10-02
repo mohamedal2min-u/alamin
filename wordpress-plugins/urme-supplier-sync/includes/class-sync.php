@@ -363,9 +363,24 @@ class URME_SS_Sync {
 			}
 			++$stats['linked'];
 			if ( empty( $link['catalog_id'] ) || ! (int) $link['in_feed'] ) {
-				// Temporarily (or permanently) gone from the feed: leave the product alone.
+				// Gone from the feed (temporarily or for good): the supplier cannot deliver it, so the
+				// Dropshipping product goes out of stock; it is synced again when it returns. Cost is kept.
 				++$stats['missing'];
-				self::set_link_status( $link, 'missing', 'Not in the supplier feed; product left unchanged.' );
+				$gone = wc_get_product( (int) $link['product_id'] );
+				$msg  = 'Not in the supplier feed; product left unchanged.';
+				if ( $gone && 'trash' !== $gone->get_status() && URME_SS_Inventory::LOCAL !== $link['stock_mode'] ) {
+					try {
+						$change = URME_SS_Store::apply_stock( $gone, 0, $manage );
+						if ( $change ) {
+							++$stats['stock_updated'];
+							$notes[] = sprintf( '#%d %s: %s (not in supplier feed)', $gone->get_id(), $link['product_no'], $change );
+						}
+						$msg = 'Not in the supplier feed: set out of stock until it returns.';
+					} catch ( Throwable $e ) {
+						$msg = 'Not in the supplier feed; stock could not be set to 0: ' . $e->getMessage();
+					}
+				}
+				self::set_link_status( $link, 'missing', substr( $msg, 0, 255 ) );
 				continue;
 			}
 

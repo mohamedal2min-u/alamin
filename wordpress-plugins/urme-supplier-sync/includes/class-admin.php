@@ -1176,11 +1176,12 @@ class URME_SS_Admin {
 		}
 		$key = (string) $row['item_key'];
 		return sprintf(
-			'<div class="urme-price-edit"><small class="urme-muted">Regular: %s</small><div class="urme-price-sale"><label>Sale price <input type="text" name="sale_price[%s]" value="%s" size="7" inputmode="decimal" autocomplete="off" aria-label="Sale price (SEK)" placeholder="—"></label> %s</div></div>',
+			'<div class="urme-price-edit"><small class="urme-muted">Regular: %s</small><div class="urme-price-sale"><label>Sale price <input type="text" name="sale_price[%s]" value="%s" size="7" inputmode="decimal" autocomplete="off" aria-label="Sale price (SEK)" placeholder="—"></label> %s</div>%s</div>',
 			esc_html( '' === $info['regular'] ? '—' : self::kr( $info['regular'] ) ),
 			esc_attr( $key ),
 			esc_attr( $info['sale'] ),
-			self::row_button( 'sale|' . $key, 'Save', 'button button-small' ) . self::auto98_button( $row )
+			self::row_button( 'sale|' . $key, 'Save', 'button button-small' ),
+			self::auto98_button( $row )
 		);
 	}
 
@@ -1196,7 +1197,7 @@ class URME_SS_Admin {
 		if ( ! $price ) {
 			return '';
 		}
-		return ' ' . self::row_button( 'auto98|' . $row['item_key'], 'Auto ' . number_format_i18n( $price ) . ' kr', 'button button-small button-primary urme-auto98' );
+		return '<div class="urme-price-auto">' . self::row_button( 'auto98|' . $row['item_key'], 'Auto ' . number_format_i18n( $price ) . ' kr', 'button button-small button-primary urme-auto98' ) . '</div>';
 	}
 
 	private static function kr( $value ) {

@@ -80,3 +80,4 @@
 .urme-ss .urme-sync-state { font-weight: 600; margin-bottom: 4px; }
 .urme-ss .urme-sync-actions { display: flex; flex-wrap: wrap; gap: 4px; }
 .urme-ss .urme-sync-note { margin-top: 4px; font-size: 12px; line-height: 1.4; }
+.urme-price-auto { margin-top: 6px; }

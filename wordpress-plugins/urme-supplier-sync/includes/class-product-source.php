@@ -18,6 +18,12 @@ class URME_SS_Product_Source {
 	const BRAND_OFF = 'brand_off';
 
 	/**
+	 * Public product meta with the Fulfillment state (dropship / local / lager / paused /
+	 * brand_off), for product feeds such as CTX Feed. No leading underscore so feed plugins list it.
+	 */
+	const META = 'urme_fulfillment';
+
+	/**
 	 * Product ID => array( 'own' => link row|null, 'variations' => link rows of its variations ).
 	 *
 	 * @var array<int, array>
@@ -181,6 +187,50 @@ class URME_SS_Product_Source {
 				clean_post_cache( (int) $post->post_parent );
 			}
 		}
+		self::write_meta( $ids );
+	}
+
+	/**
+	 * Store the current Fulfillment state of these products or variations in the public
+	 * `urme_fulfillment` meta. Written only when the value changes; links are loaded in bulk.
+	 *
+	 * @param int[] $ids Product or variation IDs.
+	 * @return int Number of products whose meta changed.
+	 */
+	public static function write_meta( array $ids ) {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		if ( ! $ids ) {
+			return 0;
+		}
+		$written = 0;
+		foreach ( array_chunk( $ids, 200 ) as $chunk ) {
+			self::prime( $chunk );
+			update_meta_cache( 'post', $chunk );
+			foreach ( $chunk as $id ) {
+				$type = get_post_type( $id );
+				if ( 'product' !== $type && 'product_variation' !== $type ) {
+					continue;
+				}
+				$state = self::state( self::$map[ $id ]['own'] ?? null );
+				if ( get_post_meta( $id, self::META, true ) !== $state ) {
+					update_post_meta( $id, self::META, $state );
+					++$written;
+				}
+			}
+		}
+		return $written;
+	}
+
+	/**
+	 * Backfill: the `urme_fulfillment` meta for every product and variation (not in the trash).
+	 *
+	 * @return int Number of products whose meta changed.
+	 */
+	public static function rebuild_meta() {
+		global $wpdb;
+		self::flush();
+		$ids = $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_type IN ('product','product_variation') AND post_status NOT IN ('trash','auto-draft')" ); // phpcs:ignore WordPress.DB
+		return self::write_meta( array_map( 'intval', (array) $ids ) );
 	}
 
 	/**

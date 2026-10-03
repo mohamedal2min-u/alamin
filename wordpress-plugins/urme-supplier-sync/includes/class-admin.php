@@ -234,6 +234,11 @@ class URME_SS_Admin {
 				self::notice( $ok ? 'Exchange rate updated.' : 'Could not fetch a new exchange rate; the previous rate is kept.', $ok ? 'success' : 'warning' );
 				break;
 
+			case 'rebuild_fulfillment':
+				$n = URME_SS_Product_Source::rebuild_meta();
+				self::notice( sprintf( 'Fulfillment labels rebuilt: %d product(s) updated in the urme_fulfillment meta.', $n ) );
+				break;
+
 			case 'inspect':
 				URME_SS_Store::inspect( true );
 				self::notice( 'Store setup re-checked.' );
@@ -1494,7 +1499,9 @@ class URME_SS_Admin {
 			<tr class="<?php echo $target['type'] ? '' : 'urme-error-row'; ?>"><th>Cost price is written to</th><td><strong><?php echo esc_html( $target['label'] ); ?></strong><br><small><?php echo esc_html( $target['reason'] ); ?></small></td></tr>
 			<tr><th>Checked</th><td><?php echo esc_html( self::datetime( $i['time'] ) ); ?></td></tr>
 		</table>
-		<p><?php echo self::action_button( 'inspect', 'Re-check store setup' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></p>
+		<p><?php echo self::action_button( 'inspect', 'Re-check store setup' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+			<?php echo self::action_button( 'rebuild_fulfillment', 'Rebuild fulfillment labels' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></p>
+		<p class="description">Product meta <code>urme_fulfillment</code> (dropship / local / lager / paused / brand_off) for product feeds such as CTX Feed. Kept current automatically; the button rebuilds it for every product.</p>
 		<?php
 	}
 

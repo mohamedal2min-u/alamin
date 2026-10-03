@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.6.13
+Stable tag: 1.7.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -109,7 +109,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.6.13.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.7.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -221,6 +221,14 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.7.0 =
+* New public product meta `urme_fulfillment` (dropship / local / lager / paused / brand_off) so
+  product feeds such as CTX Feed Pro can filter or label products by fulfillment source.
+  Updated whenever a product is linked or unlinked, its stock mode changes (also from Quick
+  Edit), a brand is turned on or off, and at the end of every product sync; written only when
+  the value changes. Filled once for all products on update; Status > "Rebuild fulfillment
+  labels" rebuilds it. Removed on uninstall. Prices, stock and everything else unchanged.
 
 = 1.6.13 =
 * Private order note when a watch is sold: "URME: Dropshipping – SKU × 1" or "URME: URME Lager –

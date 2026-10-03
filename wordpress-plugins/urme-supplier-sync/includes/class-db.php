@@ -227,6 +227,11 @@ class URME_SS_DB {
 		if ( get_option( 'urme_ss_db_version' ) !== URME_SS_DB_VERSION ) {
 			self::install();
 		}
+		// 1.7.0: one-time backfill of the public `urme_fulfillment` product meta.
+		if ( '1' !== get_option( 'urme_ss_fulfillment_meta' ) && URME_SS_DB_VERSION === get_option( 'urme_ss_db_version' ) ) {
+			URME_SS_Product_Source::rebuild_meta();
+			update_option( 'urme_ss_fulfillment_meta', '1', true ); // Autoloaded: no extra query per request.
+		}
 		// Versions before 1.5.7 stored the version without autoload: one query on every page. Switch once.
 		$all = wp_load_alloptions();
 		if ( ! isset( $all['urme_ss_db_version'] ) && URME_SS_DB_VERSION === get_option( 'urme_ss_db_version' ) ) {

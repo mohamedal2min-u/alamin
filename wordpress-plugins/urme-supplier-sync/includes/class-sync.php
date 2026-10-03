@@ -482,6 +482,12 @@ class URME_SS_Sync {
 			}
 		}
 
+		// Feeds (CTX Feed) read the Fulfillment state from product meta: keep it current for every linked product.
+		URME_SS_Product_Source::flush();
+		URME_SS_Product_Source::write_meta( array_map( static function ( $l ) {
+			return (int) $l['product_id'];
+		}, $links ) );
+
 		foreach ( array_slice( $notes, 0, 50 ) as $note ) {
 			URME_SS_Log::info( 'Updated ' . $note );
 		}

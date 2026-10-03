@@ -594,5 +594,7 @@ require __DIR__ . '/quick-edit.php';
 require __DIR__ . '/light.php';
 // 1.6.7: a Dropshipping watch priced below cost goes out of stock (sync and product save).
 require __DIR__ . '/loss-guard.php';
+// 1.7.0: urme_fulfillment product meta for product feeds.
+require __DIR__ . '/fulfillment-meta.php';
 
 echo "\nRESULT: " . $GLOBALS["PASS"] . " passed, " . $GLOBALS["FAIL"] . " failed\n";

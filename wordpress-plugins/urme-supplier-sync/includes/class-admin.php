@@ -724,6 +724,7 @@ class URME_SS_Admin {
 		$tab  = sanitize_key( $_GET['tab'] ?? 'catalog' );
 		$tabs = array(
 			'catalog'  => 'Supplier catalog',
+			'sales'    => 'Dropshipping sales',
 			'status'   => 'Status & log',
 			'settings' => 'Settings',
 		);
@@ -1047,7 +1048,7 @@ class URME_SS_Admin {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="urme-select-form">
 			<?php echo self::hidden_fields( 'select' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<div class="tablenav top"><button type="submit" class="button button-primary urme-bulk" disabled>Select checked for sync</button>
-				<span class="description">Selecting is always manual. Only watches with URME stock 0 can be selected (Dropshipping). Watches with URME stock are hidden; at stock 0 they come back at the top.</span></div>
+				<span class="description">Selecting is always manual. Only watches with URME stock 0 can be selected (Dropshipping). Watches with URME stock are hidden until their stock is 0. Order: in the store first, then Needs review, then Not in URME; the largest supplier stock first in each.</span></div>
 			<table class="widefat striped urme-table">
 				<thead><tr>
 					<td class="check-column"><input type="checkbox" class="urme-check-all" aria-label="Select all"></td>
@@ -1365,6 +1366,98 @@ class URME_SS_Admin {
 	}
 
 	/* --- Status tab ----------------------------------------------------- */
+
+	/**
+	 * Dropshipping sales and profit for a period (read only; see URME_SS_Sales).
+	 */
+	private static function render_sales() {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only filter form.
+		$periods = URME_SS_Sales::periods();
+		$period  = sanitize_key( $_GET['period'] ?? 'this_month' );
+		$period  = isset( $periods[ $period ] ) ? $period : 'this_month';
+		$from_in = sanitize_text_field( wp_unslash( $_GET['from'] ?? '' ) );
+		$to_in   = sanitize_text_field( wp_unslash( $_GET['to'] ?? '' ) );
+		// phpcs:enable
+		list( $from, $to ) = URME_SS_Sales::range( $period, $from_in, $to_in );
+		$r = URME_SS_Sales::report( $from, $to );
+		$t = $r['totals'];
+		?>
+		<form method="get" class="urme-filters">
+			<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
+			<input type="hidden" name="tab" value="sales">
+			<label>Period
+				<select name="period">
+					<?php foreach ( $periods as $id => $label ) : ?>
+						<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $period, $id ); ?>><?php echo esc_html( $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>From <input type="date" name="from" value="<?php echo esc_attr( 'custom' === $period ? $from : '' ); ?>"></label>
+			<label>To <input type="date" name="to" value="<?php echo esc_attr( 'custom' === $period ? $to : '' ); ?>"></label>
+			<button type="submit" class="button">Show</button>
+			<span class="urme-count"><?php echo esc_html( ( $from ? $from : 'Start' ) . ' – ' . ( $to ? $to : 'today' ) ); ?></span>
+		</form>
+		<div class="urme-cards">
+			<?php
+			$margin = $t['net'] > 0 ? round( $t['profit'] / $t['net'] * 100 ) . '% of sales excl. VAT' : '';
+			self::card( 'Orders', number_format_i18n( $t['orders'] ), number_format_i18n( $t['units'] ) . ' watches' . ( $t['returned'] ? ' · ' . number_format_i18n( $t['returned'] ) . ' returned/cancelled (not counted)' : '' ) );
+			self::card( 'Sales incl. VAT', self::kr0( $t['paid'] ), 'What customers paid for these watches' );
+			self::card( 'Sales excl. VAT', self::kr0( $t['net'] ) );
+			self::card( 'Supplier cost', self::kr0( $t['cost'] ), $t['estimates'] ? number_format_i18n( $t['estimates'] ) . ' line(s) estimated' : 'Cost frozen on each order' );
+			self::card( 'Extra cost + fee', self::kr0( $t['extra'] + $t['fee'] ), 'Extra ' . self::kr0( $t['extra'] ) . ' · fee ' . self::kr0( $t['fee'] ) );
+			self::card( 'Profit', self::kr0( $t['profit'] ), $margin, $t['profit'] < 0 );
+			?>
+		</div>
+		<?php
+		if ( $r['no_rate'] ) {
+			echo '<div class="notice notice-warning inline"><p>No EUR/SEK rate: the extra supplier cost is not included.</p></div>';
+		}
+		if ( ! $r['lines'] ) {
+			echo '<p>No Dropshipping sales in this period.</p>';
+			return;
+		}
+		?>
+		<h2>By brand</h2>
+		<table class="widefat striped urme-table urme-sales-brands">
+			<thead><tr><th>Brand</th><th class="num">Watches</th><th class="num">Sales excl. VAT</th><th class="num">Profit</th><th class="num">Margin</th></tr></thead>
+			<tbody>
+			<?php foreach ( $r['brands'] as $brand => $b ) : ?>
+				<tr>
+					<td><?php echo esc_html( $brand ); ?></td>
+					<td class="num"><?php echo esc_html( number_format_i18n( $b['units'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $b['net'] ) ); ?></td>
+					<td class="num <?php echo $b['profit'] < 0 ? 'urme-bad' : 'urme-good'; ?>"><?php echo esc_html( self::kr0( $b['profit'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( $b['net'] > 0 ? round( $b['profit'] / $b['net'] * 100 ) . '%' : '—' ); ?></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
+		<h2>Orders</h2>
+		<table class="widefat striped urme-table urme-sales-lines">
+			<thead><tr><th>Date</th><th>Order</th><th>Product</th><th class="num">Qty</th><th class="num">Paid incl. VAT</th><th class="num">Excl. VAT</th><th class="num">Supplier cost</th><th class="num">Extra + fee</th><th class="num">Profit</th></tr></thead>
+			<tbody>
+			<?php foreach ( $r['lines'] as $line ) : ?>
+				<tr>
+					<td><?php echo esc_html( self::mysql_datetime( $line['date'] ) ); ?></td>
+					<td><a href="<?php echo esc_url( $line['order_url'] ); ?>">#<?php echo esc_html( $line['order_no'] ); ?></a></td>
+					<td><?php echo esc_html( $line['name'] ); ?><br><small class="urme-muted"><?php echo esc_html( $line['brand'] . ' · ' . $line['sku'] ); ?></small></td>
+					<td class="num"><?php echo esc_html( number_format_i18n( $line['units'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $line['paid'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $line['net'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $line['cost'] ) ); ?><?php echo $line['estimate'] ? '<br><small class="urme-warn" title="No cost was saved on this order: the watch\'s last synced supplier cost is used.">estimated</small>' : ''; ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $line['extra'] + $line['fee'] ) ); ?></td>
+					<td class="num <?php echo $line['profit'] < 0 ? 'urme-bad' : 'urme-good'; ?>"><?php echo esc_html( self::kr0( $line['profit'] ) ); ?></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
+		<p class="description">Only units sold as Dropshipping are counted (URME Lager units, cancelled and refunded orders and units given back are left out). Profit = sales excl. VAT − supplier cost − extra supplier cost (Settings: <?php echo esc_html( URME_SS_Settings::get( 'hint_extra_eur' ) ); ?> EUR per watch at today's rate) − payment fee (<?php echo esc_html( URME_SS_Settings::get( 'hint_fee_pct' ) ); ?>% of what the customer paid). Shipping charged to the customer is not included.</p>
+		<?php
+	}
+
+	private static function kr0( $value ) {
+		return number_format_i18n( round( (float) $value ) ) . ' kr';
+	}
 
 	private static function render_status() {
 		$status = URME_SS_Sync::status();

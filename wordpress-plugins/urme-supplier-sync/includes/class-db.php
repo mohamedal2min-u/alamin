@@ -454,7 +454,9 @@ class URME_SS_DB {
 		$urme  = in_array( $args['urme_stock'] ?? '', array( 'in', 'out', 'unmanaged' ), true ) ? $args['urme_stock'] : '';
 		$ready = ! empty( $args['ready'] );
 		$hide  = ! empty( $args['hide_stocked'] );
-		$order = "CASE WHEN l.product_id > 0 OR c.match_status = 'exists' THEN 0 WHEN c.match_status = 'review' THEN 1 ELSE 2 END";
+		// 1.8.0: in the store first (linked or a unique URME match), then Needs review, then Not in URME;
+		// inside each group the largest supplier stock first (out of stock last).
+		$order = "CASE WHEN l.product_id > 0 OR c.match_status = 'exists' THEN 0 WHEN c.match_status = 'review' THEN 1 ELSE 2 END, c.stock DESC";
 		if ( $urme || $ready || $hide ) {
 			$pm      = $wpdb->postmeta;
 			$joins   = " LEFT JOIN {$wpdb->posts} up ON up.ID = (CASE WHEN l.product_id > 0 THEN l.product_id WHEN c.match_status = 'exists' THEN c.match_product_id ELSE 0 END) AND up.post_status <> 'trash'"
@@ -482,8 +484,6 @@ class URME_SS_DB {
 				// Watches with URME stock need nothing here: hidden until their stock is 0 (never a selected one).
 				$where[] = "NOT ( l.id IS NULL AND up.ID IS NOT NULL AND {$managed} AND {$qty} > 0 )";
 			}
-			// Watches in the store at URME stock 0, not selected yet (ready for Dropshipping), come first.
-			$order = "CASE WHEN l.id IS NULL AND c.match_status = 'exists' AND up.ID IS NOT NULL AND {$managed} AND {$qty} <= 0 THEN 0 WHEN l.product_id > 0 THEN 1 WHEN c.match_status = 'exists' THEN 2 WHEN c.match_status = 'review' THEN 3 ELSE 4 END";
 		}
 
 		$per_page = max( 10, min( 200, (int) ( $args['per_page'] ?? 50 ) ) );

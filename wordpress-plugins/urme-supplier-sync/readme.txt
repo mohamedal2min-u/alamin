@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.7.0
+Stable tag: 1.8.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -16,10 +16,11 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   nothing is added to the Media Library), brand, model (PRODUCTNO), EAN (ITEM_ID), supplier stock,
   cost in EUR and cost in SEK.
 * Watches with URME stock (URME Lager, stock above 0, not selected) are hidden from the catalog:
-  there is nothing to do on them. When their stock reaches 0 they come back at the very top, ready
-  for "Dropshipping". A Model / EAN / Text search or "URME stock: In stock" still shows them.
+  there is nothing to do on them. When their stock reaches 0 they come back, ready for
+  "Dropshipping". A Model / EAN / Text search or "URME stock: In stock" still shows them.
 * The catalog lists the watches in your store first (linked, or a unique URME match), then Needs
-  review, then Not in URME; brand and model order inside each group. Compact columns: brand above
+  review, then Not in URME; inside each group the largest supplier stock first (out of stock
+  last), then brand and model. Compact columns: brand above
   the product name, model (PRODUCTNO) above the EAN, EUR cost above SEK cost.
 * The catalog opens with the brands enabled for sync only (Settings > Brands enabled for sync) when
   no filter is used; any search (Model, EAN, Text), a Brand choice or a dashboard link looks in all
@@ -38,6 +39,8 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
   "Not managed", and a note when backorders are allowed. Filters: URME stock (In stock / Out of
   stock / Not managed) and "Ready for supplier sync" (brand on, unique match, URME stock 0, not
   selected, still in the feed).
+* "Dropshipping sales" tab: sales and profit of the watches sold as Dropshipping, for a chosen
+  period, by brand and per order line (see the 1.8.0 changelog for what is counted).
 * Two Fulfillment states only: **URME Lager** and **Dropshipping**. WooCommerce's current stock is
   the URME count (no order history decides anything).
   - URME Lager = a normal WooCommerce product with URME's own stock. It is not in supplier sync
@@ -109,7 +112,7 @@ Browse the supplier's watch catalog and keep stock and cost price in sync for th
 
 == Installation ==
 
-1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.7.0.zip, Install, Activate.
+1. Plugins > Add New > Upload Plugin, choose urme-supplier-sync-1.8.0.zip, Install, Activate.
 2. Open WooCommerce > Supplier Sync and click "Sync now" once to fill the catalog
    (after that it refreshes by itself every hour).
 3. Status & log > "Store setup (detected)": check where cost price will be written.
@@ -221,6 +224,18 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.8.0 =
+* Supplier catalog order: in the store first, then Needs review, then Not in URME, and inside each
+  group the largest supplier stock first (out of stock last). Watches at URME stock 0 are no
+  longer pinned above the others; they follow the same order.
+* New "Dropshipping sales" tab (admin only, read only): orders, watches, sales incl. and excl.
+  VAT, supplier cost, extra cost, payment fee and profit for This month / Last month / Last 30
+  days / This year / All time / custom dates, by brand and per order line. Only units sold as
+  Dropshipping count (from the fulfillment ledger); URME Lager units, cancelled, refunded and
+  failed orders and units given back are left out. Supplier cost is the cost WooCommerce froze on
+  the order (COGS); without it the watch's last synced cost is used and marked "estimated". Extra
+  cost and payment fee come from Settings > Selling price hint. Nothing is written.
 
 = 1.7.0 =
 * New public product meta `urme_fulfillment` (dropship / local / lager / paused / brand_off) so

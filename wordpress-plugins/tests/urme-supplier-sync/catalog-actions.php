@@ -174,22 +174,24 @@ URME_SS_Settings::set_brand( 'Casio', true );
 $on = ca_brand_options( ph_catalog( array() ) );
 URME_SS_Settings::set_brand( 'Casio', false );
 ok( isset( $on['Casio'] ) && false === strpos( $on['Casio'], 'sync' ) && ! isset( ca_brand_options( ph_catalog( array() ) )['Casio'] ), '   Casio turned on → listed; off again → gone' );
-// 1.5.4: watches in the store first (linked or a unique URME match), then Needs review, then Not in URME.
+// 1.8.0: watches in the store first (linked or a unique URME match), then Needs review, then Not in URME;
+// the largest supplier stock first inside each group, then brand + model.
 $group = static function ( $r ) {
 	return ( (int) $r['product_id'] || 'exists' === $r['match_status'] ) ? 0 : ( 'review' === $r['match_status'] ? 1 : 2 );
 };
 $rows  = URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'per_page' => 200 ) )['rows'];
 $keys  = array();
 foreach ( $rows as $r ) {
-	$keys[] = array( $group( $r ), $r['manufacturer'], $r['product_no'], $r['item_key'] );
+	$keys[] = array( $group( $r ), -(int) $r['stock'], $r['manufacturer'], $r['product_no'], $r['item_key'] );
 }
 $sorted = $keys;
 sort( $sorted );
 $groups = array_unique( array_column( $keys, 0 ) );
-ok( $keys === $sorted && array( 0, 1, 2 ) === array_values( $groups ), 'catalog order: in the store first, then Needs review, then Not in URME; brand + model inside each group', array_column( $keys, 0 ) );
+ok( $keys === $sorted && array( 0, 1, 2 ) === array_values( $groups ), 'catalog order: in the store first, then Needs review, then Not in URME; largest supplier stock first inside each group', array_column( $keys, 0 ) );
+ok( count( array_unique( array_column( $keys, 1 ) ) ) > 1, '   the BOSS fixture has watches with different supplier stock (the stock order is really tested)' );
 $p1 = wp_list_pluck( URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'per_page' => 5, 'page' => 1 ) )['rows'], 'item_key' );
 $p2 = wp_list_pluck( URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'per_page' => 5, 'page' => 2 ) )['rows'], 'item_key' );
-ok( array_merge( $p1, $p2 ) === array_slice( array_column( $keys, 3 ), 0, 10 ), '   paging keeps that order (page 2 continues page 1, no duplicates)' );
+ok( array_merge( $p1, $p2 ) === array_slice( array_column( $keys, 4 ), 0, 10 ), '   paging keeps that order (page 2 continues page 1, no duplicates)' );
 $h = ph_catalog( array( 'brand' => 'BOSS' ) );
 preg_match( '#<thead>(.*?)</thead>#s', $h, $thead );
 ok( 10 === substr_count( $thead[1], '<t' ) - 1 && false !== strpos( $thead[1], '>Model / EAN<' ) && false !== strpos( $thead[1], '<th class="num">Cost</th>' ) && false === strpos( $thead[1], '<th>Brand</th>' ) && false === strpos( $thead[1], 'Cost EUR' ), 'narrower table: 10 columns (brand in Product, model + EAN stacked, EUR + SEK in one Cost column)', $thead[1] );
@@ -303,7 +305,7 @@ ok( $q_few === $q_many && 12 === $info[ $Z0 ]['qty'] && $info[ $ZV ]['managed'] 
 remove_filter( 'pre_http_request', $count_http );
 settings( array( 'rate_override' => '' ) );
 
-section( 'CA10. (1.6.2) Watches with URME stock are hidden; at stock 0 they come back first' );
+section( 'CA10. (1.6.2) Watches with URME stock are hidden; at stock 0 they come back (1.8.0: in the stock order)' );
 $H3 = bs_product( 'REF000486', key_of( 486 ), 3, 600 ); // URME Lager with 3.
 $H0 = bs_product( 'REF000492', key_of( 492 ), 0, 600 ); // URME Lager at 0 (ready for Dropshipping).
 $CA_SET['REF000486'] = array( 'MANUFACTURER' => 'BOSS', 'STOCK' => '5', 'PURCHASE_PRICE' => '100.00' );
@@ -314,19 +316,19 @@ $vis = ph_catalog( array( 'brand' => 'BOSS' ) );
 ok( '' === ca_row( $vis, 'REF000486' ) && '' !== ca_row( $vis, 'REF000492' ) && false !== strpos( $vis, 'Watches with URME stock are hidden until their stock is 0' ), 'URME stock 3: not listed (note shown); URME stock 0: listed' );
 ok( '' !== ca_row( $vis, 'REF000180' ), '   Dropshipping rows stay listed (their stock is the supplier\'s)' );
 ok( '' !== ca_row( ph_catalog( array( 'productno' => 'REF000486' ) ), 'REF000486' ) && '' !== ca_row( ph_catalog( array( 'brand' => 'BOSS', 'urme_stock' => 'in' ) ), 'REF000486' ), '   a Model search or "URME stock: In stock" still shows it' );
-$rows = URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 200 ) )['rows'];
-$first = $rows[0]['product_no'] ?? '';
-$ready = array();
-foreach ( $rows as $k => $r0 ) {
-	$info = URME_SS_Store::stock_info( array( (int) $r0['match_product_id'] ) )[ (int) $r0['match_product_id'] ] ?? null;
-	$ready[ $k ] = ! $r0['link_id'] && 'exists' === $r0['match_status'] && $info && $info['managed'] && $info['qty'] <= 0;
+$rows  = URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 200 ) )['rows'];
+$order = array();
+foreach ( $rows as $r0 ) {
+	$order[] = array( $group( $r0 ), -(int) $r0['stock'], $r0['manufacturer'], $r0['product_no'], $r0['item_key'] );
 }
-$last_ready = max( array_keys( array_filter( $ready ) ) );
-ok( $ready[0] && ! in_array( false, array_slice( $ready, 0, $last_ready + 1 ), true ), 'watches at URME stock 0, not selected yet, are listed first', array( $first, $last_ready ) );
+$sorted = $order;
+sort( $sorted );
+ok( $order === $sorted, 'hidden-stock list keeps the same order (in the store, Needs review, Not in URME; largest supplier stock first)' );
 bs_set( $H3, 0 ); // The last units are sold.
 $rows = URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 200 ) )['rows'];
 $pos  = array_search( 'REF000486', array_column( $rows, 'product_no' ), true );
-ok( false !== $pos && $pos <= $last_ready + 1, 'stock 3 → 0: REF000486 is back, among the first rows', $pos );
+$ins  = count( array_filter( $rows, static function ( $r0 ) use ( $group ) { return 0 === $group( $r0 ); } ) );
+ok( false !== $pos && $pos < $ins, 'stock 3 → 0: REF000486 is back, among the watches in the store', array( $pos, $ins ) );
 ok( false !== strpos( ca_row( ph_catalog( array( 'brand' => 'BOSS' ) ), 'REF000486' ), 'value="start_supplier|' . key_of( 486 ) . '"' ), '   with its "Dropshipping" button' );
 $p1  = wp_list_pluck( URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 10, 'page' => 1 ) )['rows'], 'item_key' );
 $p2  = wp_list_pluck( URME_SS_DB::search_catalog( array( 'brand' => 'BOSS', 'hide_stocked' => true, 'per_page' => 10, 'page' => 2 ) )['rows'], 'item_key' );

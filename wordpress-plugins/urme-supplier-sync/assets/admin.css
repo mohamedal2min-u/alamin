@@ -133,3 +133,8 @@
 .urme-ss .urme-profit.urme-bad { color: #b32d2e; }
 .urme-ss .urme-lager-mark { font-size: 16px; width: 16px; height: 16px; color: #00701a; vertical-align: middle; cursor: help; }
 .urme-ss .urme-stock-col .urme-flag { vertical-align: -1px; cursor: help; }
+.urme-ss .urme-profit-badge { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 9px; font-weight: 700; font-size: 12px; line-height: 18px; }
+.urme-ss .urme-hint-now.urme-good .urme-profit-badge { background: #edfaef; color: #00701a; }
+.urme-ss .urme-hint-now.urme-warn .urme-profit-badge { background: #fcf3dc; color: #8a6100; }
+.urme-ss .urme-hint-now.urme-bad .urme-profit-badge { background: #fcebeb; color: #b32d2e; }
+.urme-ss .urme-hint-now small { font-size: 11px; opacity: .8; }

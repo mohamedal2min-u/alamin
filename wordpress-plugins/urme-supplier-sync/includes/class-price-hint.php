@@ -149,23 +149,6 @@ class URME_SS_Price_Hint {
 	}
 
 	/**
-	 * Profit column of the Supplier catalog: the profit per watch at its current price.
-	 */
-	public static function profit_html( $purchase_eur, array $ctx, $current_price = null ) {
-		$now = self::now( $current_price, $purchase_eur, $ctx );
-		if ( ! $now ) {
-			return '<span class="urme-muted" title="No URME price yet">—</span>';
-		}
-		return sprintf(
-			'<div class="urme-profit %1$s" title="%2$s"><strong>%3$s</strong><br><small>%4$s</small></div>',
-			esc_attr( $now['class'] ),
-			esc_attr( ucfirst( $now['note'] ) ),
-			esc_html( ( $now['profit'] >= 0 ? '+' : '' ) . self::kr( $now['profit'] ) ),
-			esc_html( $now['pct'] )
-		);
-	}
-
-	/**
 	 * Full hint (Supplier catalog column), plus the profit at the watch's current price when known.
 	 *
 	 * @param mixed $current_price The URME product's current selling price (SEK), or null.
@@ -176,12 +159,14 @@ class URME_SS_Price_Hint {
 			return '<span class="urme-muted urme-hint-na">Price hint unavailable</span>';
 		}
 		$now = self::now( $current_price, $purchase_eur, $ctx, $h );
-		// Your current price on one line; its profit has its own column (profit_html()).
+		// Your current price and, as a coloured badge, the profit per watch at that price.
 		$own = $now ? sprintf(
-			'<div class="urme-hint-now %1$s" title="%2$s"><span class="dashicons dashicons-tag" aria-hidden="true"></span>%3$s</div>',
+			'<div class="urme-hint-now %1$s" title="%2$s"><span class="dashicons dashicons-tag" aria-hidden="true"></span>%3$s <span class="urme-profit-badge">%4$s</span> <small>%5$s</small></div>',
 			esc_attr( $now['class'] ),
 			esc_attr( 'Your price · ' . $now['note'] ),
-			esc_html( self::kr( $now['price'] ) )
+			esc_html( self::kr( $now['price'] ) ),
+			esc_html( ( $now['profit'] >= 0 ? '+' : '' ) . self::kr( $now['profit'] ) ),
+			esc_html( $now['pct'] )
 		) : '';
 		$extra = rtrim( rtrim( number_format( $ctx['extra_eur'], 2, '.', '' ), '0' ), '.' );
 		// Suggested price and its profit; the calculation is in the tooltip.

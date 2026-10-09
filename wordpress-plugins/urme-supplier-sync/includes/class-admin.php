@@ -1088,8 +1088,7 @@ class URME_SS_Admin {
 					<th class="num" title="Supplier stock">Stock</th>
 					<th class="num urme-stock-col" title="URME stock and fulfillment">URME</th>
 					<th class="num">Cost</th>
-					<th class="urme-hint-col" title="Suggested price and its profit · your current price (hover for details)">Price</th>
-					<th class="num urme-profit-col" title="Profit per watch at your current price">Profit</th>
+					<th class="urme-hint-col" title="Suggested price and its profit · your current price and its profit per watch (hover for details)">Price</th>
 					<th class="urme-match-col" title="Does the watch exist in the URME store?">In store</th>
 					<th class="urme-sync-col">Sync</th>
 				</tr></thead>
@@ -1151,7 +1150,6 @@ class URME_SS_Admin {
 			<td class="num urme-cost-col"><div class="urme-own"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt"><?php echo esc_html( self::eur( $o['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row, $o['item_key'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $o['purchase_price'] ? null : URME_SS_Rates::to_sek( $o['purchase_price'] ) ) ); ?></span></div><?php endforeach; ?></td>
 			<?php $row_hint = URME_SS_Suppliers::hint( $hint, URME_SS_Suppliers::of_key( $row['item_key'] ) ); ?>
 			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $row_hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-			<td class="num urme-profit-col"><?php echo URME_SS_Price_Hint::profit_html( $row['purchase_price'], $row_hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-sync-col">
 				<?php

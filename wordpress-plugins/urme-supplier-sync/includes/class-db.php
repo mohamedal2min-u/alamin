@@ -10,6 +10,9 @@ defined( 'ABSPATH' ) || exit;
 
 class URME_SS_DB {
 
+	/** Supplier catalog: watches cheaper than this (EUR) are not listed. */
+	const MIN_EUR = 10;
+
 	public static function catalog_table() {
 		global $wpdb;
 		return $wpdb->prefix . 'urme_ss_catalog';
@@ -445,6 +448,9 @@ class URME_SS_DB {
 		if ( ! empty( $args['new_only'] ) ) {
 			$where[] = self::new_condition( $params );
 		}
+		// Watches under MIN_EUR cost (straps, cheap fashion items) are not shown; linked ones always are.
+		$where[]  = '(c.purchase_price IS NULL OR c.purchase_price >= %f OR l.id IS NOT NULL)';
+		$params[] = self::MIN_EUR;
 		if ( ! empty( $args['in_stock'] ) ) {
 			$where[] = 'c.stock > 0';
 		}

@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.9.4
+Stable tag: 1.9.5
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -224,6 +224,9 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.9.5 =
+* Supplier catalog: watches with a cost price under 10 EUR are not listed (linked watches still are).
 
 = 1.9.4 =
 * Supplier catalog: no separate Profit column; the profit per watch at the current price is a

@@ -61,8 +61,11 @@
 					var checked = $tr.find( 'input[name="item_keys[]"]' ).prop( 'checked' ),
 						$new = $( $.parseHTML( d.row_html ) ).filter( 'tr' );
 					if ( $new.length ) {
+						// The row and the rows of the same watch at the other suppliers are replaced together.
+						$tr.nextUntil( ':not(.urme-alt-row)' ).remove();
+						$new.toggleClass( 'urme-shade', $tr.hasClass( 'urme-shade' ) );
 						$tr.replaceWith( $new );
-						$tr = $new;
+						$tr = $new.first();
 						$tr.find( 'input[name="item_keys[]"]' ).prop( 'checked', !! checked );
 						refresh();
 					}

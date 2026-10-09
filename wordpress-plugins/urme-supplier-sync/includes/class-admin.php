@@ -156,6 +156,7 @@ class URME_SS_Admin {
 		$stock = URME_SS_Store::stock_info( array( $pid ) );
 		URME_SS_Product_Source::flush();
 		URME_SS_Product_Source::prime( array( $pid ) );
+		self::$others = URME_SS_DB::other_sources( $rows );
 		ob_start();
 		self::render_catalog_row( $row, $stock, URME_SS_Price_Hint::context() );
 		return trim( (string) ob_get_clean() );
@@ -1078,7 +1079,7 @@ class URME_SS_Admin {
 			<?php echo self::hidden_fields( 'select' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<div class="tablenav top"><button type="submit" class="button button-primary urme-bulk" disabled>Select checked for sync</button>
 				<span class="description">Manual selection · URME stock 0 only · in store first, then most supplier stock.</span></div>
-			<table class="widefat striped urme-table">
+			<table class="widefat urme-table urme-catalog-table">
 				<thead><tr>
 					<td class="check-column"><input type="checkbox" class="urme-check-all" aria-label="Select all"></td>
 					<th class="urme-img-col"></th>
@@ -1102,8 +1103,8 @@ class URME_SS_Admin {
 					</td></tr>
 				<?php endif; ?>
 				<?php
-				foreach ( $result['rows'] as $row ) {
-					self::render_catalog_row( $row, $stock, $hint );
+				foreach ( $result['rows'] as $i => $row ) {
+					self::render_catalog_row( $row, $stock, $hint, 1 === $i % 2 );
 				}
 				?>
 				</tbody>
@@ -1121,9 +1122,10 @@ class URME_SS_Admin {
 	 * @param array $stock URME_SS_Store::stock_info() for the row's product.
 	 * @param array $hint  URME_SS_Price_Hint::context().
 	 */
-	private static function render_catalog_row( array $row, array $stock, array $hint ) {
+	private static function render_catalog_row( array $row, array $stock, array $hint, $shade = false ) {
+		$shade = $shade ? ' urme-shade' : '';
 		?>
-		<tr class="<?php echo (int) $row['in_feed'] ? '' : 'urme-missing'; ?>" data-urme-key="<?php echo esc_attr( $row['item_key'] ); ?>">
+		<tr class="<?php echo esc_attr( ( (int) $row['in_feed'] ? '' : 'urme-missing' ) . $shade ); ?>" data-urme-key="<?php echo esc_attr( $row['item_key'] ); ?>">
 			<th class="check-column">
 				<?php if ( ! $row['link_id'] ) : ?>
 					<input type="checkbox" name="item_keys[]" value="<?php echo esc_attr( $row['item_key'] ); ?>" aria-label="<?php echo esc_attr( 'Select ' . $row['product_no'] ); ?>">
@@ -1141,10 +1143,11 @@ class URME_SS_Admin {
 				?>
 				<?php if ( ! (int) $row['in_feed'] ) : ?><br><span class="urme-bad">Not in feed since <?php echo esc_html( self::mysql_datetime( $row['missing_since'] ) ); ?></span><?php endif; ?>
 			</td>
-			<td class="urme-code-col"><?php echo URME_SS_Suppliers::flag( $row['supplier'] ?? '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <code><?php echo esc_html( $row['product_no'] ); ?></code><br><code class="urme-ean" title="EAN / ITEM_ID"><?php echo esc_html( $row['item_id'] ); ?></code></td>
-			<td class="num"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></td>
+			<?php $alts = self::$others[ $row['item_key'] ] ?? array(); ?>
+			<td class="urme-code-col"><div class="urme-own"><?php echo URME_SS_Suppliers::flag( $row['supplier'] ?? '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <code><?php echo esc_html( $row['product_no'] ); ?></code><br><code class="urme-ean" title="EAN / ITEM_ID"><?php echo esc_html( $row['item_id'] ); ?></code></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt" title="<?php echo esc_attr( 'Ref: ' . $o['product_no'] ); ?>"><?php echo URME_SS_Suppliers::flag( URME_SS_Suppliers::of_key( $o['item_key'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></div><?php endforeach; ?></td>
+			<td class="num"><div class="urme-own"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt"><?php echo (int) $o['in_feed'] ? '<span class="' . ( (int) $o['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( (string) (int) $o['stock'] ) . '</span>' : '<span class="urme-bad" title="Not in the feed">—</span>'; // phpcs:ignore WordPress.Security.EscapeOutput ?></div><?php endforeach; ?></td>
 			<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ) . ( isset( $stock[ self::urme_product_id( $row ) ] ) ? '<br>' . URME_SS_Product_Source::html( self::urme_product_id( $row ) ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-			<td class="num urme-cost-col"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span><?php echo self::other_offers( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+			<td class="num urme-cost-col"><div class="urme-own"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt"><?php echo esc_html( self::eur( $o['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row, $o['item_key'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $o['purchase_price'] ? null : URME_SS_Rates::to_sek( $o['purchase_price'] ) ) ); ?></span></div><?php endforeach; ?></td>
 			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], URME_SS_Suppliers::hint( $hint, URME_SS_Suppliers::of_key( $row['item_key'] ) ), $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-sync-col">
@@ -1275,35 +1278,27 @@ class URME_SS_Admin {
 	}
 
 	/**
-	 * The same watch at the other suppliers (price and stock), and which one is cheapest after
-	 * shipping + fees among those with stock.
+	 * "Cheapest" on the offer (the row's own, or another supplier's) with the lowest cost price +
+	 * shipping + fees among those with stock. Nothing for a watch only one supplier sells.
+	 *
+	 * @param string|null $key The offer to label; the row's own when null.
 	 */
-	private static function other_offers( array $row ) {
+	private static function cheapest_tag( array $row, $key = null ) {
 		$others = self::$others[ $row['item_key'] ] ?? array();
 		if ( ! $others ) {
 			return '';
 		}
-		$total = static function ( $r ) {
-			return ( null === $r['purchase_price'] || (int) $r['stock'] < 1 || ! (int) $r['in_feed'] ) ? null : (float) $r['purchase_price'] + URME_SS_Suppliers::extra_eur( URME_SS_Suppliers::of_key( $r['item_key'] ) );
-		};
 		$best = null;
 		foreach ( array_merge( array( $row ), $others ) as $r ) {
-			$t = $total( $r );
-			if ( null !== $t && ( null === $best || $t < $best[0] ) ) {
+			if ( null === $r['purchase_price'] || (int) $r['stock'] < 1 || ! (int) $r['in_feed'] ) {
+				continue;
+			}
+			$t = (float) $r['purchase_price'] + URME_SS_Suppliers::extra_eur( URME_SS_Suppliers::of_key( $r['item_key'] ) );
+			if ( null === $best || $t < $best[0] ) {
 				$best = array( $t, $r['item_key'] );
 			}
 		}
-		$out = $best && $best[1] === $row['item_key'] ? '<br><span class="urme-cheapest">Cheapest</span>' : '';
-		foreach ( $others as $o ) {
-			$out .= sprintf(
-				'<div class="urme-other-offer">%s %s · %s%s</div>',
-				URME_SS_Suppliers::flag( URME_SS_Suppliers::of_key( $o['item_key'] ) ),
-				esc_html( self::eur( $o['purchase_price'] ) ),
-				esc_html( (int) $o['in_feed'] ? sprintf( 'stock %d', (int) $o['stock'] ) : 'not in feed' ),
-				$best && $best[1] === $o['item_key'] ? ' <span class="urme-cheapest">Cheapest</span>' : ''
-			);
-		}
-		return $out;
+		return $best && $best[1] === ( null === $key ? $row['item_key'] : $key ) ? ' <span class="urme-cheapest" title="Cheapest after shipping + fees">✓</span>' : '';
 	}
 
 	/**

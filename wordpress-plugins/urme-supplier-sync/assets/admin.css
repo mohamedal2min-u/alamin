@@ -114,3 +114,14 @@
 .urme-ss .urme-other-offer { white-space: normal; min-width: 110px; }
 .urme-ss .urme-cost-col { width: 1%; }
 .urme-ss .urme-table td, .urme-ss .urme-table th { padding-left: 6px; padding-right: 6px; }
+.urme-ss .urme-catalog-table tr.urme-shade > td, .urme-ss .urme-catalog-table tr.urme-shade > th { background: #f6f7f7; }
+.urme-ss .urme-catalog-table tr.urme-alt-row > td, .urme-ss .urme-catalog-table tr.urme-alt-row > th { padding-top: 0; padding-bottom: 7px; border-top: 0; font-size: 12px; }
+.urme-ss .urme-catalog-table tr:not(.urme-alt-row) > td { border-top: 1px solid #e5e5e5; }
+.urme-ss .urme-catalog-table tr.urme-alt-row .urme-code-col code { font-size: 11px; background: transparent; color: #646970; padding: 0; }
+/* Own offer and the same watch at the other suppliers, line by line in Model / Stock / Cost. */
+.urme-ss .urme-catalog-table .urme-own { min-height: 40px; }
+.urme-ss .urme-catalog-table .urme-alt { min-height: 34px; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #dcdcde; font-size: 12px; }
+.urme-ss .urme-cheapest { padding: 0 5px; margin-top: 0; }
+.urme-ss .urme-catalog-table .urme-own { min-height: 0; height: 54px; box-sizing: border-box; }
+.urme-ss .urme-catalog-table .urme-alt { height: 40px; box-sizing: border-box; }
+.urme-ss .urme-catalog-table .urme-code-col .urme-own code { line-height: 1.6; }

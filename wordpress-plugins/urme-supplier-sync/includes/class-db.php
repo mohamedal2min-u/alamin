@@ -46,7 +46,8 @@ class URME_SS_DB {
 		$links   = self::links_table();
 		$alloc   = self::alloc_table();
 
-		// item_key = ITEM_ID (EAN) when present, otherwise "P:" . PRODUCTNO.
+		// item_key = ITEM_ID (EAN) when present, otherwise "P:" . PRODUCTNO; prefixed for suppliers
+		// other than the main one ("DE:<EAN>"), so a watch can be in the catalog once per supplier.
 		dbDelta(
 			"CREATE TABLE {$catalog} (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -69,9 +70,11 @@ class URME_SS_DB {
   match_product_id bigint(20) unsigned NOT NULL DEFAULT 0,
   match_method varchar(20) NOT NULL DEFAULT '',
   match_candidates varchar(255) NOT NULL DEFAULT '',
+  supplier varchar(10) NOT NULL DEFAULT 'relo',
   PRIMARY KEY  (id),
   UNIQUE KEY item_key (item_key),
   KEY item_id (item_id),
+  KEY supplier (supplier,in_feed),
   KEY product_no (product_no),
   KEY manufacturer (manufacturer),
   KEY category (category,in_feed),
@@ -101,6 +104,8 @@ class URME_SS_DB {
   needs_stock_apply tinyint(1) NOT NULL DEFAULT 0,
   mode_changed_at datetime NULL,
   mode_note varchar(255) NOT NULL DEFAULT '',
+  supplier varchar(10) NOT NULL DEFAULT '',
+  source_key varchar(100) NOT NULL DEFAULT '',
   PRIMARY KEY  (id),
   UNIQUE KEY item_key (item_key),
   KEY product_id (product_id)
@@ -122,6 +127,8 @@ class URME_SS_DB {
   ret_local int(11) NOT NULL DEFAULT 0,
   ret_supplier int(11) NOT NULL DEFAULT 0,
   origin varchar(10) NOT NULL DEFAULT 'sale',
+  supplier varchar(10) NOT NULL DEFAULT '',
+  source_key varchar(100) NOT NULL DEFAULT '',
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   PRIMARY KEY  (order_item_id),
@@ -180,8 +187,9 @@ class URME_SS_DB {
 	public static function missing_columns() {
 		global $wpdb;
 		$expected = array(
-			self::links_table() => array( 'stock_mode', 'local_qty', 'local_cost', 'needs_stock_apply', 'mode_changed_at', 'mode_note' ),
-			self::alloc_table() => array( 'order_item_id', 'order_id', 'link_id', 'product_id', 'last_reduced_stock', 'local_allocated', 'supplier_allocated', 'src_local', 'src_supplier', 'ret_local', 'ret_supplier', 'origin', 'created_at', 'updated_at' ),
+			self::catalog_table() => array( 'supplier' ),
+			self::links_table() => array( 'stock_mode', 'local_qty', 'local_cost', 'needs_stock_apply', 'mode_changed_at', 'mode_note', 'supplier', 'source_key' ),
+			self::alloc_table() => array( 'order_item_id', 'order_id', 'link_id', 'product_id', 'last_reduced_stock', 'local_allocated', 'supplier_allocated', 'src_local', 'src_supplier', 'ret_local', 'ret_supplier', 'origin', 'supplier', 'source_key', 'created_at', 'updated_at' ),
 			self::reviews_table() => array( 'id', 'link_id', 'product_id', 'item_key', 'sku', 'transitioned_at', 'local_cost', 'supplier_cost_eur', 'supplier_cost_sek', 'supplier_stock', 'regular_price', 'sale_price', 'status', 'reviewed_at', 'reviewed_by' ),
 		);
 		$missing  = array();
@@ -254,18 +262,19 @@ class URME_SS_DB {
 	 * Only new or changed rows are written. Rows missing from the feed are
 	 * flagged (never deleted) so selections and links survive a temporary gap.
 	 *
-	 * @param array $items       item_key => packed item (see URME_SS_Feed::pack()).
-	 * @param bool  $rewrite_all Write every row even if unchanged (manual forced refresh).
+	 * @param array  $items       item_key => packed item (see URME_SS_Feed::pack()).
+	 * @param bool   $rewrite_all Write every row even if unchanged (manual forced refresh).
+	 * @param string $supplier    Supplier of this feed: only its rows are compared and flagged missing.
 	 * @return array Counts.
 	 */
-	public static function apply_feed( array $items, $rewrite_all = false ) {
+	public static function apply_feed( array $items, $rewrite_all = false, $supplier = URME_SS_Suppliers::MAIN ) {
 		global $wpdb;
 		$table = self::catalog_table();
 		$now   = current_time( 'mysql', true );
 
 		$existing = array();
 		// Keyed by item_key: "hash|in_feed". Small even for tens of thousands of rows.
-		foreach ( $wpdb->get_results( "SELECT item_key, data_hash, in_feed FROM {$table}", ARRAY_N ) as $row ) { // phpcs:ignore WordPress.DB
+		foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT item_key, data_hash, in_feed FROM {$table} WHERE supplier = %s", $supplier ), ARRAY_N ) as $row ) { // phpcs:ignore WordPress.DB
 			$existing[ $row[0] ] = $row[1] . '|' . $row[2];
 		}
 
@@ -331,7 +340,7 @@ class URME_SS_DB {
 		$params = array();
 
 		foreach ( $rows as $r ) {
-			$values[] = '(%s,%s,%s,%s,%s,%s,%s,' . ( null === $r['purchase_price'] ? 'NULL' : '%f' ) . ',' . ( null === $r['stock'] ? 'NULL' : '%d' ) . ',%s,%s,1,%s,%s,NULL)';
+			$values[] = '(%s,%s,%s,%s,%s,%s,%s,' . ( null === $r['purchase_price'] ? 'NULL' : '%f' ) . ',' . ( null === $r['stock'] ? 'NULL' : '%d' ) . ',%s,%s,1,%s,%s,NULL,%s)';
 			array_push( $params, $r['item_key'], $r['item_id'], $r['product_no'], $r['manufacturer'], $r['product_name'], $r['category'], $r['subcategory'] );
 			if ( null !== $r['purchase_price'] ) {
 				$params[] = $r['purchase_price'];
@@ -339,17 +348,17 @@ class URME_SS_DB {
 			if ( null !== $r['stock'] ) {
 				$params[] = $r['stock'];
 			}
-			array_push( $params, $r['img_url'], $r['data_hash'], $now, $now );
+			array_push( $params, $r['img_url'], $r['data_hash'], $now, $now, URME_SS_Suppliers::id( $r['supplier'] ?? '' ) );
 		}
 
 		$sql = "INSERT INTO {$table}
-			(item_key, item_id, product_no, manufacturer, product_name, category, subcategory, purchase_price, stock, img_url, data_hash, in_feed, first_seen, updated_at, missing_since)
+			(item_key, item_id, product_no, manufacturer, product_name, category, subcategory, purchase_price, stock, img_url, data_hash, in_feed, first_seen, updated_at, missing_since, supplier)
 			VALUES " . implode( ',', $values ) . '
 			ON DUPLICATE KEY UPDATE
 				item_id = VALUES(item_id), product_no = VALUES(product_no), manufacturer = VALUES(manufacturer),
 				product_name = VALUES(product_name), category = VALUES(category), subcategory = VALUES(subcategory),
 				purchase_price = VALUES(purchase_price), stock = VALUES(stock), img_url = VALUES(img_url),
-				data_hash = VALUES(data_hash), in_feed = 1, updated_at = VALUES(updated_at), missing_since = NULL';
+				data_hash = VALUES(data_hash), in_feed = 1, updated_at = VALUES(updated_at), missing_since = NULL, supplier = VALUES(supplier)';
 
 		$wpdb->query( $wpdb->prepare( $sql, $params ) ); // phpcs:ignore WordPress.DB
 	}
@@ -403,6 +412,10 @@ class URME_SS_DB {
 		if ( '' !== ( $args['brand'] ?? '' ) ) {
 			$where[]  = 'c.manufacturer = %s';
 			$params[] = $args['brand'];
+		}
+		if ( '' !== ( $args['supplier'] ?? '' ) ) {
+			$where[]  = 'c.supplier = %s';
+			$params[] = URME_SS_Suppliers::id( $args['supplier'] );
 		}
 		if ( '' !== ( $args['productno'] ?? '' ) ) {
 			$where[]  = 'c.product_no LIKE %s';
@@ -491,7 +504,7 @@ class URME_SS_DB {
 		$from     = "FROM {$c} c LEFT JOIN {$l} l ON l.item_key = c.item_key{$joins} WHERE " . implode( ' AND ', $where );
 
 		$count_sql = "SELECT COUNT(*) {$from}";
-		$rows_sql  = "SELECT c.*, l.id AS link_id, l.product_id, l.sync_enabled, l.match_method AS link_method, l.stock_mode, l.local_qty, l.last_status AS link_status, l.last_message AS link_message {$from} ORDER BY {$order}, c.manufacturer ASC, c.product_no ASC, c.item_key ASC LIMIT %d OFFSET %d";
+		$rows_sql  = "SELECT c.*, l.id AS link_id, l.product_id, l.sync_enabled, l.match_method AS link_method, l.stock_mode, l.local_qty, l.last_status AS link_status, l.last_message AS link_message, l.supplier AS link_supplier {$from} ORDER BY {$order}, c.manufacturer ASC, c.product_no ASC, c.item_key ASC LIMIT %d OFFSET %d";
 
 		// phpcs:disable WordPress.DB
 		$total = (int) $wpdb->get_var( $params ? $wpdb->prepare( $count_sql, $params ) : $count_sql );
@@ -586,9 +599,72 @@ class URME_SS_DB {
 	 * Called before a feed is written: if the catalog is empty this is a first import,
 	 * and none of its rows should count as NEW.
 	 */
-	public static function catalog_is_empty() {
+	public static function catalog_is_empty( $supplier = null ) {
 		global $wpdb;
+		if ( null !== $supplier ) {
+			return ! $wpdb->get_var( $wpdb->prepare( 'SELECT 1 FROM ' . self::catalog_table() . ' WHERE supplier = %s LIMIT 1', $supplier ) ); // phpcs:ignore WordPress.DB
+		}
 		return ! $wpdb->get_var( 'SELECT 1 FROM ' . self::catalog_table() . ' LIMIT 1' ); // phpcs:ignore WordPress.DB
+	}
+
+	/**
+	 * A supplier's first import is its existing range, not "new": its rows get the NEW baseline as first seen.
+	 */
+	public static function mark_not_new( $supplier ) {
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare( 'UPDATE ' . self::catalog_table() . ' SET first_seen = %s WHERE supplier = %s', (string) get_option( 'urme_ss_new_since', current_time( 'mysql', true ) ), $supplier ) ); // phpcs:ignore WordPress.DB
+	}
+
+	/**
+	 * In-feed rows per supplier.
+	 *
+	 * @return array<string, int>
+	 */
+	public static function supplier_counts() {
+		global $wpdb;
+		$rows = $wpdb->get_results( 'SELECT supplier, SUM(in_feed = 1) AS n FROM ' . self::catalog_table() . ' GROUP BY supplier', ARRAY_A ); // phpcs:ignore WordPress.DB
+		return array_map( 'intval', wp_list_pluck( (array) $rows, 'n', 'supplier' ) );
+	}
+
+	/**
+	 * The same watches at the other suppliers (same EAN), for many catalog rows at once.
+	 *
+	 * @param array[] $rows Rows with item_key and item_id (EAN).
+	 * @return array<string, array[]> item_key => rows of the same watch at other suppliers.
+	 */
+	public static function other_sources( array $rows ) {
+		global $wpdb;
+		$by_ean = array();
+		foreach ( $rows as $r ) {
+			$ean = URME_SS_Matcher::normalize_ean( $r['item_id'] ?? '' );
+			if ( '' !== $ean && ! empty( $r['item_key'] ) ) {
+				$by_ean[ $ean ][] = (string) $r['item_key'];
+			}
+		}
+		$out = array();
+		if ( ! $by_ean ) {
+			return $out;
+		}
+		// EAN-13 / UPC-12 / GTIN-14 spellings differ only by leading zeros.
+		$variants = array();
+		foreach ( array_keys( $by_ean ) as $ean ) {
+			for ( $z = 0; $z <= 3 && strlen( $ean ) + $z <= 14; $z++ ) {
+				$variants[] = str_repeat( '0', $z ) . $ean;
+			}
+		}
+		foreach ( array_chunk( array_values( array_unique( $variants ) ), 500 ) as $chunk ) {
+			// phpcs:ignore WordPress.DB
+			$found = $wpdb->get_results( $wpdb->prepare( 'SELECT item_key, item_id, product_no, manufacturer, supplier, purchase_price, stock, in_feed FROM ' . self::catalog_table() . ' WHERE item_id IN (' . implode( ',', array_fill( 0, count( $chunk ), '%s' ) ) . ')', $chunk ), ARRAY_A );
+			foreach ( (array) $found as $f ) {
+				$ean = URME_SS_Matcher::normalize_ean( $f['item_id'] );
+				foreach ( $by_ean[ $ean ] ?? array() as $key ) {
+					if ( $key !== $f['item_key'] && URME_SS_Suppliers::of_key( $key ) !== URME_SS_Suppliers::id( $f['supplier'] ) ) {
+						$out[ $key ][] = $f;
+					}
+				}
+			}
+		}
+		return $out;
 	}
 
 	public static function catalog_counts() {
@@ -723,7 +799,7 @@ class URME_SS_DB {
 		}
 
 		$from = "FROM {$l} l LEFT JOIN {$c} c ON c.item_key = l.item_key WHERE " . implode( ' AND ', $where );
-		$sql  = "SELECT l.*, c.item_id, c.product_no, c.manufacturer, c.category, c.product_name, c.purchase_price, c.stock, c.img_url, c.in_feed, c.missing_since, c.id AS catalog_id {$from} ORDER BY c.manufacturer ASC, c.product_no ASC";
+		$sql  = "SELECT l.*, c.item_id, c.product_no, c.manufacturer, c.category, c.product_name, c.purchase_price, c.stock, c.img_url, c.in_feed, c.missing_since, c.id AS catalog_id, c.supplier AS item_supplier {$from} ORDER BY c.manufacturer ASC, c.product_no ASC";
 
 		// phpcs:disable WordPress.DB
 		$per_page = (int) ( $args['per_page'] ?? 0 );

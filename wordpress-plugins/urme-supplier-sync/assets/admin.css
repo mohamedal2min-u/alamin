@@ -82,3 +82,7 @@
 .urme-ss .urme-sync-actions { display: flex; flex-wrap: wrap; gap: 4px; }
 .urme-ss .urme-sync-note { margin-top: 4px; font-size: 12px; line-height: 1.4; }
 .urme-price-auto { margin-top: 6px; }
+
+/* 1.9.0: supplier flags */
+.urme-flag{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;vertical-align:middle}.urme-flag svg{display:block;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.urme-suppliers td{vertical-align:middle}.urme-suppliers td:nth-child(2){min-width:280px}

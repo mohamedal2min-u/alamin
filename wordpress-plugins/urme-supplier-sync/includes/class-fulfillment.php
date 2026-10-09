@@ -57,6 +57,8 @@ class URME_SS_Fulfillment {
 			'supplier'     => 0,
 			'ret_local'    => 0,
 			'ret_supplier' => 0,
+			'from'         => '',
+			'source_key'   => '',
 		);
 		if ( ! $row ) {
 			return $out;
@@ -69,6 +71,8 @@ class URME_SS_Fulfillment {
 		$out['supplier']     = (int) $row['src_supplier'];
 		$out['ret_local']    = (int) $row['ret_local'];
 		$out['ret_supplier'] = (int) $row['ret_supplier'];
+		$out['from']         = $out['supplier'] ? URME_SS_Suppliers::id( $row['supplier'] ?? '' ) : '';
+		$out['source_key']   = (string) ( $row['source_key'] ?? '' );
 		$out['status']       = self::classify( $out['local'], $out['supplier'] );
 		return $out;
 	}
@@ -97,6 +101,7 @@ class URME_SS_Fulfillment {
 			'supplier'  => 0,
 			'lines'     => array(),
 			'untracked' => 0,
+			'from'      => array(),
 		);
 		if ( ! $order instanceof WC_Order ) { // Not found, or a refund.
 			return $out;
@@ -112,7 +117,11 @@ class URME_SS_Fulfillment {
 			$out['supplier']         += $line['supplier'];
 			$legacy                  += self::LEGACY === $line['status'] ? 1 : 0;
 			$out['untracked']        += self::UNTRACK === $line['status'] ? 1 : 0;
+			if ( $line['from'] ) {
+				$out['from'][ $line['from'] ] = true;
+			}
 		}
+		$out['from'] = array_keys( $out['from'] );
 		if ( $out['local'] || $out['supplier'] ) {
 			$out['status'] = self::classify( $out['local'], $out['supplier'] );
 		} elseif ( $legacy || self::before_ledger( $order ) ) {
@@ -145,7 +154,7 @@ class URME_SS_Fulfillment {
 			return;
 		}
 		foreach ( $ids as $id ) {
-			self::$map[ $id ] = array( 0, 0, 0 );
+			self::$map[ $id ] = array( 0, 0, 0, array() );
 		}
 		// Only lines still on the order count (same as order()); the join is on the items table's primary key.
 		// phpcs:ignore WordPress.DB
@@ -153,15 +162,38 @@ class URME_SS_Fulfillment {
 			'SELECT a.order_id,
 				SUM(CASE WHEN a.origin = \'sale\' THEN a.src_local ELSE 0 END) AS l,
 				SUM(CASE WHEN a.origin = \'sale\' THEN a.src_supplier ELSE 0 END) AS s,
-				SUM(CASE WHEN a.origin = \'legacy\' THEN 1 ELSE 0 END) AS g
+				SUM(CASE WHEN a.origin = \'legacy\' THEN 1 ELSE 0 END) AS g,
+				GROUP_CONCAT(DISTINCT CASE WHEN a.origin = \'sale\' AND a.src_supplier > 0 THEN a.supplier END) AS f
 			FROM ' . URME_SS_DB::alloc_table() . ' a
 			INNER JOIN ' . $wpdb->prefix . 'woocommerce_order_items oi ON oi.order_item_id = a.order_item_id
 			WHERE a.order_id IN (' . implode( ',', $ids ) . ') GROUP BY a.order_id',
 			ARRAY_A
 		);
 		foreach ( (array) $rows as $r ) {
-			self::$map[ (int) $r['order_id'] ] = array( (int) $r['l'], (int) $r['s'], (int) $r['g'] );
+			self::$map[ (int) $r['order_id'] ] = array( (int) $r['l'], (int) $r['s'], (int) $r['g'], self::supplier_list( (string) $r['f'] ) );
 		}
+	}
+
+	/**
+	 * "relo,ila" (or '' for rows booked before 1.9.0: the main supplier) → known supplier IDs.
+	 *
+	 * @return string[]
+	 */
+	private static function supplier_list( $csv ) {
+		$out = array();
+		foreach ( explode( ',', $csv ) as $id ) {
+			$out[ URME_SS_Suppliers::id( trim( $id ) ) ] = true;
+		}
+		return array_keys( $out );
+	}
+
+	/**
+	 * Suppliers of an order on the list page (after list_status() primed it).
+	 *
+	 * @return string[]
+	 */
+	public static function list_suppliers( $order_id ) {
+		return self::$map[ $order_id ][3] ?? array();
 	}
 
 	public static function flush_map() {
@@ -310,14 +342,37 @@ class URME_SS_Fulfillment {
 		if ( $line['supplier'] ) {
 			$parts[] = sprintf( 'Dropshipping: %d', $line['supplier'] );
 		}
+		$from = '';
+		if ( $line['from'] ) {
+			$ref  = self::supplier_ref( $line['source_key'] );
+			$from = ' ' . URME_SS_Suppliers::flag( $line['from'], true ) . ( '' !== $ref ? ' <small>' . esc_html( 'Ref: ' . $ref ) . '</small>' : '' );
+		}
 		$returned = $line['ret_local'] + $line['ret_supplier'];
 		printf(
-			'<div class="urme-ff-line"><small>Fulfillment (internal):</small> %s%s%s</div>',
+			'<div class="urme-ff-line"><small>Fulfillment (internal):</small> %s%s%s%s</div>',
 			self::badge( $line['status'] ), // phpcs:ignore WordPress.Security.EscapeOutput
+			$from, // phpcs:ignore WordPress.Security.EscapeOutput -- flag() escapes.
 			$parts ? ' <small>' . esc_html( implode( ' · ', $parts ) ) . '</small>' : '',
 			$returned ? ' <small class="urme-ff-ret">' . esc_html( sprintf( '(%d returned/restocked: %d URME Lager, %d Dropshipping)', $returned, $line['ret_local'], $line['ret_supplier'] ) ) . '</small>' : ''
 		);
 		self::styles();
+	}
+
+	/**
+	 * The supplier's own reference (product number) of the catalog row a line was bought from.
+	 */
+	private static function supplier_ref( $item_key ) {
+		global $wpdb;
+		if ( '' === (string) $item_key ) {
+			return '';
+		}
+		return (string) $wpdb->get_var( $wpdb->prepare( 'SELECT product_no FROM ' . URME_SS_DB::catalog_table() . ' WHERE item_key = %s', $item_key ) ); // phpcs:ignore WordPress.DB
+	}
+
+	private static function flags( array $ids, $name = false ) {
+		return implode( ' ', array_map( static function ( $id ) use ( $name ) {
+			return URME_SS_Suppliers::flag( $id, $name );
+		}, $ids ) );
 	}
 
 	public static function render_order( $order ) {
@@ -326,6 +381,9 @@ class URME_SS_Fulfillment {
 		}
 		$o = self::order( $order );
 		echo '<p class="form-field form-field-wide urme-ff-order"><strong>Fulfillment (internal):</strong><br>' . self::badge( $o['status'], true ); // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( $o['from'] ) {
+			echo '<br>' . self::flags( $o['from'], true ); // phpcs:ignore WordPress.Security.EscapeOutput -- flag() escapes.
+		}
 		if ( $o['local'] || $o['supplier'] ) {
 			echo ' <small>' . esc_html( sprintf( 'URME Lager: %d · Dropshipping: %d', $o['local'], $o['supplier'] ) ) . '</small>';
 		}
@@ -365,6 +423,9 @@ class URME_SS_Fulfillment {
 		}
 		$status = self::list_status( $id, $ts );
 		echo in_array( $status, array( self::LOCAL, self::DROPSHIP, self::MIXED, self::LEGACY ), true ) ? self::badge( $status ) : '<span class="urme-ff urme-ff-none">–</span>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( in_array( $status, array( self::DROPSHIP, self::MIXED ), true ) ) {
+			echo ' ' . self::flags( self::list_suppliers( $id ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- flag() escapes.
+		}
 		self::styles();
 	}
 
@@ -416,6 +477,6 @@ class URME_SS_Fulfillment {
 			return;
 		}
 		$done = true;
-		echo '<style>.urme-ff{display:inline-flex;align-items:center;gap:2px;font-weight:600;white-space:nowrap}.urme-ff .dashicons{font-size:16px;width:16px;height:16px}.urme-ff-local{color:#00701a}.urme-ff-dropship{color:#2271b1}.urme-ff-mixed{color:#8a6100}.urme-ff-legacy,.urme-ff-pending,.urme-ff-untracked,.urme-ff-none{color:#646970;font-weight:400}.urme-ff-line{margin-top:4px}</style>';
+		echo '<style>.urme-ff{display:inline-flex;align-items:center;gap:2px;font-weight:600;white-space:nowrap}.urme-ff .dashicons{font-size:16px;width:16px;height:16px}.urme-ff-local{color:#00701a}.urme-ff-dropship{color:#2271b1}.urme-ff-mixed{color:#8a6100}.urme-ff-legacy,.urme-ff-pending,.urme-ff-untracked,.urme-ff-none{color:#646970;font-weight:400}.urme-ff-line{margin-top:4px}.urme-ff-order .urme-flag{margin-right:6px}' . URME_SS_Suppliers::flag_css() . '</style>';
 	}
 }

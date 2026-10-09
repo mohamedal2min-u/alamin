@@ -48,6 +48,12 @@ class URME_SS_Settings {
 			'hint_vat_pct'       => 25,  // Swedish VAT included in the listed price.
 			'hint_profit_pct'    => 20,  // Target profit per watch, % of its cost (cost incl. the extra supplier cost).
 			'hint_round_sek'     => 10,  // Round the suggested price up to this step.
+			// Second supplier (ILA Uhren, Germany). Inactive while the feed URL is empty.
+			'ila_feed_url'       => '',
+			'ila_extra_eur'      => 17.90, // Shipping + fees per order, EUR (like hint_extra_eur for Relojitos).
+			// Delivery days to the customer per supplier (WoodMart "Leverans" on Dropshipping watches).
+			'relo_days'          => '3-6',
+			'ila_days'           => '3-6',
 		);
 	}
 
@@ -93,6 +99,10 @@ class URME_SS_Settings {
 			'hint_vat_pct'       => self::number( $input, $current, 'hint_vat_pct', 0, 100 ),
 			'hint_profit_pct'    => self::number( $input, $current, 'hint_profit_pct', 0, 1000 ),
 			'hint_round_sek'     => (int) self::number( $input, $current, 'hint_round_sek', 1, 1000 ),
+			'ila_feed_url'       => esc_url_raw( trim( (string) ( $input['ila_feed_url'] ?? $current['ila_feed_url'] ) ) ),
+			'ila_extra_eur'      => self::number( $input, $current, 'ila_extra_eur', 0, 1000 ),
+			'relo_days'          => self::days( $input, $current, 'relo_days' ),
+			'ila_days'           => self::days( $input, $current, 'ila_days' ),
 		);
 
 		self::guard_enabled_brands( (array) $current['enabled_brands'], $new['enabled_brands'] );
@@ -173,6 +183,18 @@ class URME_SS_Settings {
 			return $current[ $key ];
 		}
 		return max( $min, min( $max, round( (float) $raw, 2 ) ) );
+	}
+
+	/**
+	 * Delivery days as "min-max" (or one number); the current value when absent or unreadable.
+	 */
+	private static function days( array $input, array $current, $key ) {
+		$raw = trim( (string) ( $input[ $key ] ?? '' ) );
+		if ( ! preg_match( '/^\d{1,2}(\s*[-–—]\s*\d{1,2})?$/u', $raw ) ) {
+			return $current[ $key ];
+		}
+		list( $min, $max ) = URME_SS_Suppliers::parse_days( $raw );
+		return $min === $max ? (string) $min : $min . '-' . $max;
 	}
 
 	public static function sanitize_brands( array $brands ) {

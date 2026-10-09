@@ -93,7 +93,7 @@ class URME_SS_Inventory {
 			if ( ! $alloc ) {
 				$ok = $wpdb->query( // phpcs:ignore WordPress.DB
 					$wpdb->prepare(
-						"INSERT IGNORE INTO {$table} (order_item_id, order_id, link_id, product_id, last_reduced_stock, local_allocated, supplier_allocated, src_local, src_supplier, ret_local, ret_supplier, origin, created_at, updated_at) VALUES (%d, %d, %d, %d, %d, %d, %d, %d, %d, 0, 0, %s, %s, %s)",
+						"INSERT IGNORE INTO {$table} (order_item_id, order_id, link_id, product_id, last_reduced_stock, local_allocated, supplier_allocated, src_local, src_supplier, ret_local, ret_supplier, origin, supplier, source_key, created_at, updated_at) VALUES (%d, %d, %d, %d, %d, %d, %d, %d, %d, 0, 0, %s, %s, %s, %s, %s)",
 						$item_id,
 						$facts['order_id'],
 						$book['link_id'],
@@ -104,6 +104,8 @@ class URME_SS_Inventory {
 						$book['src_local'],
 						$book['src_supplier'],
 						self::origin_for_order( $facts['order_id'] ),
+						$book['supplier'],
+						$book['source_key'],
 						$now,
 						$now
 					)
@@ -119,6 +121,8 @@ class URME_SS_Inventory {
 						'src_supplier'       => $book['src_supplier'],
 						'ret_local'          => $book['ret_local'],
 						'ret_supplier'       => $book['ret_supplier'],
+						'supplier'           => $book['supplier'],
+						'source_key'         => $book['source_key'],
 						'updated_at'         => $now,
 					),
 					array(
@@ -140,7 +144,7 @@ class URME_SS_Inventory {
 	}
 
 	/**
-	 * Private order note "URME: Dropshipping – SKU × 1" when units are taken, so the source shows in
+	 * Private order note "URME: Dropshipping – Relojitos (ES) – SKU × 1" when units are taken, so the source shows in
 	 * the WooCommerce mobile app. Private: never on the customer's emails, My Account or invoices.
 	 */
 	private static function note_sale( array $facts, array $book, $delta ) {
@@ -153,7 +157,11 @@ class URME_SS_Inventory {
 		}
 		$product = wc_get_product( $facts['product_id'] );
 		$sku     = $product ? ( $product->get_sku() ? $product->get_sku() : $product->get_name() ) : '#' . $facts['product_id'];
-		$source  = $book['src_supplier'] > 0 && $book['supplier_allocated'] >= $delta ? 'Dropshipping' : 'URME Lager';
+		$source  = 'URME Lager';
+		if ( $book['src_supplier'] > 0 && $book['supplier_allocated'] >= $delta ) {
+			$s      = URME_SS_Suppliers::get( $book['supplier'] );
+			$source = sprintf( 'Dropshipping – %s (%s)', $s['name'], $s['country'] );
+		}
 		$order->add_order_note( sprintf( 'URME: %s – %s × %d', $source, $sku, $delta ), 0, false );
 	}
 
@@ -173,13 +181,21 @@ class URME_SS_Inventory {
 			'src_supplier'       => (int) ( $alloc['src_supplier'] ?? 0 ),
 			'ret_local'          => (int) ( $alloc['ret_local'] ?? 0 ),
 			'ret_supplier'       => (int) ( $alloc['ret_supplier'] ?? 0 ),
+			'supplier'           => (string) ( $alloc['supplier'] ?? '' ),
+			'source_key'         => (string) ( $alloc['source_key'] ?? '' ),
 		);
 		if ( $delta > 0 ) {
 			// Units taken: the watch's state now decides (Dropshipping, else URME Lager).
 			$drop = URME_SS_Product_Source::DROPSHIP === URME_SS_Product_Source::product_state( $product_id );
+			$link = $drop ? URME_SS_DB::link_for_product( $product_id ) : null;
 			if ( $drop && ! $b['link_id'] ) {
-				$link         = URME_SS_DB::link_for_product( $product_id );
 				$b['link_id'] = $link ? (int) $link['id'] : 0;
+			}
+			if ( $link ) {
+				// Frozen at sale time: the supplier sync picked for this watch (the cheapest with stock).
+				$key             = '' !== (string) $link['source_key'] ? (string) $link['source_key'] : (string) $link['item_key'];
+				$b['supplier']   = '' !== (string) $link['supplier'] ? URME_SS_Suppliers::id( $link['supplier'] ) : URME_SS_Suppliers::of_key( $key );
+				$b['source_key'] = $key;
 			}
 			if ( 0 === $b['local_allocated'] + $b['supplier_allocated'] ) {
 				// A new sale of this line (first sale, or sold again after a full cancellation).

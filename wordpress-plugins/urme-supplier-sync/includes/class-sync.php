@@ -14,12 +14,30 @@ class URME_SS_Sync {
 	const LOCK_TTL      = 30 * MINUTE_IN_SECONDS;
 
 	public static function status() {
-		$s = get_option( self::STATUS_OPTION, array() );
-		$s = is_array( $s ) ? $s : array();
-		return array(
+		$s   = get_option( self::STATUS_OPTION, array() );
+		$s   = is_array( $s ) ? $s : array();
+		$out = array(
 			'feed' => isset( $s['feed'] ) && is_array( $s['feed'] ) ? $s['feed'] : array(),
 			'sync' => isset( $s['sync'] ) && is_array( $s['sync'] ) ? $s['sync'] : array(),
 		);
+		foreach ( URME_SS_Suppliers::ids() as $id ) {
+			$part = self::feed_part( $id );
+			if ( ! isset( $out[ $part ] ) ) {
+				$out[ $part ] = isset( $s[ $part ] ) && is_array( $s[ $part ] ) ? $s[ $part ] : array();
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Status key of a supplier's feed: "feed" for the main supplier (as before), "feed_<id>" for the others.
+	 */
+	public static function feed_part( $supplier ) {
+		return URME_SS_Suppliers::MAIN === $supplier ? 'feed' : 'feed_' . $supplier;
+	}
+
+	public static function feed_status( $supplier ) {
+		return self::status()[ self::feed_part( $supplier ) ] ?? array();
 	}
 
 	private static function save_status( $part, array $data ) {
@@ -109,11 +127,17 @@ class URME_SS_Sync {
 		wp_raise_memory_limit( 'admin' );
 
 		$feed_ok = null;
+		$failed  = array();
 		$sync    = null;
 		try {
 			URME_SS_Rates::maybe_refresh();
 			if ( $args['refresh_feed'] ) {
-				$feed_ok = self::refresh_feed( $args['force_feed'] );
+				foreach ( URME_SS_Suppliers::active() as $supplier ) {
+					if ( ! self::refresh_feed( $args['force_feed'], $supplier ) ) {
+						$failed[] = $supplier;
+					}
+				}
+				$feed_ok = ! $failed;
 			}
 			if ( null === $args['refresh_matches'] ? $args['refresh_feed'] : $args['refresh_matches'] ) {
 				// Store products change too (new SKUs/EANs), so re-check even when the feed did not.
@@ -123,8 +147,8 @@ class URME_SS_Sync {
 				}
 			}
 			if ( $args['sync_products'] ) {
-				// A feed that failed in this run blocks all product writes; the cached catalog is kept as is.
-				$sync = self::sync_products( (int) $args['link_id'], $args['trigger'], false === $feed_ok );
+				// A feed that failed in this run is not used for product writes; the cached catalog is kept as is.
+				$sync = self::sync_products( (int) $args['link_id'], $args['trigger'], $failed );
 			}
 		} catch ( Throwable $e ) {
 			URME_SS_Log::error( 'Unexpected error: ' . $e->getMessage() );
@@ -133,10 +157,11 @@ class URME_SS_Sync {
 		}
 
 		return array(
-			'ran'     => true,
-			'feed_ok' => $feed_ok,
-			'sync'    => $sync,
-			'message' => '',
+			'ran'          => true,
+			'feed_ok'      => $feed_ok,
+			'feeds_failed' => $failed,
+			'sync'         => $sync,
+			'message'      => '',
 		);
 	}
 
@@ -148,20 +173,23 @@ class URME_SS_Sync {
 	 * Download + parse + validate + store the catalog. On any failure the
 	 * catalog is left exactly as it was.
 	 *
-	 * @param bool $force Skip the conditional request and the size-drop safety check (admin "accept anyway").
+	 * @param bool   $force    Skip the conditional request and the size-drop safety check (admin "accept anyway").
+	 * @param string $supplier Supplier whose feed is refreshed.
 	 */
-	private static function refresh_feed( $force = false ) {
-		$st                 = self::status()['feed'];
+	private static function refresh_feed( $force = false, $supplier = URME_SS_Suppliers::MAIN ) {
+		$part               = self::feed_part( $supplier );
+		$name               = URME_SS_Suppliers::name( $supplier );
+		$st                 = self::status()[ $part ] ?? array();
 		$st['last_attempt'] = time();
 		$started            = microtime( true );
-		$state              = get_option( URME_SS_Feed::STATE_OPTION, array() );
+		$state              = get_option( URME_SS_Feed::state_option( $supplier ), array() );
 		$categories         = URME_SS_Settings::get( 'categories' );
 		$cat_sig            = implode( ',', $categories );
 		$same_categories    = ( $state['categories'] ?? '' ) === $cat_sig;
 		$file               = null;
 
 		try {
-			$dl = URME_SS_Feed::download( ! $force && $same_categories );
+			$dl = URME_SS_Feed::download( ! $force && $same_categories, $supplier );
 
 			if ( $dl['not_modified'] ) {
 				$st['last_success'] = time();
@@ -179,7 +207,7 @@ class URME_SS_Sync {
 				return true;
 			}
 
-			$parsed = URME_SS_Feed::parse( $file, $categories );
+			$parsed = URME_SS_Feed::parse_file( $file, $categories, $supplier );
 
 			if ( 0 === $parsed['kept'] ) {
 				throw new Exception(
@@ -206,16 +234,19 @@ class URME_SS_Sync {
 			}
 
 			$first_import = URME_SS_DB::catalog_is_empty();
-			$applied      = URME_SS_DB::apply_feed( $parsed['items'], $force );
+			$first_here   = URME_SS_DB::catalog_is_empty( $supplier );
+			$applied      = URME_SS_DB::apply_feed( $parsed['items'], $force, $supplier );
 			if ( $first_import ) {
 				// Everything in a first import is the existing supplier range, not "new".
 				update_option( 'urme_ss_new_since', current_time( 'mysql', true ), false );
+			} elseif ( $first_here ) {
+				URME_SS_DB::mark_not_new( $supplier ); // A new supplier's range is not "new" either.
 			}
 			$kept    = $parsed['kept'];
 			unset( $parsed['items'] );
 
 			update_option(
-				URME_SS_Feed::STATE_OPTION,
+				URME_SS_Feed::state_option( $supplier ),
 				array(
 					'etag'          => $dl['etag'],
 					'last_modified' => $dl['last_modified'],
@@ -246,18 +277,18 @@ class URME_SS_Sync {
 				)
 			);
 			$st['last_result'] = sprintf( '%d items kept of %d in feed: %d new, %d changed, %d back in feed, %d no longer in feed.', $kept, $parsed['total'], $applied['new'], $applied['changed'], $applied['returned'], $applied['missing'] );
-			URME_SS_Log::info( 'Feed refreshed. ' . $st['last_result'] );
+			URME_SS_Log::info( $name . ' feed refreshed. ' . $st['last_result'] );
 			return true;
 		} catch ( Exception $e ) {
 			$st['last_error']    = $e->getMessage();
 			$st['last_error_at'] = time();
-			URME_SS_Log::error( $e->getMessage() );
+			URME_SS_Log::error( $name . ' feed: ' . $e->getMessage() );
 			return false;
 		} finally {
 			if ( $file && file_exists( $file ) ) {
 				wp_delete_file( $file );
 			}
-			self::save_status( 'feed', $st );
+			self::save_status( $part, $st );
 		}
 	}
 
@@ -268,13 +299,16 @@ class URME_SS_Sync {
 	/**
 	 * Push supplier stock and cost to the linked, enabled products.
 	 *
-	 * @param int    $only_link_id Limit to one link (0 = all).
-	 * @param string $trigger      What started the run.
-	 * @param bool   $feed_failed  The feed refresh requested in this run failed.
+	 * Each watch is bought where it is cheapest now (cost price + that supplier's cost per order,
+	 * among the suppliers with stock); see URME_SS_Suppliers::choose().
+	 *
+	 * @param int      $only_link_id Limit to one link (0 = all).
+	 * @param string   $trigger      What started the run.
+	 * @param string[] $feed_failed  Suppliers whose feed refresh failed in this run.
 	 */
-	private static function sync_products( $only_link_id = 0, $trigger = 'manual', $feed_failed = false ) {
-		$feed  = self::status()['feed'];
-		$prev  = self::status()['sync'];
+	private static function sync_products( $only_link_id = 0, $trigger = 'manual', $feed_failed = array() ) {
+		$feed        = self::status()['feed'];
+		$feed_failed = (array) $feed_failed;
 		$stats = array(
 			'last_run'      => time(),
 			'trigger'       => $trigger,
@@ -294,9 +328,17 @@ class URME_SS_Sync {
 			'skipped'       => '',
 		);
 
-		// Safety: never push data from a catalog we could not refresh recently.
+		// Safety: never push data from a catalog we could not refresh recently. The main supplier's
+		// feed must be fresh for any write; another supplier with a stale feed is simply not used.
 		$max_age = (int) URME_SS_Settings::get( 'max_feed_age_hours' ) * HOUR_IN_SECONDS;
-		if ( $feed_failed ) {
+		$fresh   = array();
+		foreach ( URME_SS_Suppliers::active() as $sup ) {
+			$fs = self::feed_status( $sup );
+			if ( ! in_array( $sup, $feed_failed, true ) && ! empty( $fs['last_success'] ) && time() - (int) $fs['last_success'] <= $max_age ) {
+				$fresh[] = $sup;
+			}
+		}
+		if ( in_array( URME_SS_Suppliers::MAIN, $feed_failed, true ) ) {
 			$stats['skipped'] = 'The supplier feed could not be downloaded or read in this run, so no products were changed. The previous catalog is kept for browsing.';
 		} elseif ( empty( $feed['last_success'] ) ) {
 			$stats['skipped'] = 'No successful feed download yet, so no products were changed.';
@@ -316,7 +358,8 @@ class URME_SS_Sync {
 		$manage = (bool) URME_SS_Settings::get( 'manage_stock' );
 		$hint   = URME_SS_Settings::get( 'loss_out_of_stock' ) ? URME_SS_Price_Hint::context() : null;
 		$now    = current_time( 'mysql', true );
-		$notes  = array();
+		$notes    = array();
+		$switched = array();
 
 		if ( $only_link_id ) {
 			$links = array_filter(
@@ -340,6 +383,7 @@ class URME_SS_Sync {
 		}
 
 		$categories = (array) URME_SS_Settings::get( 'categories' );
+		$others     = URME_SS_DB::other_sources( $links ); // The same watches at the other suppliers, one query.
 		foreach ( $links as $link ) {
 			// Full runs never load these (filtered in SQL); this guards single-product syncs.
 			if ( ! empty( $link['catalog_id'] ) && ! in_array( strtoupper( (string) $link['category'] ), $categories, true ) ) {
@@ -362,7 +406,29 @@ class URME_SS_Sync {
 				continue;
 			}
 			++$stats['linked'];
-			if ( empty( $link['catalog_id'] ) || ! (int) $link['in_feed'] ) {
+
+			// Where to buy it now: the cheapest supplier with stock (cost price + its cost per order).
+			$own = array(
+				'item_key'       => (string) $link['item_key'],
+				'item_id'        => $link['item_id'] ?? '',
+				'purchase_price' => $link['purchase_price'] ?? null,
+				'stock'          => $link['stock'] ?? null,
+				'in_feed'        => empty( $link['catalog_id'] ) ? 0 : (int) $link['in_feed'],
+			);
+			$src = URME_SS_Suppliers::choose( $own, $others[ $link['item_key'] ] ?? array(), $fresh );
+			if ( ! $src && $own['in_feed'] && ! in_array( URME_SS_Suppliers::of_key( $own['item_key'] ), $fresh, true ) ) {
+				// Only in a feed that is not fresh now: left exactly as it is until that feed is read again.
+				++$stats['unchanged'];
+				self::set_link_status( $link, 'ok', sprintf( 'The %s feed is not up to date; not changed.', URME_SS_Suppliers::name( URME_SS_Suppliers::of_key( $own['item_key'] ) ) ) );
+				continue;
+			}
+			if ( $src ) {
+				$link['stock']          = $src['stock'];
+				$link['purchase_price'] = $src['purchase_price'];
+			}
+			$sup = $src ? URME_SS_Suppliers::of_key( $src['item_key'] ) : URME_SS_Suppliers::of_key( $own['item_key'] );
+
+			if ( ! $src ) {
 				// Gone from the feed (temporarily or for good): the supplier cannot deliver it, so the
 				// Dropshipping product goes out of stock; it is synced again when it returns. Cost is kept.
 				++$stats['missing'];
@@ -406,7 +472,11 @@ class URME_SS_Sync {
 				$messages   = array();
 				$cost_error = '';
 
-				$loss = $hint ? self::loss_at_current_price( $product, $link['purchase_price'], $hint ) : null;
+				if ( '' !== (string) ( $link['supplier'] ?? '' ) && $link['supplier'] !== $sup ) {
+					$changes[] = sprintf( 'supplier %s → %s', URME_SS_Suppliers::get( $link['supplier'] )['country'], URME_SS_Suppliers::get( $sup )['country'] );
+					$switched[] = (int) $product->get_id(); // Its delivery days may change.
+				}
+				$loss = $hint ? self::loss_at_current_price( $product, $link['purchase_price'], URME_SS_Suppliers::hint( $hint, $sup ) ) : null;
 				if ( null !== $loss ) {
 					// Never sell at a loss: no stock until the price covers the cost again.
 					++$stats['loss_blocked'];
@@ -470,6 +540,8 @@ class URME_SS_Sync {
 					'last_rate'     => $rate ? $rate['rate'] : null,
 					'last_status'   => $cost_error ? 'error' : 'ok',
 					'last_message'  => substr( implode( ' ', $messages ), 0, 255 ),
+					'supplier'      => $sup,
+					'source_key'    => (string) $src['item_key'],
 				);
 				if ( $changes || ! $cost_error ) {
 					$data['last_synced_at'] = $now; // Checked against the supplier, also when nothing had to change.
@@ -482,6 +554,9 @@ class URME_SS_Sync {
 			}
 		}
 
+		if ( $switched ) {
+			URME_SS_Product_Source::changed( $switched ); // Product pages show the new supplier's delivery days.
+		}
 		// Feeds (CTX Feed) read the Fulfillment state from product meta: keep it current for every linked product.
 		URME_SS_Product_Source::flush();
 		URME_SS_Product_Source::write_meta( array_map( static function ( $l ) {
@@ -545,7 +620,7 @@ class URME_SS_Sync {
 		if ( ! $product || 'outofstock' === $product->get_stock_status() ) {
 			return;
 		}
-		$loss = self::loss_at_current_price( $product, $link['last_cost_eur'], URME_SS_Price_Hint::context() );
+		$loss = self::loss_at_current_price( $product, $link['last_cost_eur'], URME_SS_Suppliers::hint( URME_SS_Price_Hint::context(), URME_SS_Suppliers::of_key( '' !== (string) ( $link['source_key'] ?? '' ) ? $link['source_key'] : $link['item_key'] ) ) );
 		if ( null === $loss ) {
 			return;
 		}

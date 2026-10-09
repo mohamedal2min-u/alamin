@@ -247,7 +247,7 @@ class URME_SS_Admin {
 			case 'save_settings':
 				$old  = URME_SS_Settings::all();
 				$new  = URME_SS_Settings::save( wp_unslash( (array) ( $_POST['settings'] ?? array() ) ) );
-				$msg  = ( $old['categories'] !== $new['categories'] || $old['feed_url'] !== $new['feed_url'] ) ? 'Settings saved. Click "Sync now" to reload the catalog with the new feed settings.' : 'Settings saved.';
+				$msg  = ( $old['categories'] !== $new['categories'] || $old['feed_url'] !== $new['feed_url'] || $old['ila_feed_url'] !== $new['ila_feed_url'] ) ? 'Settings saved. Click "Sync now" to reload the catalog with the new feed settings.' : 'Settings saved.';
 				$held = self::held_message();
 				self::notice( $msg . $held, '' === $held ? 'success' : 'warning' );
 				break;
@@ -441,7 +441,7 @@ class URME_SS_Admin {
 
 			case 'auto98':
 				$item  = URME_SS_DB::get_item( $arg );
-				$price = $item ? URME_SS_Price_Hint::price_98( $item['purchase_price'], URME_SS_Price_Hint::context() ) : null;
+				$price = $item ? URME_SS_Price_Hint::price_98( $item['purchase_price'], URME_SS_Suppliers::hint( URME_SS_Price_Hint::context(), URME_SS_Suppliers::of_key( $item['item_key'] ) ) ) : null;
 				if ( ! $price ) {
 					return array( 'No suggested price for this watch (cost or exchange rate missing); nothing was changed.', 'error' );
 				}
@@ -770,10 +770,16 @@ class URME_SS_Admin {
 		);
 
 		$feed_sub = 'Last attempt ' . self::ago( $feed['last_attempt'] ?? 0 );
-		if ( ! empty( $feed['last_error'] ) ) {
+		$feed_bad = ! empty( $feed['last_error'] );
+		if ( $feed_bad ) {
 			$feed_sub .= '<br><span class="urme-bad">Last attempt failed</span>';
 		}
-		self::card( 'Last successful feed update', self::ago( $feed['last_success'] ?? 0 ), $feed_sub, ! empty( $feed['last_error'] ) );
+		foreach ( array_diff( URME_SS_Suppliers::active(), array( URME_SS_Suppliers::MAIN ) ) as $other ) {
+			$of        = URME_SS_Sync::feed_status( $other );
+			$feed_sub .= '<br>' . esc_html( URME_SS_Suppliers::name( $other ) ) . ': ' . self::ago( $of['last_success'] ?? 0 ) . ( empty( $of['last_error'] ) ? '' : ' <span class="urme-bad">(last attempt failed)</span>' );
+			$feed_bad  = $feed_bad || ! empty( $of['last_error'] );
+		}
+		self::card( 'Last successful feed update', self::ago( $feed['last_success'] ?? 0 ), $feed_sub, $feed_bad );
 
 		$new = self::page_new_count();
 		self::card(
@@ -891,6 +897,7 @@ class URME_SS_Admin {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only filters.
 		$f = array(
 			'brand'        => sanitize_text_field( wp_unslash( $_GET['brand'] ?? '' ) ),
+			'supplier'     => in_array( $_GET['supplier'] ?? '', URME_SS_Suppliers::ids(), true ) ? sanitize_key( $_GET['supplier'] ) : '',
 			'productno'    => sanitize_text_field( wp_unslash( $_GET['productno'] ?? '' ) ),
 			'ean'          => preg_replace( '/\s+/', '', sanitize_text_field( wp_unslash( $_GET['ean'] ?? '' ) ) ),
 			'q'            => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
@@ -966,6 +973,17 @@ class URME_SS_Admin {
 					<?php endforeach; ?>
 				</select>
 			</label>
+			<?php $scounts = URME_SS_DB::supplier_counts(); ?>
+			<?php if ( count( array_filter( $scounts ) ) > 1 || '' !== $f['supplier'] ) : ?>
+				<label>Supplier
+					<select name="supplier">
+						<option value="">All</option>
+						<?php foreach ( URME_SS_Suppliers::all() as $sid => $sup ) : ?>
+							<option value="<?php echo esc_attr( $sid ); ?>" <?php selected( $f['supplier'], $sid ); ?>><?php echo esc_html( $sup['name'] . ' (' . $sup['country'] . ', ' . number_format_i18n( (int) ( $scounts[ $sid ] ?? 0 ) ) . ')' ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+			<?php endif; ?>
 			<label>Brand sync
 				<select name="brand_sync">
 					<option value="">Default (enabled brands)</option>
@@ -1113,11 +1131,11 @@ class URME_SS_Admin {
 				<?php if ( $row['subcategory'] ) : ?><br><small class="urme-muted"><?php echo esc_html( $row['subcategory'] ); ?></small><?php endif; ?>
 				<?php if ( ! (int) $row['in_feed'] ) : ?><br><span class="urme-bad">Not in feed since <?php echo esc_html( self::mysql_datetime( $row['missing_since'] ) ); ?></span><?php endif; ?>
 			</td>
-			<td class="urme-code-col"><code><?php echo esc_html( $row['product_no'] ); ?></code><br><code class="urme-ean" title="EAN / ITEM_ID"><?php echo esc_html( $row['item_id'] ); ?></code></td>
+			<td class="urme-code-col"><?php echo URME_SS_Suppliers::flag( $row['supplier'] ?? '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <code><?php echo esc_html( $row['product_no'] ); ?></code><br><code class="urme-ean" title="EAN / ITEM_ID"><?php echo esc_html( $row['item_id'] ); ?></code></td>
 			<td class="num"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></td>
 			<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ) . ( isset( $stock[ self::urme_product_id( $row ) ] ) ? '<br>' . URME_SS_Product_Source::html( self::urme_product_id( $row ) ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="num urme-cost-col"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span></td>
-			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], URME_SS_Suppliers::hint( $hint, URME_SS_Suppliers::of_key( $row['item_key'] ) ), $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-sync-col">
 				<?php
@@ -1254,7 +1272,7 @@ class URME_SS_Admin {
 		if ( null === $ctx ) {
 			$ctx = URME_SS_Price_Hint::context(); // Once per page, like the price hint column.
 		}
-		$price = URME_SS_Price_Hint::price_98( $row['purchase_price'], $ctx );
+		$price = URME_SS_Price_Hint::price_98( $row['purchase_price'], URME_SS_Suppliers::hint( $ctx, URME_SS_Suppliers::of_key( $row['item_key'] ) ) );
 		if ( ! $price ) {
 			return '';
 		}
@@ -1410,13 +1428,43 @@ class URME_SS_Admin {
 		</div>
 		<?php
 		if ( $r['no_rate'] ) {
-			echo '<div class="notice notice-warning inline"><p>No EUR/SEK rate: the extra supplier cost is not included.</p></div>';
+			echo '<div class="notice notice-warning inline"><p>No EUR/SEK rate: supplier shipping + fees are not included.</p></div>';
 		}
 		if ( ! $r['lines'] ) {
 			echo '<p>No Dropshipping sales in this period.</p>';
 			return;
 		}
 		?>
+		<h2>By supplier</h2>
+		<table class="widefat striped urme-table urme-sales-suppliers">
+			<thead><tr><th>Supplier</th><th class="num">Orders</th><th class="num">Watches</th><th class="num">Sales excl. VAT</th><th class="num">Supplier cost</th><th class="num">Shipping + fees</th><th class="num">Profit</th><th class="num">Margin</th></tr></thead>
+			<tbody>
+			<?php foreach ( $r['suppliers'] as $sid => $b ) : ?>
+				<tr>
+					<td><?php echo URME_SS_Suppliers::flag( $sid, true ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+					<td class="num"><?php echo esc_html( number_format_i18n( $b['orders'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( number_format_i18n( $b['units'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $b['net'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $b['cost'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $b['extra'] + $b['fee'] ) ); ?></td>
+					<td class="num <?php echo $b['profit'] < 0 ? 'urme-bad' : 'urme-good'; ?>"><?php echo esc_html( self::kr0( $b['profit'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( $b['net'] > 0 ? round( $b['profit'] / $b['net'] * 100 ) . '%' : '—' ); ?></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+			<tfoot>
+				<tr>
+					<th>Total Dropshipping</th>
+					<th class="num"><?php echo esc_html( number_format_i18n( $t['orders'] ) ); ?></th>
+					<th class="num"><?php echo esc_html( number_format_i18n( $t['units'] ) ); ?></th>
+					<th class="num"><?php echo esc_html( self::kr0( $t['net'] ) ); ?></th>
+					<th class="num"><?php echo esc_html( self::kr0( $t['cost'] ) ); ?></th>
+					<th class="num"><?php echo esc_html( self::kr0( $t['extra'] + $t['fee'] ) ); ?></th>
+					<th class="num <?php echo $t['profit'] < 0 ? 'urme-bad' : 'urme-good'; ?>"><?php echo esc_html( self::kr0( $t['profit'] ) ); ?></th>
+					<th class="num"><?php echo esc_html( $t['net'] > 0 ? round( $t['profit'] / $t['net'] * 100 ) . '%' : '—' ); ?></th>
+				</tr>
+			</tfoot>
+		</table>
 		<h2>By brand</h2>
 		<table class="widefat striped urme-table urme-sales-brands">
 			<thead><tr><th>Brand</th><th class="num">Watches</th><th class="num">Sales excl. VAT</th><th class="num">Profit</th><th class="num">Margin</th></tr></thead>
@@ -1440,7 +1488,7 @@ class URME_SS_Admin {
 				<tr>
 					<td><?php echo esc_html( self::mysql_datetime( $line['date'] ) ); ?></td>
 					<td><a href="<?php echo esc_url( $line['order_url'] ); ?>">#<?php echo esc_html( $line['order_no'] ); ?></a></td>
-					<td><?php echo esc_html( $line['name'] ); ?><br><small class="urme-muted"><?php echo esc_html( $line['brand'] . ' · ' . $line['sku'] ); ?></small></td>
+					<td><?php echo esc_html( $line['name'] ); ?><br><?php echo URME_SS_Suppliers::flag( $line['supplier'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <small class="urme-muted"><?php echo esc_html( $line['brand'] . ' · ' . $line['sku'] ); ?></small></td>
 					<td class="num"><?php echo esc_html( number_format_i18n( $line['units'] ) ); ?></td>
 					<td class="num"><?php echo esc_html( self::kr0( $line['paid'] ) ); ?></td>
 					<td class="num"><?php echo esc_html( self::kr0( $line['net'] ) ); ?></td>
@@ -1451,7 +1499,7 @@ class URME_SS_Admin {
 			<?php endforeach; ?>
 			</tbody>
 		</table>
-		<p class="description">Only units sold as Dropshipping are counted (URME Lager units, cancelled and refunded orders and units given back are left out). Profit = sales excl. VAT − supplier cost − extra supplier cost (Settings: <?php echo esc_html( URME_SS_Settings::get( 'hint_extra_eur' ) ); ?> EUR per watch at today's rate) − payment fee (<?php echo esc_html( URME_SS_Settings::get( 'hint_fee_pct' ) ); ?>% of what the customer paid). Shipping charged to the customer is not included.</p>
+		<p class="description">Only units sold as Dropshipping are counted (URME Lager units, cancelled and refunded orders and units given back are left out). Profit = sales excl. VAT − supplier cost − the supplier's shipping + fees (<?php echo esc_html( implode( ', ', array_map( static function ( $id ) { return URME_SS_Suppliers::name( $id ) . ' ' . URME_SS_Suppliers::extra_eur( $id ) . ' EUR'; }, URME_SS_Suppliers::ids() ) ) ); ?> per order, at today's rate) − payment fee (<?php echo esc_html( URME_SS_Settings::get( 'hint_fee_pct' ) ); ?>% of what the customer paid). Shipping charged to the customer is not included.</p>
 		<?php
 	}
 
@@ -1470,7 +1518,12 @@ class URME_SS_Admin {
 		?>
 		<div class="urme-columns">
 		<div>
-			<h2>Supplier feed</h2>
+			<?php
+			$feed_ids = array_values( array_unique( array_merge( array( URME_SS_Suppliers::MAIN ), URME_SS_Suppliers::active() ) ) );
+			foreach ( $feed_ids as $fi => $fsup ) :
+				$feed = URME_SS_Sync::feed_status( $fsup );
+				?>
+			<h2><?php echo URME_SS_Suppliers::flag( $fsup ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <?php echo esc_html( URME_SS_Suppliers::name( $fsup ) ); ?> feed</h2>
 			<table class="widefat striped urme-kv">
 				<tr><th>Last successful update</th><td><?php echo esc_html( self::datetime( $feed['last_success'] ?? 0 ) ); ?></td></tr>
 				<tr><th>Last catalog change</th><td><?php echo esc_html( self::datetime( $feed['last_changed'] ?? 0 ) ); ?></td></tr>
@@ -1485,11 +1538,16 @@ class URME_SS_Admin {
 				<?php endif; ?>
 				<tr><th>Products in feed (all categories)</th><td><?php echo esc_html( number_format_i18n( $feed['total_items'] ?? 0 ) ); ?></td></tr>
 				<tr><th>Supplier watches found</th><td><?php echo esc_html( number_format_i18n( $feed['watches_found'] ?? 0 ) ); ?></td></tr>
-				<tr><th>Skipped (no ITEM_ID/PRODUCTNO) / duplicates</th><td><?php echo esc_html( ( $feed['skipped_invalid'] ?? 0 ) . ' / ' . ( $feed['duplicates'] ?? 0 ) ); ?></td></tr>
+				<tr><th>Skipped (no EAN/model) / duplicates</th><td><?php echo esc_html( ( $feed['skipped_invalid'] ?? 0 ) . ' / ' . ( $feed['duplicates'] ?? 0 ) ); ?></td></tr>
 				<tr><th>Download size / time / peak memory</th><td><?php echo esc_html( size_format( $feed['bytes'] ?? 0 ) . ' / ' . ( $feed['duration'] ?? '—' ) . ' s / ' . ( $feed['peak_memory_mb'] ?? '—' ) . ' MB' ); ?></td></tr>
 				<?php if ( ! empty( $feed['categories'] ) ) : ?>
 					<tr><th>Categories in feed</th><td><?php echo esc_html( implode( ', ', array_map( static function ( $k, $v ) { return ( '' === $k ? '(none)' : $k ) . ': ' . $v; }, array_keys( $feed['categories'] ), $feed['categories'] ) ) ); ?></td></tr>
 				<?php endif; ?>
+				<tr><th>Shipping + fees / delivery days</th><td><?php echo esc_html( number_format_i18n( URME_SS_Suppliers::extra_eur( $fsup ), 2 ) . ' EUR per order / ' . implode( '–', URME_SS_Suppliers::days( $fsup ) ) . ' days' ); ?></td></tr>
+				<?php if ( $fi < count( $feed_ids ) - 1 ) : ?>
+			</table>
+				<?php endif; ?>
+			<?php endforeach; ?>
 				<tr><th>Brands enabled for sync</th><td><?php echo esc_html( URME_SS_Settings::get( 'enabled_brands' ) ? implode( ', ', URME_SS_Settings::get( 'enabled_brands' ) ) : 'none' ); ?></td></tr>
 				<tr><th>Next automatic run</th><td><?php echo esc_html( URME_SS_Settings::get( 'auto_sync' ) ? ( $next ? self::datetime( $next ) : 'not scheduled' ) : 'automatic sync is off' ); ?></td></tr>
 			</table>
@@ -1646,8 +1704,23 @@ class URME_SS_Admin {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php echo self::hidden_fields( 'save_settings' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<table class="form-table">
-				<tr><th><label for="urme-feed">Supplier feed URL</label></th>
-					<td><input type="url" id="urme-feed" name="settings[feed_url]" class="large-text" value="<?php echo esc_attr( $s['feed_url'] ); ?>"></td></tr>
+				<tr><th>Suppliers</th>
+					<td>
+						<table class="widefat urme-suppliers">
+							<thead><tr><th>Supplier</th><th>Feed URL</th><th>Shipping + fees</th><th>Delivery days</th></tr></thead>
+							<tbody>
+							<?php foreach ( URME_SS_Suppliers::all() as $sid => $sup ) : ?>
+								<tr>
+									<td><?php echo URME_SS_Suppliers::flag( $sid, true ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+									<td><input type="url" name="settings[<?php echo esc_attr( $sup['url'] ); ?>]" class="large-text" value="<?php echo esc_attr( $s[ $sup['url'] ] ); ?>" placeholder="Empty = not used" aria-label="<?php echo esc_attr( $sup['name'] . ' feed URL' ); ?>"></td>
+									<td><input type="number" name="settings[<?php echo esc_attr( $sup['extra'] ); ?>]" min="0" max="1000" step="0.01" value="<?php echo esc_attr( $s[ $sup['extra'] ] ); ?>" class="small-text" aria-label="<?php echo esc_attr( $sup['name'] . ' shipping + fees' ); ?>"> EUR per order</td>
+									<td><input type="text" name="settings[<?php echo esc_attr( $sup['days'] ); ?>]" value="<?php echo esc_attr( $s[ $sup['days'] ] ); ?>" class="small-text" placeholder="3-6" aria-label="<?php echo esc_attr( $sup['name'] . ' delivery days' ); ?>"> days</td>
+								</tr>
+							<?php endforeach; ?>
+							</tbody>
+						</table>
+						<p class="description">Each Dropshipping watch is bought from the supplier where it is cheapest now (cost price + shipping + fees) with stock. The delivery days are shown to customers on the product page (WoodMart estimated delivery); the supplier never is.</p>
+					</td></tr>
 				<tr><th><label for="urme-cats">Supplier categories</label></th>
 					<td><input type="text" id="urme-cats" name="settings[categories]" class="regular-text" value="<?php echo esc_attr( implode( ', ', $s['categories'] ) ); ?>">
 					<p class="description">CATEGORY values to keep from the feed, comma separated. Version 1: <code>WATCH</code>.</p></td></tr>
@@ -1686,7 +1759,7 @@ class URME_SS_Admin {
 					<td><label><input type="checkbox" name="settings[manage_stock]" value="1" <?php checked( $s['manage_stock'] ); ?>> Turn on "Manage stock" for linked products that don't have it, so the supplier quantity can be stored</label>
 					<p class="description">If off, such products only get "In stock" / "Out of stock".</p></td></tr>
 				<tr><th>Order note</th>
-					<td><label><input type="checkbox" name="settings[order_note]" value="1" <?php checked( $s['order_note'] ); ?>> Add a private order note "URME: Dropshipping / URME Lager – SKU × qty" when a watch is sold</label>
+					<td><label><input type="checkbox" name="settings[order_note]" value="1" <?php checked( $s['order_note'] ); ?>> Add a private order note "URME: Dropshipping – Relojitos (ES) – SKU × qty" (or URME Lager) when a watch is sold</label>
 					<p class="description">Shows the source in the WooCommerce mobile app. Private notes are never shown to the customer.</p></td></tr>
 				<tr><th>Loss protection</th>
 					<td><label><input type="checkbox" name="settings[loss_out_of_stock]" value="1" <?php checked( $s['loss_out_of_stock'] ); ?>> Set Dropshipping watches out of stock when their estimated profit is below <input type="number" name="settings[min_profit_sek]" min="0" max="100000" step="1" value="<?php echo esc_attr( $s['min_profit_sek'] ); ?>" class="small-text"> SEK</label>
@@ -1699,10 +1772,8 @@ class URME_SS_Admin {
 			</table>
 			<h2>Selling price hint</h2>
 			<p class="description">A suggested selling price shown in the Supplier catalog, for you only. It never changes any price, coupon or product.
-				Suggested price = the lowest price, rounded up, where (price after coupon ÷ (1 + VAT)) − payment fee − cost ≥ target profit (a percentage of the cost). Cost = (PURCHASE_PRICE + extra cost) × EUR/SEK; PURCHASE_PRICE is VAT 0%.</p>
+				Suggested price = the lowest price, rounded up, where (price after coupon ÷ (1 + VAT)) − payment fee − cost ≥ target profit (a percentage of the cost). Cost = (PURCHASE_PRICE + the supplier's shipping + fees) × EUR/SEK; PURCHASE_PRICE is VAT 0%.</p>
 			<table class="form-table">
-				<tr><th><label for="urme-h-extra">Extra supplier cost</label></th>
-					<td><input type="number" id="urme-h-extra" name="settings[hint_extra_eur]" min="0" max="1000" step="0.01" value="<?php echo esc_attr( $s['hint_extra_eur'] ); ?>" class="small-text"> EUR per watch, added to PURCHASE_PRICE</td></tr>
 				<tr><th><label for="urme-h-coupon">Coupon allowance</label></th>
 					<td><input type="number" id="urme-h-coupon" name="settings[hint_coupon_pct]" min="0" max="90" step="0.01" value="<?php echo esc_attr( $s['hint_coupon_pct'] ); ?>" class="small-text"> % discount the customer may use</td></tr>
 				<tr><th><label for="urme-h-fee">Klarna/payment fee</label></th>
@@ -1710,7 +1781,7 @@ class URME_SS_Admin {
 				<tr><th><label for="urme-h-vat">VAT</label></th>
 					<td><input type="number" id="urme-h-vat" name="settings[hint_vat_pct]" min="0" max="100" step="0.01" value="<?php echo esc_attr( $s['hint_vat_pct'] ); ?>" class="small-text"> % included in the selling price</td></tr>
 				<tr><th><label for="urme-h-profit">Target profit</label></th>
-					<td><input type="number" id="urme-h-profit" name="settings[hint_profit_pct]" min="0" max="1000" step="0.01" value="<?php echo esc_attr( $s['hint_profit_pct'] ); ?>" class="small-text"> % of the cost per watch (cost incl. the extra supplier cost)</td></tr>
+					<td><input type="number" id="urme-h-profit" name="settings[hint_profit_pct]" min="0" max="1000" step="0.01" value="<?php echo esc_attr( $s['hint_profit_pct'] ); ?>" class="small-text"> % of the cost per watch (cost incl. the supplier's shipping + fees)</td></tr>
 				<tr><th><label for="urme-h-round">Rounding</label></th>
 					<td>Round up to the next <input type="number" id="urme-h-round" name="settings[hint_round_sek]" min="1" max="1000" step="1" value="<?php echo esc_attr( $s['hint_round_sek'] ); ?>" class="small-text"> SEK (never down)</td></tr>
 			</table>

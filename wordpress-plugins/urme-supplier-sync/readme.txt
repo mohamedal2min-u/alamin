@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.8.0
+Stable tag: 1.9.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -224,6 +224,22 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.9.0 =
+* Two suppliers: Relojitos (Spain, XML feed) and ILA Uhren (Germany, WooCommerce CSV feed).
+  Settings > Suppliers: feed URL, shipping + fees per order (EUR) and delivery days for each.
+  A supplier without a feed URL is not used.
+* Each Dropshipping watch is bought where it is cheapest now (cost price + that supplier's
+  shipping + fees) with stock, matched by EAN. Stock and cost follow the chosen supplier; a
+  change is logged ("supplier ES → DE"). A supplier whose feed is stale is not used.
+* Delivery days per supplier: one WoodMart estimated-delivery rule per supplier (kept by the
+  plugin), active only for watches bought from that supplier now. URME Lager is unchanged.
+* Orders (admin only): a small country flag with the supplier and its reference on each line,
+  the order and the orders list. Private order note "URME: Dropshipping – Relojitos (ES) – SKU × n".
+* Dropshipping sales: profit per supplier with the total below; shipping + fees are counted once
+  per order and supplier.
+* Catalog: supplier flag on each row and a Supplier filter. Price hint and Auto price use the
+  row's supplier costs. New public product meta `urme_supplier` (relo / ila) for feeds.
 
 = 1.8.0 =
 * Supplier catalog order: in the store first, then Needs review, then Not in URME, and inside each

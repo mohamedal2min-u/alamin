@@ -1,6 +1,7 @@
 <?php
 /**
- * Supplier XML feed: download to a temp file, stream-parse with XMLReader.
+ * Supplier feeds: download to a temp file, then stream-parse. Relojitos sends XML (XMLReader);
+ * ILA Uhren sends a WooCommerce product export (CSV). The format is detected from the file.
  *
  * Nothing here touches WooCommerce products. Any failure throws, and the
  * caller then leaves the catalog and all products untouched.
@@ -15,26 +16,34 @@ class URME_SS_Feed {
 	const STATE_OPTION = 'urme_ss_feed_state';
 
 	/**
+	 * Download state (ETag, MD5…) option of a supplier's feed.
+	 */
+	public static function state_option( $supplier ) {
+		return URME_SS_Suppliers::MAIN === $supplier ? self::STATE_OPTION : self::STATE_OPTION . '_' . $supplier;
+	}
+
+	/**
 	 * Download the feed.
 	 *
-	 * @param bool $conditional Send If-None-Match / If-Modified-Since.
+	 * @param bool   $conditional Send If-None-Match / If-Modified-Since.
+	 * @param string $supplier    Supplier ID.
 	 * @return array{file: string|null, not_modified: bool, bytes: int, etag: string, last_modified: string}
 	 * @throws Exception On any transport or HTTP problem.
 	 */
-	public static function download( $conditional = true ) {
-		$url = URME_SS_Settings::get( 'feed_url' );
+	public static function download( $conditional = true, $supplier = URME_SS_Suppliers::MAIN ) {
+		$url = URME_SS_Suppliers::feed_url( $supplier );
 		if ( ! $url ) {
 			throw new Exception( 'No feed URL configured.' );
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
-		$tmp = wp_tempnam( 'urme-feed.xml' );
+		$tmp = wp_tempnam( 'urme-feed' );
 		if ( ! $tmp ) {
 			throw new Exception( 'Could not create a temporary file for the feed.' );
 		}
 
 		$headers = array();
-		$state   = get_option( self::STATE_OPTION, array() );
+		$state   = get_option( self::state_option( $supplier ), array() );
 		if ( $conditional ) {
 			if ( ! empty( $state['etag'] ) ) {
 				$headers['If-None-Match'] = $state['etag'];
@@ -94,6 +103,25 @@ class URME_SS_Feed {
 	}
 
 	/**
+	 * Parse a downloaded feed of any supported format (XML or CSV, plain or gzip).
+	 *
+	 * @param string $file       Path to the file.
+	 * @param array  $categories Upper-case CATEGORY values to keep.
+	 * @param string $supplier   Supplier ID (its rows get its item_key prefix).
+	 * @throws Exception If the file cannot be read.
+	 */
+	public static function parse_file( $file, array $categories, $supplier = URME_SS_Suppliers::MAIN ) {
+		$path = self::is_gzip( $file ) ? 'compress.zlib://' . $file : $file;
+		$fh   = fopen( $path, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		$head = $fh ? (string) fread( $fh, 512 ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( $fh ) {
+			fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		}
+		$head = ltrim( preg_replace( '/^\xEF\xBB\xBF/', '', $head ) );
+		return '<' === substr( $head, 0, 1 ) ? self::parse( $file, $categories, $supplier ) : self::parse_csv( $file, $categories, $supplier );
+	}
+
+	/**
 	 * Parse the feed file, keeping only the configured categories.
 	 *
 	 * Streams item by item, so memory stays flat no matter how large the
@@ -101,10 +129,11 @@ class URME_SS_Feed {
 	 *
 	 * @param string $file       Path to the XML file (plain or gzip).
 	 * @param array  $categories Upper-case CATEGORY values to keep.
+	 * @param string $supplier   Supplier ID.
 	 * @return array{items: array<string,string>, total: int, kept: int, skipped_invalid: int, duplicates: int, categories: array}
 	 * @throws Exception If the XML is malformed or has no recognisable items.
 	 */
-	public static function parse( $file, array $categories ) {
+	public static function parse( $file, array $categories, $supplier = URME_SS_Suppliers::MAIN ) {
 		$path = self::is_gzip( $file ) ? 'compress.zlib://' . $file : $file;
 
 		$item_name = self::detect_item_element( $path );
@@ -141,7 +170,7 @@ class URME_SS_Feed {
 				continue;
 			}
 
-			$item = self::normalize( $fields, $category );
+			$item = self::normalize( $fields, $category, $supplier );
 			if ( ! $item ) {
 				++$result['skipped_invalid'];
 				continue;
@@ -168,6 +197,92 @@ class URME_SS_Feed {
 			throw new Exception( 'Feed XML contained no products. Nothing was changed.' );
 		}
 
+		$result['kept'] = count( $result['items'] );
+		arsort( $result['categories'] );
+		return $result;
+	}
+
+	/**
+	 * Parse a WooCommerce product export CSV (ILA Uhren): one product per line, columns such as
+	 * sku, gtin, post_title, tax:brand, tax:product_cat ("Brand Watches>Guess>Men's"), sale_price
+	 * (the dealer price, EUR, VAT 0%), stock, stock_status and images. "Brand Watches" is CATEGORY
+	 * WATCH. Out-of-stock products get stock 0. A price or stock that cannot be read is null, never guessed.
+	 *
+	 * @throws Exception If the file has no header line with the needed columns or no products.
+	 */
+	public static function parse_csv( $file, array $categories, $supplier = URME_SS_Suppliers::MAIN ) {
+		$path = self::is_gzip( $file ) ? 'compress.zlib://' . $file : $file;
+		$fh   = fopen( $path, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( ! $fh ) {
+			throw new Exception( 'Could not open the feed file.' );
+		}
+		$first = (string) fgets( $fh );
+		$first = preg_replace( '/^\xEF\xBB\xBF/', '', $first );
+		$delim = substr_count( $first, ';' ) >= substr_count( $first, ',' ) ? ';' : ',';
+		$head  = array_map( static function ( $h ) {
+			return strtolower( trim( (string) $h ) );
+		}, str_getcsv( $first, $delim, '"', '' ) );
+		$col   = array_flip( $head );
+		foreach ( array( 'sku', 'sale_price' ) as $need ) {
+			if ( ! isset( $col[ $need ] ) ) {
+				fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+				throw new Exception( sprintf( 'Feed CSV has no "%s" column. Nothing was changed.', $need ) );
+			}
+		}
+		$get = static function ( array $row, $name ) use ( $col ) {
+			return isset( $col[ $name ], $row[ $col[ $name ] ] ) ? trim( (string) $row[ $col[ $name ] ] ) : '';
+		};
+
+		$wanted = array_flip( $categories );
+		$result = array(
+			'items'           => array(),
+			'total'           => 0,
+			'kept'            => 0,
+			'skipped_invalid' => 0,
+			'duplicates'      => 0,
+			'categories'      => array(),
+		);
+		while ( false !== ( $row = fgetcsv( $fh, 0, $delim, '"', '' ) ) ) {
+			if ( array( null ) === $row ) {
+				continue; // Blank line.
+			}
+			++$result['total'];
+			$path_parts = array_map( 'trim', explode( '>', $get( $row, 'tax:product_cat' ) ) );
+			$top        = strtoupper( $path_parts[0] );
+			$category   = false !== strpos( $top, 'WATCH' ) ? 'WATCH' : ( false !== strpos( $top, 'JEWEL' ) ? 'JEWELRY' : $top );
+			$result['categories'][ $category ] = ( $result['categories'][ $category ] ?? 0 ) + 1;
+			if ( ! isset( $wanted[ $category ] ) ) {
+				continue;
+			}
+			$images = preg_split( '/[|,]\s*(?=https?:)/', $get( $row, 'images' ) );
+			$status = strtolower( $get( $row, 'stock_status' ) );
+			$stock  = 'outofstock' === $status ? 0 : self::parse_stock( $get( $row, 'stock' ) );
+			$fields = array(
+				'ITEM_ID'        => $get( $row, 'gtin' ),
+				'PRODUCTNO'      => $get( $row, 'sku' ),
+				// Upper case, like the Relojitos feed, so a brand is one brand in filters and reports.
+				'MANUFACTURER'   => mb_strtoupper( '' !== $get( $row, 'tax:brand' ) ? $get( $row, 'tax:brand' ) : ( $path_parts[1] ?? '' ), 'UTF-8' ),
+				'PRODUCT_NAME'   => html_entity_decode( $get( $row, 'post_title' ), ENT_QUOTES, 'UTF-8' ),
+				'SUBCATEGORY'    => count( $path_parts ) > 2 ? end( $path_parts ) : '',
+				'PURCHASE_PRICE' => $get( $row, 'sale_price' ),
+				'STOCK'          => null === $stock ? '' : (string) $stock,
+				'IMG_URL'        => trim( (string) ( $images[0] ?? '' ) ),
+			);
+			$item = self::normalize( $fields, $category, $supplier );
+			if ( ! $item ) {
+				++$result['skipped_invalid'];
+				continue;
+			}
+			if ( isset( $result['items'][ $item['item_key'] ] ) ) {
+				++$result['duplicates'];
+				continue;
+			}
+			$result['items'][ $item['item_key'] ] = self::pack( $item );
+		}
+		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( 0 === $result['total'] ) {
+			throw new Exception( 'Feed CSV contained no products. Nothing was changed.' );
+		}
 		$result['kept'] = count( $result['items'] );
 		arsort( $result['categories'] );
 		return $result;
@@ -242,16 +357,18 @@ class URME_SS_Feed {
 	/**
 	 * Turn raw feed fields into a catalog row, or null if it cannot be identified.
 	 */
-	public static function normalize( array $f, $category ) {
+	public static function normalize( array $f, $category, $supplier = URME_SS_Suppliers::MAIN ) {
 		$item_id    = preg_replace( '/\s+/', '', (string) ( $f['ITEM_ID'] ?? '' ) );
 		$product_no = trim( (string) ( $f['PRODUCTNO'] ?? '' ) );
+		$supplier   = URME_SS_Suppliers::id( $supplier );
 
 		if ( '' === $item_id && '' === $product_no ) {
 			return null;
 		}
 
 		$item = array(
-			'item_key'       => '' !== $item_id ? $item_id : 'P:' . $product_no,
+			'supplier'       => $supplier,
+			'item_key'       => URME_SS_Suppliers::get( $supplier )['prefix'] . ( '' !== $item_id ? $item_id : 'P:' . $product_no ),
 			'item_id'        => substr( $item_id, 0, 64 ),
 			'product_no'     => substr( $product_no, 0, 100 ),
 			'manufacturer'   => mb_substr( trim( (string) ( $f['MANUFACTURER'] ?? '' ) ), 0, 100 ),
@@ -313,7 +430,7 @@ class URME_SS_Feed {
 	/**
 	 * Items are held as one delimited string while parsing: ~4x less memory than arrays.
 	 */
-	const FIELDS = array( 'data_hash', 'item_key', 'item_id', 'product_no', 'manufacturer', 'product_name', 'category', 'subcategory', 'purchase_price', 'stock', 'img_url' );
+	const FIELDS = array( 'data_hash', 'item_key', 'item_id', 'product_no', 'manufacturer', 'product_name', 'category', 'subcategory', 'purchase_price', 'stock', 'img_url', 'supplier' );
 
 	private static function pack( array $item ) {
 		$values = array();

@@ -24,6 +24,12 @@ class URME_SS_Product_Source {
 	const META = 'urme_fulfillment';
 
 	/**
+	 * Public product meta with the supplier a Dropshipping watch is bought from now (relo / ila),
+	 * empty for URME Lager.
+	 */
+	const SUPPLIER_META = 'urme_supplier';
+
+	/**
 	 * Product ID => array( 'own' => link row|null, 'variations' => link rows of its variations ).
 	 *
 	 * @var array<int, array>
@@ -79,7 +85,7 @@ class URME_SS_Product_Source {
 		}
 		$in   = implode( ',', $ids );
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB
-			'SELECT l.product_id, p.post_parent, l.stock_mode, l.sync_enabled, l.local_qty, c.manufacturer, c.in_feed
+			'SELECT l.product_id, p.post_parent, l.stock_mode, l.sync_enabled, l.local_qty, l.item_key, l.supplier, l.source_key, c.manufacturer, c.in_feed
 			FROM ' . URME_SS_DB::links_table() . " l
 			LEFT JOIN {$wpdb->posts} p ON p.ID = l.product_id
 			LEFT JOIN " . URME_SS_DB::catalog_table() . " c ON c.item_key = l.item_key
@@ -150,6 +156,24 @@ class URME_SS_Product_Source {
 	}
 
 	/**
+	 * The supplier a Dropshipping product or variation is bought from now, '' for URME Lager.
+	 */
+	public static function supplier_of( $product_id ) {
+		$product_id = (int) $product_id;
+		if ( self::DROPSHIP !== self::product_state( $product_id ) ) {
+			return '';
+		}
+		return self::link_supplier( self::$map[ $product_id ]['own'] );
+	}
+
+	private static function link_supplier( $link ) {
+		if ( '' !== (string) ( $link['supplier'] ?? '' ) ) {
+			return URME_SS_Suppliers::id( $link['supplier'] );
+		}
+		return URME_SS_Suppliers::of_key( (string) ( $link['source_key'] ?? '' ) ?: (string) ( $link['item_key'] ?? '' ) );
+	}
+
+	/**
 	 * Store front: the products of the main query (shop, category, search) not loaded yet.
 	 * Nothing in the admin, where the lists prime themselves.
 	 *
@@ -211,10 +235,19 @@ class URME_SS_Product_Source {
 				if ( 'product' !== $type && 'product_variation' !== $type ) {
 					continue;
 				}
-				$state = self::state( self::$map[ $id ]['own'] ?? null );
+				$own   = self::$map[ $id ]['own'] ?? null;
+				$state = self::state( $own );
+				$sup   = self::DROPSHIP === $state ? self::link_supplier( $own ) : '';
 				if ( get_post_meta( $id, self::META, true ) !== $state ) {
 					update_post_meta( $id, self::META, $state );
 					++$written;
+				}
+				if ( (string) get_post_meta( $id, self::SUPPLIER_META, true ) !== $sup ) {
+					if ( '' === $sup ) {
+						delete_post_meta( $id, self::SUPPLIER_META );
+					} else {
+						update_post_meta( $id, self::SUPPLIER_META, $sup );
+					}
 				}
 			}
 		}
@@ -296,6 +329,9 @@ class URME_SS_Product_Source {
 		$out = $short
 			? sprintf( '<span class="urme-src urme-src-%1$s urme-src-short" title="%2$s"><span aria-hidden="true">%3$s</span><span class="screen-reader-text">%2$s</span></span>', $key, esc_attr( $name ), $drop ? 'D' : 'U' )
 			: sprintf( '<span class="urme-src urme-src-%1$s">%2$s</span>', $key, esc_html( $name ) );
+		if ( $drop ) {
+			$out .= ' ' . URME_SS_Suppliers::flag( self::link_supplier( $link ) );
+		}
 		if ( $drop && isset( $link['in_feed'] ) && ! (int) $link['in_feed'] ) {
 			$out .= $short
 				? ' <small class="urme-src-note urme-bad-note" title="not in supplier feed"><span aria-hidden="true">!</span><span class="screen-reader-text">not in supplier feed</span></small>'
@@ -312,7 +348,7 @@ class URME_SS_Product_Source {
 		// Base rules first, the compact / warning variants after them (same specificity: order decides).
 		return '<style>.wp-list-table .column-urme_source{width:6em}.urme-src{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap}'
 			. '.urme-src-dropship{background:#e5f0fa;color:#135e96}.urme-src-lager{background:#edfaef;color:#00701a}.urme-src-note{color:#646970}'
-			. '.urme-src-short{min-width:12px;padding:1px 6px;text-align:center;cursor:help}.urme-src-note.urme-bad-note{color:#b32d2e;font-weight:700}</style>';
+			. '.urme-src-short{min-width:12px;padding:1px 6px;text-align:center;cursor:help}.urme-src-note.urme-bad-note{color:#b32d2e;font-weight:700}' . URME_SS_Suppliers::flag_css() . '</style>';
 	}
 
 	/* --- Fulfillment in SQL (same rules as state()) -------------------------- */

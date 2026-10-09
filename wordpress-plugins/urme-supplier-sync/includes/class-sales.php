@@ -10,7 +10,8 @@
  *   Customer paid   = sales excl. VAT + the line's VAT
  *   Supplier cost   = the line's cost of goods frozen by WooCommerce at order time (COGS);
  *                     when the order has none, the watch's last synced supplier cost (estimated)
- *   Extra cost      = Settings > Selling price hint "extra supplier cost" (EUR) × the current rate
+ *   Extra cost      = the supplier's cost per order (shipping + fees, EUR, Settings > Suppliers) ×
+ *                     the current rate, once per order and supplier, shared by its units
  *   Payment fee     = customer paid × the payment fee setting
  *   Profit          = sales excl. VAT − supplier cost − extra cost − payment fee
  *
@@ -93,19 +94,20 @@ class URME_SS_Sales {
 			$params[] = ( new DateTimeImmutable( $to . ' 00:00:00', $tz ) )->modify( '+1 day' )->setTimezone( $utc )->format( 'Y-m-d H:i:s' );
 		}
 		$sql = "SELECT a.*, c.manufacturer, c.product_no, l.last_cost_sek
-			FROM {$a} a LEFT JOIN {$l} l ON l.id = a.link_id LEFT JOIN {$c} c ON c.item_key = l.item_key
+			FROM {$a} a LEFT JOIN {$l} l ON l.id = a.link_id LEFT JOIN {$c} c ON c.item_key = IF(a.source_key <> '', a.source_key, l.item_key)
 			WHERE " . implode( ' AND ', $where ) . ' ORDER BY a.created_at DESC, a.order_item_id DESC';
 		// phpcs:ignore WordPress.DB
 		$rows = $wpdb->get_results( $params ? $wpdb->prepare( $sql, $params ) : $sql, ARRAY_A );
 
 		$ctx    = URME_SS_Price_Hint::context();
 		$rate   = $ctx['rate'];
-		$extra1 = $rate ? $ctx['extra_eur'] * $rate : 0.0; // Per watch, SEK.
 		$lines  = array();
 		$tot    = self::empty_totals();
 		$brands = array();
+		$by_sup = array();
 		$orders = array();
 		$ret    = 0;
+		$groups = array(); // "order|supplier" => units, to share the cost per order.
 		foreach ( (array) $rows as $row ) {
 			$order = wc_get_order( (int) $row['order_id'] );
 			if ( ! $order || in_array( $order->get_status(), self::SKIP_STATUSES, true ) ) {
@@ -134,9 +136,10 @@ class URME_SS_Sales {
 			} else {
 				$cost = (float) $cogs / $qty * $units;
 			}
-			$extra  = $extra1 * $units;
-			$fee    = $paid * $ctx['fee'];
-			$profit = $net - $cost - $extra - $fee;
+			$fee      = $paid * $ctx['fee'];
+			$supplier = URME_SS_Suppliers::id( $row['supplier'] ?? '' );
+			$group    = $order->get_id() . '|' . $supplier;
+			$groups[ $group ] = ( $groups[ $group ] ?? 0 ) + $units;
 
 			$product = $item->get_product();
 			$brand   = '' !== (string) $row['manufacturer'] ? $row['manufacturer'] : '—';
@@ -153,18 +156,41 @@ class URME_SS_Sales {
 				'paid'       => $paid,
 				'net'        => $net,
 				'cost'       => $cost,
-				'extra'      => $extra,
+				'extra'      => 0.0,
 				'fee'        => $fee,
-				'profit'     => $profit,
+				'profit'     => 0.0,
 				'estimate'   => $estimate,
+				'supplier'   => $supplier,
+				'group'      => $group,
 			);
-			$lines[]               = $line;
+			$lines[] = $line;
+		}
+		foreach ( $lines as &$line ) {
+			// The supplier's cost per order, shared by the units of that order bought from it.
+			$per_order       = $rate ? URME_SS_Suppliers::extra_eur( $line['supplier'] ) * $rate : 0.0;
+			$line['extra']   = $per_order * $line['units'] / max( 1, $groups[ $line['group'] ] );
+			$line['profit']  = $line['net'] - $line['cost'] - $line['extra'] - $line['fee'];
 			$orders[ $line['order_id'] ] = true;
 			self::add( $tot, $line );
-			if ( ! isset( $brands[ $brand ] ) ) {
-				$brands[ $brand ] = self::empty_totals();
+			foreach ( array( 'brands' => $line['brand'], 'by_sup' => $line['supplier'] ) as $var => $key ) {
+				if ( ! isset( ${$var}[ $key ] ) ) {
+					${$var}[ $key ] = self::empty_totals();
+				}
+				self::add( ${$var}[ $key ], $line );
 			}
-			self::add( $brands[ $brand ], $line );
+			if ( ! isset( $by_sup[ $line['supplier'] ]['order_ids'] ) ) {
+				$by_sup[ $line['supplier'] ]['order_ids'] = array();
+			}
+			$by_sup[ $line['supplier'] ]['order_ids'][ $line['order_id'] ] = true;
+		}
+		unset( $line );
+		$suppliers = array();
+		foreach ( URME_SS_Suppliers::ids() as $id ) { // Supplier order, not profit order.
+			if ( isset( $by_sup[ $id ] ) ) {
+				$by_sup[ $id ]['orders'] = count( $by_sup[ $id ]['order_ids'] );
+				unset( $by_sup[ $id ]['order_ids'] );
+				$suppliers[ $id ] = $by_sup[ $id ];
+			}
 		}
 		$tot['orders']   = count( $orders );
 		$tot['returned'] = $ret;
@@ -177,8 +203,9 @@ class URME_SS_Sales {
 		return array(
 			'lines'   => $lines,
 			'totals'  => $tot,
-			'brands'  => $brands,
-			'no_rate' => ! $rate && $ctx['extra_eur'] > 0,
+			'brands'    => $brands,
+			'suppliers' => $suppliers,
+			'no_rate'   => ! $rate,
 		);
 	}
 

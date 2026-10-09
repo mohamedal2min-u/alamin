@@ -1088,7 +1088,8 @@ class URME_SS_Admin {
 					<th class="num" title="Supplier stock">Stock</th>
 					<th class="num urme-stock-col" title="URME stock and fulfillment">URME</th>
 					<th class="num">Cost</th>
-					<th class="urme-hint-col" title="Suggested price → profit · your price → profit (hover for details)">Price</th>
+					<th class="urme-hint-col" title="Suggested price and its profit · your current price (hover for details)">Price</th>
+					<th class="num urme-profit-col" title="Profit per watch at your current price">Profit</th>
 					<th class="urme-match-col" title="Does the watch exist in the URME store?">In store</th>
 					<th class="urme-sync-col">Sync</th>
 				</tr></thead>
@@ -1146,9 +1147,11 @@ class URME_SS_Admin {
 			<?php $alts = self::$others[ $row['item_key'] ] ?? array(); ?>
 			<td class="urme-code-col"><div class="urme-own"><?php echo URME_SS_Suppliers::flag( $row['supplier'] ?? '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <code><?php echo esc_html( $row['product_no'] ); ?></code><br><code class="urme-ean" title="EAN / ITEM_ID"><?php echo esc_html( $row['item_id'] ); ?></code></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt" title="<?php echo esc_attr( 'Ref: ' . $o['product_no'] ); ?>"><?php echo URME_SS_Suppliers::flag( URME_SS_Suppliers::of_key( $o['item_key'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></div><?php endforeach; ?></td>
 			<td class="num"><div class="urme-own"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt"><?php echo (int) $o['in_feed'] ? '<span class="' . ( (int) $o['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( (string) (int) $o['stock'] ) . '</span>' : '<span class="urme-bad" title="Not in the feed">—</span>'; // phpcs:ignore WordPress.Security.EscapeOutput ?></div><?php endforeach; ?></td>
-			<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ) . ( isset( $stock[ self::urme_product_id( $row ) ] ) ? '<br>' . URME_SS_Product_Source::html( self::urme_product_id( $row ) ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+			<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ) . ( isset( $stock[ self::urme_product_id( $row ) ] ) ? ' ' . self::source_mark( self::urme_product_id( $row ) ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="num urme-cost-col"><div class="urme-own"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt"><?php echo esc_html( self::eur( $o['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row, $o['item_key'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $o['purchase_price'] ? null : URME_SS_Rates::to_sek( $o['purchase_price'] ) ) ); ?></span></div><?php endforeach; ?></td>
-			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], URME_SS_Suppliers::hint( $hint, URME_SS_Suppliers::of_key( $row['item_key'] ) ), $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+			<?php $row_hint = URME_SS_Suppliers::hint( $hint, URME_SS_Suppliers::of_key( $row['item_key'] ) ); ?>
+			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $row_hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+			<td class="num urme-profit-col"><?php echo URME_SS_Price_Hint::profit_html( $row['purchase_price'], $row_hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-sync-col">
 				<?php
@@ -1275,6 +1278,18 @@ class URME_SS_Admin {
 			self::row_button( 'sale|' . $key, 'Save', 'button button-small' ),
 			self::auto98_button( $row )
 		);
+	}
+
+	/**
+	 * Fulfillment in the URME column without words: the flag of the supplier a Dropshipping watch
+	 * is bought from now, or a small store icon for URME Lager (full name on hover).
+	 */
+	private static function source_mark( $product_id ) {
+		$sup = URME_SS_Product_Source::supplier_of( $product_id );
+		if ( '' !== $sup ) {
+			return '<span title="' . esc_attr( 'Dropshipping from ' . URME_SS_Suppliers::name( $sup ) ) . '">' . URME_SS_Suppliers::flag( $sup ) . '</span>';
+		}
+		return '<span class="dashicons dashicons-store urme-lager-mark" title="URME Lager" aria-label="URME Lager"></span>';
 	}
 
 	/**

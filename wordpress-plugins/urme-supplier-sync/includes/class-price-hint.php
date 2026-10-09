@@ -125,6 +125,47 @@ class URME_SS_Price_Hint {
 	}
 
 	/**
+	 * Profit at the watch's current price, with the colour of the loss-protection rule.
+	 *
+	 * @return array|null price, profit, pct, class (urme-good / urme-warn / urme-bad), note.
+	 */
+	private static function now( $current_price, $purchase_eur, array $ctx, $h = null ) {
+		$h   = $h ? $h : self::calculate( $purchase_eur, $ctx );
+		$now = $h ? self::profit_at( $current_price, $purchase_eur, $ctx ) : null;
+		if ( ! $now ) {
+			return null;
+		}
+		$guard = (bool) URME_SS_Settings::get( 'loss_out_of_stock' );
+		$min   = URME_SS_Sync::min_profit();
+		$full  = $now['profit'] >= $h['target'] - 0.000001;
+		$ok    = $guard ? $now['profit'] >= $min : $full;
+		return array(
+			'price'  => $now['price'],
+			'profit' => $now['profit'],
+			'pct'    => self::whole_pct( $now['profit'] / $now['cost'] ),
+			'class'  => $now['profit'] < 0 || ( $guard && ! $ok ) ? 'urme-bad' : ( $full ? 'urme-good' : 'urme-warn' ),
+			'note'   => 'profit after coupon, VAT, Klarna and cost' . ( $guard ? ' · ' . ( ! $ok ? sprintf( 'below %s minimum: out of stock', self::kr( $min ) ) : ( $full ? 'stays in stock' : sprintf( 'below the %s target, at least %s: stays in stock', self::whole_pct( $ctx['profit_pct'] ), self::kr( $min ) ) ) ) : '' ),
+		);
+	}
+
+	/**
+	 * Profit column of the Supplier catalog: the profit per watch at its current price.
+	 */
+	public static function profit_html( $purchase_eur, array $ctx, $current_price = null ) {
+		$now = self::now( $current_price, $purchase_eur, $ctx );
+		if ( ! $now ) {
+			return '<span class="urme-muted" title="No URME price yet">—</span>';
+		}
+		return sprintf(
+			'<div class="urme-profit %1$s" title="%2$s"><strong>%3$s</strong><br><small>%4$s</small></div>',
+			esc_attr( $now['class'] ),
+			esc_attr( ucfirst( $now['note'] ) ),
+			esc_html( ( $now['profit'] >= 0 ? '+' : '' ) . self::kr( $now['profit'] ) ),
+			esc_html( $now['pct'] )
+		);
+	}
+
+	/**
 	 * Full hint (Supplier catalog column), plus the profit at the watch's current price when known.
 	 *
 	 * @param mixed $current_price The URME product's current selling price (SEK), or null.
@@ -134,24 +175,14 @@ class URME_SS_Price_Hint {
 		if ( ! $h ) {
 			return '<span class="urme-muted urme-hint-na">Price hint unavailable</span>';
 		}
-		$now = self::profit_at( $current_price, $purchase_eur, $ctx );
-		$own = '';
-		if ( $now ) {
-			$guard = (bool) URME_SS_Settings::get( 'loss_out_of_stock' );
-			$min   = URME_SS_Sync::min_profit();
-			$full  = $now['profit'] >= $h['target'] - 0.000001;
-			$ok    = $guard ? $now['profit'] >= $min : $full;
-			// One line: your price → profit; the rule behind the colour is in the tooltip.
-			$own   = sprintf(
-				'<div class="urme-hint-now %1$s" title="%6$s">%5$s %2$s → <strong>%3$s</strong> · %4$s</div>',
-				$now['profit'] < 0 || ( $guard && ! $ok ) ? 'urme-bad' : ( $full ? 'urme-good' : 'urme-warn' ),
-				esc_html( self::kr( $now['price'] ) ),
-				esc_html( ( $now['profit'] >= 0 ? '+' : '' ) . self::kr( $now['profit'] ) ),
-				esc_html( self::whole_pct( $now['profit'] / $now['cost'] ) ),
-				$guard && ! $ok ? '<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>' : '<span class="dashicons dashicons-tag" aria-hidden="true"></span>',
-				esc_attr( 'Your price, profit after coupon, VAT, Klarna and cost' . ( $guard ? ' · ' . ( ! $ok ? sprintf( 'Below %s minimum: out of stock', self::kr( $min ) ) : ( $full ? 'Stays in stock' : sprintf( 'Below the %s target, at least %s: stays in stock', self::whole_pct( $ctx['profit_pct'] ), self::kr( $min ) ) ) ) : '' ) )
-			);
-		}
+		$now = self::now( $current_price, $purchase_eur, $ctx, $h );
+		// Your current price on one line; its profit has its own column (profit_html()).
+		$own = $now ? sprintf(
+			'<div class="urme-hint-now %1$s" title="%2$s"><span class="dashicons dashicons-tag" aria-hidden="true"></span>%3$s</div>',
+			esc_attr( $now['class'] ),
+			esc_attr( 'Your price · ' . $now['note'] ),
+			esc_html( self::kr( $now['price'] ) )
+		) : '';
 		$extra = rtrim( rtrim( number_format( $ctx['extra_eur'], 2, '.', '' ), '0' ), '.' );
 		// Suggested price and its profit; the calculation is in the tooltip.
 		return sprintf(

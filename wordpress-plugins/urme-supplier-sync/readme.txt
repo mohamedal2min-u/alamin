@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.9.2
+Stable tag: 1.9.3
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -224,6 +224,11 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.9.3 =
+* Supplier catalog: Profit column (profit per watch at the current price, coloured by the loss
+  protection rule); the URME column shows the supplier flag (or a store icon for URME Lager)
+  instead of the word Dropshipping.
 
 = 1.9.2 =
 * Supplier catalog: the same watch at the other supplier shows line by line under the row's own

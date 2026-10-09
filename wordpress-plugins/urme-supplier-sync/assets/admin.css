@@ -125,3 +125,11 @@
 .urme-ss .urme-catalog-table .urme-own { min-height: 0; height: 54px; box-sizing: border-box; }
 .urme-ss .urme-catalog-table .urme-alt { height: 40px; box-sizing: border-box; }
 .urme-ss .urme-catalog-table .urme-code-col .urme-own code { line-height: 1.6; }
+.urme-ss .urme-profit-col { white-space: nowrap; }
+.urme-ss .urme-profit strong { font-size: 14px; }
+.urme-ss .urme-profit small { font-size: 11px; opacity: .85; }
+.urme-ss .urme-profit.urme-good { color: #00701a; }
+.urme-ss .urme-profit.urme-warn { color: #996800; }
+.urme-ss .urme-profit.urme-bad { color: #b32d2e; }
+.urme-ss .urme-lager-mark { font-size: 16px; width: 16px; height: 16px; color: #00701a; vertical-align: middle; cursor: help; }
+.urme-ss .urme-stock-col .urme-flag { vertical-align: -1px; cursor: help; }

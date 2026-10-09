@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.9.0
+Stable tag: 1.9.1
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -224,6 +224,12 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.9.1 =
+* Supplier catalog: watches with supplier stock 0 are hidden (a search or Selected only still
+  finds them); new "Both suppliers" filter; each row shows the same watch at the other supplier
+  and marks the cheapest after shipping + fees.
+* Compact catalog: short column titles, one-line suggested price and profit (details on hover).
 
 = 1.9.0 =
 * Two suppliers: Relojitos (Spain, XML feed) and ILA Uhren (Germany, WooCommerce CSV feed).

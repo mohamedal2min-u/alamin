@@ -141,25 +141,35 @@ class URME_SS_Price_Hint {
 			$min   = URME_SS_Sync::min_profit();
 			$full  = $now['profit'] >= $h['target'] - 0.000001;
 			$ok    = $guard ? $now['profit'] >= $min : $full;
+			// One line: your price → profit; the rule behind the colour is in the tooltip.
 			$own   = sprintf(
-				'<div class="urme-hint-now %1$s">Your price %2$s: profit <strong>%3$s</strong> (%4$s of cost)%5$s</div>',
-				$now['profit'] < 0 ? 'urme-bad' : ( $full ? 'urme-good' : 'urme-warn' ),
+				'<div class="urme-hint-now %1$s" title="%6$s">%5$s %2$s → <strong>%3$s</strong> · %4$s</div>',
+				$now['profit'] < 0 || ( $guard && ! $ok ) ? 'urme-bad' : ( $full ? 'urme-good' : 'urme-warn' ),
 				esc_html( self::kr( $now['price'] ) ),
-				esc_html( self::kr( $now['profit'] ) ),
+				esc_html( ( $now['profit'] >= 0 ? '+' : '' ) . self::kr( $now['profit'] ) ),
 				esc_html( self::whole_pct( $now['profit'] / $now['cost'] ) ),
-				$guard ? '<br>' . esc_html( ! $ok ? sprintf( 'Below %s minimum: out of stock', self::kr( $min ) ) : ( $full ? 'Stays in stock' : sprintf( 'Below the %s target, at least %s: stays in stock', self::whole_pct( $ctx['profit_pct'] ), self::kr( $min ) ) ) ) : ''
+				$guard && ! $ok ? '<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>' : '<span class="dashicons dashicons-tag" aria-hidden="true"></span>',
+				esc_attr( 'Your price, profit after coupon, VAT, Klarna and cost' . ( $guard ? ' · ' . ( ! $ok ? sprintf( 'Below %s minimum: out of stock', self::kr( $min ) ) : ( $full ? 'Stays in stock' : sprintf( 'Below the %s target, at least %s: stays in stock', self::whole_pct( $ctx['profit_pct'] ), self::kr( $min ) ) ) ) : '' ) )
 			);
 		}
 		$extra = rtrim( rtrim( number_format( $ctx['extra_eur'], 2, '.', '' ), '0' ), '.' );
+		// Suggested price and its profit; the calculation is in the tooltip.
 		return sprintf(
-			'<div class="urme-hint"><strong>Suggested price: %s</strong><br><span class="urme-hint-detail">After %s coupon: %s<br>Klarna %s: %s<br>Cost incl. +%s EUR: %s<br>Estimated profit: %s (%s of cost)</span></div>',
+			'<div class="urme-hint" title="%s"><span class="dashicons dashicons-lightbulb" aria-hidden="true"></span><strong>%s</strong> <span class="urme-hint-detail">+%s · %s</span></div>',
+			esc_attr(
+				sprintf(
+					'Suggested price · after %s coupon: %s · Klarna %s: %s · cost incl. +%s EUR: %s · profit %s (%s of cost)',
+					self::pct( $ctx['coupon'] ),
+					self::kr( $h['paid'] ),
+					self::pct( $ctx['fee'] ),
+					self::kr( $h['fee'] ),
+					$extra,
+					self::kr( $h['cost'] ),
+					self::kr( $h['profit'] ),
+					self::whole_pct( $h['profit'] / $h['cost'] )
+				)
+			),
 			esc_html( self::kr( $h['price'] ) ),
-			esc_html( self::pct( $ctx['coupon'] ) ),
-			esc_html( self::kr( $h['paid'] ) ),
-			esc_html( self::pct( $ctx['fee'] ) ),
-			esc_html( self::kr( $h['fee'] ) ),
-			esc_html( $extra ),
-			esc_html( self::kr( $h['cost'] ) ),
 			esc_html( self::kr( $h['profit'] ) ),
 			esc_html( self::whole_pct( $h['profit'] / $h['cost'] ) )
 		) . $own;

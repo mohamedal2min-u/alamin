@@ -87,3 +87,30 @@
 .urme-flag{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;vertical-align:middle}.urme-flag svg{display:block;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
 .urme-suppliers td{vertical-align:middle}.urme-suppliers td:nth-child(2){min-width:280px}
 .urme-other-offer{margin-top:6px;padding-top:6px;border-top:1px dashed #dcdcde;white-space:nowrap;font-size:12px;color:#50575e}.urme-cheapest{display:inline-block;margin-top:2px;padding:0 6px;border-radius:8px;background:#edfaef;color:#00701a;font-size:11px;font-weight:600}
+
+/* 1.9.1: compact catalog table */
+.urme-ss .urme-table { font-size: 13px; }
+.urme-ss .urme-table tbody td, .urme-ss .urme-table tbody th { padding-top: 7px; padding-bottom: 7px; line-height: 1.4; }
+.urme-ss .urme-table thead th { white-space: nowrap; }
+.urme-ss .urme-product-col { min-width: 150px; max-width: 230px; }
+.urme-ss .urme-brand { font-size: 11px; letter-spacing: .02em; }
+.urme-ss .urme-hint-col { min-width: 0; }
+.urme-ss .urme-hint { font-size: 13px; cursor: help; }
+.urme-ss .urme-hint-detail { font-size: 12px; color: #00701a; }
+.urme-ss .urme-hint-now { margin-top: 3px; padding-top: 3px; font-size: 12px; white-space: nowrap; cursor: help; }
+.urme-ss .urme-badge { font-size: 12px; }
+.urme-ss .urme-match-col small, .urme-ss .urme-sync-col small { font-size: 11px; }
+.urme-ss .urme-ean { font-size: 11px !important; color: #8c8f94; }
+.urme-ss .urme-hint .dashicons, .urme-ss .urme-hint-now .dashicons { font-size: 15px; width: 15px; height: 15px; vertical-align: -3px; margin-right: 2px; color: #8c8f94; }
+.urme-ss .urme-hint-now.urme-bad .dashicons { color: #b32d2e; }
+.urme-ss .urme-sync-col { width: 165px; min-width: 165px; }
+.urme-ss .urme-sync-col .button-small { padding: 0 6px; font-size: 11px; min-height: 24px; line-height: 22px; }
+.urme-ss .urme-sync-col input[type=number], .urme-ss .urme-sync-col input[type=text] { max-width: 80px; }
+.urme-ss .urme-stock-col { min-width: 0; }
+.urme-ss .urme-match-col { max-width: 140px; }
+.urme-ss .urme-img-col { width: 44px; }
+.urme-ss .urme-img-col img { width: 40px; height: 40px; }
+.urme-ss .urme-product-col { min-width: 130px; max-width: 190px; }
+.urme-ss .urme-other-offer { white-space: normal; min-width: 110px; }
+.urme-ss .urme-cost-col { width: 1%; }
+.urme-ss .urme-table td, .urme-ss .urme-table th { padding-left: 6px; padding-right: 6px; }

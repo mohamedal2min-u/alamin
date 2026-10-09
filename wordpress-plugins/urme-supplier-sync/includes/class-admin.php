@@ -1077,18 +1077,18 @@ class URME_SS_Admin {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="urme-select-form">
 			<?php echo self::hidden_fields( 'select' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<div class="tablenav top"><button type="submit" class="button button-primary urme-bulk" disabled>Select checked for sync</button>
-				<span class="description">Selecting is always manual. Only watches with URME stock 0 can be selected (Dropshipping). Watches with URME stock are hidden until their stock is 0. Order: in the store first, then Needs review, then Not in URME; the largest supplier stock first in each.</span></div>
+				<span class="description">Manual selection · URME stock 0 only · in store first, then most supplier stock.</span></div>
 			<table class="widefat striped urme-table">
 				<thead><tr>
 					<td class="check-column"><input type="checkbox" class="urme-check-all" aria-label="Select all"></td>
-					<th class="urme-img-col">Image</th>
+					<th class="urme-img-col"></th>
 					<th class="urme-product-col">Product</th>
-					<th class="urme-code-col">Model / EAN</th>
-					<th class="num">Supplier stock</th>
-					<th class="num urme-stock-col">URME stock</th>
+					<th class="urme-code-col">Model</th>
+					<th class="num" title="Supplier stock">Stock</th>
+					<th class="num urme-stock-col" title="URME stock and fulfillment">URME</th>
 					<th class="num">Cost</th>
-					<th class="urme-hint-col">Price hint</th>
-					<th class="urme-match-col">In URME</th>
+					<th class="urme-hint-col" title="Suggested price → profit · your price → profit (hover for details)">Price</th>
+					<th class="urme-match-col" title="Does the watch exist in the URME store?">In store</th>
 					<th class="urme-sync-col">Sync</th>
 				</tr></thead>
 				<tbody>
@@ -1131,15 +1131,14 @@ class URME_SS_Admin {
 			</th>
 			<td class="urme-img-col"><?php echo self::img( $row['img_url'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-product-col">
-				<span class="urme-brand"><?php echo esc_html( $row['manufacturer'] ); ?></span><br>
+				<span class="urme-brand"><?php echo esc_html( $row['manufacturer'] ); ?></span><?php if ( $row['subcategory'] ) : ?> <small class="urme-muted">· <?php echo esc_html( $row['subcategory'] ); ?></small><?php endif; ?><br>
 				<?php
 				$age = URME_SS_DB::new_age( $row );
 				if ( null !== $age ) {
-					printf( '<span class="urme-new">NEW</span> <small class="urme-new-age">%s</small><br>', esc_html( 0 === $age ? 'Added today' : sprintf( 'Added %d day%s ago', $age, 1 === $age ? '' : 's' ) ) );
+					printf( '<span class="urme-new" title="%s">NEW</span> ', esc_attr( 0 === $age ? 'Added today' : sprintf( 'Added %d day%s ago', $age, 1 === $age ? '' : 's' ) ) );
 				}
 				echo esc_html( $row['product_name'] );
 				?>
-				<?php if ( $row['subcategory'] ) : ?><br><small class="urme-muted"><?php echo esc_html( $row['subcategory'] ); ?></small><?php endif; ?>
 				<?php if ( ! (int) $row['in_feed'] ) : ?><br><span class="urme-bad">Not in feed since <?php echo esc_html( self::mysql_datetime( $row['missing_since'] ) ); ?></span><?php endif; ?>
 			</td>
 			<td class="urme-code-col"><?php echo URME_SS_Suppliers::flag( $row['supplier'] ?? '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <code><?php echo esc_html( $row['product_no'] ); ?></code><br><code class="urme-ean" title="EAN / ITEM_ID"><?php echo esc_html( $row['item_id'] ); ?></code></td>
@@ -1155,7 +1154,7 @@ class URME_SS_Admin {
 				$buttons  = array();
 				$notes    = array();
 				if ( ! $row['link_id'] ) {
-					$state = '<span class="urme-muted">Not selected</span>';
+					$state = '<span class="urme-muted" title="Not selected">—</span>';
 					$start = self::start_control( $row, $stock[ self::urme_product_id( $row ) ] ?? null, $brand_on, URME_SS_Product_Source::is_linked( self::urme_product_id( $row ) ) );
 					if ( 0 === strpos( $start, '<button' ) ) {
 						$buttons[] = $start;
@@ -1399,20 +1398,20 @@ class URME_SS_Admin {
 	 */
 	private static function match_cell( array $row ) {
 		if ( (int) $row['product_id'] && 'manual' === $row['link_method'] ) {
-			return self::status_badge( 'manual', 'Manually linked' ) . '<br><small>' . self::product_link( (int) $row['product_id'] ) . '</small>';
+			return self::status_badge( 'manual', 'Linked' ) . '<br><small>' . self::product_link( (int) $row['product_id'] ) . '</small>';
 		}
 		switch ( $row['match_status'] ) {
 			case URME_SS_Matcher::EXISTS:
 				$by = str_replace( array( 'sku', 'ean', '+' ), array( 'SKU', 'EAN', ' + ' ), $row['match_method'] );
-				return self::status_badge( 'exists', 'Exists in URME' ) . '<br><small>' . self::product_link( (int) $row['match_product_id'] ) . ' <span class="urme-muted">(' . esc_html( $by ) . ')</span></small>';
+				return self::status_badge( 'exists', 'Yes' ) . '<br><small title="' . esc_attr( 'Matched by ' . $by ) . '">' . self::product_link( (int) $row['match_product_id'] ) . '</small>';
 			case URME_SS_Matcher::NONE:
-				return self::status_badge( 'none', 'Not in URME' );
+				return self::status_badge( 'none', 'No' );
 			case URME_SS_Matcher::REVIEW:
 				$links = array();
 				foreach ( array_filter( array_map( 'intval', explode( ',', (string) $row['match_candidates'] ) ) ) as $cid ) {
 					$links[] = self::product_link( $cid );
 				}
-				return self::status_badge( 'review', 'Needs review' ) . '<br><small>Several possible matches:<br>' . implode( '<br>', $links ) . '</small>';
+				return self::status_badge( 'review', 'Check' ) . '<br><small title="Several possible matches">' . implode( '<br>', $links ) . '</small>';
 			default:
 				return self::status_badge( 'pending', 'Not checked yet' );
 		}

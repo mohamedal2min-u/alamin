@@ -413,7 +413,16 @@ class URME_SS_DB {
 			$where[]  = 'c.manufacturer = %s';
 			$params[] = $args['brand'];
 		}
-		if ( '' !== ( $args['supplier'] ?? '' ) ) {
+		if ( 'both' === ( $args['supplier'] ?? '' ) ) {
+			// One row per watch sold by several suppliers: the main supplier's row (the others show on it).
+			$keys = self::common_keys();
+			if ( $keys ) {
+				$where[] = 'c.item_key IN (' . implode( ',', array_fill( 0, count( $keys ), '%s' ) ) . ')';
+				$params  = array_merge( $params, $keys );
+			} else {
+				$where[] = '1 = 0';
+			}
+		} elseif ( '' !== ( $args['supplier'] ?? '' ) ) {
 			$where[]  = 'c.supplier = %s';
 			$params[] = URME_SS_Suppliers::id( $args['supplier'] );
 		}
@@ -613,6 +622,34 @@ class URME_SS_DB {
 	public static function mark_not_new( $supplier ) {
 		global $wpdb;
 		$wpdb->query( $wpdb->prepare( 'UPDATE ' . self::catalog_table() . ' SET first_seen = %s WHERE supplier = %s', (string) get_option( 'urme_ss_new_since', current_time( 'mysql', true ) ), $supplier ) ); // phpcs:ignore WordPress.DB
+	}
+
+	/**
+	 * Main-supplier rows (in the feed) whose watch, by EAN, is also in another supplier's feed.
+	 *
+	 * @return string[] item_keys.
+	 */
+	public static function common_keys() {
+		static $keys = null;
+		if ( null !== $keys ) {
+			return $keys;
+		}
+		global $wpdb;
+		$main  = array();
+		$other = array();
+		foreach ( (array) $wpdb->get_results( 'SELECT item_key, item_id, supplier FROM ' . self::catalog_table() . " WHERE in_feed = 1 AND item_id <> ''", ARRAY_A ) as $r ) { // phpcs:ignore WordPress.DB
+			$ean = URME_SS_Matcher::normalize_ean( $r['item_id'] );
+			if ( '' === $ean ) {
+				continue;
+			}
+			if ( URME_SS_Suppliers::MAIN === URME_SS_Suppliers::id( $r['supplier'] ) ) {
+				$main[ $ean ] = $r['item_key'];
+			} else {
+				$other[ $ean ] = true;
+			}
+		}
+		$keys = array_values( array_intersect_key( $main, $other ) );
+		return $keys;
 	}
 
 	/**

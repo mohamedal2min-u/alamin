@@ -901,7 +901,7 @@ class URME_SS_Admin {
 			'productno'    => sanitize_text_field( wp_unslash( $_GET['productno'] ?? '' ) ),
 			'ean'          => preg_replace( '/\s+/', '', sanitize_text_field( wp_unslash( $_GET['ean'] ?? '' ) ) ),
 			'q'            => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
-			'in_stock'     => empty( $_GET['in_stock'] ) ? '' : '1',
+			'show_oos'     => empty( $_GET['show_oos'] ) ? '' : '1',
 			'selected'     => in_array( $_GET['selected'] ?? '', array( 'yes', 'no' ), true ) ? sanitize_key( $_GET['selected'] ) : '',
 			'match'        => in_array( $_GET['match'] ?? '', array( 'exists', 'none', 'review', 'manual' ), true ) ? sanitize_key( $_GET['match'] ) : '',
 			'brand_sync'   => in_array( $_GET['brand_sync'] ?? '', array( 'on', 'off', 'any' ), true ) ? sanitize_key( $_GET['brand_sync'] ) : '',
@@ -916,13 +916,15 @@ class URME_SS_Admin {
 		// phpcs:enable
 		// Default view (opened or Reset, no filter at all): only the brands enabled for sync. Any
 		// search, brand or dashboard link looks in all brands, so a specific watch is always found.
-		$narrowed     = (bool) array_filter( array_diff_key( $f, array_flip( array( 'brand_sync', 'per_page' ) ) ) );
+		$narrowed     = (bool) array_filter( array_diff_key( $f, array_flip( array( 'brand_sync', 'per_page', 'show_oos' ) ) ) );
 		$default_view = '' === $f['brand_sync'] && ! $narrowed && URME_SS_Settings::enabled_brand_keys();
 		$per_page     = $f['per_page'] ? (int) $f['per_page'] : 50;
 
 		// Watches with URME stock are hidden until their stock is 0 (a search or "URME stock: In stock" shows them).
 		$hide_stocked = '' === $f['productno'] && '' === $f['ean'] && '' === $f['q'] && 'in' !== $f['urme_stock'];
-		$result       = URME_SS_DB::search_catalog( array_merge( $f, array( 'brand_sync' => $default_view ? 'on' : $f['brand_sync'], 'hide_stocked' => $hide_stocked, 'page' => $page, 'per_page' => $per_page ) ) );
+		// Watches the supplier has none of are hidden; a search or "Selected only" still finds them.
+		$hide_oos     = '' === $f['show_oos'] && '' === $f['productno'] && '' === $f['ean'] && '' === $f['q'] && 'yes' !== $f['selected'];
+		$result       = URME_SS_DB::search_catalog( array_merge( $f, array( 'brand_sync' => $default_view ? 'on' : $f['brand_sync'], 'hide_stocked' => $hide_stocked, 'in_stock' => $hide_oos ? '1' : '', 'page' => $page, 'per_page' => $per_page ) ) );
 		// Brand filter: only brands enabled for sync, plus the one filtered on now (e.g. from an old link).
 		$brands  = array_filter(
 			URME_SS_DB::brands(),
@@ -1029,7 +1031,7 @@ class URME_SS_Admin {
 				</select>
 			</label>
 			<label class="urme-check" title="Brand sync on, unique URME match, URME stock 0, not selected yet, still in the supplier feed"><input type="checkbox" name="ready" value="1" <?php checked( $f['ready'], '1' ); ?>> Ready for supplier sync</label>
-			<label class="urme-check"><input type="checkbox" name="in_stock" value="1" <?php checked( $f['in_stock'], '1' ); ?>> In stock only</label>
+			<label class="urme-check" title="Watches with supplier stock 0 are hidden; a search or Selected only still shows them"><input type="checkbox" name="show_oos" value="1" <?php checked( $f['show_oos'], '1' ); ?>> Include supplier stock 0</label>
 			<label>Per page
 				<select name="per_page">
 					<?php foreach ( array( 20, 50, 100 ) as $n ) : ?>

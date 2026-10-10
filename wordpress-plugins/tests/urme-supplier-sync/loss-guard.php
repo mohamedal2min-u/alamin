@@ -98,6 +98,20 @@ $rrp_html = admin( 'catalog_row_html', key_of( 140 ) );
 $rrp_sek  = URME_SS_Admin::round_98( 189 * (float) URME_SS_Rates::current()['rate'] );
 ok( (bool) preg_match( '/class="urme-rrp-pick(?: is-picked)?" data-price="' . $rrp_sek . '"/', $rrp_html ), "catalog row offers the recommended price as {$rrp_sek} kr (189 EUR at today's rate, …98)" );
 ok( (bool) preg_match( '#<td class="urme-match-col">.*?urme-rrp-picks.*?</td>#s', $rrp_html ) && ! preg_match( '#<td class="urme-sync-col">.*?urme-rrp-picks.*?</td>#s', $rrp_html ), '   the picks sit in the "In store" column, not in the Sync column' );
+// 1.9.8 The price hint uses the supplier the watch is bought from now (cheapest with stock).
+global $wpdb;
+$ila_key = URME_SS_Suppliers::get( 'ila' )['prefix'] . $rrp_row['item_id'];
+$wpdb->replace( URME_SS_DB::catalog_table(), array( 'item_key' => $ila_key, 'item_id' => $rrp_row['item_id'], 'product_no' => $rrp_row['product_no'], 'manufacturer' => $rrp_row['manufacturer'], 'product_name' => 'ila copy', 'category' => 'WATCH', 'purchase_price' => 60, 'stock' => 3, 'in_feed' => 1, 'first_seen' => '2026-01-01 00:00:00', 'updated_at' => '2026-01-01 00:00:00', 'supplier' => 'ila' ) );
+$bh_ctx  = URME_SS_Price_Hint::context();
+$bh_ila  = URME_SS_Price_Hint::calculate( 60, URME_SS_Suppliers::hint( $bh_ctx, 'ila' ) )['price'];
+$bh_relo = URME_SS_Price_Hint::calculate( 176, URME_SS_Suppliers::hint( $bh_ctx, 'relo' ) )['price'];
+$bh_html = admin( 'catalog_row_html', key_of( 140 ) );
+ok( preg_match( '#<td class="urme-hint-col">.*?<strong>' . preg_quote( number_format_i18n( $bh_ila ) . ' kr', '#' ) . '</strong>.*?urme-hint-src.*?</td>#s', $bh_html ) && $bh_ila < $bh_relo, "price hint from the cheaper ILA offer: {$bh_ila} kr, not {$bh_relo} kr from the row's own supplier, with its flag" );
+ok( false !== strpos( $bh_html, 'data-price="' . URME_SS_Price_Hint::price_98( 60, URME_SS_Suppliers::hint( $bh_ctx, 'ila' ) ) . '"' ), '   Auto uses the same cost (…98 of the ILA hint)' );
+$wpdb->update( URME_SS_DB::catalog_table(), array( 'stock' => 0 ), array( 'item_key' => $ila_key ) );
+$bh_html = admin( 'catalog_row_html', key_of( 140 ) );
+ok( false !== strpos( $bh_html, '<strong>' . number_format_i18n( $bh_relo ) . ' kr</strong>' ), '   ILA out of stock: the hint is from the row\'s own supplier again' );
+$wpdb->delete( URME_SS_DB::catalog_table(), array( 'item_key' => $ila_key ) );
 // 1.9.8 Upgrading from database v6 forgets each feed's last download once, so the next run reads it again.
 update_option( URME_SS_Feed::state_option( 'relo' ), array( 'etag' => '"x"', 'last_modified' => 'Mon', 'md5' => 'abc', 'categories' => 'WATCH' ), false );
 update_option( 'urme_ss_db_version', '6', true );

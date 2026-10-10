@@ -151,9 +151,10 @@ class URME_SS_Price_Hint {
 	/**
 	 * Full hint (Supplier catalog column), plus the profit at the watch's current price when known.
 	 *
-	 * @param mixed $current_price The URME product's current selling price (SEK), or null.
+	 * @param mixed  $current_price The URME product's current selling price (SEK), or null.
+	 * @param string $source        Flag of the supplier the cost is from (when there are several), or ''.
 	 */
-	public static function html( $purchase_eur, array $ctx, $current_price = null ) {
+	public static function html( $purchase_eur, array $ctx, $current_price = null, $source = '' ) {
 		$h = self::calculate( $purchase_eur, $ctx );
 		if ( ! $h ) {
 			return '<span class="urme-muted urme-hint-na">Price hint unavailable</span>';
@@ -171,7 +172,7 @@ class URME_SS_Price_Hint {
 		$extra = rtrim( rtrim( number_format( $ctx['extra_eur'], 2, '.', '' ), '0' ), '.' );
 		// Suggested price and its profit; the calculation is in the tooltip.
 		return sprintf(
-			'<div class="urme-hint" title="%s"><span class="dashicons dashicons-lightbulb" aria-hidden="true"></span><strong>%s</strong> <span class="urme-hint-detail">+%s · %s</span></div>',
+			'<div class="urme-hint" title="%s"><span class="dashicons dashicons-lightbulb" aria-hidden="true"></span><strong>%s</strong> <span class="urme-hint-detail">+%s · %s</span>%s</div>',
 			esc_attr(
 				sprintf(
 					'Suggested price · after %s coupon: %s · Klarna %s: %s · cost incl. +%s EUR: %s · profit %s (%s of cost)',
@@ -187,7 +188,8 @@ class URME_SS_Price_Hint {
 			),
 			esc_html( self::kr( $h['price'] ) ),
 			esc_html( self::kr( $h['profit'] ) ),
-			esc_html( self::whole_pct( $h['profit'] / $h['cost'] ) )
+			esc_html( self::whole_pct( $h['profit'] / $h['cost'] ) ),
+			'' !== $source ? ' <span class="urme-hint-src" title="Cost from the supplier it is bought from now">' . $source . '</span>' : ''
 		) . $own;
 	}
 }

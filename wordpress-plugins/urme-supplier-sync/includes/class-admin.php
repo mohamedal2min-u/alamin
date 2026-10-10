@@ -456,7 +456,11 @@ class URME_SS_Admin {
 				return self::start_from_catalog( $arg );
 
 			case 'auto98':
-				$item  = URME_SS_DB::get_item( $arg );
+				$item = URME_SS_DB::get_item( $arg );
+				if ( $item ) {
+					self::$others = URME_SS_DB::other_sources( array( $item ) );
+					$item         = self::buy_row( $item );
+				}
 				$price = $item ? URME_SS_Price_Hint::price_98( $item['purchase_price'], URME_SS_Suppliers::hint( URME_SS_Price_Hint::context(), URME_SS_Suppliers::of_key( $item['item_key'] ) ) ) : null;
 				if ( ! $price ) {
 					return array( 'No suggested price for this watch (cost or exchange rate missing); nothing was changed.', 'error' );
@@ -1193,8 +1197,13 @@ class URME_SS_Admin {
 			<td class="num"><div class="urme-own"><?php echo null === $row['stock'] ? '—' : '<span class="' . ( (int) $row['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( $row['stock'] ) . '</span>'; ?></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt"><?php echo (int) $o['in_feed'] ? '<span class="' . ( (int) $o['stock'] > 0 ? 'urme-good' : 'urme-bad' ) . '">' . esc_html( (string) (int) $o['stock'] ) . '</span>' : '<span class="urme-bad" title="Not in the feed">—</span>'; // phpcs:ignore WordPress.Security.EscapeOutput ?></div><?php endforeach; ?></td>
 			<td class="num urme-stock-col"><?php echo self::urme_stock_cell( $stock[ self::urme_product_id( $row ) ] ?? null ) . ( isset( $stock[ self::urme_product_id( $row ) ] ) ? ' ' . self::source_mark( self::urme_product_id( $row ) ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="num urme-cost-col"><div class="urme-own"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt"><?php echo esc_html( self::eur( $o['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row, $o['item_key'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $o['purchase_price'] ? null : URME_SS_Rates::to_sek( $o['purchase_price'] ) ) ); ?></span></div><?php endforeach; ?></td>
-			<?php $row_hint = URME_SS_Suppliers::hint( $hint, URME_SS_Suppliers::of_key( $row['item_key'] ) ); ?>
-			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $row_hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+			<?php
+			// The hint is for the supplier the watch is bought from now (the cheapest with stock).
+			$buy      = self::buy_row( $row );
+			$buy_sup  = URME_SS_Suppliers::of_key( $buy['item_key'] );
+			$row_hint = URME_SS_Suppliers::hint( $hint, $buy_sup );
+			?>
+			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $buy['purchase_price'], $row_hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null, $alts ? URME_SS_Suppliers::flag( $buy_sup ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<?php $row_info = $stock[ self::urme_product_id( $row ) ] ?? null; ?>
 			<td class="urme-match-col"><?php echo self::match_cell( $row ) . ( $row_info && ! $row_info['variable'] ? self::rrp_picks( $row, $row_info['regular'] ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-sync-col">
@@ -1389,6 +1398,20 @@ class URME_SS_Admin {
 	 *
 	 * @param string|null $key The offer to label; the row's own when null.
 	 */
+	/**
+	 * The catalog row of this watch it is bought from now: the cheapest supplier with stock
+	 * (cost price + that supplier's cost per order), as the sync chooses it. The price hint and
+	 * Auto use its cost, so the suggested price matches what the watch really costs.
+	 */
+	private static function buy_row( array $row ) {
+		$others = self::$others[ $row['item_key'] ] ?? array();
+		if ( ! $others ) {
+			return $row;
+		}
+		$best = URME_SS_Suppliers::choose( $row, $others, URME_SS_Suppliers::ids() );
+		return $best && null !== $best['purchase_price'] ? $best : $row;
+	}
+
 	private static function cheapest_tag( array $row, $key = null ) {
 		$others = self::$others[ $row['item_key'] ] ?? array();
 		if ( ! $others ) {
@@ -1415,7 +1438,8 @@ class URME_SS_Admin {
 		if ( null === $ctx ) {
 			$ctx = URME_SS_Price_Hint::context(); // Once per page, like the price hint column.
 		}
-		$price = URME_SS_Price_Hint::price_98( $row['purchase_price'], URME_SS_Suppliers::hint( $ctx, URME_SS_Suppliers::of_key( $row['item_key'] ) ) );
+		$buy   = self::buy_row( $row );
+		$price = URME_SS_Price_Hint::price_98( $buy['purchase_price'], URME_SS_Suppliers::hint( $ctx, URME_SS_Suppliers::of_key( $buy['item_key'] ) ) );
 		if ( ! $price ) {
 			return '';
 		}

@@ -1321,8 +1321,50 @@ class URME_SS_Admin {
 			esc_attr( $key ),
 			esc_attr( $info['sale'] ),
 			self::row_button( 'sale|' . $key, 'Save', 'button button-small' ),
-			self::auto98_button( $row )
+			self::rrp_picks( $row ) . self::auto98_button( $row )
 		);
+	}
+
+	/**
+	 * The suppliers' recommended retail prices (EUR) in SEK at today's rate, rounded to the
+	 * nearest price ending in 98, as small buttons. A click fills the Regular field only;
+	 * nothing is saved until Save. One button per supplier (this row's and the other suppliers' offers).
+	 */
+	private static function rrp_picks( array $row ) {
+		static $rate = false;
+		if ( false === $rate ) {
+			$r    = URME_SS_Rates::current();
+			$rate = $r ? (float) $r['rate'] : null;
+		}
+		if ( ! $rate ) {
+			return '';
+		}
+		$seen = array();
+		$out  = '';
+		foreach ( array_merge( array( $row ), self::$others[ $row['item_key'] ] ?? array() ) as $r ) {
+			$sup = URME_SS_Suppliers::of_key( (string) $r['item_key'] );
+			$eur = isset( $r['rrp'] ) && null !== $r['rrp'] ? (float) $r['rrp'] : 0;
+			if ( $eur <= 0 || isset( $seen[ $sup ] ) ) {
+				continue;
+			}
+			$seen[ $sup ] = true;
+			$sek = self::round_98( $eur * $rate );
+			$out .= sprintf(
+				'<button type="button" class="urme-rrp-pick" data-price="%1$d" title="%2$s">%3$s %4$s</button>',
+				$sek,
+				esc_attr( sprintf( 'Recommended price from %s: %s EUR × %s = %s kr. Click to put it in Regular, then Save.', URME_SS_Suppliers::name( $sup ), number_format_i18n( $eur, 2 ), number_format_i18n( $rate, 4 ), number_format_i18n( $sek ) ) ),
+				URME_SS_Suppliers::flag( $sup ),
+				esc_html( number_format_i18n( $sek ) . ' kr' )
+			);
+		}
+		return $out ? '<div class="urme-rrp-picks"><small class="urme-muted">Rek. pris:</small> ' . $out . '</div>' : '';
+	}
+
+	/**
+	 * Nearest price ending in 98 (2 158 → 2 198, 2 140 → 2 098).
+	 */
+	public static function round_98( $sek ) {
+		return (int) max( 98, round( ( (float) $sek - 98 ) / 100 ) * 100 + 98 );
 	}
 
 	/**

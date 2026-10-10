@@ -85,3 +85,24 @@ settings( array( 'loss_out_of_stock' => 0 ) );
 run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
 ok( 5 === (int) p( $lg->get_id() )->get_stock_quantity(), 'setting off: supplier stock synced at any price' );
 settings( array( 'loss_out_of_stock' => 1, 'rate_override' => '' ) );
+
+// 1.9.7 Suppliers' recommended retail prices: stored from both feed formats and offered as …98 SEK picks for Regular.
+section( 'RRP. Recommended prices from the suppliers' );
+settings( array( 'rate_override' => '11.321' ) );
+ok( 2098 === URME_SS_Admin::round_98( 2139.7 ) && 2198 === URME_SS_Admin::round_98( 2158 ) && 98 === URME_SS_Admin::round_98( 10 ), 'round_98: nearest price ending in 98 (2 139.70 → 2 098, 2 158 → 2 198)' );
+nf_feed( 3000, array( 'REF000140' => array( 'PURCHASE_PRICE' => '176.00', 'STOCK' => '5', 'RECOMMENDER_RETAIL_PRICE' => '189,00' ) ) );
+run( array( 'force_feed' => true ) );
+$rrp_row = URME_SS_DB::get_item( key_of( 140 ) );
+ok( abs( (float) $rrp_row['rrp'] - 189 ) < 0.001, 'Relojitos XML: RECOMMENDER_RETAIL_PRICE 189,00 stored as rrp 189 EUR', $rrp_row['rrp'] );
+$rrp_html = admin( 'catalog_row_html', key_of( 140 ) );
+$rrp_sek  = URME_SS_Admin::round_98( 189 * (float) URME_SS_Rates::current()['rate'] );
+ok( false !== strpos( $rrp_html, 'class="urme-rrp-pick" data-price="' . $rrp_sek . '"' ), "catalog row offers the recommended price as {$rrp_sek} kr (189 EUR at today's rate, …98)" );
+$x_before = array( p( $lg->get_id() )->get_regular_price(), p( $lg->get_id() )->get_sale_price() );
+ok( $x_before === array( p( $lg->get_id() )->get_regular_price(), p( $lg->get_id() )->get_sale_price() ), '   showing it changes no price (a click only fills the Regular field)' );
+$csv = wp_tempnam( 'ila' );
+file_put_contents( $csv, "sku;gtin;post_title;tax:brand;tax:product_cat;regular_price;sale_price;stock;stock_status;images\n1710468;7613272468954;Tommy Hilfiger Adrian 1710468;Tommy Hilfiger;Brand Watches>Tommy Hilfiger>Men's;149.0000;49.8000;3;instock;https://example.com/a.jpg\n" );
+$parsed = URME_SS_Feed::parse_csv( $csv, array( 'WATCH' ), 'ila' );
+$item   = URME_SS_Feed::unpack( reset( $parsed['items'] ) );
+ok( abs( (float) $item['rrp'] - 149 ) < 0.001 && abs( (float) $item['purchase_price'] - 49.8 ) < 0.001, 'ILA CSV: regular_price 149 is the recommended price, sale_price 49.80 the cost', $item );
+unlink( $csv );
+settings( array( 'rate_override' => '' ) );

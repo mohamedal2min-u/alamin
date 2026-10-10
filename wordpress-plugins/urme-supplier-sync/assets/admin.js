@@ -18,6 +18,22 @@
 		}
 	} );
 
+	// A supplier's recommended price fills the Regular field only (nothing is saved until Save).
+	$( document ).on( 'click', '#urme-select-form .urme-rrp-pick', function ( e ) {
+		var $btn = $( this ),
+			$tr = $btn.closest( 'tr' ),
+			$reg = $tr.find( '.urme-price-edit input[name^="regular_price"]' ),
+			price = parseInt( $btn.data( 'price' ), 10 );
+		e.preventDefault();
+		if ( ! $reg.length || ! price ) {
+			return;
+		}
+		$reg.val( price ).trigger( 'focus' );
+		$tr.find( '.urme-rrp-pick' ).removeClass( 'is-picked' );
+		$btn.addClass( 'is-picked' );
+		rowMessage( $tr, 'Regular (recommended) price set to ' + price + ' kr. Press Save to apply.', 'ok' );
+	} );
+
 	// "Auto …98" fills the Sale price field only (the discount); nothing is saved until Save,
 	// so the regular (recommended) price can be set first.
 	$( document ).on( 'click', '#urme-select-form button.urme-auto98', function ( e ) {

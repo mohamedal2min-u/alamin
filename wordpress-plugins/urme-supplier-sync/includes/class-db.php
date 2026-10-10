@@ -62,6 +62,7 @@ class URME_SS_DB {
   category varchar(50) NOT NULL DEFAULT '',
   subcategory varchar(100) NOT NULL DEFAULT '',
   purchase_price decimal(12,4) NULL,
+  rrp decimal(12,4) NULL,
   stock int(11) NULL,
   img_url varchar(1000) NOT NULL DEFAULT '',
   data_hash char(32) NOT NULL DEFAULT '',
@@ -190,7 +191,7 @@ class URME_SS_DB {
 	public static function missing_columns() {
 		global $wpdb;
 		$expected = array(
-			self::catalog_table() => array( 'supplier' ),
+			self::catalog_table() => array( 'supplier', 'rrp' ),
 			self::links_table() => array( 'stock_mode', 'local_qty', 'local_cost', 'needs_stock_apply', 'mode_changed_at', 'mode_note', 'supplier', 'source_key' ),
 			self::alloc_table() => array( 'order_item_id', 'order_id', 'link_id', 'product_id', 'last_reduced_stock', 'local_allocated', 'supplier_allocated', 'src_local', 'src_supplier', 'ret_local', 'ret_supplier', 'origin', 'supplier', 'source_key', 'created_at', 'updated_at' ),
 			self::reviews_table() => array( 'id', 'link_id', 'product_id', 'item_key', 'sku', 'transitioned_at', 'local_cost', 'supplier_cost_eur', 'supplier_cost_sek', 'supplier_stock', 'regular_price', 'sale_price', 'status', 'reviewed_at', 'reviewed_by' ),
@@ -343,7 +344,8 @@ class URME_SS_DB {
 		$params = array();
 
 		foreach ( $rows as $r ) {
-			$values[] = '(%s,%s,%s,%s,%s,%s,%s,' . ( null === $r['purchase_price'] ? 'NULL' : '%f' ) . ',' . ( null === $r['stock'] ? 'NULL' : '%d' ) . ',%s,%s,1,%s,%s,NULL,%s)';
+			$rrp      = isset( $r['rrp'] ) && null !== $r['rrp'] && '' !== $r['rrp'] ? $r['rrp'] : null;
+			$values[] = '(%s,%s,%s,%s,%s,%s,%s,' . ( null === $r['purchase_price'] ? 'NULL' : '%f' ) . ',' . ( null === $r['stock'] ? 'NULL' : '%d' ) . ',%s,%s,1,%s,%s,NULL,%s,' . ( null === $rrp ? 'NULL' : '%f' ) . ')';
 			array_push( $params, $r['item_key'], $r['item_id'], $r['product_no'], $r['manufacturer'], $r['product_name'], $r['category'], $r['subcategory'] );
 			if ( null !== $r['purchase_price'] ) {
 				$params[] = $r['purchase_price'];
@@ -352,16 +354,19 @@ class URME_SS_DB {
 				$params[] = $r['stock'];
 			}
 			array_push( $params, $r['img_url'], $r['data_hash'], $now, $now, URME_SS_Suppliers::id( $r['supplier'] ?? '' ) );
+			if ( null !== $rrp ) {
+				$params[] = $rrp;
+			}
 		}
 
 		$sql = "INSERT INTO {$table}
-			(item_key, item_id, product_no, manufacturer, product_name, category, subcategory, purchase_price, stock, img_url, data_hash, in_feed, first_seen, updated_at, missing_since, supplier)
+			(item_key, item_id, product_no, manufacturer, product_name, category, subcategory, purchase_price, stock, img_url, data_hash, in_feed, first_seen, updated_at, missing_since, supplier, rrp)
 			VALUES " . implode( ',', $values ) . '
 			ON DUPLICATE KEY UPDATE
 				item_id = VALUES(item_id), product_no = VALUES(product_no), manufacturer = VALUES(manufacturer),
 				product_name = VALUES(product_name), category = VALUES(category), subcategory = VALUES(subcategory),
 				purchase_price = VALUES(purchase_price), stock = VALUES(stock), img_url = VALUES(img_url),
-				data_hash = VALUES(data_hash), in_feed = 1, updated_at = VALUES(updated_at), missing_since = NULL, supplier = VALUES(supplier)';
+				data_hash = VALUES(data_hash), in_feed = 1, updated_at = VALUES(updated_at), missing_since = NULL, supplier = VALUES(supplier), rrp = VALUES(rrp)';
 
 		$wpdb->query( $wpdb->prepare( $sql, $params ) ); // phpcs:ignore WordPress.DB
 	}
@@ -697,7 +702,7 @@ class URME_SS_DB {
 		}
 		foreach ( array_chunk( array_values( array_unique( $variants ) ), 500 ) as $chunk ) {
 			// phpcs:ignore WordPress.DB
-			$found = $wpdb->get_results( $wpdb->prepare( 'SELECT item_key, item_id, product_no, manufacturer, supplier, purchase_price, stock, in_feed FROM ' . self::catalog_table() . ' WHERE item_id IN (' . implode( ',', array_fill( 0, count( $chunk ), '%s' ) ) . ')', $chunk ), ARRAY_A );
+			$found = $wpdb->get_results( $wpdb->prepare( 'SELECT item_key, item_id, product_no, manufacturer, supplier, purchase_price, rrp, stock, in_feed FROM ' . self::catalog_table() . ' WHERE item_id IN (' . implode( ',', array_fill( 0, count( $chunk ), '%s' ) ) . ')', $chunk ), ARRAY_A );
 			foreach ( (array) $found as $f ) {
 				$ean = URME_SS_Matcher::normalize_ean( $f['item_id'] );
 				foreach ( $by_ean[ $ean ] ?? array() as $key ) {

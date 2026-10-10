@@ -265,6 +265,8 @@ class URME_SS_Feed {
 				'PRODUCT_NAME'   => html_entity_decode( $get( $row, 'post_title' ), ENT_QUOTES, 'UTF-8' ),
 				'SUBCATEGORY'    => count( $path_parts ) > 2 ? end( $path_parts ) : '',
 				'PURCHASE_PRICE' => $get( $row, 'sale_price' ),
+				// regular_price in ILA's export is the manufacturer's recommended retail price (EUR).
+				'RRP'            => $get( $row, 'regular_price' ),
 				'STOCK'          => null === $stock ? '' : (string) $stock,
 				'IMG_URL'        => trim( (string) ( $images[0] ?? '' ) ),
 			);
@@ -376,11 +378,13 @@ class URME_SS_Feed {
 			'category'       => substr( $category, 0, 50 ),
 			'subcategory'    => mb_substr( trim( (string) ( $f['SUBCATEGORY'] ?? '' ) ), 0, 100 ),
 			'purchase_price' => self::parse_price( $f['PURCHASE_PRICE'] ?? '' ),
+			// Recommended retail price (EUR): RECOMMENDER_RETAIL_PRICE in the Relojitos XML, regular_price in ILA's CSV.
+			'rrp'            => self::parse_price( $f['RRP'] ?? ( $f['RECOMMENDER_RETAIL_PRICE'] ?? ( $f['RECOMMENDED_RETAIL_PRICE'] ?? '' ) ) ),
 			'stock'          => self::parse_stock( $f['STOCK'] ?? '' ),
 			'img_url'        => substr( esc_url_raw( trim( (string) ( $f['IMG_URL'] ?? '' ) ) ), 0, 1000 ),
 		);
 		$item['item_key']  = substr( $item['item_key'], 0, 100 );
-		$item['data_hash'] = md5( implode( '|', array( $item['item_id'], $item['product_no'], $item['manufacturer'], $item['product_name'], $item['category'], $item['subcategory'], (string) $item['purchase_price'], (string) $item['stock'], $item['img_url'] ) ) );
+		$item['data_hash'] = md5( implode( '|', array( $item['item_id'], $item['product_no'], $item['manufacturer'], $item['product_name'], $item['category'], $item['subcategory'], (string) $item['purchase_price'], (string) $item['stock'], $item['img_url'], (string) $item['rrp'] ) ) );
 		return $item;
 	}
 
@@ -430,7 +434,7 @@ class URME_SS_Feed {
 	/**
 	 * Items are held as one delimited string while parsing: ~4x less memory than arrays.
 	 */
-	const FIELDS = array( 'data_hash', 'item_key', 'item_id', 'product_no', 'manufacturer', 'product_name', 'category', 'subcategory', 'purchase_price', 'stock', 'img_url', 'supplier' );
+	const FIELDS = array( 'data_hash', 'item_key', 'item_id', 'product_no', 'manufacturer', 'product_name', 'category', 'subcategory', 'purchase_price', 'stock', 'img_url', 'supplier', 'rrp' );
 
 	private static function pack( array $item ) {
 		$values = array();

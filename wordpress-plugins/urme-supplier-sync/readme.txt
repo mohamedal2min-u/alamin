@@ -227,7 +227,9 @@ or `wp cron event run --due-now` from the server.
 
 = 1.9.6 =
 * Supplier catalog: the regular (recommended) price is editable next to the sale price and
-  saved together with it (one Save, all or nothing); it cannot be emptied or set below the sale price.
+  saved together with it (one Save, all or nothing); it cannot be emptied, and a sale price must be below it.
+* "Auto …98" is the sale (discount) price only: in the catalog it fills the Sale price field (saved with Save);
+  it never changes the regular price and is refused when it is not below it.
 
 = 1.9.5 =
 * Supplier catalog: watches with a cost price under 10 EUR are not listed (linked watches still are).

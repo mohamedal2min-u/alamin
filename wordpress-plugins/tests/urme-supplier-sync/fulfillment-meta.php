@@ -25,7 +25,7 @@ $fm_link = static function () {
 ok( 'urme_fulfillment' === URME_SS_Product_Source::META, 'meta key urme_fulfillment (no leading underscore, listed by feed plugins)' );
 ok( 'dropship' === $fm_meta( $lg->get_id() ), 'linked Dropshipping watch: dropship', $fm_meta( $lg->get_id() ) );
 
-$plain = mk( 'FM plain', 'FM-1' );
+$plain = p( mk( 'FM plain', 'FM-1' ) ); // mk() returns the product ID.
 URME_SS_Product_Source::rebuild_meta();
 ok( 'lager' === $fm_meta( $plain->get_id() ), 'unlinked product after the backfill: lager' );
 
@@ -55,7 +55,7 @@ update_post_meta( $plain->get_id(), URME_SS_Product_Source::META, 'dropship' );
 ok( 1 === URME_SS_Product_Source::rebuild_meta() && 'lager' === $fm_meta( $plain->get_id() ), '"Rebuild fulfillment labels" fixes a wrong value' );
 
 // Prices and stock untouched by the label.
-$before = array( $lg->get_regular_price(), (int) p( $lg->get_id() )->get_stock_quantity() );
+$before = array( p( $lg->get_id() )->get_regular_price(), (int) p( $lg->get_id() )->get_stock_quantity() ); // Fresh product: $lg is the object loaded before the loss-guard edits.
 URME_SS_Product_Source::rebuild_meta();
 ok( array( p( $lg->get_id() )->get_regular_price(), (int) p( $lg->get_id() )->get_stock_quantity() ) === $before, 'prices and stock untouched' );
 ok( false !== strpos( (string) file_get_contents( URME_SS_DIR . 'uninstall.php' ), "delete_post_meta_by_key( 'urme_fulfillment' )" ), 'uninstall removes the meta' );

@@ -12,7 +12,7 @@ ok( 1 === URME_SS_Settings::defaults()['loss_out_of_stock'] && 500 == URME_SS_Se
 // 176 EUR → cost (176 + 12) × 11.321 = 2128 SEK; break-even price ≈ 2128 / (0.9 × (0.8 − 0.05)) ≈ 3153 SEK.
 nf_feed( 3000, array( 'REF000140' => array( 'PURCHASE_PRICE' => '176.00', 'STOCK' => '5' ) ) );
 run( array( 'force_feed' => true ) );
-$lg = mk( 'Loss guard', 'LG-1', '', true, 0 );
+$lg = p( mk( 'Loss guard', 'LG-1', '', true, 0 ) ); // mk() returns the product ID.
 $lg->set_regular_price( '4990' );
 $lg->set_sale_price( '' );
 $lg->save();
@@ -57,7 +57,7 @@ $x->save();
 run( array( 'only_link_id' => (int) URME_SS_DB::get_link( key_of( 140 ) )['id'] ) );
 ok( 5 === (int) p( $lg->get_id() )->get_stock_quantity(), '1.6.8: profit ≈ 565 kr (>= 500 kr): stays in stock' );
 
-// 1.6.9 "Auto …98" above the regular price raises the regular price (and removes a sale price) instead of refusing.
+// 1.9.6 "Auto …98" sets the sale (discount) price only; the regular (recommended) price is never changed by it.
 $x = p( $lg->get_id() );
 $x->set_regular_price( '2990' );
 $x->set_sale_price( '2490' );
@@ -65,18 +65,20 @@ $x->save();
 $a98 = URME_SS_Price_Hint::price_98( 176, URME_SS_Price_Hint::context() );
 $r   = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
 $x   = p( $lg->get_id() );
-ok( 'success' === $r[1] && (string) $a98 === $x->get_regular_price() && '' === $x->get_sale_price(), "1.6.9: Auto {$a98} kr above regular 2 990 kr → regular price {$a98} kr, sale price removed", $r );
+ok( 'error' === $r[1] && '2990' === $x->get_regular_price() && '2490' === $x->get_sale_price(), "1.9.6: Auto {$a98} kr above regular 2 990 kr → refused (raise Regular first), prices unchanged", $r );
 $x->set_regular_price( '9990' );
 $x->save();
 $r = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
 $x = p( $lg->get_id() );
 ok( '9990' === $x->get_regular_price() && (string) $a98 === $x->get_sale_price(), '   Auto below the regular price 9 990 kr → sale price, regular kept', $r );
 $x->set_regular_price( (string) $a98 );
-$x->set_sale_price( (string) $a98 );
+$x->set_sale_price( '' );
 $x->save();
 $r = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
 $x = p( $lg->get_id() );
-ok( 'info' === $r[1] && (string) $a98 === $x->get_regular_price() && '' === $x->get_sale_price(), '   Auto equal to the regular price → no sale equal to the regular price, nothing else changed', $r );
+ok( 'error' === $r[1] && (string) $a98 === $x->get_regular_price() && '' === $x->get_sale_price(), '   Auto equal to the regular price → refused (a sale must be below Regular), prices unchanged', $r );
+$html = admin( 'catalog_row_html', key_of( 140 ) );
+ok( false !== strpos( $html, 'class="button button-small button-primary urme-auto98" data-price="' . $a98 . '"' ), '   Auto button carries its price for the browser (fills the Sale price field)' );
 
 // Turned off: the supplier stock is synced whatever the price.
 settings( array( 'loss_out_of_stock' => 0 ) );

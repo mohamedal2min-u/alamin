@@ -18,6 +18,31 @@
 		}
 	} );
 
+	// "Auto …98" fills the Sale price field only (the discount); nothing is saved until Save,
+	// so the regular (recommended) price can be set first.
+	$( document ).on( 'click', '#urme-select-form button.urme-auto98', function ( e ) {
+		var $btn = $( this ),
+			$tr = $btn.closest( 'tr' ),
+			$edit = $tr.find( '.urme-price-edit' ),
+			$sale = $edit.find( 'input[name^="sale_price"]' ),
+			$reg = $edit.find( 'input[name^="regular_price"]' ),
+			price = parseInt( $btn.data( 'price' ), 10 ),
+			reg;
+		if ( ! $sale.length || ! price ) {
+			return; // Server fallback.
+		}
+		e.preventDefault();
+		e.stopImmediatePropagation();
+		$sale.val( price ).trigger( 'focus' );
+		reg = parseFloat( String( $reg.val() || '' ).replace( /[\s\u00a0]/g, '' ).replace( ',', '.' ) );
+		if ( ! reg || reg <= price ) {
+			rowMessage( $tr, 'Sale price set to ' + price + ' kr. Enter a higher Regular (recommended) price, then Save.', 'ok' );
+			$reg.trigger( 'focus' ).trigger( 'select' );
+		} else {
+			rowMessage( $tr, 'Sale price set to ' + price + ' kr. Press Save to apply.', 'ok' );
+		}
+	} );
+
 	// Per-row catalog actions (Save sale price, Dropshipping, URME Lager, Sync now)
 	// run over AJAX: the server does the work and returns the row re-rendered from current data.
 	// Without JavaScript the buttons still submit the catalog form (same server logic).

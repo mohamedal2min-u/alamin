@@ -10,7 +10,7 @@
 		refresh();
 	} );
 
-	// Enter in a catalog sale price field saves that row (not the bulk selection).
+	// Enter in a catalog price field (regular or sale) saves that row (not the bulk selection).
 	$( document ).on( 'keydown', '#urme-select-form .urme-price-edit input', function ( e ) {
 		if ( 13 === e.which ) {
 			e.preventDefault();
@@ -44,7 +44,12 @@
 		}
 		data = { action: 'urme_ss_row', nonce: cfg.nonce, row_action: action };
 		if ( isSale ) {
-			data.sale_price = $btn.closest( '.urme-price-edit' ).find( 'input' ).val();
+			var $edit = $btn.closest( '.urme-price-edit' ),
+				$reg = $edit.find( 'input[name^="regular_price"]' );
+			data.sale_price = $edit.find( 'input[name^="sale_price"]' ).val();
+			if ( $reg.length ) {
+				data.regular_price = $reg.val();
+			}
 		}
 		$tr.data( 'urmeBusy', true ).addClass( 'urme-busy' );
 		var $controls = $tr.find( 'button, .urme-price-edit input' ).prop( 'disabled', true );

@@ -106,7 +106,7 @@ ok( array() === pa_badges( ca_row( $html, 'REF000192' ) ) && array() === pa_badg
 
 section( 'PA5–10. Manual sale price: 4490 → 4290' );
 $r = ca_row( $html, 'REF000180' );
-ok( false !== strpos( ff_text( $r ), 'Regular: 4,990 kr' ) && false !== strpos( $r, 'name="sale_price[' . key_of( 180 ) . ']" value="4490"' ) && false !== strpos( $r, 'value="sale|' . key_of( 180 ) . '"' ), 'catalog row: Regular 4,990 kr (read-only), Sale price [4490] [Save]' );
+ok( false !== strpos( $r, 'name="regular_price[' . key_of( 180 ) . ']" value="4990"' ) && false !== strpos( $r, 'name="sale_price[' . key_of( 180 ) . ']" value="4490"' ) && false !== strpos( $r, 'value="sale|' . key_of( 180 ) . '"' ), 'catalog row: Regular [4990], Sale price [4490] [Save]' );
 ok( false === strpos( ca_row( $html, 'REF000192' ), 'sale_price[' ) && false === strpos( ca_row( $html, 'REF000198' ), 'sale_price[' ), '   no editor for Not in URME / Needs review' );
 ok( false !== strpos( ca_row( $html, 'REF000234' ), 'sale_price[' . key_of( 234 ) . ']' ), '   editor also for a Paused product' );
 $before = pa_snapshot( $Z0, 180 );

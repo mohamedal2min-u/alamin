@@ -61,7 +61,7 @@
 .urme-ss .urme-warn { color: #996800; }
 .urme-ss .urme-price-edit { margin-top: 8px; padding-top: 6px; border-top: 1px solid #f0f0f1; font-size: 12px; }
 .urme-ss .urme-price-sale { display: flex; align-items: center; gap: 4px; margin-top: 2px; white-space: nowrap; }
-.urme-ss .urme-price-sale label { display: inline-flex; align-items: center; gap: 4px; }
+.urme-ss .urme-price-sale label { display: inline-grid; grid-template-columns: 58px auto; align-items: center; gap: 4px; }
 .urme-ss .urme-price-edit input { width: 72px; min-height: 26px; line-height: 1.4; padding: 0 6px; font-size: 12px; }
 .urme-ss .urme-busy { opacity: .6; }
 .urme-ss .urme-row-msg { margin-top: 4px; font-size: 12px; line-height: 1.4; }

@@ -157,6 +157,24 @@ $r = ax_key( 'sale', 258, array( 'sale_price' => '4991' ) );
 ok( false === $r['success'] && '' === p( $A0 )->get_sale_price(), '8. 4,991 above regular 4,990 rejected', $r['data'] );
 $r = ax_key( 'sale', 258, array( 'sale_price' => '4490' ) );
 ok( true === $r['success'] && '4490' === p( $A0 )->get_sale_price(), '   back to 4490' );
+// 1.9.6: regular (recommended) price editable in the same row, saved together with the sale price.
+$r = ax_key( 'sale', 258, array( 'regular_price' => '5498', 'sale_price' => '4490' ) );
+ok( true === $r['success'] && '5498' === p( $A0 )->get_regular_price() && '4490' === p( $A0 )->get_sale_price() && '4490' === p( $A0 )->get_price(), 'RP1. regular 4,990 → 5,498 with sale 4,490 kept: ' . $r['data']['message'], $r['data'] );
+ok( false !== strpos( $r['data']['row_html'], 'name="regular_price[' . key_of( 258 ) . ']" value="5498"' ), 'RP2. returned row shows regular 5498' );
+$r = ax_key( 'sale', 258, array( 'regular_price' => '4398', 'sale_price' => '4490' ) );
+ok( false === $r['success'] && '5498' === p( $A0 )->get_regular_price() && '4490' === p( $A0 )->get_sale_price(), 'RP3. regular below the sale price rejected; nothing changed', $r['data'] );
+$r = ax_key( 'sale', 258, array( 'regular_price' => '', 'sale_price' => '4490' ) );
+ok( false === $r['success'] && '5498' === p( $A0 )->get_regular_price(), 'RP4. empty regular price rejected', $r['data'] );
+foreach ( array( 'abc', '0', '-5' ) as $bad ) {
+	$r = ax_key( 'sale', 258, array( 'regular_price' => $bad, 'sale_price' => '4490' ) );
+	ok( false === $r['success'] && '5498' === p( $A0 )->get_regular_price(), 'RP5. invalid regular "' . $bad . '" rejected', $r['data'] );
+}
+$r = ax_key( 'sale', 258, array( 'regular_price' => '4998', 'sale_price' => '' ) );
+ok( true === $r['success'] && '4998' === p( $A0 )->get_regular_price() && '' === p( $A0 )->get_sale_price() && '4998' === p( $A0 )->get_price(), 'RP6. regular 4,998 and sale removed in one save', $r['data'] );
+$r = ax_key( 'sale', 258, array( 'regular_price' => '4998', 'sale_price' => '' ) );
+ok( 'info' === $r['data']['type'], 'RP7. same values again: nothing saved', $r['data'] );
+$r = ax_key( 'sale', 258, array( 'regular_price' => '4990', 'sale_price' => '4490' ) );
+ok( true === $r['success'] && '4990' === p( $A0 )->get_regular_price() && '4490' === p( $A0 )->get_sale_price(), '   back to regular 4,990 / sale 4,490', $r['data'] );
 $v2_before = p( $ZV2 )->get_sale_price();
 $parent    = array( p( $VP )->get_regular_price(), p( $VP )->get_sale_price() );
 $r         = ax_key( 'sale', 210, array( 'sale_price' => '3190' ) );

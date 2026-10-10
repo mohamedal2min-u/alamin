@@ -118,7 +118,8 @@ class URME_SS_Admin {
 		if ( 'sale' === $op ) {
 			$key    = $arg;
 			$raw    = ( isset( $post['sale_price'] ) && is_scalar( $post['sale_price'] ) ) ? sanitize_text_field( (string) $post['sale_price'] ) : null;
-			$result = self::save_sale_price( $key, $raw );
+			$reg    = ( isset( $post['regular_price'] ) && is_scalar( $post['regular_price'] ) ) ? sanitize_text_field( (string) $post['regular_price'] ) : null;
+			$result = self::save_sale_price( $key, $raw, $reg );
 		} elseif ( in_array( $op, array( 'start_supplier', 'start_local', 'dropship', 'lager', 'resume', 'sync', 'auto98' ), true ) ) {
 			$key    = in_array( $op, array( 'dropship', 'lager', 'resume', 'sync' ), true ) ? (string) ( URME_SS_DB::get_link_by_id( absint( $arg ) )['item_key'] ?? '' ) : $arg;
 			$result = self::run_row_action( $action );
@@ -186,9 +187,16 @@ class URME_SS_Admin {
 			// Manual sale price of one row: only that row's input is used.
 			$key        = substr( $row_action, 5 );
 			$raw        = wp_unslash( $_POST['sale_price'][ $key ] ?? null );
+			$reg        = wp_unslash( $_POST['regular_price'][ $key ] ?? null );
 			$row_action = '';
 			$do         = '';
-			self::notice_result( self::save_sale_price( $key, null === $raw ? null : sanitize_text_field( (string) $raw ) ) );
+			self::notice_result(
+				self::save_sale_price(
+					$key,
+					null === $raw ? null : sanitize_text_field( (string) $raw ),
+					null === $reg ? null : sanitize_text_field( (string) $reg )
+				)
+			);
 		}
 		if ( '' !== $row_action ) {
 			self::notice_result( self::run_row_action( $row_action ) );
@@ -624,16 +632,18 @@ class URME_SS_Admin {
 	}
 
 	/**
-	 * Manual sale price edit (never done by supplier sync). Only the sale price of the exact
-	 * product or variation is changed, through the WooCommerce product API. Empty = remove the sale.
+	 * Manual price edit (never done by supplier sync): the sale price and, when sent, the regular
+	 * (recommended) price of the exact product or variation, through the WooCommerce product API,
+	 * saved together or not at all. Empty sale = remove the sale; the regular price cannot be emptied.
 	 *
-	 * @param string      $item_key Supplier item whose confirmed product is edited.
-	 * @param string|null $raw      Posted value.
+	 * @param string      $item_key    Supplier item whose confirmed product is edited.
+	 * @param string|null $raw         Posted sale price.
+	 * @param string|null $raw_regular Posted regular price; null when the form did not send one.
 	 * @return array{0: string, 1: string} Message and notice type.
 	 */
-	private static function save_sale_price( $item_key, $raw ) {
-		if ( null === $raw ) {
-			return array( 'No sale price was sent; nothing was changed.', 'error' );
+	private static function save_sale_price( $item_key, $raw, $raw_regular = null ) {
+		if ( null === $raw && null === $raw_regular ) {
+			return array( 'No price was sent; nothing was changed.', 'error' );
 		}
 		$pid = self::confirmed_product_id( (string) $item_key );
 		if ( ! $pid ) {
@@ -646,33 +656,83 @@ class URME_SS_Admin {
 		if ( $product->is_type( array( 'variable', 'grouped' ) ) ) {
 			return array( sprintf( '"%s" has no price of its own (it is a %s product); edit a single variation instead.', $product->get_name(), $product->get_type() ), 'error' );
 		}
-		$name    = $product->get_name();
-		$regular = (string) $product->get_regular_price();
-		$old     = (string) $product->get_sale_price();
-		$value   = str_replace( array( ' ', "\xc2\xa0", ',' ), array( '', '', '.' ), trim( $raw ) );
+		$name     = $product->get_name();
+		$old_reg  = (string) $product->get_regular_price();
+		$old      = (string) $product->get_sale_price();
+		$clean    = static function ( $v ) {
+			return str_replace( array( ' ', "\xc2\xa0", ',' ), array( '', '', '.' ), trim( (string) $v ) );
+		};
+		$is_price = static function ( $v ) {
+			return (bool) preg_match( '/^\d+(\.\d{1,2})?$/', $v );
+		};
 
-		if ( '' === $value ) {
-			if ( '' === $old ) {
+		// Regular (recommended) price: only when sent and different.
+		$regular = $old_reg;
+		if ( null !== $raw_regular ) {
+			$rv = $clean( $raw_regular );
+			if ( '' === $rv ) {
+				if ( '' !== $old_reg ) {
+					return array( sprintf( 'The regular price of "%s" cannot be empty; nothing was changed.', $name ), 'error' );
+				}
+			} elseif ( ! $is_price( $rv ) || (float) $rv <= 0 ) {
+				return array( sprintf( 'Regular price "%s" is not valid: enter a number in SEK, e.g. 4998. Nothing was changed.', $raw_regular ), 'error' );
+			} elseif ( '' === $old_reg || abs( (float) $old_reg - (float) $rv ) >= 0.001 ) {
+				$regular = wc_format_decimal( $rv );
+			}
+		}
+		$reg_changed = $regular !== $old_reg;
+
+		// Sale price: null = keep the current one (it is checked against the new regular price).
+		$sale = $old;
+		if ( null !== $raw ) {
+			$value = $clean( $raw );
+			if ( '' !== $value && ! $is_price( $value ) ) {
+				return array( sprintf( 'Sale price "%s" is not valid: enter a number in SEK, e.g. 4290 or 4290.50. Nothing was changed.', $raw ), 'error' );
+			}
+			if ( '' === $value ) {
+				$sale = '';
+			} elseif ( '' === $old || abs( (float) $old - (float) $value ) >= 0.001 ) {
+				$sale = wc_format_decimal( $value );
+			}
+		}
+		if ( '' !== $sale && '' !== $regular && (float) $sale > (float) $regular ) {
+			return array( sprintf( 'Sale price %s kr is above the regular price %s kr of "%s"; nothing was changed.', wc_format_decimal( $sale, 2 ), wc_format_decimal( $regular, 2 ), $name ), 'error' );
+		}
+		$sale_changed = $sale !== $old;
+
+		if ( ! $reg_changed && ! $sale_changed ) {
+			if ( null !== $raw && '' === $clean( $raw ) && null === $raw_regular ) {
 				return array( sprintf( '"%s" has no sale price; nothing was changed.', $name ), 'info' );
 			}
-			$product->set_sale_price( '' );
-			$product->save();
-			URME_SS_Log::info( sprintf( 'Sale price of product #%d removed manually (was %s SEK); regular price %s SEK.', $pid, $old, '' === $regular ? '—' : $regular ) );
-			return array( sprintf( 'Sale price removed: "%s" now sells at its regular price%s.', $name, '' === $regular ? '' : ' of ' . wc_format_decimal( $regular, 2 ) . ' kr' ), 'success' );
+			if ( null === $raw_regular ) {
+				return array( sprintf( 'Sale price of "%s" is already %s kr; nothing was changed.', $name, wc_format_decimal( $old, 2 ) ), 'info' );
+			}
+			return array( sprintf( 'Prices of "%s" are unchanged; nothing was saved.', $name ), 'info' );
 		}
-		if ( ! preg_match( '/^\d+(\.\d{1,2})?$/', $value ) ) {
-			return array( sprintf( 'Sale price "%s" is not valid: enter a number in SEK, e.g. 4290 or 4290.50. Nothing was changed.', $raw ), 'error' );
+		if ( $reg_changed ) {
+			$product->set_regular_price( $regular );
 		}
-		if ( '' !== $regular && (float) $value > (float) $regular ) {
-			return array( sprintf( 'Sale price %s kr is above the regular price %s kr of "%s"; nothing was changed.', $value, wc_format_decimal( $regular, 2 ), $name ), 'error' );
+		if ( $sale_changed ) {
+			$product->set_sale_price( $sale );
 		}
-		if ( '' !== $old && abs( (float) $old - (float) $value ) < 0.001 ) {
-			return array( sprintf( 'Sale price of "%s" is already %s kr; nothing was changed.', $name, wc_format_decimal( $old, 2 ) ), 'info' );
-		}
-		$product->set_sale_price( wc_format_decimal( $value ) );
 		$product->save();
-		URME_SS_Log::info( sprintf( 'Sale price of product #%d changed manually: %s → %s SEK (regular %s SEK).', $pid, '' === $old ? '—' : $old, wc_format_decimal( $value ), '' === $regular ? '—' : $regular ) );
-		return array( sprintf( 'Sale price of "%s" saved: %s kr%s.', $name, wc_format_decimal( $value, 2 ), '' === $regular ? '' : ' (regular ' . wc_format_decimal( $regular, 2 ) . ' kr)' ), 'success' );
+
+		$parts = array();
+		if ( $reg_changed ) {
+			$parts[] = sprintf( 'regular %s → %s SEK', '' === $old_reg ? '—' : $old_reg, $regular );
+		}
+		if ( $sale_changed ) {
+			$parts[] = sprintf( 'sale %s → %s SEK', '' === $old ? '—' : $old, '' === $sale ? '—' : $sale );
+		}
+		URME_SS_Log::info( sprintf( 'Prices of product #%d changed manually: %s.', $pid, implode( ', ', $parts ) ) );
+
+		if ( ! $reg_changed ) {
+			if ( '' === $sale ) {
+				return array( sprintf( 'Sale price removed: "%s" now sells at its regular price%s.', $name, '' === $regular ? '' : ' of ' . wc_format_decimal( $regular, 2 ) . ' kr' ), 'success' );
+			}
+			return array( sprintf( 'Sale price of "%s" saved: %s kr%s.', $name, wc_format_decimal( $sale, 2 ), '' === $regular ? '' : ' (regular ' . wc_format_decimal( $regular, 2 ) . ' kr)' ), 'success' );
+		}
+		return array( sprintf( 'Prices of "%s" saved: regular %s kr, %s.', $name, wc_format_decimal( $regular, 2 ), '' === $sale ? 'no sale price' : 'sale ' . wc_format_decimal( $sale, 2 ) . ' kr' ), 'success' );
 	}
 
 	private static function notice_result( array $result ) {
@@ -1260,8 +1320,9 @@ class URME_SS_Admin {
 	}
 
 	/**
-	 * Manual sale price editor for the row's confirmed product (inside the catalog form; the
-	 * input is keyed by supplier item so each row's Save only sends its own value).
+	 * Manual price editor for the row's confirmed product: regular (recommended) price and sale
+	 * price, saved together (inside the catalog form; the inputs are keyed by supplier item so
+	 * each row's Save only sends its own values).
 	 */
 	private static function sale_editor( array $row, $info ) {
 		if ( ! $info || $info['variable'] || ! self::urme_product_id( $row ) ) {
@@ -1269,8 +1330,9 @@ class URME_SS_Admin {
 		}
 		$key = (string) $row['item_key'];
 		return sprintf(
-			'<div class="urme-price-edit"><small class="urme-muted">Regular: %s</small><div class="urme-price-sale"><label>Sale price <input type="text" name="sale_price[%s]" value="%s" size="7" inputmode="decimal" autocomplete="off" aria-label="Sale price (SEK)" placeholder="—"></label> %s</div>%s</div>',
-			esc_html( '' === $info['regular'] ? '—' : self::kr( $info['regular'] ) ),
+			'<div class="urme-price-edit"><div class="urme-price-sale"><label>Regular <input type="text" name="regular_price[%s]" value="%s" size="7" inputmode="decimal" autocomplete="off" aria-label="Regular (recommended) price (SEK)" placeholder="—"></label></div><div class="urme-price-sale"><label>Sale price <input type="text" name="sale_price[%s]" value="%s" size="7" inputmode="decimal" autocomplete="off" aria-label="Sale price (SEK)" placeholder="—"></label> %s</div>%s</div>',
+			esc_attr( $key ),
+			esc_attr( $info['regular'] ),
 			esc_attr( $key ),
 			esc_attr( $info['sale'] ),
 			self::row_button( 'sale|' . $key, 'Save', 'button button-small' ),

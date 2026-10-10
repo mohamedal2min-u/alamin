@@ -1195,7 +1195,8 @@ class URME_SS_Admin {
 			<td class="num urme-cost-col"><div class="urme-own"><?php echo esc_html( self::eur( $row['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $row['purchase_price'] ? null : URME_SS_Rates::to_sek( $row['purchase_price'] ) ) ); ?></span></div><?php foreach ( $alts as $o ) : ?><div class="urme-alt"><?php echo esc_html( self::eur( $o['purchase_price'] ) ); ?><?php echo self::cheapest_tag( $row, $o['item_key'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?><br><span class="urme-muted"><?php echo esc_html( self::sek( null === $o['purchase_price'] ? null : URME_SS_Rates::to_sek( $o['purchase_price'] ) ) ); ?></span></div><?php endforeach; ?></td>
 			<?php $row_hint = URME_SS_Suppliers::hint( $hint, URME_SS_Suppliers::of_key( $row['item_key'] ) ); ?>
 			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $row['purchase_price'], $row_hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-			<td class="urme-match-col"><?php echo self::match_cell( $row ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+			<?php $row_info = $stock[ self::urme_product_id( $row ) ] ?? null; ?>
+			<td class="urme-match-col"><?php echo self::match_cell( $row ) . ( $row_info && ! $row_info['variable'] ? self::rrp_picks( $row, $row_info['regular'] ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<td class="urme-sync-col">
 				<?php
 				// State on the first line, its buttons on one row below, then the sale price editor.
@@ -1321,16 +1322,18 @@ class URME_SS_Admin {
 			esc_attr( $key ),
 			esc_attr( $info['sale'] ),
 			self::row_button( 'sale|' . $key, 'Save', 'button button-small' ),
-			self::rrp_picks( $row ) . self::auto98_button( $row )
+			self::auto98_button( $row )
 		);
 	}
 
 	/**
 	 * The suppliers' recommended retail prices (EUR) in SEK at today's rate, rounded to the
 	 * nearest price ending in 98, as small buttons. A click saves it as the Regular price at once
-	 * (the sale price is kept). One button per supplier (this row's and the other suppliers' offers).
+	 * (the sale price is kept). One button per supplier (this row's and the other suppliers' offers),
+	 * shown under the store product in the "In store" column; the one equal to the current Regular
+	 * price is marked.
 	 */
-	private static function rrp_picks( array $row ) {
+	private static function rrp_picks( array $row, $regular = '' ) {
 		static $rate = false;
 		if ( false === $rate ) {
 			$r    = URME_SS_Rates::current();
@@ -1350,14 +1353,15 @@ class URME_SS_Admin {
 			$seen[ $sup ] = true;
 			$sek = self::round_98( $eur * $rate );
 			$out .= sprintf(
-				'<button type="button" class="urme-rrp-pick" data-price="%1$d" title="%2$s">%3$s %4$s</button>',
+				'<button type="button" class="urme-rrp-pick%5$s" data-price="%1$d" title="%2$s">%3$s %4$s</button>',
 				$sek,
 				esc_attr( sprintf( 'Recommended price from %s: %s EUR × %s = %s kr. Click to save it as the Regular price.', URME_SS_Suppliers::name( $sup ), number_format_i18n( $eur, 2 ), number_format_i18n( $rate, 4 ), number_format_i18n( $sek ) ) ),
 				URME_SS_Suppliers::flag( $sup ),
-				esc_html( number_format_i18n( $sek ) . ' kr' )
+				esc_html( number_format_i18n( $sek ) . ' kr' ),
+				(int) round( (float) $regular ) === $sek ? ' is-picked' : ''
 			);
 		}
-		return $out ? '<div class="urme-rrp-picks"><small class="urme-muted">Rek. pris:</small> ' . $out . '</div>' : '';
+		return $out ? '<div class="urme-rrp-picks"><small class="urme-muted">Rek. pris (leverantör)</small>' . $out . '</div>' : '';
 	}
 
 	/**

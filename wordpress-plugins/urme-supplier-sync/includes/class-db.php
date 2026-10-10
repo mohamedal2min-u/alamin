@@ -236,8 +236,20 @@ class URME_SS_DB {
 	}
 
 	public static function maybe_upgrade() {
-		if ( get_option( 'urme_ss_db_version' ) !== URME_SS_DB_VERSION ) {
+		$from = (string) get_option( 'urme_ss_db_version' );
+		if ( $from !== URME_SS_DB_VERSION ) {
 			self::install();
+			// 1.9.7 (DB 6) started storing the suppliers' recommended prices: forget each feed's last
+			// download once so the next run reads the feeds again instead of "unchanged (304)".
+			if ( '' !== $from && version_compare( $from, '7', '<' ) && URME_SS_DB_VERSION === get_option( 'urme_ss_db_version' ) ) {
+				foreach ( URME_SS_Suppliers::ids() as $supplier ) {
+					$state = get_option( URME_SS_Feed::state_option( $supplier ) );
+					if ( is_array( $state ) ) {
+						unset( $state['etag'], $state['last_modified'], $state['md5'] );
+						update_option( URME_SS_Feed::state_option( $supplier ), $state, false );
+					}
+				}
+			}
 		}
 		// 1.7.0: one-time backfill of the public `urme_fulfillment` product meta.
 		if ( '1' !== get_option( 'urme_ss_fulfillment_meta' ) && URME_SS_DB_VERSION === get_option( 'urme_ss_db_version' ) ) {

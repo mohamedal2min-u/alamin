@@ -96,7 +96,17 @@ $rrp_row = URME_SS_DB::get_item( key_of( 140 ) );
 ok( abs( (float) $rrp_row['rrp'] - 189 ) < 0.001, 'Relojitos XML: RECOMMENDER_RETAIL_PRICE 189,00 stored as rrp 189 EUR', $rrp_row['rrp'] );
 $rrp_html = admin( 'catalog_row_html', key_of( 140 ) );
 $rrp_sek  = URME_SS_Admin::round_98( 189 * (float) URME_SS_Rates::current()['rate'] );
-ok( false !== strpos( $rrp_html, 'class="urme-rrp-pick" data-price="' . $rrp_sek . '"' ), "catalog row offers the recommended price as {$rrp_sek} kr (189 EUR at today's rate, …98)" );
+ok( (bool) preg_match( '/class="urme-rrp-pick(?: is-picked)?" data-price="' . $rrp_sek . '"/', $rrp_html ), "catalog row offers the recommended price as {$rrp_sek} kr (189 EUR at today's rate, …98)" );
+ok( (bool) preg_match( '#<td class="urme-match-col">.*?urme-rrp-picks.*?</td>#s', $rrp_html ) && ! preg_match( '#<td class="urme-sync-col">.*?urme-rrp-picks.*?</td>#s', $rrp_html ), '   the picks sit in the "In store" column, not in the Sync column' );
+// 1.9.8 Upgrading from database v6 forgets each feed's last download once, so the next run reads it again.
+update_option( URME_SS_Feed::state_option( 'relo' ), array( 'etag' => '"x"', 'last_modified' => 'Mon', 'md5' => 'abc', 'categories' => 'WATCH' ), false );
+update_option( 'urme_ss_db_version', '6', true );
+URME_SS_DB::maybe_upgrade();
+$up_state = get_option( URME_SS_Feed::state_option( 'relo' ) );
+ok( URME_SS_DB_VERSION === get_option( 'urme_ss_db_version' ) && ! isset( $up_state['etag'], $up_state['md5'] ) && ! isset( $up_state['last_modified'] ) && 'WATCH' === $up_state['categories'], 'DB 6 → 7: feed etag/md5 cleared once (categories kept), so the feeds are read again', $up_state );
+update_option( URME_SS_Feed::state_option( 'relo' ), array( 'etag' => '"y"', 'md5' => 'def', 'categories' => 'WATCH' ), false );
+URME_SS_DB::maybe_upgrade();
+ok( '"y"' === get_option( URME_SS_Feed::state_option( 'relo' ) )['etag'], '   only once: a later load keeps the feed state' );
 $x_before = array( p( $lg->get_id() )->get_regular_price(), p( $lg->get_id() )->get_sale_price() );
 ok( $x_before === array( p( $lg->get_id() )->get_regular_price(), p( $lg->get_id() )->get_sale_price() ), '   showing it changes no price (a click only fills the Regular field)' );
 $csv = wp_tempnam( 'ila' );

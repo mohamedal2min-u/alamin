@@ -138,7 +138,8 @@
 .urme-ss .urme-hint-now.urme-warn .urme-profit-badge { background: #fcf3dc; color: #8a6100; }
 .urme-ss .urme-hint-now.urme-bad .urme-profit-badge { background: #fcebeb; color: #b32d2e; }
 .urme-ss .urme-hint-now small { font-size: 11px; opacity: .8; }
-.urme-ss .urme-rrp-picks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
-.urme-ss .urme-rrp-pick { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border: 1px solid #c3c4c7; border-radius: 4px; background: #fff; font-size: 12px; line-height: 1.6; cursor: pointer; white-space: nowrap; }
+.urme-ss .urme-rrp-picks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #dcdcde; }
+.urme-ss .urme-rrp-picks > small { flex-basis: 100%; }
+.urme-ss .urme-rrp-pick { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid #c3c4c7; border-radius: 4px; background: #fff; font-size: 13px; font-weight: 600; line-height: 1.6; cursor: pointer; white-space: nowrap; }
 .urme-ss .urme-rrp-pick:hover { border-color: #2271b1; color: #2271b1; }
 .urme-ss .urme-rrp-pick.is-picked { border-color: #2271b1; background: #f0f6fc; }

@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.9.7
+Stable tag: 1.9.8
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -224,6 +224,12 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.9.8 =
+* Supplier catalog: the recommended-price buttons (one per supplier, SEK ending in 98) now sit in
+  the "In store" column under the store product; the one equal to the current Regular price is marked.
+* Database v7: each feed is read again once after the update, so the recommended prices get filled
+  (an unchanged feed answered HTTP 304 and was never read again).
 
 = 1.9.7 =
 * The suppliers' recommended retail prices are read from the feeds (Relojitos XML

@@ -1327,8 +1327,8 @@ class URME_SS_Admin {
 
 	/**
 	 * The suppliers' recommended retail prices (EUR) in SEK at today's rate, rounded to the
-	 * nearest price ending in 98, as small buttons. A click fills the Regular field only;
-	 * nothing is saved until Save. One button per supplier (this row's and the other suppliers' offers).
+	 * nearest price ending in 98, as small buttons. A click saves it as the Regular price at once
+	 * (the sale price is kept). One button per supplier (this row's and the other suppliers' offers).
 	 */
 	private static function rrp_picks( array $row ) {
 		static $rate = false;
@@ -1352,7 +1352,7 @@ class URME_SS_Admin {
 			$out .= sprintf(
 				'<button type="button" class="urme-rrp-pick" data-price="%1$d" title="%2$s">%3$s %4$s</button>',
 				$sek,
-				esc_attr( sprintf( 'Recommended price from %s: %s EUR × %s = %s kr. Click to put it in Regular, then Save.', URME_SS_Suppliers::name( $sup ), number_format_i18n( $eur, 2 ), number_format_i18n( $rate, 4 ), number_format_i18n( $sek ) ) ),
+				esc_attr( sprintf( 'Recommended price from %s: %s EUR × %s = %s kr. Click to save it as the Regular price.', URME_SS_Suppliers::name( $sup ), number_format_i18n( $eur, 2 ), number_format_i18n( $rate, 4 ), number_format_i18n( $sek ) ) ),
 				URME_SS_Suppliers::flag( $sup ),
 				esc_html( number_format_i18n( $sek ) . ' kr' )
 			);

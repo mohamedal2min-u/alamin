@@ -229,7 +229,7 @@ or `wp cron event run --due-now` from the server.
 * The suppliers' recommended retail prices are read from the feeds (Relojitos XML
   RECOMMENDER_RETAIL_PRICE, ILA CSV regular_price) and stored per catalog row (database v6).
 * Supplier catalog: next to Regular, one button per supplier with its recommended price in SEK at
-  today's rate, rounded to the nearest price ending in 98. A click fills Regular; Save applies it.
+  today's rate, rounded to the nearest price ending in 98. A click saves it as the Regular price at once.
 
 = 1.9.6 =
 * Supplier catalog: the regular (recommended) price is editable next to the sale price and

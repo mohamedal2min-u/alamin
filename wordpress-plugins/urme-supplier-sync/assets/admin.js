@@ -33,29 +33,35 @@
 		$tr.find( '.urme-price-edit button[value^="sale|"]' ).trigger( 'click' );
 	} );
 
-	// "Auto …98" fills the Sale price field only (the discount); nothing is saved until Save,
-	// so the regular (recommended) price can be set first.
+	// "Auto …98" sets the Sale price (the discount) and saves it at once, with the Regular price in
+	// its field (same server checks as Save: it must stay below Regular).
 	$( document ).on( 'click', '#urme-select-form button.urme-auto98', function ( e ) {
 		var $btn = $( this ),
 			$tr = $btn.closest( 'tr' ),
 			$edit = $tr.find( '.urme-price-edit' ),
 			$sale = $edit.find( 'input[name^="sale_price"]' ),
-			$reg = $edit.find( 'input[name^="regular_price"]' ),
-			price = parseInt( $btn.data( 'price' ), 10 ),
-			reg;
+			price = parseInt( $btn.data( 'price' ), 10 );
 		if ( ! $sale.length || ! price ) {
 			return; // Server fallback.
 		}
 		e.preventDefault();
 		e.stopImmediatePropagation();
-		$sale.val( price ).trigger( 'focus' );
-		reg = parseFloat( String( $reg.val() || '' ).replace( /[\s\u00a0]/g, '' ).replace( ',', '.' ) );
-		if ( ! reg || reg <= price ) {
-			rowMessage( $tr, 'Sale price set to ' + price + ' kr. Enter a higher Regular (recommended) price, then Save.', 'ok' );
-			$reg.trigger( 'focus' ).trigger( 'select' );
-		} else {
-			rowMessage( $tr, 'Sale price set to ' + price + ' kr. Press Save to apply.', 'ok' );
+		$sale.val( price );
+		$edit.find( 'button[value^="sale|"]' ).trigger( 'click' );
+	} );
+
+	// A typed but unsaved price is lost on reload: mark the row and warn before leaving the page.
+	$( document ).on( 'input', '#urme-select-form .urme-price-edit input', function () {
+		$( this ).closest( 'tr' ).addClass( 'urme-unsaved' );
+	} );
+	$( window ).on( 'beforeunload', function ( e ) {
+		if ( $( '#urme-select-form tr.urme-unsaved' ).length && ! $form.data( 'urmeSubmitting' ) ) {
+			e.preventDefault();
+			return 'A price you typed is not saved yet.';
 		}
+	} );
+	$form.on( 'submit', function () {
+		$form.data( 'urmeSubmitting', true );
 	} );
 
 	// Per-row catalog actions (Save sale price, Dropshipping, URME Lager, Sync now)

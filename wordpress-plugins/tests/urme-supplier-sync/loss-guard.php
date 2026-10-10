@@ -108,6 +108,20 @@ $bh_relo = URME_SS_Price_Hint::calculate( 176, URME_SS_Suppliers::hint( $bh_ctx,
 $bh_html = admin( 'catalog_row_html', key_of( 140 ) );
 ok( preg_match( '#<td class="urme-hint-col">.*?<strong>' . preg_quote( number_format_i18n( $bh_ila ) . ' kr', '#' ) . '</strong>.*?urme-hint-src.*?</td>#s', $bh_html ) && $bh_ila < $bh_relo, "price hint from the cheaper ILA offer: {$bh_ila} kr, not {$bh_relo} kr from the row's own supplier, with its flag" );
 ok( false !== strpos( $bh_html, 'data-price="' . URME_SS_Price_Hint::price_98( 60, URME_SS_Suppliers::hint( $bh_ctx, 'ila' ) ) . '"' ), '   Auto uses the same cost (…98 of the ILA hint)' );
+// 1.10.0 Bulk price buttons for checked rows: highest recommended price as Regular, Auto as sale price.
+$wpdb->update( URME_SS_DB::catalog_table(), array( 'rrp' => 199 ), array( 'item_key' => $ila_key ) );
+$bk_pid  = admin( 'confirmed_product_id', key_of( 140 ) );
+$bk_rate = (float) URME_SS_Rates::current()['rate'];
+$bk_max  = max( URME_SS_Admin::round_98( 189 * $bk_rate ), URME_SS_Admin::round_98( 199 * $bk_rate ) );
+$bk_res  = admin( 'bulk_prices', array( key_of( 140 ), key_of( 140 ) ), 'rrp' );
+ok( 'success' === $bk_res[1] && (string) $bk_max === wc_get_product( $bk_pid )->get_regular_price(), "bulk Rek. pris: Regular = the highest of the suppliers' recommended prices ({$bk_max} kr), the product once", $bk_res );
+$bk_auto = URME_SS_Price_Hint::price_98( 60, URME_SS_Suppliers::hint( URME_SS_Price_Hint::context(), 'ila' ) );
+$bk_res  = admin( 'bulk_prices', array( key_of( 140 ) ), 'auto' );
+ok( 'success' === $bk_res[1] && (string) $bk_auto === wc_get_product( $bk_pid )->get_sale_price(), "bulk Auto: sale price {$bk_auto} kr from the cheaper supplier (ILA)", $bk_res );
+$bk_p = wc_get_product( $bk_pid ); $bk_p->set_sale_price( '' ); $bk_p->set_regular_price( (string) ( $bk_auto - 100 ) ); $bk_p->save();
+$bk_res  = admin( 'bulk_prices', array( key_of( 140 ) ), 'auto' );
+ok( 'error' === $bk_res[1] && '' === wc_get_product( $bk_pid )->get_sale_price(), '   bulk Auto refused when it is not below Regular (nothing changed)', $bk_res );
+ok( 'warning' === admin( 'bulk_prices', array(), 'auto' )[1], '   nothing checked: nothing changed' );
 $wpdb->update( URME_SS_DB::catalog_table(), array( 'stock' => 0 ), array( 'item_key' => $ila_key ) );
 $bh_html = admin( 'catalog_row_html', key_of( 140 ) );
 ok( false !== strpos( $bh_html, '<strong>' . number_format_i18n( $bh_relo ) . ' kr</strong>' ), '   ILA out of stock: the hint is from the row\'s own supplier again' );

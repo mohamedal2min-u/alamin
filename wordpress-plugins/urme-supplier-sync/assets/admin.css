@@ -143,3 +143,5 @@
 .urme-ss .urme-rrp-pick { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid #c3c4c7; border-radius: 4px; background: #fff; font-size: 13px; font-weight: 600; line-height: 1.6; cursor: pointer; white-space: nowrap; }
 .urme-ss .urme-rrp-pick:hover { border-color: #2271b1; color: #2271b1; }
 .urme-ss .urme-rrp-pick.is-picked { border-color: #2271b1; background: #f0f6fc; }
+.urme-ss .urme-bulk-prices { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: 16px; padding-left: 16px; border-left: 1px solid #dcdcde; }
+.urme-ss tr.urme-unsaved .urme-price-edit input { background: #fcf9e8; border-color: #dba617; }

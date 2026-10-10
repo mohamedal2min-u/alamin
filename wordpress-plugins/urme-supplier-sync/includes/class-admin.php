@@ -202,6 +202,12 @@ class URME_SS_Admin {
 			self::notice_result( self::run_row_action( $row_action ) );
 			$do = '';
 		}
+		$bulk_price = sanitize_key( $_POST['bulk_price'] ?? '' );
+		if ( in_array( $bulk_price, array( 'rrp', 'auto' ), true ) ) {
+			$keys = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['item_keys'] ?? array() ) );
+			self::notice_result( self::bulk_prices( $keys, $bulk_price ) );
+			$do = '';
+		}
 
 		switch ( $do ) {
 			case 'select':
@@ -603,7 +609,7 @@ class URME_SS_Admin {
 	 * "Auto …98" button: sets the sale (discount) price only; the regular (recommended) price is
 	 * never changed by it. At or above the regular price it is refused (raise Regular first;
 	 * WooCommerce drops a sale price that is not below the regular price).
-	 * In the catalog, JavaScript fills the Sale price field instead, so Regular can be set before Save.
+	 * In the catalog a click saves it at once (with the Regular price in its field).
 	 *
 	 * @param string $item_key Supplier item whose confirmed product is edited.
 	 * @param int    $price    Price ending in 98 (SEK).
@@ -1127,7 +1133,11 @@ class URME_SS_Admin {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="urme-select-form">
 			<?php echo self::hidden_fields( 'select' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<div class="tablenav top"><button type="submit" class="button button-primary urme-bulk" disabled>Select checked for sync</button>
-				<span class="description">Manual selection · URME stock 0 only · in store first, then most supplier stock.</span></div>
+				<span class="description">Manual selection · URME stock 0 only · in store first, then most supplier stock.</span>
+				<span class="urme-bulk-prices">Prices of checked:
+					<button type="submit" name="bulk_price" value="rrp" class="button urme-bulk" disabled title="Regular = the highest recommended price of the suppliers (SEK, ending in 98). The sale price is kept.">Rek. pris (highest)</button>
+					<button type="submit" name="bulk_price" value="auto" class="button urme-bulk" disabled title="Sale price = Auto (…98) from the supplier the watch is bought from now (the cheapest). Only when it is below Regular.">Auto sale price</button>
+				</span></div>
 			<table class="widefat urme-table urme-catalog-table">
 				<thead><tr>
 					<td class="check-column"><input type="checkbox" class="urme-check-all" aria-label="Select all"></td>
@@ -1351,26 +1361,115 @@ class URME_SS_Admin {
 		if ( ! $rate ) {
 			return '';
 		}
-		$seen = array();
-		$out  = '';
-		foreach ( array_merge( array( $row ), self::$others[ $row['item_key'] ] ?? array() ) as $r ) {
-			$sup = URME_SS_Suppliers::of_key( (string) $r['item_key'] );
-			$eur = isset( $r['rrp'] ) && null !== $r['rrp'] ? (float) $r['rrp'] : 0;
-			if ( $eur <= 0 || isset( $seen[ $sup ] ) ) {
-				continue;
-			}
-			$seen[ $sup ] = true;
-			$sek = self::round_98( $eur * $rate );
+		$out = '';
+		foreach ( self::rrp_list( $row ) as $sup => $sek ) {
+			$eur  = $sek / $rate;
 			$out .= sprintf(
 				'<button type="button" class="urme-rrp-pick%5$s" data-price="%1$d" title="%2$s">%3$s %4$s</button>',
 				$sek,
-				esc_attr( sprintf( 'Recommended price from %s: %s EUR × %s = %s kr. Click to save it as the Regular price.', URME_SS_Suppliers::name( $sup ), number_format_i18n( $eur, 2 ), number_format_i18n( $rate, 4 ), number_format_i18n( $sek ) ) ),
+				esc_attr( sprintf( 'Recommended price from %s: about %s EUR at %s, nearest …98 = %s kr. Click to save it as the Regular price.', URME_SS_Suppliers::name( $sup ), number_format_i18n( $eur, 2 ), number_format_i18n( $rate, 4 ), number_format_i18n( $sek ) ) ),
 				URME_SS_Suppliers::flag( $sup ),
 				esc_html( number_format_i18n( $sek ) . ' kr' ),
 				(int) round( (float) $regular ) === $sek ? ' is-picked' : ''
 			);
 		}
 		return $out ? '<div class="urme-rrp-picks"><small class="urme-muted">Rek. pris (leverantör)</small>' . $out . '</div>' : '';
+	}
+
+	/**
+	 * The suppliers' recommended prices for one watch: supplier => SEK (today's rate, nearest …98),
+	 * from this row and the same watch at the other suppliers (self::$others).
+	 *
+	 * @return array<string, int>
+	 */
+	private static function rrp_list( array $row ) {
+		$r    = URME_SS_Rates::current();
+		$rate = $r ? (float) $r['rate'] : 0;
+		$out  = array();
+		if ( $rate <= 0 ) {
+			return $out;
+		}
+		foreach ( array_merge( array( $row ), self::$others[ $row['item_key'] ] ?? array() ) as $o ) {
+			$sup = URME_SS_Suppliers::of_key( (string) $o['item_key'] );
+			$eur = isset( $o['rrp'] ) && null !== $o['rrp'] ? (float) $o['rrp'] : 0;
+			if ( $eur > 0 && ! isset( $out[ $sup ] ) ) {
+				$out[ $sup ] = self::round_98( $eur * $rate );
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Bulk price buttons for the checked catalog rows, one product once:
+	 * "rrp"  = Regular becomes the highest recommended price of the suppliers (sale price kept),
+	 * "auto" = Sale price becomes Auto (…98) from the supplier the watch is bought from now.
+	 * Each product goes through the same checks as a single Save (sale below regular, …).
+	 *
+	 * @param string[] $keys Checked item keys.
+	 * @param string   $mode rrp|auto.
+	 * @return array{0: string, 1: string}
+	 */
+	private static function bulk_prices( array $keys, $mode ) {
+		$keys = array_values( array_unique( array_filter( $keys ) ) );
+		if ( ! $keys ) {
+			return array( 'Check at least one watch first; nothing was changed.', 'warning' );
+		}
+		$rows = array();
+		foreach ( $keys as $k ) {
+			$item = URME_SS_DB::get_item( $k );
+			if ( $item ) {
+				$rows[] = $item;
+			}
+		}
+		self::$others = URME_SS_DB::other_sources( $rows );
+		$ctx  = URME_SS_Price_Hint::context();
+		$done = array();
+		$ok   = 0;
+		$same = 0;
+		$fail = array();
+		foreach ( $rows as $row ) {
+			$pid = self::confirmed_product_id( (string) $row['item_key'] );
+			if ( ! $pid ) {
+				$fail[] = $row['product_no'] . ': not in the store';
+				continue;
+			}
+			if ( isset( $done[ $pid ] ) ) {
+				continue;
+			}
+			$done[ $pid ] = true;
+			if ( 'rrp' === $mode ) {
+				$list = self::rrp_list( $row );
+				if ( ! $list ) {
+					$fail[] = $row['product_no'] . ': no recommended price from the suppliers';
+					continue;
+				}
+				$res = self::save_sale_price( $row['item_key'], null, (string) max( $list ) );
+			} else {
+				$buy   = self::buy_row( $row );
+				$price = URME_SS_Price_Hint::price_98( $buy['purchase_price'], URME_SS_Suppliers::hint( $ctx, URME_SS_Suppliers::of_key( $buy['item_key'] ) ) );
+				if ( ! $price ) {
+					$fail[] = $row['product_no'] . ': no suggested price (cost or rate missing)';
+					continue;
+				}
+				$res = self::auto_price( $row['item_key'], $price );
+			}
+			if ( 'success' === $res[1] ) {
+				++$ok;
+			} elseif ( 'info' === $res[1] ) {
+				++$same;
+			} else {
+				$fail[] = $row['product_no'] . ': ' . $res[0];
+			}
+		}
+		$what = 'rrp' === $mode ? 'Regular set to the highest recommended price' : 'Sale price set to Auto';
+		$msg  = sprintf( '%s for %d product%s.', $what, $ok, 1 === $ok ? '' : 's' );
+		if ( $same ) {
+			$msg .= sprintf( ' %d already had that price.', $same );
+		}
+		if ( $fail ) {
+			$msg .= sprintf( ' Not changed (%d): %s', count( $fail ), implode( ' · ', array_slice( $fail, 0, 10 ) ) ) . ( count( $fail ) > 10 ? ' …' : '' );
+		}
+		return array( $msg, $fail ? ( $ok ? 'warning' : 'error' ) : 'success' );
 	}
 
 	/**

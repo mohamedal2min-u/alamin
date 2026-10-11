@@ -606,10 +606,10 @@ class URME_SS_Admin {
 	}
 
 	/**
-	 * "Auto …98" button: sets the sale (discount) price only; the regular (recommended) price is
-	 * never changed by it. At or above the regular price it is refused (raise Regular first;
-	 * WooCommerce drops a sale price that is not below the regular price).
-	 * In the catalog a click saves it at once (with the Regular price in its field).
+	 * "Auto …98" button: sets the sale (discount) price. When that price is not below the
+	 * recommended (Regular) price, Regular is raised by 20 % (up to the next price ending in 98,
+	 * and always above the sale price) so the discount can be shown. A product without Regular
+	 * starts from the suppliers' highest recommended price.
 	 *
 	 * @param string $item_key Supplier item whose confirmed product is edited.
 	 * @param int    $price    Price ending in 98 (SEK).
@@ -619,11 +619,48 @@ class URME_SS_Admin {
 		$product = $pid ? wc_get_product( $pid ) : null;
 		if ( $product && 'trash' !== $product->get_status() && ! $product->is_type( array( 'variable', 'grouped' ) ) ) {
 			$regular = (string) $product->get_regular_price();
-			if ( '' === $regular || (float) $price >= (float) $regular ) {
-				return array( sprintf( 'Auto %s kr is a sale price, but it is not below the regular price %s of "%s": set Regular above %s kr first. Nothing was changed.', number_format_i18n( $price ), '' === $regular ? '(none)' : number_format_i18n( (float) $regular ) . ' kr', $product->get_name(), number_format_i18n( $price ) ), 'error' );
+			$base    = '' !== $regular ? (float) $regular : 0.0;
+			if ( $base <= 0 ) {
+				$item = URME_SS_DB::get_item( (string) $item_key );
+				if ( $item && ! isset( self::$others[ $item['item_key'] ] ) ) {
+					self::$others = self::$others + URME_SS_DB::other_sources( array( $item ) );
+				}
+				$list = $item ? self::rrp_list( $item ) : array();
+				$base = $list ? (float) max( $list ) : 0.0;
+			}
+			$new_regular = self::regular_for_sale( $base, (int) $price );
+			if ( null !== $new_regular && ( '' === $regular || abs( (float) $regular - $new_regular ) >= 0.001 ) ) {
+				return self::save_sale_price( $item_key, (string) $price, (string) $new_regular );
 			}
 		}
 		return self::save_sale_price( $item_key, (string) $price ); // Same refusals and messages.
+	}
+
+	/**
+	 * The Regular (recommended) price a sale price needs: the current one when the sale price is
+	 * below it, otherwise 20 % higher (next price ending in 98), and in any case above the sale price.
+	 * Null when the current Regular can stay.
+	 *
+	 * @param float $regular Current (or suggested) Regular price, 0 when none.
+	 * @param int   $sale    Sale price.
+	 */
+	public static function regular_for_sale( $regular, $sale ) {
+		$regular = (float) $regular;
+		if ( $regular > $sale ) {
+			return $regular > 0 ? (int) round( $regular ) : null;
+		}
+		$lifted = self::ceil_98( ( $regular > 0 ? $regular : $sale ) * 1.2 );
+		if ( $lifted <= $sale ) {
+			$lifted = self::ceil_98( $sale + 1 );
+		}
+		return $lifted;
+	}
+
+	/**
+	 * Next price ending in 98 at or above the amount (1 197.6 → 1 198, 1 199 → 1 298).
+	 */
+	public static function ceil_98( $sek ) {
+		return (int) ( max( 0, ceil( ( (float) $sek - 98 ) / 100 ) ) * 100 + 98 );
 	}
 
 	/**
@@ -1543,7 +1580,7 @@ class URME_SS_Admin {
 			return '';
 		}
 		return sprintf(
-			'<div class="urme-price-auto"><button type="submit" name="row_action" value="%s" class="button button-small button-primary urme-auto98" data-price="%d" title="Fills the sale price (discount); the regular price is not changed">%s</button></div>',
+			'<div class="urme-price-auto"><button type="submit" name="row_action" value="%s" class="button button-small button-primary urme-auto98" data-price="%d" title="Saves this as the sale price. If it is not below the regular price, the regular price is raised 20%% (…98) first">%s</button></div>',
 			esc_attr( 'auto98|' . $row['item_key'] ),
 			(int) $price,
 			esc_html( 'Auto ' . number_format_i18n( $price ) . ' kr' )

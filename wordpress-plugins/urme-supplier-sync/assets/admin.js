@@ -33,22 +33,8 @@
 		$tr.find( '.urme-price-edit button[value^="sale|"]' ).trigger( 'click' );
 	} );
 
-	// "Auto …98" sets the Sale price (the discount) and saves it at once, with the Regular price in
-	// its field (same server checks as Save: it must stay below Regular).
-	$( document ).on( 'click', '#urme-select-form button.urme-auto98', function ( e ) {
-		var $btn = $( this ),
-			$tr = $btn.closest( 'tr' ),
-			$edit = $tr.find( '.urme-price-edit' ),
-			$sale = $edit.find( 'input[name^="sale_price"]' ),
-			price = parseInt( $btn.data( 'price' ), 10 );
-		if ( ! $sale.length || ! price ) {
-			return; // Server fallback.
-		}
-		e.preventDefault();
-		e.stopImmediatePropagation();
-		$sale.val( price );
-		$edit.find( 'button[value^="sale|"]' ).trigger( 'click' );
-	} );
+	// "Auto …98" goes to the server like the other row buttons (row_action auto98|key): it sets the
+	// sale price and, when needed, raises the recommended (Regular) price by 20 % so the sale fits below it.
 
 	// A typed but unsaved price is lost on reload: mark the row and warn before leaving the page.
 	$( document ).on( 'input', '#urme-select-form .urme-price-edit input', function () {

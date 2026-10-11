@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.10.0
+Stable tag: 1.10.1
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -224,6 +224,11 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.10.1 =
+* Auto (row button and bulk): when the Auto sale price is not below the regular (recommended) price, or there is
+  no regular price, the regular price is raised 20% (rounded up to …98, using the highest supplier RRP when the
+  product has none) so the sale can be saved. Auto now saves on the server instead of only filling the field.
 
 = 1.10.0 =
 * Supplier catalog: two bulk buttons for the checked watches. "Rek. pris (highest)" sets Regular to the

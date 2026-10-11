@@ -65,7 +65,8 @@ $x->save();
 $a98 = URME_SS_Price_Hint::price_98( 176, URME_SS_Price_Hint::context() );
 $r   = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
 $x   = p( $lg->get_id() );
-ok( 'error' === $r[1] && '2990' === $x->get_regular_price() && '2490' === $x->get_sale_price(), "1.9.6: Auto {$a98} kr above regular 2 990 kr → refused (raise Regular first), prices unchanged", $r );
+$lift = URME_SS_Admin::regular_for_sale( 2990, $a98 );
+ok( 'success' === $r[1] && (string) $lift === $x->get_regular_price() && (string) $a98 === $x->get_sale_price() && $lift > $a98, "1.10.1: Auto {$a98} kr above regular 2 990 kr → Regular raised to {$lift} kr, sale {$a98} kr", $r );
 $x->set_regular_price( '9990' );
 $x->save();
 $r = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
@@ -76,7 +77,9 @@ $x->set_sale_price( '' );
 $x->save();
 $r = admin( 'run_row_action', 'auto98|' . key_of( 140 ) );
 $x = p( $lg->get_id() );
-ok( 'error' === $r[1] && (string) $a98 === $x->get_regular_price() && '' === $x->get_sale_price(), '   Auto equal to the regular price → refused (a sale must be below Regular), prices unchanged', $r );
+$lift = URME_SS_Admin::ceil_98( $a98 * 1.2 );
+ok( 'success' === $r[1] && (string) $lift === $x->get_regular_price() && (string) $a98 === $x->get_sale_price(), "   Auto equal to the regular price → Regular +20% ({$lift} kr), sale {$a98} kr", $r );
+ok( 1198 === URME_SS_Admin::ceil_98( 1197.6 ) && 1298 === URME_SS_Admin::regular_for_sale( 998, 1198 ) && 2398 === URME_SS_Admin::regular_for_sale( 1998, 1998 ) && 4998 === URME_SS_Admin::regular_for_sale( 4998, 2498 ) && 1698 === URME_SS_Admin::regular_for_sale( 0, 1398 ), '   regular_for_sale: 998/1198 → 1 298, 1998/1998 → 2 398, kept when already above, none → sale +20%' );
 $html = admin( 'catalog_row_html', key_of( 140 ) );
 ok( false !== strpos( $html, 'class="button button-small button-primary urme-auto98" data-price="' . $a98 . '"' ), '   Auto button carries its price for the browser (fills the Sale price field)' );
 
@@ -111,6 +114,7 @@ ok( false !== strpos( $bh_html, 'data-price="' . URME_SS_Price_Hint::price_98( 6
 // 1.10.0 Bulk price buttons for checked rows: highest recommended price as Regular, Auto as sale price.
 $wpdb->update( URME_SS_DB::catalog_table(), array( 'rrp' => 199 ), array( 'item_key' => $ila_key ) );
 $bk_pid  = admin( 'confirmed_product_id', key_of( 140 ) );
+$bk_p = wc_get_product( $bk_pid ); $bk_p->set_sale_price( '' ); $bk_p->save(); // Auto above saved a sale price; start without one.
 $bk_rate = (float) URME_SS_Rates::current()['rate'];
 $bk_max  = max( URME_SS_Admin::round_98( 189 * $bk_rate ), URME_SS_Admin::round_98( 199 * $bk_rate ) );
 $bk_res  = admin( 'bulk_prices', array( key_of( 140 ), key_of( 140 ) ), 'rrp' );
@@ -120,7 +124,8 @@ $bk_res  = admin( 'bulk_prices', array( key_of( 140 ) ), 'auto' );
 ok( 'success' === $bk_res[1] && (string) $bk_auto === wc_get_product( $bk_pid )->get_sale_price(), "bulk Auto: sale price {$bk_auto} kr from the cheaper supplier (ILA)", $bk_res );
 $bk_p = wc_get_product( $bk_pid ); $bk_p->set_sale_price( '' ); $bk_p->set_regular_price( (string) ( $bk_auto - 100 ) ); $bk_p->save();
 $bk_res  = admin( 'bulk_prices', array( key_of( 140 ) ), 'auto' );
-ok( 'error' === $bk_res[1] && '' === wc_get_product( $bk_pid )->get_sale_price(), '   bulk Auto refused when it is not below Regular (nothing changed)', $bk_res );
+$bk_x = wc_get_product( $bk_pid );
+ok( 'success' === $bk_res[1] && (string) $bk_auto === $bk_x->get_sale_price() && (string) URME_SS_Admin::regular_for_sale( $bk_auto - 100, $bk_auto ) === $bk_x->get_regular_price(), '   bulk Auto above Regular: Regular raised 20% (…98), sale saved', $bk_res );
 ok( 'warning' === admin( 'bulk_prices', array(), 'auto' )[1], '   nothing checked: nothing changed' );
 $wpdb->update( URME_SS_DB::catalog_table(), array( 'stock' => 0 ), array( 'item_key' => $ila_key ) );
 $bh_html = admin( 'catalog_row_html', key_of( 140 ) );

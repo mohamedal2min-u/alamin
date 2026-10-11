@@ -7,7 +7,10 @@ use App\Models\Flock;
 use App\Models\FlockFeedLog;
 use App\Models\FlockMedicine;
 use App\Models\FlockMortality;
+use App\Models\FlockTemperatureLog;
 use App\Models\FlockWaterLog;
+use App\Models\SaleItem;
+use Carbon\Carbon;
 
 class TodaySummaryAction
 {
@@ -17,18 +20,25 @@ class TodaySummaryAction
 
         // ── Flock Stats — use preloaded aggregates from ShowFlockAction to avoid duplicate queries ──
         $totalMortalityAcrossTime = (int) ($flock->mortalities_sum_quantity ?? FlockMortality::where('flock_id', $flock->id)->sum('quantity'));
-        $totalBirdsSold = (int) ($flock->sale_items_sum_birds_count ?? \App\Models\SaleItem::where('flock_id', $flock->id)->sum('birds_count'));
+        $totalBirdsSold = (int) ($flock->sale_items_sum_birds_count ?? SaleItem::where('flock_id', $flock->id)->sum('birds_count'));
         $remainingCount = $flock->initial_count - $totalMortalityAcrossTime - $totalBirdsSold;
-        $currentAgeDays = \Carbon\Carbon::parse($flock->start_date)->startOfDay()
-            ->diffInDays(\Carbon\Carbon::today()->startOfDay()) + 1;
+        // العمر يتوقف عند يوم بيع/نفوق آخر دجاجة بدل الاستمرار مع «اليوم»
+        $ageEnd = Carbon::today()->startOfDay();
+        if ($remainingCount <= 0) {
+            $zeroDate = (new ResolveFlockZeroDateAction)->execute($flock);
+            if ($zeroDate) {
+                $ageEnd = $zeroDate->startOfDay();
+            }
+        }
+        $currentAgeDays = Carbon::parse($flock->start_date)->startOfDay()->diffInDays($ageEnd) + 1;
 
         $flockInfo = [
-            'name'             => $flock->name,
-            'initial_count'    => (int) $flock->initial_count,
-            'remaining_count'  => (int) $remainingCount,
+            'name' => $flock->name,
+            'initial_count' => (int) $flock->initial_count,
+            'remaining_count' => (int) $remainingCount,
             'current_age_days' => (int) $currentAgeDays,
-            'start_date'       => $flock->start_date?->format('Y-m-d'),
-            'status'           => $flock->status,
+            'start_date' => $flock->start_date?->format('Y-m-d'),
+            'status' => $flock->status,
         ];
 
         // ── Today's Logs ──────────────────────────────────────────────────────────
@@ -71,52 +81,52 @@ class TodaySummaryAction
             ->whereHas('expenseCategory', fn ($q) => $q->whereNotNull('code'))
             ->get(['expense_type', 'total_amount', 'created_at']);
 
-        $temperatures = \App\Models\FlockTemperatureLog::where('flock_id', $flock->id)
+        $temperatures = FlockTemperatureLog::where('flock_id', $flock->id)
             ->whereDate('log_date', $today)
             ->get(['time_of_day', 'temperature', 'created_at']);
 
         return [
-            'date'        => $today,
-            'flock_info'  => $flockInfo,
+            'date' => $today,
+            'flock_info' => $flockInfo,
             'mortalities' => [
                 'entries' => $mortalities->map(fn ($m) => [
                     'quantity' => (int) $m->quantity,
-                    'reason'   => $m->reason,
-                    'time'     => $m->created_at?->format('H:i') ?? '--:--',
+                    'reason' => $m->reason,
+                    'time' => $m->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (int) $mortalities->sum('quantity'),
             ],
             'feed' => [
                 'entries' => $feedLogs->map(fn ($f) => [
-                    'item_name'  => $f->item?->name,
-                    'quantity'   => (float) $f->quantity,
+                    'item_name' => $f->item?->name,
+                    'quantity' => (float) $f->quantity,
                     'unit_label' => $f->unit_label ?? $f->item?->content_unit,
-                    'time'       => $f->created_at?->format('H:i') ?? '--:--',
+                    'time' => $f->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (float) $feedLogs->sum('quantity'),
             ],
             'medicines' => [
                 'entries' => $medicineEntries->map(fn ($m) => [
-                    'item_name'  => $m->item?->name,
-                    'quantity'   => (float) $m->quantity,
+                    'item_name' => $m->item?->name,
+                    'quantity' => (float) $m->quantity,
                     'unit_label' => $m->unit_label ?? $m->item?->content_unit,
-                    'time'       => $m->created_at?->format('H:i') ?? '--:--',
+                    'time' => $m->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (float) $medicineEntries->sum('quantity'),
             ],
             'water' => [
                 'entries' => $waterLogs->map(fn ($w) => [
-                    'quantity'   => (float) $w->quantity,
+                    'quantity' => (float) $w->quantity,
                     'unit_label' => $w->unit_label ?? 'صهريج',
-                    'time'       => $w->created_at?->format('H:i') ?? '--:--',
+                    'time' => $w->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (float) $waterLogs->sum('quantity'),
             ],
             'expenses' => [
                 'entries' => $expenses->map(fn ($e) => [
-                    'type'         => $e->expense_type ?? 'مصروف غير محدد',
+                    'type' => $e->expense_type ?? 'مصروف غير محدد',
                     'total_amount' => (float) ($e->total_amount ?? 0),
-                    'time'         => $e->created_at?->format('H:i') ?? '--:--',
+                    'time' => $e->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
                 'total' => (float) $expenses->sum('total_amount'),
             ],
@@ -124,7 +134,7 @@ class TodaySummaryAction
                 'entries' => $temperatures->map(fn ($t) => [
                     'time_of_day' => $t->time_of_day,
                     'temperature' => (float) $t->temperature,
-                    'time'        => $t->created_at?->format('H:i') ?? '--:--',
+                    'time' => $t->created_at?->format('H:i') ?? '--:--',
                 ])->values()->toArray(),
             ],
         ];

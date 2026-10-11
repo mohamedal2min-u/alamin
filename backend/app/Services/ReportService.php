@@ -133,7 +133,14 @@ class ReportService
         if ($ageDays === null) {
             $startDate = Carbon::parse($flock->start_date);
             $endDate = $flock->close_date ? Carbon::parse($flock->close_date) : Carbon::now();
-            $ageDays = $startDate->diffInDays($endDate) + 1;
+            // العمر يتوقف عند يوم نفاد آخر دجاجة إن لم يكن الفوج مغلقاً بعد
+            if (! $flock->close_date) {
+                $zeroDate = (new \App\Actions\Flock\ResolveFlockZeroDateAction())->execute($flock);
+                if ($zeroDate && $zeroDate->lessThan($endDate)) {
+                    $endDate = $zeroDate;
+                }
+            }
+            $ageDays = $startDate->startOfDay()->diffInDays($endDate->copy()->startOfDay()) + 1;
         }
 
         return [

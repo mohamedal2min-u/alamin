@@ -1,5 +1,6 @@
 'use client'
 
+import { PriceOnly, PaymentOnly } from '@/components/common/PriceOnly'
 import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -348,16 +349,18 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
                       disabled={idx === 0 && vehicleWeightLocksFirstItem}
                       required
                     />
-                    <Input
-                      {...register(`items.${idx}.unit_price_per_kg`, { valueAsNumber: true })}
-                      id={`unit_price_per_kg_${idx}`}
-                      label="سعر الطن"
-                      type="number"
-                      step="1"
-                      min={0.001}
-                      placeholder="اختياري"
-                      error={errors.items?.[idx]?.unit_price_per_kg?.message}
-                    />
+                    <PriceOnly>
+                      <Input
+                        {...register(`items.${idx}.unit_price_per_kg`, { valueAsNumber: true })}
+                        id={`unit_price_per_kg_${idx}`}
+                        label="سعر الطن"
+                        type="number"
+                        step="1"
+                        min={0.001}
+                        placeholder="اختياري"
+                        error={errors.items?.[idx]?.unit_price_per_kg?.message}
+                      />
+                    </PriceOnly>
                   </div>
 
                   {hasCrates && (
@@ -385,26 +388,30 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
 
         {/* Financial fields */}
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            {...register('discount_amount', { valueAsNumber: true })}
-            id="discount_amount"
-            label="الخصم"
-            type="number"
-            step="0.01"
-            min={0}
-            placeholder="0"
-            error={errors.discount_amount?.message}
-          />
-          <Input
-            {...register('received_amount', { valueAsNumber: true })}
-            id="received_amount"
-            label="المبلغ المستلم"
-            type="number"
-            step="0.01"
-            min={0}
-            placeholder="0"
-            error={errors.received_amount?.message}
-          />
+          <PriceOnly>
+            <Input
+              {...register('discount_amount', { valueAsNumber: true })}
+              id="discount_amount"
+              label="الخصم"
+              type="number"
+              step="0.01"
+              min={0}
+              placeholder="0"
+              error={errors.discount_amount?.message}
+            />
+          </PriceOnly>
+          <PaymentOnly>
+            <Input
+              {...register('received_amount', { valueAsNumber: true })}
+              id="received_amount"
+              label="المبلغ المستلم"
+              type="number"
+              step="0.01"
+              min={0}
+              placeholder="0"
+              error={errors.received_amount?.message}
+            />
+          </PaymentOnly>
         </div>
 
         {/* Live summary */}

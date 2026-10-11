@@ -1,6 +1,6 @@
 // frontend/src/types/auth.ts
 
-export type FarmRole = 'super_admin' | 'farm_admin' | 'accountant' | 'partner'
+export type FarmRole = 'super_admin' | 'farm_admin' | 'supervisor' | 'accountant' | 'partner'
 
 export interface User {
   id: number

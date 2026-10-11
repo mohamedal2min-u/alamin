@@ -17,7 +17,7 @@ import type { Flock } from '@/types/flock'
 export default function FlocksPage() {
   const { currentFarm } = useFarmStore()
   const role = useCurrentRole()
-  const canCreateFlock = role === 'farm_admin' || role === 'super_admin'
+  const canCreateFlock = role === 'farm_admin' || role === 'supervisor' || role === 'super_admin'
   const [activating, setActivating] = useState(false)
   const [activateError, setActivateError] = useState<string | null>(null)
 

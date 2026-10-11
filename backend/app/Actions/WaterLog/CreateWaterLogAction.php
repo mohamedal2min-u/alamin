@@ -22,6 +22,12 @@ class CreateWaterLogAction
             $paidAmount = isset($data['paid_amount']) ? (float) $data['paid_amount'] : null;
             $paymentStatus = $data['payment_status'] ?? null;
 
+            if ($totalAmount === null) {
+                // لا سعر (يحدده المحاسب لاحقاً): غير مدفوع بغض النظر عن قيمة العميل
+                $paymentStatus = 'unpaid';
+                $paidAmount    = null;
+            }
+
             if ($totalAmount !== null) {
                 $paidAmount = $paidAmount ?? 0;
                 if ($paidAmount <= 0) {

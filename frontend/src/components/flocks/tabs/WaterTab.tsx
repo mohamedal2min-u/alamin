@@ -1,5 +1,6 @@
 'use client'
 
+import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -170,6 +171,7 @@ export function WaterTab({ flockId, flockStatus }: Props) {
             />
           </div>
 
+          <PriceOnly fallback={<PriceByAccountantNote />}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Input
               {...register('total_amount')}
@@ -203,6 +205,7 @@ export function WaterTab({ flockId, flockStatus }: Props) {
               </select>
             </div>
           </div>
+          </PriceOnly>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* Entry date */}

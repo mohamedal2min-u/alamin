@@ -1,5 +1,6 @@
 'use client'
 
+import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -1065,7 +1066,8 @@ function AddShipmentForm({
             )}
           </div>
 
-          {/* Section: Financials */}
+          {/* Section: Financials — الأسعار والدفعات للمحاسب فقط */}
+          <PriceOnly fallback={<PriceByAccountantNote />}>
           {(() => {
             const total  = parseFloat(form.total_amount)  || 0
             const paid   = parseFloat(form.paid_amount)   || 0
@@ -1111,6 +1113,7 @@ function AddShipmentForm({
               </div>
             )
           })()}
+          </PriceOnly>
 
           {/* Section: Supplier */}
           <div className="grid gap-4 sm:grid-cols-3">

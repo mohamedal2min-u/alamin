@@ -11,7 +11,8 @@ import { toast } from 'sonner'
 import { expensesApi, type ExpenseItem, type ExpenseCategory } from '@/lib/api/expenses'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
-import { useIsReadOnly } from '@/lib/roles'
+import { useIsReadOnly, useCanSetPrices } from '@/lib/roles'
+import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { formatDate, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -23,9 +24,10 @@ const schema = z.object({
     z.number({ invalid_type_error: 'التصنيف مطلوب' }).min(1, 'التصنيف مطلوب')
   ),
   entry_date:   z.string().min(1, 'التاريخ مطلوب').regex(/^\d{4}-\d{2}-\d{2}$/),
+  // المبلغ (السعر) يحدده المحاسب؛ لمدير المزرعة والمشرف يبقى 0 ويُسعَّر لاحقاً
   total_amount: z.preprocess(
-    (v) => Number(v),
-    z.number({ invalid_type_error: 'المبلغ يجب أن يكون رقماً' }).min(0.01, 'المبلغ يجب أن يكون أكبر من صفر')
+    (v) => Number(v || 0),
+    z.number({ invalid_type_error: 'المبلغ يجب أن يكون رقماً' }).min(0, 'المبلغ لا يمكن أن يكون سالباً')
   ),
   description:  z.string().max(255).optional().or(z.literal('')),
   notes:        z.string().max(5000).optional().or(z.literal('')),
@@ -43,6 +45,7 @@ export default function ExpensesPage() {
   const { currentFarm } = useFarmStore()
   const queryClient = useQueryClient()
   const isReadOnly = useIsReadOnly()
+  const canSetPrices = useCanSetPrices()
   const [showForm, setShowForm] = useState(false)
 
   // Always fetch flocks to get the reliable active flock ID
@@ -93,6 +96,10 @@ export default function ExpensesPage() {
   }
 
   const onSubmit = async (data: FormData) => {
+    if (canSetPrices && !(data.total_amount > 0)) {
+      toast.error('المبلغ يجب أن يكون أكبر من صفر')
+      return
+    }
     try {
       await expensesApi.create({
         expense_category_id: data.expense_category_id,
@@ -185,19 +192,22 @@ export default function ExpensesPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {/* Amount */}
-            <Input
-              {...register('total_amount')}
-              id="exp_total_amount"
-              label="المبلغ (USD)"
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="0.00"
-              error={errors.total_amount?.message}
-              required
-            />
+            {/* Amount — للمحاسب فقط */}
+            <PriceOnly>
+              <Input
+                {...register('total_amount')}
+                id="exp_total_amount"
+                label="المبلغ (USD)"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                error={errors.total_amount?.message}
+                required
+              />
+            </PriceOnly>
           </div>
+          <PriceOnly fallback={<PriceByAccountantNote />}>{null}</PriceOnly>
 
           <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700">
             <ClipboardList className="h-3.5 w-3.5 shrink-0" />

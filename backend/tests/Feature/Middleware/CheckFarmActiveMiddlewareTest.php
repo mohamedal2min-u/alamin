@@ -6,7 +6,9 @@ use App\Models\Farm;
 use App\Models\FarmUser;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class CheckFarmActiveMiddlewareTest extends TestCase
@@ -24,7 +26,7 @@ class CheckFarmActiveMiddlewareTest extends TestCase
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 
-    private function memberRequest(User $user, Farm $farm): \Illuminate\Testing\TestResponse
+    private function memberRequest(User $user, Farm $farm): TestResponse
     {
         FarmUser::firstOrCreate(
             ['farm_id' => $farm->id, 'user_id' => $user->id],
@@ -81,7 +83,7 @@ class CheckFarmActiveMiddlewareTest extends TestCase
 
         // نضيف مسار مؤقت يُرجع اسم المزرعة من attributes
         Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])
-            ->get('/_test/farm-from-attr', function (\Illuminate\Http\Request $request) {
+            ->get('/_test/farm-from-attr', function (Request $request) {
                 return response()->json(['farm_name' => $request->attributes->get('farm')->name]);
             });
 

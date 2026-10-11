@@ -9,11 +9,12 @@ import { AccountingReportTab } from '@/components/reports/tabs/AccountingReportT
 import { ReviewQueueTab } from '@/components/accounting/ReviewQueueTab'
 import { PriceAuditTab } from '@/components/accounting/PriceAuditTab'
 import { AccountantBoard } from '@/components/accounting/AccountantBoard'
-import { useCurrentRole } from '@/lib/roles'
+import { useCurrentRole, useIsSupervisor } from '@/lib/roles'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { reportsApi } from '@/lib/api/reports'
 
 function AccountingPageInner() {
+  const isSupervisor = useIsSupervisor()
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -41,7 +42,7 @@ function AccountingPageInner() {
         <TabsList>
           <TabsTrigger value="summary">ملخص المحاسبة</TabsTrigger>
           <TabsTrigger value="review">الذمم والمراجعة</TabsTrigger>
-          <TabsTrigger value="audit">سجل الأسعار</TabsTrigger>
+          {!isSupervisor && <TabsTrigger value="audit">سجل الأسعار</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="summary">
@@ -75,9 +76,11 @@ function AccountingPageInner() {
           <ReviewQueueTab initialFlockId={flockId} initialFilter={filter} />
         </TabsContent>
 
-        <TabsContent value="audit">
-          <PriceAuditTab />
-        </TabsContent>
+        {!isSupervisor && (
+          <TabsContent value="audit">
+            <PriceAuditTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

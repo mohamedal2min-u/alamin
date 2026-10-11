@@ -15,6 +15,9 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
   // farm_admin: كامل الصلاحيات على مزرعته
   farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting'],
 
+  // supervisor (مشرف): تشغيل المزرعة بلا أسعار ولا دفعات ولا إدارة حسابات أو شركاء؛ يرى الأسعار التي يضعها المحاسب
+  supervisor: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/accounting'],
+
   // accountant: يحدد الأسعار فقط — صفحة المحاسبة وحدها
   accountant: ['/accounting'],
   partner: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/my-wallet'],
@@ -27,6 +30,7 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
  *
  * super_admin: dashboard + /admin/* فقط — محجوب عن صفحات التشغيل اليومي
  * farm_admin:  كامل الوصول لمزرعته
+ * supervisor:  تشغيل المزرعة وقراءة المحاسبة؛ بلا شركاء ولا إدارة حسابات
  * accountant:  صفحة المحاسبة (الأسعار) فقط
  * partner:     الأفواج (قراءة) + التقارير فقط
  * /unauthorized متاحة دائماً
@@ -46,6 +50,11 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
   }
 
   if (role === 'farm_admin') return true
+
+  if (role === 'supervisor') {
+    // لا شركاء ولا إدارة حسابات ولا محفظة
+    return !(pathname.startsWith('/partners') || pathname.startsWith('/workers') || pathname.startsWith('/my-wallet') || pathname.startsWith('/admin'))
+  }
 
   if (role === 'accountant') {
     return pathname === '/accounting' || pathname.startsWith('/accounting/')
@@ -101,4 +110,15 @@ export function useIsReadOnly(): boolean {
 export function useCanSetPrices(): boolean {
   const role = useCurrentRole()
   return role === 'accountant' || role === 'super_admin'
+}
+
+/** تسجيل الدفعات: مدير المزرعة والمحاسب (ومدير النظام) فقط — لا المشرف ولا الشريك. */
+export function useCanRecordPayments(): boolean {
+  const role = useCurrentRole()
+  return role === 'farm_admin' || role === 'accountant' || role === 'super_admin'
+}
+
+/** المشرف يرى صفحات المال (المحاسبة) للقراءة فقط: لا أسعار ولا دفعات ولا سجل تدقيق. */
+export function useIsSupervisor(): boolean {
+  return useCurrentRole() === 'supervisor'
 }

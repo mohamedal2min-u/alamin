@@ -1,6 +1,8 @@
 // frontend/src/components/dashboard/QuickEntryCard.tsx
 'use client'
 
+import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
+
 import { useState, useEffect } from 'react'
 import { 
   CheckCircle2, AlertCircle, HeartPulse, 
@@ -268,11 +270,14 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
                   <FormField label={`العدد (${expUnitHint})`} required>
                     <NumericInput value={expQty} onChange={setExpQty} placeholder="0" />
                   </FormField>
-                  <FormField label="سعر الوحدة ($)">
-                    <NumericInput value={expPrice} onChange={setExpPrice} placeholder="0.00" />
-                  </FormField>
+                  <PriceOnly>
+                    <FormField label="سعر الوحدة ($)">
+                      <NumericInput value={expPrice} onChange={setExpPrice} placeholder="0.00" />
+                    </FormField>
+                  </PriceOnly>
                 </div>
 
+                <PriceOnly fallback={<PriceByAccountantNote />}>
                 <p className="text-[10px] font-bold text-red-600 px-1 -mt-2">
                   إذا تم ترك السعر فارغاً، سوف يتم إضافة المصروف إلى الذمم والمراجعة
                 </p>
@@ -288,6 +293,7 @@ export function QuickEntryCard({ flockId, onSuccess }: Props) {
                       : 'بدون سعر — سيتم التسجيل كـ ذمم'}
                   </div>
                 )}
+                </PriceOnly>
               </div>
             )}
           </div>

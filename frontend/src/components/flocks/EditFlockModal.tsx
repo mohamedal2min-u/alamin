@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { flocksApi } from '@/lib/api/flocks'
 import type { Flock } from '@/types/flock'
 import { formatCurrency } from '@/lib/utils'
+import { useCanSetPrices } from '@/lib/roles'
 
 const editFlockSchema = z.object({
   name: z.string().min(2, 'اسم الفوج يجب أن يكون حرفين على الأقل').max(190),
@@ -28,6 +29,8 @@ interface EditFlockModalProps {
 }
 
 export function EditFlockModal({ flock, isOpen, onClose, onSuccess }: EditFlockModalProps) {
+  // الأسعار يحددها المحاسب فقط
+  const canSetPrices = useCanSetPrices()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
@@ -93,23 +96,27 @@ export function EditFlockModal({ flock, isOpen, onClose, onSuccess }: EditFlockM
               error={errors.initial_count?.message}
               required
             />
-            <Input
-              {...register('chick_unit_price', { valueAsNumber: true })}
-              label="سعر الصوص ($)"
-              type="number"
-              step="0.01"
-              error={errors.chick_unit_price?.message}
-            />
+            {canSetPrices && (
+              <Input
+                {...register('chick_unit_price', { valueAsNumber: true })}
+                label="سعر الصوص ($)"
+                type="number"
+                step="0.01"
+                error={errors.chick_unit_price?.message}
+              />
+            )}
           </div>
 
-          <div className="rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">إجمالي الاستثمار المحسوب:</span>
-              <span className="text-base font-black text-indigo-700 tabular-nums">
-                {formatCurrency(totalInvestment)}
-              </span>
+          {canSetPrices && (
+            <div className="rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500">إجمالي الاستثمار المحسوب:</span>
+                <span className="text-base font-black text-indigo-700 tabular-nums">
+                  {formatCurrency(totalInvestment)}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-bold text-slate-700 Arabic-font">الملاحظات</label>

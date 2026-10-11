@@ -79,7 +79,7 @@ class FarmScopeMiddlewareTest extends TestCase
         FarmUser::create([
             'farm_id' => $farm->id,
             'user_id' => $user->id,
-            'status'  => 'inactive',
+            'status' => 'inactive',
         ]);
 
         $this->actingAs($user, 'sanctum')
@@ -98,7 +98,7 @@ class FarmScopeMiddlewareTest extends TestCase
         FarmUser::create([
             'farm_id' => $farm->id,
             'user_id' => $user->id,
-            'status'  => 'active',
+            'status' => 'active',
         ]);
 
         $this->actingAs($user, 'sanctum')
@@ -113,7 +113,7 @@ class FarmScopeMiddlewareTest extends TestCase
     public function test_super_admin_can_access_any_existing_farm(): void
     {
         $admin = User::factory()->create();
-        $farm  = Farm::factory()->create();
+        $farm = Farm::factory()->create();
 
         // super_admin role بدون team context (farm_id = null)
         setPermissionsTeamId(null);

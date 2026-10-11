@@ -109,4 +109,22 @@ class FarmAdminCannotSetPricesTest extends TestCase
 
         $this->assertDatabaseHas('expenses', ['flock_id' => $flock->id, 'unit_price' => 100, 'total_amount' => 300]);
     }
+
+    public function test_supervisor_prices_are_ignored_too(): void
+    {
+        $farm = Farm::factory()->create();
+        $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
+        $user = User::factory()->create();
+        FarmUser::factory()->withRole('supervisor')->create(['farm_id' => $farm->id, 'user_id' => $user->id, 'status' => 'active']);
+        $this->systemCategory();
+
+        $this->as($user, $farm)->postJson("/api/flocks/{$flock->id}/expenses", [
+            'expense_type' => 'other', 'quantity' => 3, 'unit_price' => 100, 'total_amount' => 300,
+            'entry_date' => now()->toDateString(),
+        ])->assertStatus(201);
+
+        $expense = Expense::where('flock_id', $flock->id)->latest('id')->firstOrFail();
+        $this->assertNull($expense->unit_price);
+        $this->assertEquals(0, $expense->total_amount);
+    }
 }

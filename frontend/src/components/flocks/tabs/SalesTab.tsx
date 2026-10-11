@@ -7,6 +7,7 @@ import { salesApi } from '@/lib/api/sales'
 import { Button } from '@/components/ui/Button'
 import { PaymentStatusBadge } from '@/components/sales/PaymentStatusBadge'
 import { CreateSaleDialog } from '@/components/sales/CreateSaleDialog'
+import { PaymentOnly } from '@/components/common/PriceOnly'
 import { UpdatePaymentDialog } from '@/components/sales/UpdatePaymentDialog'
 import { formatDate, formatNumber } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
@@ -145,9 +146,11 @@ function SaleRow({ sale, onUpdatePayment }: { sale: Sale; onUpdatePayment: () =>
           )}
         </span>
         {sale.payment_status !== 'paid' && (
-          <Button size="sm" variant="outline" onClick={onUpdatePayment}>
-            تحديث الدفع
-          </Button>
+          <PaymentOnly>
+            <Button size="sm" variant="outline" onClick={onUpdatePayment}>
+              تحديث الدفع
+            </Button>
+          </PaymentOnly>
         )}
       </div>
     </div>

@@ -65,11 +65,11 @@ class FarmRoleAuthorizationTest extends TestCase
 
     public function test_daily_entries_are_admin_only(): void
     {
-        $farm       = Farm::factory()->create();
+        $farm = Farm::factory()->create();
         $accountant = $this->memberWithRole($farm, 'accountant');
-        $admin      = $this->memberWithRole($farm, 'farm_admin');
-        $flock      = Flock::factory()->active()->create(['farm_id' => $farm->id]);
-        $payload    = ['quantity' => 3, 'entry_date' => now()->toDateString()];
+        $admin = $this->memberWithRole($farm, 'farm_admin');
+        $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
+        $payload = ['quantity' => 3, 'entry_date' => now()->toDateString()];
 
         $this->as($accountant, $farm)->postJson("/api/flocks/{$flock->id}/mortalities", $payload)->assertStatus(403);
         $this->as($admin, $farm)->postJson("/api/flocks/{$flock->id}/mortalities", $payload)->assertStatus(201);
@@ -119,5 +119,31 @@ class FarmRoleAuthorizationTest extends TestCase
             "'debug'",
             file_get_contents(app_path('Http/Controllers/Api/Flock/FlockController.php'))
         );
+    }
+
+    public function test_supervisor_does_operations_but_never_prices_or_payments(): void
+    {
+        $farm = Farm::factory()->create();
+        $supervisor = $this->memberWithRole($farm, 'supervisor');
+        $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
+        // مالك المزرعة يبقى مسجَّلاً عليها (الشريك الأساسي) حتى لو لم يعد دوره مدير مزرعة
+        $farm->update(['admin_user_id' => $supervisor->id]);
+
+        // يسجّل النفوق
+        $this->as($supervisor, $farm)
+            ->postJson("/api/flocks/{$flock->id}/mortalities", ['quantity' => 3, 'entry_date' => now()->toDateString()])
+            ->assertStatus(201);
+
+        // يرى قائمة المراجعة والأسعار (قراءة)
+        $this->as($supervisor, $farm)->getJson('/api/accounting/review-queue')->assertOk();
+        $this->as($supervisor, $farm)->getJson('/api/partners')->assertOk();
+
+        // لا يحدد سعراً ولا يسجّل دفعة ولا يعدّل الشركاء ولا الحسابات
+        $this->as($supervisor, $farm)->patchJson('/api/accounting/review-queue/expense/1', ['unit_price' => 5])->assertStatus(403);
+        $this->as($supervisor, $farm)->patchJson('/api/accounting/review-queue/expense/1', ['paid_amount' => 5])->assertStatus(403);
+        $this->as($supervisor, $farm)->patchJson('/api/partners/1/share', ['share_percent' => 10])->assertStatus(403);
+        $this->as($supervisor, $farm)->patchJson('/api/sales/1/payment', [])->assertStatus(403);
+        $this->as($supervisor, $farm)->getJson('/api/workers')->assertStatus(403);
+        $this->as($supervisor, $farm)->getJson('/api/accounting/price-audit')->assertStatus(403);
     }
 }

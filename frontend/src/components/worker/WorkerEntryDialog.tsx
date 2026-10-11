@@ -1,5 +1,7 @@
 'use client'
 
+import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
+
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { 
@@ -403,12 +405,15 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
               <FormField label={`العدد (${expUnitHint})`} required>
                 <NumericInput value={expQty} onChange={setExpQty} placeholder="0" min={1} step={1} className={dynamicInputClass} />
               </FormField>
-              <FormField label="سعر الوحدة ($)">
-                <NumericInput value={expPrice} onChange={setExpPrice} placeholder="0.00" min={0} step={0.01} className={dynamicInputClass} />
-              </FormField>
+              <PriceOnly>
+                <FormField label="سعر الوحدة ($)">
+                  <NumericInput value={expPrice} onChange={setExpPrice} placeholder="0.00" min={0} step={0.01} className={dynamicInputClass} />
+                </FormField>
+              </PriceOnly>
             </div>
 
             {/* Calculated total or debt warning */}
+            <PriceOnly fallback={<PriceByAccountantNote />}>
             {(Number(expQty) > 0) && (
               <div className={cn(
                 'flex items-center gap-3 rounded-[1.25rem] px-4 py-3 text-[11px] font-bold border',
@@ -422,6 +427,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
                   : <>بدون سعر — سيُضاف إلى{' '}<Link href="/accounting?tab=review" className="underline hover:opacity-80">الذمم والمراجعة</Link></>}
               </div>
             )}
+            </PriceOnly>
 
             {/* Notes */}
             <FormField label="ملاحظات">
@@ -436,9 +442,11 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
               <FormField label="العدد (صهريج)" required>
                 <NumericInput value={waterQty} onChange={setWaterQty} placeholder="1" min={1} step={0.5} className={dynamicInputClass} />
               </FormField>
-              <FormField label="السعر للصهريج ($)">
-                <NumericInput value={waterPrice} onChange={setWaterPrice} placeholder="0.00" min={0} step={0.01} className={dynamicInputClass} />
-              </FormField>
+              <PriceOnly>
+                <FormField label="السعر للصهريج ($)">
+                  <NumericInput value={waterPrice} onChange={setWaterPrice} placeholder="0.00" min={0} step={0.01} className={dynamicInputClass} />
+                </FormField>
+              </PriceOnly>
             </div>
             <FormField label="اسم السائق / ملاحظات">
               <input type="text" value={waterDriver} onChange={(e) => setWaterDriver(e.target.value)} placeholder="مثال: أبو محمد..." className={dynamicInputClass} />

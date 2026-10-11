@@ -27,11 +27,13 @@ const ROLE_LABELS: Record<string, string> = {
   farm_admin: 'مدير المزرعة',
   partner:    'شريك',
   accountant: 'محاسب',
+  supervisor: 'مشرف',
 }
 const ROLE_CLASSES: Record<string, string> = {
   farm_admin: 'bg-violet-50 text-violet-700',
   partner:    'bg-blue-50 text-blue-700',
-  worker:     'bg-emerald-50 text-emerald-700',
+  accountant: 'bg-emerald-50 text-emerald-700',
+  supervisor: 'bg-amber-50 text-amber-700',
 }
 
 type ActivePanel =
@@ -614,6 +616,7 @@ export default function AdminFarmsPage() {
                                       <option value="farm_admin">مدير المزرعة</option>
                                       <option value="partner">شريك</option>
                                       <option value="accountant">محاسب</option>
+                                      <option value="supervisor">مشرف</option>
                                     </select>
                                     <button
                                       onClick={() => confirmAssignRole((activePanel as { farmId: number }).farmId, member.id)}

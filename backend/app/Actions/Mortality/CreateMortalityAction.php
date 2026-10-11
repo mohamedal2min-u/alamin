@@ -68,7 +68,7 @@ class CreateMortalityAction
         // تسجيل النفوق من مدير المزرعة؛ الشركاء يُبلَّغون (ومعهم باقي مديري المزرعة، دون المُسجِّل نفسه)
         $recipients = $farm->members()
             ->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['farm_admin', 'partner']);
+                $q->whereIn('name', ['farm_admin', 'supervisor', 'partner']);
             })->get()
             ->reject(fn ($member) => $member->id === $userId)
             ->values();

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { flocksApi } from '@/lib/api/flocks'
 import { getTodayLocalISO, formatCurrency } from '@/lib/utils'
+import { useCanSetPrices } from '@/lib/roles'
 
 // ── Validation ────────────────────────────────────────────────────────────────
 const createFlockSchema = z.object({
@@ -45,6 +46,8 @@ type CreateFlockForm = z.infer<typeof createFlockSchema>
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function CreateFlockPage() {
+  // الأسعار يحددها المحاسب فقط
+  const canSetPrices = useCanSetPrices()
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -142,6 +145,7 @@ export default function CreateFlockPage() {
                 required
               />
 
+              {canSetPrices && (<>
               <Input
                 {...register('chick_unit_price', { valueAsNumber: true })}
                 id="chick_unit_price"
@@ -163,13 +167,20 @@ export default function CreateFlockPage() {
                 placeholder="مثال: 1000"
                 error={errors.chick_paid_amount?.message}
               />
+              </>)}
             </div>
 
-            <p className="text-[11px] text-red-500 font-medium">
-              إذا تم ترك المبلغ المدفوع فارغاً أو أقل من الإجمالي، سيتم اعتبار الباقي ديناً في كشف الحساب.
-            </p>
+            {canSetPrices ? (
+              <p className="text-[11px] text-red-500 font-medium">
+                إذا تم ترك المبلغ المدفوع فارغاً أو أقل من الإجمالي، سيتم اعتبار الباقي ديناً في كشف الحساب.
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-500 font-medium">
+                سعر الكتاكيت يحدده المحاسب لاحقاً من صفحة المحاسبة.
+              </p>
+            )}
 
-            {totalInvestment > 0 && (
+            {canSetPrices && totalInvestment > 0 && (
               <div className="rounded-xl bg-primary-50/50 border border-primary-100 p-4 dark:bg-primary-900/10 dark:border-primary-800/40">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-400">إجمالي تكلفة الشراء التقديرية:</span>

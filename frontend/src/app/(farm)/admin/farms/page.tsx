@@ -27,7 +27,7 @@ const ROLE_LABELS: Record<string, string> = {
   farm_admin: 'مدير المزرعة',
   partner:    'شريك',
   accountant: 'محاسب',
-  supervisor: 'مشرف',
+  supervisor: 'مدير (بصلاحيات المشرف)',
 }
 const ROLE_CLASSES: Record<string, string> = {
   farm_admin: 'bg-violet-50 text-violet-700',
@@ -613,10 +613,10 @@ export default function AdminFarmsPage() {
                                       className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                                     >
                                       <option value="">— اختر الدور —</option>
-                                      <option value="farm_admin">مدير المزرعة</option>
+                                      <option value="farm_admin">مدير المزرعة (كامل الصلاحيات)</option>
                                       <option value="partner">شريك</option>
                                       <option value="accountant">محاسب</option>
-                                      <option value="supervisor">مشرف</option>
+                                      <option value="supervisor">مدير المزرعة (بصلاحيات المشرف — بلا أسعار)</option>
                                     </select>
                                     <button
                                       onClick={() => confirmAssignRole((activePanel as { farmId: number }).farmId, member.id)}

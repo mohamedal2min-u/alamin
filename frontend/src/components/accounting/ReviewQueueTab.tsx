@@ -74,11 +74,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
     if (editValues.paid_amount !== undefined && editValues.paid_amount !== '') {
       payload.paid_amount = parseFloat(editValues.paid_amount)
     }
-    if (editValues.unit_price !== undefined && editValues.unit_price !== '' && (item.type === 'expense' || item.type === 'water_log' || item.type === 'sale')) {
-      const entered = parseFloat(editValues.unit_price)
-      // للمبيعات، الحقل يُدخَل بسعر الطن — يُحوَّل لسعر الكيلو (كما يُخزَّن في السطور) قبل الإرسال.
-      payload.unit_price = item.type === 'sale' ? entered / 1000 : entered
-    }
+    // تحديد الأسعار من صلاحية المحاسب فقط؛ مدير المزرعة يسجّل الدفعات
     updateItem({ type: item.type, id: item.record_id, payload })
   }
 
@@ -206,14 +202,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
               onEdit={() => {
                 setEditingId(item.id)
                 setSaveError(null)
-                // للمبيعات، السعر المخزَّن (item.unit_price) هو سعر الكيلو — يُعرض هنا كسعر طن.
-                const displayPrice = item.unit_price != null
-                  ? (item.type === 'sale' ? item.unit_price * 1000 : item.unit_price)
-                  : null
-                setEditValues({
-                  paid_amount: String(item.paid_amount ?? 0),
-                  unit_price: displayPrice != null ? String(displayPrice) : '',
-                })
+                setEditValues({ paid_amount: String(item.paid_amount ?? 0) })
               }}
               onCancel={() => { setEditingId(null); setEditValues({}); setSaveError(null) }}
               onSave={() => { setSaveError(null); handleSave(item) }}
@@ -328,18 +317,6 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                     disabled={false}
                   />
                 </div>
-                {(item.type === 'expense' || item.type === 'water_log' || item.type === 'sale') && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-slate-500">{item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'}</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editValues.unit_price ?? ''}
-                      onChange={(e) => onEditChange({ ...editValues, unit_price: e.target.value })}
-                      className="h-8 w-28 text-sm"
-                    />
-                  </div>
-                )}
                 <div className="flex gap-2">
                   <Button size="sm" onClick={onSave} loading={isUpdating} disabled={isUpdating}>
                     حفظ
@@ -376,7 +353,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
               onClick={onEdit}
               className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-primary-400 hover:text-primary-600 transition-colors"
             >
-              تسديد / تعديل
+              تسجيل دفعة
             </button>
           )}
         </div>

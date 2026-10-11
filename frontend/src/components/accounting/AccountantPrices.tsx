@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Droplets, Layers, Loader2, Pill, RefreshCw, ShoppingCart, Wheat } from 'lucide-react'
+import { CheckCircle2, Droplets, Layers, Loader2, Lock, Pill, ShoppingCart, Wheat } from 'lucide-react'
 import { accountingApi } from '@/lib/api/accounting'
-import type { ReviewItem } from '@/lib/api/accounting'
-import { useAuthStore } from '@/stores/auth.store'
+import type { CategoryBreakdown, ReviewItem } from '@/lib/api/accounting'
 import { cn, formatNumber } from '@/lib/utils'
 import { PriceWithHistory } from './PriceWithHistory'
 
@@ -28,27 +27,35 @@ const CATEGORY_TONE: Record<string, string> = {
   sales:    'bg-emerald-50 text-emerald-700',
 }
 
-export function AccountantPrices() {
+export function AccountantPrices({ flockId }: { flockId: string }) {
   const qc = useQueryClient()
-  const user = useAuthStore((s) => s.user)
 
-  const [tab, setTab] = useState<Tab>('pending')
+  const [tab, setTab] = useState<Tab>('all')
   const [category, setCategory] = useState<string | undefined>(undefined)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const flock_id = flockId || undefined
+
   const pending = useQuery({
-    queryKey: ['accounting', 'review-queue', 'pending', category],
-    queryFn: () => accountingApi.getReviewQueue({ reason: 'missing_price', category, per_page: 50 }),
+    queryKey: ['accounting', 'review-queue', 'pending', category, flock_id],
+    queryFn: () => accountingApi.getReviewQueue({ reason: 'missing_price', category, flock_id, per_page: 50 }),
     staleTime: 15_000,
   })
 
   const all = useQuery({
-    queryKey: ['accounting', 'review-queue', 'all', category],
-    queryFn: () => accountingApi.getReviewQueue({ scope: 'all', category, per_page: 50 }),
+    queryKey: ['accounting', 'review-queue', 'all', category, flock_id],
+    queryFn: () => accountingApi.getReviewQueue({ scope: 'all', category, flock_id, per_page: 50 }),
     staleTime: 15_000,
     enabled: tab === 'all',
+  })
+
+  // ملخص شامل لكل الفئات (الكميات والأسعار الإجمالية) — لا يتأثر بتبويب القائمة
+  const overview = useQuery({
+    queryKey: ['accounting', 'review-queue', 'overview', flock_id],
+    queryFn: () => accountingApi.getReviewQueue({ scope: 'all', flock_id, per_page: 1 }),
+    staleTime: 15_000,
   })
 
   const current = tab === 'pending' ? pending : all
@@ -92,21 +99,9 @@ export function AccountantPrices() {
   }
 
   return (
-    <div className="space-y-4 pb-6 pt-3" dir="rtl">
-      {/* ── رأس بسيط ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-800">الأسعار</h1>
-          <p className="text-xs text-slate-500 mt-0.5">أهلاً {user?.name ?? ''}</p>
-        </div>
-        <button
-          onClick={() => qc.invalidateQueries({ queryKey: ['accounting'] })}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 active:scale-95"
-          aria-label="تحديث"
-        >
-          <RefreshCw className={cn('h-4 w-4', current.isFetching && 'animate-spin')} />
-        </button>
-      </div>
+    <div className="space-y-4" dir="rtl">
+      {/* ── ملخص الفئة المختارة: الكمية والسعر الإجمالي وغيرها ── */}
+      <CategorySummary breakdown={overview.data?.summary.category_breakdown ?? []} category={category} loading={overview.isLoading} />
 
       {/* ── تبويبان فقط ── */}
       <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
@@ -152,6 +147,7 @@ export function AccountantPrices() {
             <PriceCard
               key={item.id}
               item={item}
+              locked={item.flock_status === 'closed' || item.flock_status === 'cancelled'}
               isEditing={editingId === item.id}
               value={value}
               error={editingId === item.id ? error : null}
@@ -184,6 +180,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 interface CardProps {
   item: ReviewItem
+  locked: boolean
   isEditing: boolean
   value: string
   error: string | null
@@ -194,7 +191,7 @@ interface CardProps {
   onSave: () => void
 }
 
-function PriceCard({ item, isEditing, value, error, isSaving, onValue, onEdit, onCancel, onSave }: CardProps) {
+function PriceCard({ item, locked, isEditing, value, error, isSaving, onValue, onEdit, onCancel, onSave }: CardProps) {
   const unpriced = item.unit_price == null
   const unitLabel = item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'
 
@@ -254,17 +251,74 @@ function PriceCard({ item, isEditing, value, error, isSaving, onValue, onEdit, o
               <div className="mt-0.5 text-xs text-slate-400">الإجمالي: {formatNumber(item.total_amount)}</div>
             )}
           </div>
-          <button
-            onClick={onEdit}
-            className={cn(
-              'shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold active:scale-95',
-              unpriced ? 'bg-primary-600 text-white' : 'border border-slate-200 bg-white text-slate-700'
-            )}
-          >
-            {unpriced ? 'تحديد السعر' : 'تعديل'}
-          </button>
+          {locked ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+              <Lock className="h-3.5 w-3.5" /> فوج مغلق
+            </span>
+          ) : (
+            <button
+              onClick={onEdit}
+              className={cn(
+                'shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold active:scale-95',
+                unpriced ? 'bg-primary-600 text-white' : 'border border-slate-200 bg-white text-slate-700'
+              )}
+            >
+              {unpriced ? 'تحديد السعر' : 'تعديل'}
+            </button>
+          )}
         </div>
       )}
     </li>
+  )
+}
+
+// ── ملخص شامل للفئة المختارة (أو لكل الفئات) ─────────────────────────────────
+function CategorySummary({ breakdown, category, loading }: { breakdown: CategoryBreakdown[]; category: string | undefined; loading: boolean }) {
+  if (loading) return <div className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+  if (breakdown.length === 0) return null
+
+  const rows = category ? breakdown.filter((c) => c.code === category) : breakdown
+  if (rows.length === 0) {
+    return <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-400">لا توجد سجلات في هذه الفئة</div>
+  }
+
+  const count        = rows.reduce((n, c) => n + c.count, 0)
+  const totalAmount  = rows.reduce((n, c) => n + (c.total_amount ?? 0), 0)
+  const unpriced     = rows.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
+  const quantity     = rows.reduce((n, c) => n + (c.quantity ?? 0), 0)
+  const units        = Array.from(new Set(rows.map((c) => c.quantity_unit).filter(Boolean)))
+  const single       = rows.length === 1 ? rows[0] : null
+  const isSales      = category === 'sales'
+  // الكمية لا تُجمع عبر وحدات مختلفة (كغ + عبوة + م³) ولا معنى لمتوسط سعر مختلط
+  const quantityText = single || units.length <= 1
+    ? `${formatNumber(quantity)} ${units[0] ?? ''}`.trim()
+    : '—'
+  const feedKg       = single?.computed_quantity
+
+  const avg = single?.avg_unit_price
+  const avgText = avg == null ? '—' : formatNumber(isSales ? avg * 1000 : avg)
+
+  return (
+    <div className="grid grid-cols-2 gap-2.5">
+      <Stat label="عدد السجلات" value={String(count)} sub={unpriced > 0 ? `${unpriced} بدون سعر` : 'كلها مسعّرة'} tone={unpriced > 0 ? 'amber' : 'emerald'} />
+      <Stat
+        label="الكمية الإجمالية"
+        value={quantityText}
+        sub={feedKg != null && feedKg > 0 ? (feedKg >= 1000 ? `${formatNumber(feedKg / 1000)} طن` : `${formatNumber(feedKg)} كغ`) : undefined}
+      />
+      <Stat label="السعر الإجمالي" value={formatNumber(totalAmount)} tone="slate" strong />
+      <Stat label={isSales ? 'متوسط سعر الطن' : 'متوسط سعر الوحدة'} value={single ? avgText : '—'} sub={single ? undefined : 'اختر فئة'} />
+    </div>
+  )
+}
+
+function Stat({ label, value, sub, tone, strong }: { label: string; value: string; sub?: string; tone?: 'amber' | 'emerald' | 'slate'; strong?: boolean }) {
+  const subTone = tone === 'amber' ? 'text-amber-600' : tone === 'emerald' ? 'text-emerald-600' : 'text-slate-400'
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-800">
+      <div className="text-[11px] font-semibold text-slate-400">{label}</div>
+      <div className={cn('mt-1 truncate text-lg font-extrabold tabular-nums text-slate-800 dark:text-slate-100', strong && 'text-xl')}>{value}</div>
+      {sub && <div className={cn('mt-0.5 text-[11px] font-semibold', subTone)}>{sub}</div>}
+    </div>
   )
 }

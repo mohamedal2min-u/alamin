@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, ShieldCheck } from 'lucide-react'
 import { accountingApi } from '@/lib/api/accounting'
+import type { ShareAuditEntry } from '@/lib/api/accounting'
 import { Card, CardContent } from '@/components/ui/Card'
 import { formatNumber } from '@/lib/utils'
 
@@ -17,6 +18,12 @@ export function PriceAuditTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['accounting', 'price-audit', { editsOnly, page }],
     queryFn: () => accountingApi.getPriceAudit({ edits_only: editsOnly, page, per_page: 30 }),
+    staleTime: 15_000,
+  })
+
+  const shares = useQuery({
+    queryKey: ['accounting', 'share-audit'],
+    queryFn: () => accountingApi.getShareAudit({ per_page: 30 }),
     staleTime: 15_000,
   })
 
@@ -75,6 +82,33 @@ export function PriceAuditTab() {
           )}
         </div>
       )}
+
+      {/* ── تعديلات حصص الشركاء ── */}
+      <div className="pt-2">
+        <h3 className="mb-2 text-sm font-bold text-slate-700">تعديلات حصص الشركاء</h3>
+        {shares.isLoading ? (
+          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+        ) : !shares.data?.data.length ? (
+          <p className="py-6 text-center text-sm text-slate-400">لا توجد تعديلات حصص</p>
+        ) : (
+          <div className="space-y-2">
+            {shares.data.data.map((e: ShareAuditEntry) => (
+              <Card key={e.id}>
+                <CardContent className="py-3 px-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="font-medium text-slate-800">{e.partner ?? '—'}</div>
+                    <div className="text-xs text-slate-400">{e.by ?? '—'} • {e.at ? new Date(e.at).toLocaleString('ar') : ''}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {e.is_edit ? <s className="text-red-400 decoration-red-500">{formatNumber(e.old_percent ?? 0)}%</s> : <span className="text-xs text-emerald-700">أول تحديد</span>}
+                    <strong className="text-slate-800">{formatNumber(e.new_percent)}%</strong>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

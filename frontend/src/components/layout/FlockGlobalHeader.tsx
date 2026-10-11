@@ -13,6 +13,7 @@ import { flocksApi } from '@/lib/api/flocks'
 import type { Flock } from '@/types/flock'
 
 import { useScrollDirection } from '@/hooks/useScrollDirection'
+import { ThemeToggle } from './ThemeToggle'
 
 export function FlockGlobalHeader() {
   const { user, setUser } = useAuthStore()
@@ -144,7 +145,8 @@ export function FlockGlobalHeader() {
           </div>
 
           {/* Status (Left visually in RTL) */}
-          <div className="w-[35%] flex justify-end items-center gap-2">
+          <div className="w-[35%] flex justify-end items-center gap-1.5">
+             <ThemeToggle className="h-7 w-7" />
              <button
                 onClick={handleGlobalRefresh}
                 disabled={isRefreshing}

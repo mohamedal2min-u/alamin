@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'farm.scope'   => \App\Http\Middleware\FarmScopeMiddleware::class,
             'farm.active'  => \App\Http\Middleware\CheckFarmActiveMiddleware::class,
             'super_admin'  => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'farm.role'    => \App\Http\Middleware\EnsureFarmRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

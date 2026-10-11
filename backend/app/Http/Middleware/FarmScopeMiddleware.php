@@ -57,10 +57,13 @@ class FarmScopeMiddleware
 
         // ── ضبط Spatie Teams context ──────────────────────────────────────────
         setPermissionsTeamId($farmId);
+        // hasRole('super_admin') أعلاه حمّل الأدوار بلا سياق مزرعة؛ نُعيد تحميلها ضمن المزرعة الحالية
+        $user->unsetRelation('roles')->unsetRelation('permissions');
 
         // ── تخزين farm_id والـ Farm model في attributes لتجنب إعادة الاستعلام ──
         $request->attributes->set('farm_id', $farmId);
         $request->attributes->set('farm', $farm);
+        $request->attributes->set('is_super_admin', $isSuperAdmin);
 
         return $next($request);
     }

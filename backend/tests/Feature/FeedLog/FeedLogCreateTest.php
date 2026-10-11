@@ -66,7 +66,8 @@ class FeedLogCreateTest extends TestCase
             'item_type_id' => $feedType->id,
             'unit_value'   => 1,
         ]);
-        $warehouse = Warehouse::factory()->forFarm($farm)->create();
+        // FarmObserver ينشئ المستودع الرئيسي تلقائياً — نستخدمه بدل إنشاء مستودع ثانٍ
+        $warehouse = Warehouse::where('farm_id', $farm->id)->firstOrFail();
         WarehouseItem::factory()->create([
             'farm_id'          => $farm->id,
             'warehouse_id'     => $warehouse->id,
@@ -99,6 +100,7 @@ class FeedLogCreateTest extends TestCase
         $user  = $this->actingAsMember($farm);
         $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
         $item  = $this->makeFeedItem($farm);
+        Warehouse::where('farm_id', $farm->id)->delete(); // FarmObserver أنشأ مستودعاً تلقائياً
 
         $this->actingAs($user, 'sanctum')
             ->withHeaders(['X-Farm-Id' => $farm->id])

@@ -98,12 +98,7 @@ class FlockController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
-            return response()->json([
-                'message' => 'حدث خطأ في النظام',
-                'debug' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ], 500);
+            return response()->json(['message' => 'حدث خطأ في النظام'], 500);
         }
 
         return response()->json(['data' => $summary]);

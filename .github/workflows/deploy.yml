@@ -1,0 +1,82 @@
+name: Deploy to server
+
+# تشغيل يدوي فقط: زر Run workflow من تبويب Actions. لا ينشر تلقائياً عند الدمج.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: ماذا تنشر؟
+        type: choice
+        options: [backend, frontend, both]
+        default: backend
+      confirm:
+        description: اكتب DEPLOY للتأكيد (النشر يشغّل ترحيلات على قاعدة بيانات الإنتاج)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  SERVER_HOST: 82.29.181.61
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation and branch
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          REF: ${{ github.ref }}
+        run: |
+          [ "$CONFIRM" = "DEPLOY" ] || { echo "اكتب DEPLOY بالضبط للتأكيد"; exit 1; }
+          [ "$REF" = "refs/heads/main" ] || { echo "النشر مسموح من فرع main فقط (الحالي: $REF)"; exit 1; }
+
+  backend:
+    needs: guard
+    if: inputs.target == 'backend' || inputs.target == 'both'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/deploy
+      - name: Deploy backend (as alamin-api)
+        env:
+          SSH_KEY: ${{ secrets.BACKEND_SSH_KEY }}
+          HOST_KEY: ${{ secrets.SERVER_HOST_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s %s\n' "$SERVER_HOST" "$HOST_KEY" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+              "alamin-api@$SERVER_HOST" 'bash -s' < .github/deploy/backend.sh
+          rm -f ~/.ssh/id_deploy
+
+  frontend:
+    # بعد الباك إند عند اختيار both، حتى لا تصل واجهة جديدة لـ API قديم
+    needs: [guard, backend]
+    if: ${{ !cancelled() && needs.guard.result == 'success' && (needs.backend.result == 'success' || needs.backend.result == 'skipped') && (inputs.target == 'frontend' || inputs.target == 'both') }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/deploy
+      - name: Deploy frontend (as maa)
+        env:
+          SSH_KEY: ${{ secrets.FRONTEND_SSH_KEY }}
+          HOST_KEY: ${{ secrets.SERVER_HOST_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s %s\n' "$SERVER_HOST" "$HOST_KEY" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+              "maa@$SERVER_HOST" 'bash -s' < .github/deploy/frontend.sh
+          rm -f ~/.ssh/id_deploy

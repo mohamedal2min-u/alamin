@@ -122,3 +122,9 @@ export function useCanRecordPayments(): boolean {
 export function useIsSupervisor(): boolean {
   return useCurrentRole() === 'supervisor'
 }
+
+/** شاشة المخزون المبسّطة: لمدير المزرعة والمشرف (وكلاهما بلا أسعار). */
+export function useSimpleInventory(): boolean {
+  const role = useCurrentRole()
+  return role === 'farm_admin' || role === 'supervisor'
+}

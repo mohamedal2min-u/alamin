@@ -1,4 +1,16 @@
-# نشر السيرفر من GitHub Actions
+# نشر السيرفر
+
+## الطريقة الأسهل: أمر واحد من طرفية CloudPanel (root)
+
+```bash
+cd /home/alamin-api/app && sudo -u alamin-api git pull --ff-only origin main && bash .github/deploy/deploy-all.sh
+```
+
+يعرض آخر commits، ويطلب كتابة `DEPLOY`، ثم ينشر الباك إند (كمستخدم `alamin-api`) والـ frontend (كمستخدم `maa`).
+للباك إند فقط: `bash .github/deploy/deploy-all.sh backend`، وللواجهة فقط: `... frontend`.
+لا مفاتيح ولا أسرار ولا جدار ناري؛ يحتاج فقط طرفية root على السيرفر.
+
+## بديل: GitHub Actions
 
 الـ workflow `Deploy to server` يعمل **يدوياً فقط** (Actions ثم Deploy to server ثم Run workflow).
 يطلب كتابة `DEPLOY` للتأكيد، ولا يعمل إلا من فرع `main`. السكربتات الفعلية هنا:

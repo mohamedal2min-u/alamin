@@ -179,5 +179,5 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::post('flocks/{flock}/sales', [\App\Http\Controllers\Api\Sale\SaleController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
     Route::get('sales',                 [\App\Http\Controllers\Api\Sale\SaleController::class, 'indexAll']);
     Route::get('sales/{sale}',          [\App\Http\Controllers\Api\Sale\SaleController::class, 'show']);
-    Route::patch('sales/{sale}/payment',[\App\Http\Controllers\Api\Sale\SaleController::class, 'updatePayment'])->middleware('farm.role:farm_admin');
+    Route::patch('sales/{sale}/payment',[\App\Http\Controllers\Api\Sale\SaleController::class, 'updatePayment'])->middleware('farm.role:accountant');
 });

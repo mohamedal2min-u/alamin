@@ -46,8 +46,8 @@ class ReviewQueueController extends Controller
         $canSetPrices = $request->attributes->get('is_super_admin') === true
             || $request->user()->hasRole('accountant');
 
-        if (! $canSetPrices && array_key_exists('unit_price', $data)) {
-            return response()->json(['message' => 'تحديد الأسعار من صلاحية المحاسب'], 403);
+        if (! $canSetPrices && (array_key_exists('unit_price', $data) || array_key_exists('paid_amount', $data))) {
+            return response()->json(['message' => 'تحديد الأسعار وتسجيل الدفعات من صلاحية المحاسب'], 403);
         }
 
         // المحاسب لا يعدّل شيئاً على فوج مغلق (يرى فقط)

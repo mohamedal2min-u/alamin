@@ -33,6 +33,7 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   const [tab, setTab] = useState<Tab>('all')
   const [category, setCategory] = useState<string | undefined>(undefined)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [mode, setMode] = useState<'price' | 'payment'>('price')
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -64,10 +65,13 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
 
   const save = useMutation({
     mutationFn: ({ item, price }: { item: ReviewItem; price: number }) =>
-      // سعر البيع يُدخَل للطن ويُخزَّن للكيلو
-      accountingApi.updateReviewItem(item.type, item.record_id, {
-        unit_price: item.type === 'sale' ? price / 1000 : price,
-      }),
+      mode === 'payment'
+        // الدفعة: إجمالي المدفوع/المستلم حتى الآن
+        ? accountingApi.updateReviewItem(item.type, item.record_id, { paid_amount: price })
+        // سعر البيع يُدخَل للطن ويُخزَّن للكيلو
+        : accountingApi.updateReviewItem(item.type, item.record_id, {
+            unit_price: item.type === 'sale' ? price / 1000 : price,
+          }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounting', 'review-queue'] })
       setEditingId(null)
@@ -82,7 +86,15 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
     },
   })
 
+  const startPayment = (item: ReviewItem) => {
+    setMode('payment')
+    setEditingId(item.id)
+    setError(null)
+    setValue(String(item.paid_amount ?? 0))
+  }
+
   const startEdit = (item: ReviewItem) => {
+    setMode('price')
     setEditingId(item.id)
     setError(null)
     const shown = item.unit_price != null ? (item.type === 'sale' ? item.unit_price * 1000 : item.unit_price) : null
@@ -92,7 +104,7 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   const submit = (item: ReviewItem) => {
     const price = parseFloat(value)
     if (!Number.isFinite(price) || price < 0) {
-      setError('أدخل سعراً صحيحاً')
+      setError(mode === 'payment' ? 'أدخل مبلغاً صحيحاً' : 'أدخل سعراً صحيحاً')
       return
     }
     save.mutate({ item, price })
@@ -149,11 +161,13 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
               item={item}
               locked={item.flock_status === 'closed' || item.flock_status === 'cancelled'}
               isEditing={editingId === item.id}
+              mode={mode}
               value={value}
               error={editingId === item.id ? error : null}
               isSaving={save.isPending && editingId === item.id}
               onValue={setValue}
               onEdit={() => startEdit(item)}
+              onPay={() => startPayment(item)}
               onCancel={() => { setEditingId(null); setError(null) }}
               onSave={() => submit(item)}
             />
@@ -182,18 +196,21 @@ interface CardProps {
   item: ReviewItem
   locked: boolean
   isEditing: boolean
+  mode: 'price' | 'payment'
   value: string
   error: string | null
   isSaving: boolean
   onValue: (v: string) => void
   onEdit: () => void
+  onPay: () => void
   onCancel: () => void
   onSave: () => void
 }
 
-function PriceCard({ item, locked, isEditing, value, error, isSaving, onValue, onEdit, onCancel, onSave }: CardProps) {
+function PriceCard({ item, locked, isEditing, mode, value, error, isSaving, onValue, onEdit, onPay, onCancel, onSave }: CardProps) {
   const unpriced = item.unit_price == null
-  const unitLabel = item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'
+  const unitLabel = mode === 'payment' ? 'إجمالي المدفوع حتى الآن' : item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'
+  const remaining = Number(item.remaining_amount ?? 0)
 
   return (
     <li className={cn('rounded-2xl border bg-white p-4 shadow-sm', unpriced ? 'border-amber-200' : 'border-slate-200')}>
@@ -238,7 +255,10 @@ function PriceCard({ item, locked, isEditing, value, error, isSaving, onValue, o
               إلغاء
             </button>
           </div>
-          {item.unit_price != null && (
+          {mode === 'payment' && (
+            <p className="text-[11px] text-slate-400">الإجمالي {formatNumber(item.total_amount)} — يُسجَّل كل تعديل على الدفعات باسمك ولا يُحذف.</p>
+          )}
+          {mode === 'price' && item.unit_price != null && (
             <p className="text-[11px] text-slate-400">السعر القديم سيبقى ظاهراً مشطوباً ويُسجَّل التعديل باسمك.</p>
           )}
           {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
@@ -248,7 +268,11 @@ function PriceCard({ item, locked, isEditing, value, error, isSaving, onValue, o
           <div className="text-sm text-slate-500">
             <PriceWithHistory item={item} />
             {!unpriced && (
-              <div className="mt-0.5 text-xs text-slate-400">الإجمالي: {formatNumber(item.total_amount)}</div>
+              <div className="mt-0.5 text-xs text-slate-400">
+                الإجمالي: {formatNumber(item.total_amount)}
+                {Number(item.paid_amount ?? 0) > 0 && <> • مدفوع {formatNumber(Number(item.paid_amount))}</>}
+                {remaining > 0 && <> • <span className="font-bold text-red-600">متبقي {formatNumber(remaining)}</span></>}
+              </div>
             )}
           </div>
           {locked ? (
@@ -256,15 +280,22 @@ function PriceCard({ item, locked, isEditing, value, error, isSaving, onValue, o
               <Lock className="h-3.5 w-3.5" /> فوج مغلق
             </span>
           ) : (
-            <button
-              onClick={onEdit}
-              className={cn(
-                'shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold active:scale-95',
-                unpriced ? 'bg-primary-600 text-white' : 'border border-slate-200 bg-white text-slate-700'
+            <div className="flex shrink-0 gap-2">
+              {!unpriced && remaining > 0 && (
+                <button onClick={onPay} className="rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 active:scale-95 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  تسجيل دفعة
+                </button>
               )}
-            >
-              {unpriced ? 'تحديد السعر' : 'تعديل'}
-            </button>
+              <button
+                onClick={onEdit}
+                className={cn(
+                  'rounded-xl px-5 py-2.5 text-sm font-bold active:scale-95',
+                  unpriced ? 'bg-primary-600 text-white' : 'border border-slate-200 bg-white text-slate-700'
+                )}
+              >
+                {unpriced ? 'تحديد السعر' : 'تعديل'}
+              </button>
+            </div>
           )}
         </div>
       )}

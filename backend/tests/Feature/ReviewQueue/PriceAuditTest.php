@@ -105,7 +105,7 @@ class PriceAuditTest extends TestCase
     public function test_priced_and_paid_record_can_still_be_edited_via_scope_all(): void
     {
         $this->setPrice($this->accountant, 5)->assertOk();
-        $this->as($this->admin)->patchJson("/api/accounting/review-queue/expense/{$this->expense->id}", [
+        $this->as($this->accountant)->patchJson("/api/accounting/review-queue/expense/{$this->expense->id}", [
             'paid_amount' => 50,
         ])->assertOk();
 
@@ -128,7 +128,7 @@ class PriceAuditTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_farm_admin_cannot_set_prices_but_accountant_and_admin_can_record_payments(): void
+    public function test_farm_admin_cannot_set_prices_or_record_payments_only_accountant_can(): void
     {
         // مدير المزرعة لا يحدد الأسعار
         $this->as($this->admin)
@@ -138,10 +138,10 @@ class PriceAuditTest extends TestCase
 
         $this->setPrice($this->accountant, 5)->assertOk();
 
-        // الدفعات: للمدير وللمحاسب
+        // الدفعات: للمحاسب وحده — مدير المزرعة لا يسجّلها
         $this->as($this->admin)
             ->patchJson("/api/accounting/review-queue/expense/{$this->expense->id}", ['paid_amount' => 10])
-            ->assertOk();
+            ->assertStatus(403);
         $this->as($this->accountant)
             ->patchJson("/api/accounting/review-queue/expense/{$this->expense->id}", ['paid_amount' => 20])
             ->assertOk();

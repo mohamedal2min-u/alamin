@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * مدير المزرعة والمشرف يُدخلان الكميات والسجلات لكنهما لا يحددان الأسعار — تحديدها للمحاسب فقط.
+ * مدير المزرعة والمشرف يُدخلان الكميات والسجلات لكنهما لا يحددان الأسعار ولا الدفعات — للمحاسب فقط.
  * يحذف حقول الأسعار من الطلب بصمت قبل التحقق، فيُنشأ السجل بلا سعر ويظهر في قائمة المحاسب.
  * يُستخدم بعد farm.scope: farm.noprice
  */
@@ -26,20 +26,14 @@ class StripPriceFields
             || $request->user()?->hasRole('accountant');
         $isFarmAdminOnly = ! $canSetPrices;
 
-        // المشرف لا يسجّل دفعات أيضاً (مدير المزرعة والمحاسب فقط)
-        $isSupervisorOnly = $isFarmAdminOnly
-            && $request->user()?->hasRole('supervisor')
-            && ! $request->user()->hasRole('farm_admin');
-
         if ($isFarmAdminOnly) {
             foreach (self::FIELDS as $field) {
                 $request->offsetUnset($field);
             }
 
-            if ($isSupervisorOnly) {
-                foreach (['paid_amount', 'received_amount', 'chick_paid_amount', 'payment_status'] as $field) {
-                    $request->offsetUnset($field);
-                }
+            // الدفعات والمستلم وحالة الدفع أرقام مالية أيضاً: للمحاسب فقط
+            foreach (['paid_amount', 'received_amount', 'chick_paid_amount', 'payment_status'] as $field) {
+                $request->offsetUnset($field);
             }
 
             // أسطر البيع: سعر الكيلو

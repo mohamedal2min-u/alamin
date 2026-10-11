@@ -4,10 +4,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { 
-  LayoutDashboard, Bird, Package, ClipboardList,
-  MoreHorizontal
-} from 'lucide-react'
+import { Bird, Warehouse, ClipboardCheck, LayoutGrid } from 'lucide-react'
 import { useCurrentRole, getDefaultRoute } from '@/lib/roles'
 import { NAV_HREFS_BY_ROLE } from '@/lib/roles'
 
@@ -34,38 +31,39 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
   const shouldHide = scrollDirection === 'up' && !isAtTop
 
   const regularItems = [
-    { label: 'الوردية',  href: '/worker',    icon: ClipboardList },
-    { label: 'المخزون',  href: '/inventory', icon: Package },
+    { label: 'الوردية',  href: '/worker',    icon: ClipboardCheck },
+    { label: 'المخزون',  href: '/inventory', icon: Warehouse },
     { label: 'الأفواج',  href: '/flocks',    icon: Bird },
   ].filter(item => allowedHrefs.includes(item.href) && item.href !== homeHref)
 
-  const renderItem = (item: { label: string, href: string, icon: any }) => {
+  // أيقونة داخل كبسولة: عند التفعيل تظهر خلفية ناعمة والأيقونة ممتلئة قليلاً
+  const iconPill = (Icon: React.ElementType, active: boolean) => (
+    <span
+      className={cn(
+        'flex h-8 w-14 items-center justify-center rounded-full transition-all duration-300',
+        active ? 'bg-primary-100 dark:bg-primary-900/40' : 'bg-transparent'
+      )}
+    >
+      <Icon
+        className={cn('h-[22px] w-[22px] transition-colors duration-200', active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-500 dark:text-slate-400')}
+        strokeWidth={active ? 2.2 : 1.7}
+      />
+    </span>
+  )
+
+  const renderItem = (item: { label: string, href: string, icon: React.ElementType }) => {
     const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
     return (
       <Link
         key={item.href}
         href={item.href}
-        className={cn(
-          'relative flex flex-col items-center justify-center gap-1 min-w-[56px] py-1.5 transition-all duration-200 active:scale-95',
-          isActive ? 'text-primary-600' : 'text-slate-400'
-        )}
+        aria-current={isActive ? 'page' : undefined}
+        className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 py-1.5 transition-transform duration-200 active:scale-95"
       >
-        <item.icon 
-          className={cn(
-            'h-6 w-6 transition-all duration-300', 
-            isActive && 'scale-110'
-          )} 
-          strokeWidth={isActive ? 2.5 : 1.8}
-        />
-        <span className={cn(
-          'text-[10px] font-bold leading-none transition-colors duration-200',
-          isActive ? 'text-primary-700' : 'text-slate-400'
-        )}>
+        {iconPill(item.icon, isActive)}
+        <span className={cn('text-[11px] leading-none transition-colors duration-200', isActive ? 'font-extrabold text-primary-700 dark:text-primary-300' : 'font-semibold text-slate-500 dark:text-slate-400')}>
           {item.label}
         </span>
-        {isActive && (
-          <span className="absolute -top-0.5 h-[3px] w-6 rounded-full bg-primary-500 transition-all duration-300" />
-        )}
       </Link>
     )
   }
@@ -74,10 +72,10 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     <button
       key="more-button"
       onClick={onMoreClick}
-      className="flex flex-col items-center justify-center gap-1 min-w-[56px] py-1.5 text-slate-400 transition-all duration-200 active:scale-95"
+      className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 py-1.5 transition-transform duration-200 active:scale-95"
     >
-      <MoreHorizontal className="h-6 w-6" strokeWidth={1.8} />
-      <span className="text-[10px] font-bold leading-none">المزيد</span>
+      {iconPill(LayoutGrid, false)}
+      <span className="text-[11px] font-semibold leading-none text-slate-500 dark:text-slate-400">المزيد</span>
     </button>
   )
 

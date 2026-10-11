@@ -94,7 +94,7 @@ export function AccountantBoard() {
       {section === 'prices' ? (
         <AccountantPrices flockId={effectiveFlockId} />
       ) : (
-        <AccountantPartners flock={selected} />
+        <AccountantPartners flock={selected} sharesLocked={!!activeFlock} />
       )}
     </div>
   )

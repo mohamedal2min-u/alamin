@@ -88,6 +88,17 @@ class PartnerService
     }
 
     /**
+     * نسب الشراكة تُقفل ما دام في المزرعة فوج مفتوح (نشط) — لا يعدّلها أحد، حتى مدير النظام.
+     * تُعدَّل فقط بين الأفواج (بعد إغلاق الفوج الحالي وقبل بدء التالي).
+     */
+    public function assertSharesEditable(int $farmId): void
+    {
+        if (\App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->exists()) {
+            abort(422, 'نسب الشراكة مقفلة: يوجد فوج مفتوح. لا يمكن تعديلها إلا بعد إغلاق الفوج الحالي.');
+        }
+    }
+
+    /**
      * يحدد حصة شريك (غير المدير) ويعدّل حصة المدير تلقائياً (100% - مجموع الآخرين)،
      * ويسجّل التغيير في سجل الحصص. يجب استدعاؤها داخل DB::transaction والشريك مقفول.
      *
@@ -102,6 +113,8 @@ class PartnerService
         if ($shareDifference == 0.0) {
             return ['old' => $currentShare, 'new' => $currentShare];
         }
+
+        $this->assertSharesEditable($farmId);
 
         $adminPartner = $this->ensureManagerPartnerExists($farmId);
 

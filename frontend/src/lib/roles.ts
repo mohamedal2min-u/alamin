@@ -112,10 +112,10 @@ export function useCanSetPrices(): boolean {
   return role === 'accountant' || role === 'super_admin'
 }
 
-/** تسجيل الدفعات: مدير المزرعة والمحاسب (ومدير النظام) فقط — لا المشرف ولا الشريك. */
+/** تسجيل الدفعات والمستلم: المحاسب (ومدير النظام) فقط — لا مدير المزرعة ولا المشرف ولا الشريك. */
 export function useCanRecordPayments(): boolean {
   const role = useCurrentRole()
-  return role === 'farm_admin' || role === 'accountant' || role === 'super_admin'
+  return role === 'accountant' || role === 'super_admin'
 }
 
 /** المشرف يرى صفحات المال (المحاسبة) للقراءة فقط: لا أسعار ولا دفعات ولا سجل تدقيق. */

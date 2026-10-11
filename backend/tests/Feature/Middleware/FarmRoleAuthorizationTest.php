@@ -49,14 +49,13 @@ class FarmRoleAuthorizationTest extends TestCase
         $this->as($accountant, $farm)->deleteJson('/api/workers/1')->assertStatus(403);
     }
 
-    public function test_accountant_cannot_touch_stock_or_payments(): void
+    public function test_accountant_cannot_touch_stock_or_create_records(): void
     {
         $farm = Farm::factory()->create();
         $accountant = $this->memberWithRole($farm, 'accountant');
         $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
 
         $this->as($accountant, $farm)->postJson("/api/flocks/{$flock->id}/sales", [])->assertStatus(403);
-        $this->as($accountant, $farm)->patchJson('/api/sales/1/payment', [])->assertStatus(403);
         $this->as($accountant, $farm)->postJson('/api/inventory/items', [])->assertStatus(403);
         $this->as($accountant, $farm)->postJson('/api/inventory/transactions', [])->assertStatus(403);
         $this->as($accountant, $farm)->postJson('/api/expenses', [])->assertStatus(403);

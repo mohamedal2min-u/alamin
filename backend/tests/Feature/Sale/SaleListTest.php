@@ -139,7 +139,8 @@ class SaleListTest extends TestCase
     public function test_update_payment_changes_status_to_paid(): void
     {
         $farm  = Farm::factory()->create();
-        $user  = $this->actingAsMember($farm);
+        $user  = User::factory()->create();
+        FarmUser::factory()->withRole('accountant')->create(['farm_id' => $farm->id, 'user_id' => $user->id, 'status' => 'active']);
         $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
         $sale  = Sale::factory()->forFlock($flock)->debt()->create();
 
@@ -157,7 +158,8 @@ class SaleListTest extends TestCase
     public function test_update_payment_changes_status_to_partial(): void
     {
         $farm  = Farm::factory()->create();
-        $user  = $this->actingAsMember($farm);
+        $user  = User::factory()->create();
+        FarmUser::factory()->withRole('accountant')->create(['farm_id' => $farm->id, 'user_id' => $user->id, 'status' => 'active']);
         $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
         $sale  = Sale::factory()->forFlock($flock)->debt()->create(['net_amount' => 1000, 'gross_amount' => 1000]);
 
@@ -202,5 +204,18 @@ class SaleListTest extends TestCase
                     ],
                 ],
             ]);
+    }
+
+    public function test_farm_manager_cannot_record_sale_payment(): void
+    {
+        $farm  = Farm::factory()->create();
+        $user  = $this->actingAsMember($farm);
+        $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
+        $sale  = Sale::factory()->forFlock($flock)->debt()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->withHeaders(['X-Farm-Id' => $farm->id])
+            ->patchJson("/api/sales/{$sale->id}/payment", ['received_amount' => 1])
+            ->assertStatus(403);
     }
 }

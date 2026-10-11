@@ -59,7 +59,7 @@ class AccountingProtectionTest extends TestCase
 
     public function test_payment_cannot_exceed_total_and_changes_are_logged(): void
     {
-        $manager = $this->member('farm_admin');
+        $manager = $this->member('accountant');
         $e = $this->expense();
 
         $this->as($manager)->patchJson("/api/accounting/review-queue/expense/{$e->id}", ['paid_amount' => 80])->assertStatus(422);
@@ -141,7 +141,7 @@ class AccountingProtectionTest extends TestCase
 
     public function test_sale_payment_is_logged(): void
     {
-        $manager = $this->member('farm_admin');
+        $manager = $this->member('accountant');
         $flock = Flock::factory()->create(['farm_id' => $this->farm->id, 'initial_count' => 100, 'status' => 'active']);
         $sale = \App\Models\Sale::create([
             'farm_id' => $this->farm->id, 'flock_id' => $flock->id, 'sale_date' => now()->toDateString(),

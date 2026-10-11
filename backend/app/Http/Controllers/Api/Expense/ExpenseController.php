@@ -41,7 +41,7 @@ class ExpenseController extends Controller
             'entry_date'          => 'required|date_format:Y-m-d',
             'quantity'            => 'required|numeric|min:0.001',
             'unit_price'          => 'nullable|numeric|min:0',
-            'total_amount'        => 'required|numeric|min:0',
+            'total_amount'        => 'nullable|numeric|min:0',
             'paid_amount'         => 'nullable|numeric|min:0',
             'payment_status'      => 'nullable|in:paid,partial,unpaid,debt',
             'description'         => 'nullable|string|max:255',
@@ -59,7 +59,7 @@ class ExpenseController extends Controller
             }
         }
 
-        $totalAmount   = (float) $validated['total_amount'];
+        $totalAmount   = (float) ($validated['total_amount'] ?? 0);
         $paidAmount    = isset($validated['paid_amount']) ? (float) $validated['paid_amount'] : $totalAmount;
 
         // payment_status is always derived server-side from the amounts — never trusted

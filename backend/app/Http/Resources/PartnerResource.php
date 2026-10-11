@@ -26,6 +26,9 @@ class PartnerResource extends JsonResource
             'status'        => $this->status,
             'notes'         => $this->notes,
             'share_percent' => $activeShare ? (float) $activeShare->share_percent : 0.0,
+            // حصة المدير تُحسب تلقائياً (100% - حصص الآخرين) ولا تُحدَّد مباشرة
+            'is_manager'    => $this->user_id !== null
+                && $request->attributes->get('farm')?->admin_user_id === $this->user_id,
             'shares'        => $this->whenLoaded('shares', fn () =>
                 $this->shares->map(fn ($s) => [
                     'id'             => $s->id,

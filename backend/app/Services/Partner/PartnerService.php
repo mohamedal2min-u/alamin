@@ -86,4 +86,64 @@ class PartnerService
     {
         $this->ensureManagerPartnerExists($farmId);
     }
+
+    /**
+     * يحدد حصة شريك (غير المدير) ويعدّل حصة المدير تلقائياً (100% - مجموع الآخرين)،
+     * ويسجّل التغيير في سجل الحصص. يجب استدعاؤها داخل DB::transaction والشريك مقفول.
+     *
+     * @return array{old: float, new: float}
+     */
+    public function setShare(int $farmId, Partner $partner, float $newShare, int $userId): array
+    {
+        $partnerShareRecord = $partner->shares()->where('is_active', true)->lockForUpdate()->first();
+        $currentShare       = $partnerShareRecord ? (float) $partnerShareRecord->share_percent : 0.0;
+        $shareDifference    = $newShare - $currentShare; // موجب = نحتاج المزيد من حصة المدير
+
+        if ($shareDifference == 0.0) {
+            return ['old' => $currentShare, 'new' => $currentShare];
+        }
+
+        $adminPartner = $this->ensureManagerPartnerExists($farmId);
+
+        // حصة المدير تُحسب تلقائياً ولا تُحدَّد مباشرة
+        if ($adminPartner->id === $partner->id) {
+            return ['old' => $currentShare, 'new' => $currentShare];
+        }
+
+        $adminShareRecord = $adminPartner->shares()->where('is_active', true)->lockForUpdate()->first();
+        $adminShare       = (float) $adminShareRecord->share_percent;
+
+        if ($adminShare - $shareDifference < 0) {
+            abort(422, 'تعديل الحصة يتجاوز الحصة المتبقية لمدير المزرعة ('.$adminShare.'%).');
+        }
+
+        $adminShareRecord->update([
+            'share_percent' => $adminShare - $shareDifference,
+            'updated_by'    => $userId,
+        ]);
+
+        if ($partnerShareRecord) {
+            $partnerShareRecord->update(['share_percent' => $newShare, 'updated_by' => $userId]);
+        } elseif ($newShare > 0) {
+            $partner->shares()->create([
+                'farm_id'        => $farmId,
+                'share_percent'  => $newShare,
+                'is_active'      => true,
+                'effective_from' => now(),
+                'created_by'     => $userId,
+            ]);
+        }
+
+        $this->syncManagerShare($farmId);
+
+        \App\Models\PartnerShareAuditLog::create([
+            'farm_id'     => $farmId,
+            'partner_id'  => $partner->id,
+            'user_id'     => $userId,
+            'old_percent' => $partnerShareRecord ? $currentShare : null,
+            'new_percent' => $newShare,
+        ]);
+
+        return ['old' => $currentShare, 'new' => $newShare];
+    }
 }

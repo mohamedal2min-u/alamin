@@ -223,58 +223,10 @@ class PartnerController extends Controller
                 User::where('id', $partner->user_id)->update($userUpdate);
             }
 
-            // Handle Share Updates
+            // Handle Share Updates (المنطق مشترك مع PATCH partners/{partner}/share ويُسجَّل في سجل الحصص)
             if (isset($validated['share_percent'])) {
-                $newShare = floatval($validated['share_percent']);
-                // $partner itself is already locked above, but this row may not exist yet on the
-                // first share assignment — the $partner-row lock is what actually serializes that case.
-                $partnerShareRecord = $partner->shares()->where('is_active', true)->lockForUpdate()->first();
-                $currentShare = $partnerShareRecord ? floatval($partnerShareRecord->share_percent) : 0;
-                
-                $shareDifference = $newShare - $currentShare; // if positive, we need more from admin
-
-                if ($shareDifference != 0) {
-                    // if (\App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->exists()) {
-                    //     abort(422, 'لا يمكن تعديل هيكل الملكية (تعديل الحصص) أثناء وجود فوج نشط.');
-                    // }
-                    $partnerService = app(\App\Services\Partner\PartnerService::class);
-                    $adminPartner   = $partnerService->ensureManagerPartnerExists($farmId);
-                    
-                    // Don't modify if this IS the admin
-                    if ($adminPartner->id !== $partner->id) {
-                        $adminShareRecord = $adminPartner->shares()->where('is_active', true)->lockForUpdate()->first();
-                        $adminShare = floatval($adminShareRecord->share_percent);
-                        
-                        if ($adminShare - $shareDifference < 0) {
-                            abort(422, "تعديل الحصة يتجاوز الحصة المتبقية لمدير المزرعة (" . $adminShare . "%).");
-                        }
-                        
-                        // Deduct/Add from admin
-                        $adminShareRecord->update([
-                            'share_percent' => $adminShare - $shareDifference,
-                            'updated_by' => $creatorUserId
-                        ]);
-                        
-                        // Update partner share
-                        if ($partnerShareRecord) {
-                            $partnerShareRecord->update([
-                                'share_percent' => $newShare,
-                                'updated_by' => $creatorUserId
-                            ]);
-                        } else if ($newShare > 0) {
-                            $partner->shares()->create([
-                                'farm_id' => $farmId,
-                                'share_percent' => $newShare,
-                                'is_active' => true,
-                                'effective_from' => now(),
-                                'created_by' => $creatorUserId,
-                            ]);
-                        }
-                        
-                        // Sync admin share
-                        $partnerService->syncManagerShare($farmId);
-                    }
-                }
+                app(\App\Services\Partner\PartnerService::class)
+                    ->setShare($farmId, $partner, floatval($validated['share_percent']), $creatorUserId);
             }
 
             // Update Partner Record
@@ -289,6 +241,34 @@ class PartnerController extends Controller
 
             $partner->load(['shares' => fn ($q) => $q->where('is_active', true), 'user:id,name,email,whatsapp']);
             return new PartnerResource($partner);
+        });
+    }
+
+    /**
+     * PATCH /partners/{partner}/share — تحديد حصة الشريك فقط (للمحاسب ومدير المزرعة).
+     * لا يغيّر كلمة مرور الشريك ولا بياناته ولا حالة حسابه.
+     */
+    public function updateShare(Request $request, Partner $partner): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+
+        if ($partner->farm_id != $farmId) {
+            abort(403, 'غير مصرح بالوصول إلى هذا المورد');
+        }
+
+        $validated = $request->validate([
+            'share_percent' => 'required|numeric|min:0|max:100',
+        ]);
+
+        return DB::transaction(function () use ($partner, $validated, $farmId, $request) {
+            $partner = Partner::where('id', $partner->id)->lockForUpdate()->firstOrFail();
+
+            app(\App\Services\Partner\PartnerService::class)
+                ->setShare($farmId, $partner, (float) $validated['share_percent'], $request->user()->id);
+
+            $partner->load(['shares' => fn ($q) => $q->where('is_active', true), 'user:id,name,email,whatsapp']);
+
+            return (new PartnerResource($partner))->response();
         });
     }
 

@@ -128,17 +128,56 @@ class PriceAuditTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_accountant_cannot_record_payments_but_admin_can(): void
+    public function test_farm_admin_cannot_set_prices_but_accountant_and_admin_can_record_payments(): void
     {
-        $this->as($this->accountant)
-            ->patchJson("/api/accounting/review-queue/expense/{$this->expense->id}", ['paid_amount' => 10])
+        // مدير المزرعة لا يحدد الأسعار
+        $this->as($this->admin)
+            ->patchJson("/api/accounting/review-queue/expense/{$this->expense->id}", ['unit_price' => 5])
             ->assertStatus(403);
+        $this->assertSame(0, PriceAuditLog::count());
 
         $this->setPrice($this->accountant, 5)->assertOk();
 
+        // الدفعات: للمدير وللمحاسب
         $this->as($this->admin)
             ->patchJson("/api/accounting/review-queue/expense/{$this->expense->id}", ['paid_amount' => 10])
             ->assertOk();
+        $this->as($this->accountant)
+            ->patchJson("/api/accounting/review-queue/expense/{$this->expense->id}", ['paid_amount' => 20])
+            ->assertOk();
+    }
+
+    public function test_category_summary_has_totals_with_scope_all(): void
+    {
+        $this->setPrice($this->accountant, 5)->assertOk(); // 10 × 5 = 50
+
+        $res = $this->as($this->accountant)->getJson('/api/accounting/review-queue?scope=all')->assertOk();
+
+        $cats = collect($res->json('summary.category_breakdown'));
+        $cat = $cats->firstWhere('count', 1);
+        $this->assertEquals(10, $cat['quantity']);
+        $this->assertEquals(50, $cat['total_amount']);
+        $this->assertSame(1, $cat['priced_count']);
+        $this->assertSame(0, $cat['unpriced_count']);
+        $this->assertEquals(5, $cat['avg_unit_price']);
+    }
+
+    public function test_accountant_cannot_edit_records_of_a_closed_flock(): void
+    {
+        $this->setPrice($this->accountant, 5)->assertOk();
+
+        $this->expense->flock->update(['status' => 'closed']);
+
+        $this->setPrice($this->accountant, 9)->assertStatus(403)
+            ->assertJsonPath('message', 'الفوج مغلق: لا يمكن التعديل عليه');
+
+        // السعر لم يتغير ولم يُسجَّل تعديل جديد
+        $this->assertSame(1, PriceAuditLog::count());
+
+        // لكنه يستطيع رؤية سجلات الفوج المغلق
+        $this->as($this->accountant)
+            ->getJson("/api/accounting/review-queue?scope=all&flock_id={$this->expense->flock_id}")
+            ->assertOk()->assertJsonPath('meta.total', 1);
     }
 
     public function test_audit_log_is_append_only(): void

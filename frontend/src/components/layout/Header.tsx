@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { LogOut, User, RefreshCcw } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
 import { ChickenLogo } from './ChickenLogo'
+import { ThemeToggle } from './ThemeToggle'
 import { LiveStatus } from './LiveStatus'
 import { useLayoutStore } from '@/stores/layout.store'
 import { useQueryClient } from '@tanstack/react-query'
@@ -84,6 +85,8 @@ export function Header() {
         <div className="hidden lg:block bg-primary-900/40 rounded-xl p-0.5 border border-primary-800/60">
            <FarmSelector />
         </div>
+
+        <ThemeToggle className="h-9 w-9 rounded-xl bg-primary-900/50 border border-primary-800/60 text-primary-300 dark:bg-primary-900/50 dark:text-amber-300" />
 
         <div className="hidden sm:block h-5 w-px bg-primary-800/60" />
 

@@ -52,6 +52,12 @@ class FarmUserFactory extends Factory
         });
     }
 
+    /** يضيف دوراً ثانياً إلى farm_admin (مثلاً مدير + محاسب) دون استبداله. */
+    public function alsoWithRole(string $role): static
+    {
+        return $this->afterCreating(fn (FarmUser $farmUser) => $this->assignRole($farmUser, $role));
+    }
+
     private function assignRole(FarmUser $farmUser, string $role): void
     {
         $registrar = app(PermissionRegistrar::class);

@@ -6,6 +6,14 @@ export interface CategoryBreakdown {
   count: number
   total_amount: number
   remaining_amount: number
+  // معلومات شاملة للفئة
+  paid_amount?: number
+  quantity?: number
+  quantity_unit?: string | null
+  computed_quantity?: number
+  priced_count?: number
+  unpriced_count?: number
+  avg_unit_price?: number | null
 }
 
 export interface ReviewSummary {
@@ -66,6 +74,16 @@ export interface PriceAuditEntry extends PriceHistoryEntry {
   is_edit: boolean
 }
 
+export interface ShareAuditEntry {
+  id: number
+  partner: string | null
+  old_percent: number | null
+  new_percent: number
+  is_edit: boolean
+  by: string | null
+  at: string | null
+}
+
 export interface ReviewQueueResponse {
   summary: ReviewSummary
   data: ReviewItem[]
@@ -119,6 +137,17 @@ export const accountingApi = {
     const { data } = await apiClient.get<ReviewQueueResponse>(
       `/accounting/review-queue?${params.toString()}`
     )
+    return data
+  },
+
+  getShareAudit: async (params: { page?: number; per_page?: number } = {}) => {
+    const q = new URLSearchParams()
+    if (params.page) q.set('page', String(params.page))
+    if (params.per_page) q.set('per_page', String(params.per_page))
+    const { data } = await apiClient.get<{
+      data: ShareAuditEntry[]
+      meta: { total: number; current_page: number; per_page: number }
+    }>(`/accounting/share-audit?${q.toString()}`)
     return data
   },
 

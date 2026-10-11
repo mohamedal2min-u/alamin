@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'farm.active'  => \App\Http\Middleware\CheckFarmActiveMiddleware::class,
             'super_admin'  => \App\Http\Middleware\EnsureSuperAdmin::class,
             'farm.role'    => \App\Http\Middleware\EnsureFarmRole::class,
+            'farm.noprice' => \App\Http\Middleware\StripPriceFields::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

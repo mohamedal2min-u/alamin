@@ -93,3 +93,12 @@ export function useCurrentRole(): FarmRole | null {
 export function useIsReadOnly(): boolean {
   return useCurrentRole() === 'partner'
 }
+
+/**
+ * تحديد الأسعار للمحاسب فقط (ولمدير النظام). مدير المزرعة يضيف السجلات بلا أسعار —
+ * الخادم يتجاهل حقول السعر منه، فنخفيها في النماذج.
+ */
+export function useCanSetPrices(): boolean {
+  const role = useCurrentRole()
+  return role === 'accountant' || role === 'super_admin'
+}

@@ -16,7 +16,7 @@ class WaterLogCreateTest extends TestCase
     private function actingAsMember(Farm $farm): User
     {
         $user = User::factory()->create();
-        FarmUser::factory()->create(['farm_id' => $farm->id, 'user_id' => $user->id, 'status' => 'active']);
+        FarmUser::factory()->alsoWithRole('accountant')->create(['farm_id' => $farm->id, 'user_id' => $user->id, 'status' => 'active']);
         return $user;
     }
 

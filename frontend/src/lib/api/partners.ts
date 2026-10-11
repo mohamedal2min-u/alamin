@@ -18,6 +18,8 @@ export interface Partner {
     status: 'active' | 'inactive'
     notes: string | null
     share_percent: number
+    /** حصة المدير تُحسب تلقائياً (100% - حصص الآخرين) */
+    is_manager?: boolean
     shares?: PartnerShare[]
     created_at: string
     updated_at: string
@@ -41,6 +43,12 @@ export const partnersApi = {
 
     update: async (id: number, data: Partial<Partner>) => {
         const { data: response } = await apiClient.put<{ data: Partner }>(`/partners/${id}`, data)
+        return response.data
+    },
+
+    /** تحديد حصة الشريك فقط (للمحاسب ومدير المزرعة) */
+    updateShare: async (id: number, sharePercent: number) => {
+        const { data: response } = await apiClient.patch<{ data: Partner }>(`/partners/${id}/share`, { share_percent: sharePercent })
         return response.data
     },
 

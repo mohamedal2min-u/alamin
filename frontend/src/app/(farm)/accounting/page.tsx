@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { AccountingReportTab } from '@/components/reports/tabs/AccountingReportTab'
 import { ReviewQueueTab } from '@/components/accounting/ReviewQueueTab'
 import { PriceAuditTab } from '@/components/accounting/PriceAuditTab'
-import { AccountantPrices } from '@/components/accounting/AccountantPrices'
+import { AccountantBoard } from '@/components/accounting/AccountantBoard'
 import { useCurrentRole } from '@/lib/roles'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { reportsApi } from '@/lib/api/reports'
@@ -87,7 +87,7 @@ export default function AccountingPage() {
   const role = useCurrentRole()
 
   // المحاسب: لوحة أسعار بسيطة فقط
-  if (role === 'accountant') return <AccountantPrices />
+  if (role === 'accountant') return <AccountantBoard />
 
   return (
     <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>

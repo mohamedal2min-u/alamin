@@ -18,7 +18,7 @@ class ReviewQueueController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $farmId  = $request->attributes->get('farm_id');
+        $farmId = $request->attributes->get('farm_id');
         $filters = $request->only(['type', 'reason', 'flock_id', 'page', 'per_page', 'category', 'scope']);
 
         $result = $this->service->getQueue($farmId, $filters);
@@ -40,14 +40,23 @@ class ReviewQueueController extends Controller
         }
 
         $farmId = $request->attributes->get('farm_id');
-        $data   = $request->validated();
+        $data = $request->validated();
 
-        // المحاسب يحدد الأسعار فقط؛ تسجيل الدفعات من صلاحية مدير المزرعة
-        $isAdmin = $request->attributes->get('is_super_admin') === true
-            || $request->user()->hasRole('farm_admin');
+        // تحديد الأسعار من صلاحية المحاسب فقط؛ مدير المزرعة يضيف السجلات دون أسعار
+        $canSetPrices = $request->attributes->get('is_super_admin') === true
+            || $request->user()->hasRole('accountant');
 
-        if (! $isAdmin && array_key_exists('paid_amount', $data)) {
-            return response()->json(['message' => 'تسجيل المبالغ المدفوعة من صلاحية مدير المزرعة'], 403);
+        if (! $canSetPrices && array_key_exists('unit_price', $data)) {
+            return response()->json(['message' => 'تحديد الأسعار من صلاحية المحاسب'], 403);
+        }
+
+        // المحاسب لا يعدّل شيئاً على فوج مغلق (يرى فقط)
+        $accountantOnly = $request->attributes->get('is_super_admin') !== true
+            && $request->user()->hasRole('accountant')
+            && ! $request->user()->hasRole('farm_admin');
+
+        if ($accountantOnly && in_array($this->service->flockStatusOf($farmId, $type, $id), ['closed', 'cancelled'], true)) {
+            return response()->json(['message' => 'الفوج مغلق: لا يمكن التعديل عليه'], 403);
         }
 
         $updated = $this->service->updateRecord($farmId, $type, $id, $data, $request->user()->id);

@@ -21,13 +21,15 @@ class FlockResource extends JsonResource
 
         // current_age_days: محسوب ديناميكياً للأفواج النشطة والمسودة، ويتجمّد عند
         // اليوم الذي وصل فيه العدد المتبقي للصفر بدل الاستمرار مع "اليوم" الحالي.
-        $agedays = null;
+        $agedays      = null;
+        $lastBirdDate = null; // تاريخ بيع/نفوق آخر دجاجة — يتوقف عنده العمر
         if (in_array($this->status, ['active', 'draft'])) {
             $endDate = Carbon::today();
             if ($remainingCount <= 0) {
                 $zeroDate = (new ResolveFlockZeroDateAction())->execute($this->resource);
                 if ($zeroDate) {
-                    $endDate = $zeroDate;
+                    $endDate      = $zeroDate;
+                    $lastBirdDate = $zeroDate->toDateString();
                 }
             }
             $agedays = (int) Carbon::parse($this->start_date)->startOfDay()
@@ -54,6 +56,7 @@ class FlockResource extends JsonResource
             'chick_unit_price' => (float) $this->chick_unit_price,
             'total_chick_cost' => $chickCost,
             'current_age_days' => $agedays,
+            'last_bird_date'   => $lastBirdDate,
             'total_mortality'  => $totalMortality,
             'remaining_count'  => $remainingCount,
             'total_sales'      => $totalSales,

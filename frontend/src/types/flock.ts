@@ -16,6 +16,8 @@ export interface Flock {
   total_expenses: number
   net_profit: number
   current_age_days: number | null
+  /** تاريخ بيع/نفوق آخر دجاجة (YYYY-MM-DD) — يتوقف عنده عمر الفوج، وإلا null */
+  last_bird_date?: string | null
   notes: string | null
   created_at: string
   updated_at: string

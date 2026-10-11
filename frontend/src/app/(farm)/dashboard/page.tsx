@@ -37,7 +37,7 @@ export default function DashboardPage() {
            String(now.getDate()).padStart(2, '0')
   }
 
-  const [viewDate, setViewDate] = useState(getTodayISO())
+  const [selectedViewDate, setViewDate] = useState(getTodayISO())
 
   useEffect(() => {
     setPageTitle('الرئيسية')
@@ -68,6 +68,10 @@ export default function DashboardPage() {
     ?? (isCacheValid && loadingFlocks ? cachedFlock : null)
   const isActive = currentFlock?.status === 'active'
   const isReadyToClose = isActive && (currentFlock?.remaining_count ?? 1) <= 0
+
+  // عمر الفوج يتوقف عند يوم بيع/نفوق آخر دجاجة: لا نعرض أياماً بعده ولا نقرأ بياناتها
+  const maxViewDate = currentFlock?.last_bird_date ?? getTodayISO()
+  const viewDate = selectedViewDate > maxViewDate ? maxViewDate : selectedViewDate
 
   // حفظ الفوج النشط في الـ store لتسريع التحميل في المرة القادمة
   useEffect(() => {
@@ -239,7 +243,7 @@ export default function DashboardPage() {
                 startDate={currentFlock.start_date.slice(0, 10)}
                 selectedDate={viewDate}
                 onSelectDate={setViewDate}
-                maxDate={getTodayISO()}
+                maxDate={maxViewDate}
               />
 
               {/* Stat Grid Header */}

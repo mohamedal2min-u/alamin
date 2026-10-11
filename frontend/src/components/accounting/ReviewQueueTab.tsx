@@ -81,15 +81,26 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
 
   return (
     <div className="space-y-5" dir="rtl">
-      {/* ── Summary Cards ─────────────────────────────────────────────────── */}
+      {/* ── Summary Cards (تعمل كفلاتر) ─────────────────────────────────── */}
       {summary && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <SummaryCard label="غير مدفوع"        count={summary.unpaid_count}                       color="red" />
-          <SummaryCard label="دفع جزئي"         count={summary.partial_payment_count}               color="emerald" />
-          <SummaryCard label="ناقص السعر"       count={summary.missing_price_count}                 color="emerald" />
-          <SummaryCard label="ناقص حالة الدفع"  count={summary.missing_payment_status_count}        color="gray" />
-          <SummaryCard label="تناقض مالي"       count={summary.inconsistent_financial_state_count}  color="purple" />
-          <SummaryCard label="مانع إغلاق"       count={summary.blocking_flock_closure_count}        color="rose" />
+        <div className="grid grid-cols-3 gap-2.5">
+          {([
+            ['unpaid',                       'غير مدفوع',       summary.unpaid_count,                       'red'],
+            ['partial_payment',              'دفع جزئي',        summary.partial_payment_count,              'emerald'],
+            ['missing_price',                'ناقص السعر',      summary.missing_price_count,                'emerald'],
+            ['missing_payment_status',       'ناقص حالة الدفع', summary.missing_payment_status_count,       'gray'],
+            ['inconsistent_financial_state', 'تناقض مالي',      summary.inconsistent_financial_state_count, 'purple'],
+            ['blocking_flock_closure',       'مانع إغلاق',      summary.blocking_flock_closure_count,       'rose'],
+          ] as [ReviewReason, string, number, string][]).map(([reason, label, count, color]) => (
+            <SummaryCard
+              key={reason}
+              label={label}
+              count={count}
+              color={color}
+              active={filters.reason === reason}
+              onClick={() => setFilters((f) => ({ ...f, reason: f.reason === reason ? undefined : reason, filter: undefined, page: 1 }))}
+            />
+          ))}
         </div>
       )}
 
@@ -119,27 +130,6 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
         >
           كل الأسعار
         </button>
-
-        {(['unpaid', 'partial_payment', 'blocking_flock_closure'] as ReviewReason[]).map((r) => (
-          <button
-            key={r}
-            onClick={() =>
-              setFilters((f) => ({
-                ...f,
-                reason: f.reason === r ? undefined : r,
-                filter: undefined,
-                page: 1,
-              }))
-            }
-            className={`rounded-full px-3 py-1 text-sm font-medium border transition-colors ${
-              filters.reason === r
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-            }`}
-          >
-            {REASON_LABELS[r]}
-          </button>
-        ))}
 
         {(filters.reason || filters.filter || filters.category) && (
           <button
@@ -240,23 +230,26 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
 }
 
 // ── Summary Card ──────────────────────────────────────────────────────────────
-function SummaryCard({ label, count, color }: { label: string; count: number; color: string }) {
+function SummaryCard({ label, count, color, active, onClick }: { label: string; count: number; color: string; active: boolean; onClick: () => void }) {
   if (count === 0) return null
 
   const colorMap: Record<string, string> = {
-    red:    'bg-red-50 border-red-200 text-red-700',
-    amber:  'bg-emerald-50 border-emerald-200 text-emerald-700',
-    orange: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    gray:   'bg-gray-50 border-gray-200 text-gray-700',
-    purple: 'bg-purple-50 border-purple-200 text-purple-700',
-    rose:   'bg-rose-50 border-rose-200 text-rose-800',
+    red:    'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-900/40',
+    emerald:'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-900/40',
+    gray:   'bg-gray-50 border-gray-200 text-gray-700 dark:bg-slate-800 dark:border-slate-700',
+    purple: 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/20 dark:border-purple-900/40',
+    rose:   'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-900/20 dark:border-rose-900/40',
   }
 
   return (
-    <div className={`rounded-xl border p-3 ${colorMap[color] ?? 'bg-slate-50 border-slate-200 text-slate-700'}`}>
-      <div className="text-2xl font-bold">{count}</div>
-      <div className="text-xs mt-0.5 opacity-80">{label}</div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl border p-3 text-right transition-all active:scale-[0.97] ${colorMap[color] ?? 'bg-slate-50 border-slate-200 text-slate-700'} ${active ? 'ring-2 ring-slate-800 ring-offset-1 dark:ring-slate-200' : ''}`}
+    >
+      <div className="text-2xl font-black tabular-nums leading-none">{count}</div>
+      <div className="mt-1 text-[11px] font-bold opacity-80">{label}</div>
+    </button>
   )
 }
 
@@ -275,91 +268,109 @@ interface ReviewRowProps {
 
 function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onCancel, onSave, onEditChange }: ReviewRowProps) {
   const hasBlocking = item.review_reasons.includes('blocking_flock_closure')
+  // حالتا «غير مدفوع/دفع جزئي» ظاهرتان من المبالغ نفسها — لا نكرّرهما كشارات
+  const badges = item.review_reasons.filter((r) => r !== 'unpaid' && r !== 'partial_payment')
+  const typeLabel = item.type === 'expense' ? 'مصروف' : item.type === 'sale' ? 'بيع' : 'استهلاك'
+  const paid = Number(item.paid_amount ?? 0)
+  const total = Number(item.total_amount ?? 0)
+  const remaining = Number(item.remaining_amount ?? 0)
+  const pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0
 
   return (
     <Card className={`transition-colors ${hasBlocking ? 'border-red-300 bg-red-50/30' : ''}`}>
-      <CardContent className="py-3 px-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            {/* Title + meta */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-slate-800 text-sm">{item.description}</span>
-              <span className="text-xs text-slate-400">
-                {item.type === 'expense' ? 'مصروف' : item.type === 'sale' ? 'بيع' : 'استهلاك'} • {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
-              </span>
-            </div>
-
-            {/* Reason badges */}
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {item.review_reasons.map((r) => (
-                <span
-                  key={r}
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${REASON_COLORS[r]}`}
-                >
-                  {r === 'blocking_flock_closure' && (
-                    <AlertTriangle className="me-1 h-3 w-3" />
-                  )}
+      <CardContent className="space-y-2.5 px-4 py-3.5">
+        {/* العنوان + الشارات */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{item.description}</p>
+            <p className="mt-0.5 text-[11px] text-slate-400">{typeLabel} · {item.flock_name ?? '—'} · {item.entry_date ?? '—'}</p>
+          </div>
+          {badges.length > 0 && (
+            <div className="flex shrink-0 flex-wrap justify-end gap-1">
+              {badges.map((r) => (
+                <span key={r} className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${REASON_COLORS[r]}`}>
+                  {r === 'blocking_flock_closure' && <AlertTriangle className="me-1 h-3 w-3" />}
                   {REASON_LABELS[r]}
                 </span>
               ))}
             </div>
+          )}
+        </div>
 
-            {/* Edit form or amounts display */}
-            {isEditing ? (
-              <div className="mt-3 flex flex-wrap items-end gap-2">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs text-slate-500">المدفوع</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={editValues.paid_amount ?? ''}
-                    onChange={(e) => onEditChange({ ...editValues, paid_amount: e.target.value })}
-                    className="h-8 w-28 text-sm"
-                    disabled={false}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={onSave} loading={isUpdating} disabled={isUpdating}>
-                    حفظ
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={onCancel}>إلغاء</Button>
-                </div>
-                {error && (
-                  <span className="w-full text-xs text-red-600">{error}</span>
-                )}
-              </div>
-            ) : (
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+        {isEditing ? (
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-500">المدفوع</label>
+              <Input
+                type="number"
+                min={0}
+                value={editValues.paid_amount ?? ''}
+                onChange={(e) => onEditChange({ ...editValues, paid_amount: e.target.value })}
+                className="h-9 w-32 text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={onSave} loading={isUpdating} disabled={isUpdating}>حفظ</Button>
+              <Button size="sm" variant="outline" onClick={onCancel}>إلغاء</Button>
+            </div>
+            {error && <span className="w-full text-xs text-red-600">{error}</span>}
+          </div>
+        ) : (
+          <>
+            {/* الكمية × السعر في سطر واحد */}
+            {(item.quantity != null || item.unit_price != null) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                 {item.quantity != null && (
                   <span>
-                    الكمية: <strong className="text-slate-700">{formatNumber(item.quantity)} {item.quantity_unit || ''}</strong>
+                    <strong className="text-slate-700 dark:text-slate-200">{formatNumber(item.quantity)} {item.quantity_unit || ''}</strong>
                     {item.item_type === 'feed' && item.computed_quantity != null && (
-                      <span className="mr-2 text-slate-500">
-                        (الوزن الإجمالي: {item.computed_quantity >= 1000 ? `${formatNumber(item.computed_quantity / 1000)} طن` : `${formatNumber(item.computed_quantity)} كغ`})
-                      </span>
+                      <span className="mr-1.5">({item.computed_quantity >= 1000 ? `${formatNumber(item.computed_quantity / 1000)} طن` : `${formatNumber(item.computed_quantity)} كغ`})</span>
                     )}
                   </span>
                 )}
                 <PriceWithHistory item={item} />
-                <span>الإجمالي: <strong className="text-slate-700">{formatCurrency(item.total_amount)}</strong></span>
-                <span>المدفوع: <strong className="text-slate-700">{formatCurrency(item.paid_amount)}</strong></span>
-                <span>المتبقي: <strong className="text-red-600">{formatCurrency(item.remaining_amount)}</strong></span>
               </div>
             )}
-          </div>
 
-          {/* Edit trigger */}
-          {!isEditing && (
-            <PaymentOnly>
-              <button
-                onClick={onEdit}
-                className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-primary-400 hover:text-primary-600 transition-colors"
-              >
-                تسجيل دفعة
-              </button>
-            </PaymentOnly>
-          )}
-        </div>
+            {/* المبالغ: الإجمالي دائماً، المدفوع/المتبقي عند الحاجة فقط */}
+            <div className="flex items-end justify-between gap-3">
+              <div className="flex items-baseline gap-4">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400">الإجمالي</p>
+                  <p className="text-base font-black tabular-nums text-slate-900 dark:text-slate-100">{formatCurrency(total)}</p>
+                </div>
+                {paid > 0 && remaining > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400">المدفوع</p>
+                    <p className="text-sm font-bold tabular-nums text-primary-700">{formatCurrency(paid)}</p>
+                  </div>
+                )}
+                {remaining > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400">المتبقي</p>
+                    <p className="text-sm font-bold tabular-nums text-red-600">{formatCurrency(remaining)}</p>
+                  </div>
+                )}
+              </div>
+              {remaining > 0 && (
+                <PaymentOnly>
+                  <button
+                    onClick={onEdit}
+                    className="shrink-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    تسجيل دفعة
+                  </button>
+                </PaymentOnly>
+              )}
+            </div>
+
+            {paid > 0 && remaining > 0 && (
+              <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                <div className="h-full rounded-full bg-primary-500" style={{ width: `${pct}%` }} />
+              </div>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   )

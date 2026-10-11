@@ -87,6 +87,15 @@ export interface AddShipmentPayload {
   attachment?: File | null
 }
 
+/** معلومات منتج مقترحة من الباركود (قواعد مفتوحة) — كلها قابلة للتعديل */
+export interface BarcodeSuggestion {
+  name: string
+  section: 'feed' | 'medicine' | null
+  weight_kg: number | null
+  unit: string | null
+  quantity_text: string | null
+}
+
 export interface CreateItemPayload {
   item_type_id: number
   name: string
@@ -134,7 +143,7 @@ export const inventoryApi = {
   /** نتيجة مسح باركود: صنف موجود، أو اسم مقترح من قاعدة مفتوحة إن لم يوجد */
   lookupBarcode: (code: string) =>
     apiClient
-      .get<{ data: { found: boolean; item_id?: number; name?: string; suggested_name?: string | null } }>(
+      .get<{ data: { found: boolean; item_id?: number; name?: string; suggested_name?: string | null; suggestion?: BarcodeSuggestion | null } }>(
         `/inventory/barcode/${encodeURIComponent(code)}`,
       )
       .then((r) => r.data.data),

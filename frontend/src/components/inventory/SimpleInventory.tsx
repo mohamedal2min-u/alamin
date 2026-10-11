@@ -6,7 +6,7 @@ import { AlertTriangle, Check, Loader2, Package, Pill, Plus, ScanLine, Wheat } f
 import { Dialog } from '@/components/ui/Dialog'
 import { BarcodeScanner } from './BarcodeScanner'
 import { inventoryApi } from '@/lib/api/inventory'
-import type { ItemType, StockItem, Warehouse } from '@/lib/api/inventory'
+import type { BarcodeSuggestion, ItemType, StockItem, Warehouse } from '@/lib/api/inventory'
 import { cn, formatNumber, toEnglishDigits } from '@/lib/utils'
 
 // ── إضافة حمولة موحّدة (صنف موجود أو جديد) + مسح باركود — بلا أسعار ──────────────────────────
@@ -40,6 +40,7 @@ interface ShipmentTarget {
   item: StockItem | null
   barcode?: string
   suggestedName?: string | null
+  suggestion?: BarcodeSuggestion | null
 }
 
 interface Props {
@@ -65,7 +66,7 @@ export function ShipmentActions({ items, warehouses, itemTypes, onChanged }: Pro
       const r = await inventoryApi.lookupBarcode(code)
       const found = r.found && r.item_id ? items.find((i) => i.id === r.item_id) : undefined
       if (found) open({ section: sectionOf(found), item: found, barcode: code })
-      else open({ section: null, item: null, barcode: code, suggestedName: r.suggested_name })
+      else open({ section: r.suggestion?.section ?? null, item: null, barcode: code, suggestedName: r.suggested_name, suggestion: r.suggestion })
     } catch {
       open({ section: null, item: null, barcode: code })
     } finally {
@@ -117,8 +118,9 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
   const [qty, setQty] = useState('')
   const [date, setDate] = useState(today())
   const [note, setNote] = useState('')
-  const [unit, setUnit] = useState('')
-  const [bagKg, setBagKg] = useState('50')
+  const sug = target?.suggestion
+  const [unit, setUnit] = useState(sug?.unit ?? '')
+  const [bagKg, setBagKg] = useState(sug?.weight_kg ? String(sug.weight_kg) : '50')
   const [otherTypeId, setOtherTypeId] = useState('')
   const [confirmNew, setConfirmNew] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -235,7 +237,7 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
           ) : (
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-500">اسم الصنف</label>
-              <input autoFocus value={name} onChange={(e) => { setName(e.target.value); setConfirmNew(false) }}
+              <input autoFocus={!target?.suggestedName} value={name} onChange={(e) => { setName(e.target.value); setConfirmNew(false) }}
                 placeholder={isFeed ? 'مثال: علف بادئ' : section === 'medicine' ? 'مثال: لقاح نيوكاسل' : 'اسم الصنف'}
                 className={cn(field, 'h-12 text-base font-semibold')} />
               {suggestions.length > 0 && (
@@ -250,7 +252,16 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
               )}
               {matched && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-emerald-600"><Check className="h-3.5 w-3.5" /> صنف موجود — الحمولة ستُضاف إليه.</p>}
               {isNew && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-amber-600"><AlertTriangle className="h-3.5 w-3.5" /> هذا الاسم غير موجود في المخزون، سيُعتبر صنفاً جديداً.</p>}
-              {barcode && <p className="mt-1.5 text-[11px] font-semibold text-slate-400">الباركود: {barcode}{target?.suggestedName ? ' — الاسم مقترح تلقائياً، عدّله إن لزم' : ''}</p>}
+              {barcode && (
+                <div className="mt-2 rounded-xl bg-primary-50 px-3 py-2 text-[11px] font-semibold text-primary-800 dark:bg-primary-900/20 dark:text-primary-200">
+                  <p>الباركود: <span className="tabular-nums">{barcode}</span></p>
+                  {sug ? (
+                    <p className="mt-0.5">تعبّأت البيانات تلقائياً من الباركود{sug.quantity_text ? ` (العبوة: ${sug.quantity_text})` : ''} — راجعها وعدّلها إن لزم.</p>
+                  ) : (
+                    <p className="mt-0.5 text-slate-500">لم نجد معلومات لهذا الباركود، اكتب الاسم مرة واحدة وسيُعرف بعدها تلقائياً.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -271,7 +282,7 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-500">الوحدة</label>
                   <div className="flex flex-wrap gap-2">
-                    {UNIT_CHIPS[section as Exclude<Section, 'feed'>].map((u) => (
+                    {Array.from(new Set([...(sug?.unit ? [sug.unit] : []), ...UNIT_CHIPS[section as Exclude<Section, 'feed'>]])).map((u) => (
                       <button key={u} type="button" onClick={() => setUnit(u)}
                         className={cn('rounded-full border px-4 py-2 text-sm font-bold transition-colors',
                           unit === u ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300')}>
@@ -287,7 +298,7 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-500">الكمية{shownUnit ? ` (${shownUnit})` : ''}</label>
             <input inputMode="decimal" value={qty} onChange={(e) => setQty(toEnglishDigits(e.target.value))} placeholder="0"
-              autoFocus={!!locked}
+              autoFocus={!!locked || !!target?.suggestedName}
               className="h-14 w-full rounded-2xl border border-slate-300 px-4 text-2xl font-extrabold text-slate-800 outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
             {kg != null && <p className="mt-1.5 text-xs font-semibold text-primary-600">= {formatNumber(kg)} {matched!.content_unit}</p>}
           </div>

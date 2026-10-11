@@ -142,24 +142,73 @@ class InventoryController extends Controller
             return response()->json(['data' => ['found' => true, 'item_id' => $item->id, 'name' => $item->name]]);
         }
 
-        $suggested = null;
-        if (ctype_digit($code)) {
+        $suggestion = ctype_digit($code) ? $this->suggestFromOpenDatabases($code) : null;
+
+        return response()->json(['data' => [
+            'found'          => false,
+            'suggested_name' => $suggestion['name'] ?? null,
+            'suggestion'     => $suggestion,
+        ]]);
+    }
+
+    /**
+     * يجلب اسم المنتج ومعلوماته من قواعد مفتوحة (أغذية ثم أغذية الحيوانات الأليفة).
+     * يرجع الاسم والقسم المحتمل والوزن/الحجم والوحدة إن وُجدت، وإلا null.
+     */
+    private function suggestFromOpenDatabases(string $code): ?array
+    {
+        foreach (['world.openfoodfacts.org', 'world.openpetfoodfacts.org'] as $host) {
             try {
                 $res = Http::timeout(4)->withHeaders(['User-Agent' => 'AlAminFarm/1.0'])
-                    ->get("https://world.openfoodfacts.org/api/v2/product/{$code}.json", ['fields' => 'product_name,product_name_ar,brands']);
-                if ($res->ok() && $res->json('status') === 1) {
-                    $p = $res->json('product') ?? [];
-                    $suggested = trim((string) ($p['product_name_ar'] ?? '')) ?: trim((string) ($p['product_name'] ?? '')) ?: null;
-                    if ($suggested && ! empty($p['brands']) && ! str_contains($suggested, (string) $p['brands'])) {
-                        $suggested .= ' - '.explode(',', $p['brands'])[0];
+                    ->get("https://{$host}/api/v2/product/{$code}.json", ['fields' => 'product_name,product_name_ar,generic_name,brands,quantity,categories_tags']);
+            } catch (\Throwable) {
+                continue; // البحث الخارجي اختياري: نتجاهل الفشل ويكتب المستخدم البيانات بنفسه
+            }
+            if (! $res->ok() || $res->json('status') !== 1) {
+                continue;
+            }
+
+            $p    = $res->json('product') ?? [];
+            $name = trim((string) ($p['product_name_ar'] ?? '')) ?: trim((string) ($p['product_name'] ?? '')) ?: trim((string) ($p['generic_name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $brand = trim(explode(',', (string) ($p['brands'] ?? ''))[0]);
+            if ($brand !== '' && ! str_contains(mb_strtolower($name), mb_strtolower($brand))) {
+                $name .= ' - '.$brand;
+            }
+
+            $suggestion = ['name' => $name, 'section' => null, 'weight_kg' => null, 'unit' => null, 'quantity_text' => null];
+
+            $qty = trim((string) ($p['quantity'] ?? ''));
+            if ($qty !== '') {
+                $suggestion['quantity_text'] = $qty;
+                if (preg_match('/(\d+(?:[.,]\d+)?)\s*(kg|kgs|كغ|كيلو|g|gr|جم|غ|ml|مل|l|ltr|لتر)\b/iu', $qty, $m)) {
+                    $n = (float) str_replace(',', '.', $m[1]);
+                    switch (mb_strtolower($m[2])) {
+                        case 'kg': case 'kgs': case 'كغ': case 'كيلو':
+                            $suggestion['weight_kg'] = $n; $suggestion['unit'] = 'كيلو'; break;
+                        case 'g': case 'gr': case 'جم': case 'غ':
+                            $suggestion['weight_kg'] = $n / 1000; $suggestion['unit'] = 'جرام'; break;
+                        case 'ml': case 'مل':
+                            $suggestion['unit'] = 'مل'; break;
+                        default:
+                            $suggestion['unit'] = 'لتر';
                     }
                 }
-            } catch (\Throwable) {
-                // البحث الخارجي اختياري: نتجاهل الفشل ويكتب المستخدم الاسم بنفسه
             }
+
+            $cats = implode(' ', $p['categories_tags'] ?? []);
+            if (preg_match('/feed|fodder|poultry|chicken|animal-food|pet-food/i', $cats) || $host === 'world.openpetfoodfacts.org') {
+                $suggestion['section'] = 'feed';
+            } elseif (preg_match('/vitamin|supplement|medic|vaccine|veterinar|pharma/i', $cats)) {
+                $suggestion['section'] = 'medicine';
+            }
+
+            return $suggestion;
         }
 
-        return response()->json(['data' => ['found' => false, 'suggested_name' => $suggested]]);
+        return null;
     }
 
     // ── PATCH /api/inventory/items/{item}/barcode ─────────────────────────────

@@ -52,10 +52,12 @@ class ItemBarcodeTest extends TestCase
     public function test_unknown_barcode_suggests_name_from_open_database(): void
     {
         $farm = Farm::factory()->create();
-        Http::fake(['*openfoodfacts*' => Http::response(['status' => 1, 'product' => ['product_name' => 'Vitamin X', 'brands' => 'Acme']], 200)]);
+        Http::fake(['*openfoodfacts*' => Http::response(['status' => 1, 'product' => ['product_name' => 'Vitamin X', 'brands' => 'Acme', 'quantity' => '500 ml', 'categories_tags' => ['en:dietary-supplements']]], 200)]);
 
         $this->as($this->member($farm), $farm)->getJson('/api/inventory/barcode/5000112637922')
-            ->assertOk()->assertJsonPath('data.found', false)->assertJsonPath('data.suggested_name', 'Vitamin X - Acme');
+            ->assertOk()->assertJsonPath('data.found', false)->assertJsonPath('data.suggested_name', 'Vitamin X - Acme')
+            ->assertJsonPath('data.suggestion.unit', 'مل')
+            ->assertJsonPath('data.suggestion.section', 'medicine');
     }
 
     public function test_external_lookup_failure_is_soft(): void

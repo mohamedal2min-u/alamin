@@ -4,3 +4,4 @@ node_modules/
 .next/
 *.apk
 __pycache__/
+.next.bak/

@@ -36,7 +36,8 @@ import {
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
-import { useIsReadOnly } from '@/lib/roles'
+import { useIsReadOnly, useIsSupervisor } from '@/lib/roles'
+import { SimpleInventory } from '@/components/inventory/SimpleInventory'
 import { formatNumber, formatDate, cn, toEnglishDigits, formatCurrency } from '@/lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -1441,6 +1442,9 @@ export default function InventoryPage() {
   const { currentFarm } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
   const isReadOnly = useIsReadOnly()
+  const isSupervisor = useIsSupervisor()
+  // المشرف: شاشة مبسّطة افتراضياً، والعرض المتقدم (الحركات والتنبيهات) اختياري
+  const [advanced, setAdvanced] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [itemsCategoryFilter, setItemsCategoryFilter] = useState<string>('all')
 
@@ -1496,19 +1500,55 @@ export default function InventoryPage() {
 
   const tabs: { id: Tab; label: string; badge?: number; icon: typeof Eye; isAction?: boolean; isPrimary?: boolean }[] = [
     { id: 'overview',     label: 'نظرة عامة',  icon: Eye },
-    ...(!isReadOnly ? [
+    ...(!isReadOnly && !isSupervisor ? [
       { id: 'add-shipment' as Tab, label: 'حمولة جديدة', icon: Truck, isAction: true, isPrimary: true },
     ] : []),
     { id: 'items',        label: 'الأصناف',     icon: ListChecks,  badge: items.length },
-    ...(!isReadOnly ? [
+    ...(!isReadOnly && !isSupervisor ? [
       { id: 'add-item'     as Tab, label: 'صنف جديد',    icon: Plus,  isAction: true },
     ] : []),
     { id: 'movements',    label: 'الحركات',     icon: BarChart3,   badge: transactions.length },
     { id: 'alerts',       label: 'التنبيهات',   icon: Bell,        badge: lowItems.length || undefined },
   ]
 
+  if (isSupervisor && !advanced) {
+    return (
+      <div className="space-y-4">
+        {error && (
+          <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <p className="text-sm font-semibold">{error}</p>
+          </div>
+        )}
+        {loading ? (
+          <div className="space-y-3">
+            <div className="h-12 animate-pulse rounded-2xl bg-slate-200/60" />
+            {[1, 2, 3].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-200/60" />)}
+          </div>
+        ) : (
+          <SimpleInventory items={items} warehouses={warehouses} itemTypes={itemTypes} onChanged={() => { loadData() }} />
+        )}
+        <button
+          onClick={() => setAdvanced(true)}
+          className="w-full rounded-xl border border-slate-200 py-2.5 text-xs font-semibold text-slate-500 dark:border-slate-700"
+        >
+          عرض متقدم (الحركات والتنبيهات)
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
+
+      {isSupervisor && (
+        <button
+          onClick={() => setAdvanced(false)}
+          className="w-full rounded-xl border border-primary-200 bg-primary-50 py-2.5 text-sm font-bold text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300"
+        >
+          ← العودة للعرض المبسّط
+        </button>
+      )}
 
       {error && (
         <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">

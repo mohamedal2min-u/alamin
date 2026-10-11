@@ -95,9 +95,9 @@ class PartnerController extends Controller
             $adminShareRecord = $adminPartner->shares()->where('is_active', true)->lockForUpdate()->first();
             $adminShare = $adminShareRecord ? $adminShareRecord->share_percent : 0;
 
-            // if ($sharePercent > 0 && \App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->exists()) {
-            //     abort(422, 'لا يمكن تعديل هيكل الملكية (إضافة حصة لشريك) أثناء وجود فوج نشط.');
-            // }
+            if ($sharePercent > 0) {
+                $partnerService->assertSharesEditable($farmId);
+            }
 
             if ($sharePercent > $adminShare) {
                 abort(422, "حصة مدير المزرعة ($adminShare%) لا تكفي لإعطاء هذه النسبة.");
@@ -240,7 +240,7 @@ class PartnerController extends Controller
             ]);
 
             $partner->load(['shares' => fn ($q) => $q->where('is_active', true), 'user:id,name,email,whatsapp']);
-            return new PartnerResource($partner);
+            return (new PartnerResource($partner))->response();
         });
     }
 
@@ -294,9 +294,7 @@ class PartnerController extends Controller
             // Revert share to admin
             $partnerShareRecord = $partner->shares()->where('is_active', true)->lockForUpdate()->first();
             if ($partnerShareRecord && $partnerShareRecord->share_percent > 0) {
-                // if (\App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->exists()) {
-                //     abort(422, 'لا يمكن حذف شريك (لديه حصة نشطة) أثناء وجود فوج نشط. يرجى إغلاق الفوج أولاً.');
-                // }
+                app(\App\Services\Partner\PartnerService::class)->assertSharesEditable($farmId);
 
                 $adminShareRecord = $adminPartner->shares()->where('is_active', true)->lockForUpdate()->first();
                 $adminShareRecord->update([

@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Crown, Loader2, Users } from 'lucide-react'
+import { Crown, Loader2, Lock, Users } from 'lucide-react'
 import { partnersApi } from '@/lib/api/partners'
 import type { Partner } from '@/lib/api/partners'
 import { cn, formatNumber } from '@/lib/utils'
 import type { Flock } from '@/types/flock'
 
 /** الشركاء للمحاسب: يرى كل شريك وحصته وما يخصه من الربح، ويحدد الحصة. حصة المدير تُحسب تلقائياً. */
-export function AccountantPartners({ flock }: { flock: Flock | null }) {
+export function AccountantPartners({ flock, sharesLocked = false }: { flock: Flock | null; sharesLocked?: boolean }) {
   const qc = useQueryClient()
   const [editingId, setEditingId] = useState<number | null>(null)
   const [value, setValue] = useState('')
@@ -63,6 +63,13 @@ export function AccountantPartners({ flock }: { flock: Flock | null }) {
 
   return (
     <div className="space-y-3" dir="rtl">
+      {sharesLocked && (
+        <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+          نسب الشراكة مقفلة ما دام الفوج مفتوحاً. لا يعدّلها أحد إلا بعد إغلاق الفوج.
+        </div>
+      )}
+
       {/* مجموع الحصص */}
       <div className="grid grid-cols-2 gap-2.5">
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-800">
@@ -105,7 +112,7 @@ export function AccountantPartners({ flock }: { flock: Flock | null }) {
                 )}
               </div>
 
-              {!p.is_manager && (
+              {!p.is_manager && !sharesLocked && (
                 isEditing ? (
                   <div className="mt-3 space-y-2">
                     <label className="text-xs font-semibold text-slate-500">الحصة (%)</label>

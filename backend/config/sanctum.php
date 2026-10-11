@@ -47,7 +47,9 @@ return [
     |
     */
 
-    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION_MINUTES', 60 * 24 * 90),
+    // الدخول يبقى محفوظاً على الهاتف حتى تسجيل الخروج أو حذف التطبيق (لا انتهاء تلقائي).
+    // يمكن تحديد مدة بالدقائق عبر SANCTUM_TOKEN_EXPIRATION_MINUTES إن لزم.
+    'expiration' => env('SANCTUM_TOKEN_EXPIRATION_MINUTES') !== null ? (int) env('SANCTUM_TOKEN_EXPIRATION_MINUTES') : null,
 
     /*
     |--------------------------------------------------------------------------

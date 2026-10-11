@@ -17,8 +17,8 @@ interface AuthState {
 // ── Cookie helper (SSR-safe) ──────────────────────────────────────────────────
 function setAuthCookie(value: string) {
   if (typeof document === 'undefined') return
-  // Max-age 7 days — middleware reads this for routing
-  document.cookie = `auth_session=${value}; path=/; max-age=${7 * 24 * 3600}; SameSite=Lax`
+  // ~400 يوماً (أقصى مدة للكوكي) — الدخول محفوظ حتى الخروج أو حذف التطبيق؛ الـ proxy يقرأه للتوجيه
+  document.cookie = `auth_session=${value}; path=/; max-age=${400 * 24 * 3600}; SameSite=Lax`
 }
 
 function clearAuthCookie() {
@@ -63,6 +63,12 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() =>
         typeof window !== 'undefined' ? localStorage : ({} as Storage)
       ),
+      // عند فتح التطبيق: الدخول محفوظ، فجدّد كوكي الجلسة (أقصى مدة يسمح بها المتصفح) كي لا يُطلب الدخول ثانية
+      onRehydrateStorage: () => (state) => {
+        if (state?.isAuthenticated && state.token) {
+          setAuthCookie('1')
+        }
+      },
       partialize: (state) => ({
         token: state.token,
         user: state.user,

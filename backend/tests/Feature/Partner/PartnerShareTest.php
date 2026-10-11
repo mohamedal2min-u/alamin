@@ -105,4 +105,33 @@ class PartnerShareTest extends TestCase
 
         $this->as($partnerUser)->patchJson("/api/partners/{$this->partner->id}/share", ['share_percent' => 10])->assertStatus(403);
     }
+
+    public function test_shares_are_locked_while_a_flock_is_open(): void
+    {
+        \App\Models\Flock::factory()->active()->create(['farm_id' => $this->farm->id]);
+
+        // لا المحاسب ولا مدير المزرعة يعدّل النسبة
+        $this->as($this->accountant)->patchJson("/api/partners/{$this->partner->id}/share", ['share_percent' => 20])->assertStatus(422);
+        $this->as($this->admin)->patchJson("/api/partners/{$this->partner->id}/share", ['share_percent' => 20])->assertStatus(422);
+
+        $this->as($this->admin)->putJson("/api/partners/{$this->partner->id}", [
+            'name' => 'شريك أ', 'whatsapp' => '0999', 'status' => 'active', 'share_percent' => 20,
+        ])->assertStatus(422);
+
+        $this->as($this->admin)->postJson('/api/partners', [
+            'name' => 'جديد', 'whatsapp' => '0777', 'password' => 'secret123', 'share_percent' => 10,
+        ])->assertStatus(422);
+
+        // تعديل غير النسبة (الاسم) مسموح، وإعادة النسبة نفسها لا تُعدّ تعديلاً
+        $this->as($this->admin)->putJson("/api/partners/{$this->partner->id}", [
+            'name' => 'اسم جديد', 'whatsapp' => '0999', 'status' => 'inactive',
+        ])->assertOk();
+    }
+
+    public function test_shares_can_be_changed_when_no_flock_is_open(): void
+    {
+        \App\Models\Flock::factory()->closed()->create(['farm_id' => $this->farm->id]);
+
+        $this->as($this->accountant)->patchJson("/api/partners/{$this->partner->id}/share", ['share_percent' => 20])->assertOk();
+    }
 }

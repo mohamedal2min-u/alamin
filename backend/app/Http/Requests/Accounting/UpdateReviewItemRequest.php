@@ -20,7 +20,8 @@ class UpdateReviewItemRequest extends FormRequest
         ];
 
         if ($type === 'expense' || $type === 'water_log' || $type === 'sale') {
-            $rules['unit_price'] = ['sometimes', 'nullable', 'numeric', 'min:0'];
+            // لا يُسمح بمسح السعر (null)؛ يمكن فقط تغييره، وكل تغيير يُسجَّل
+            $rules['unit_price'] = ['sometimes', 'required', 'numeric', 'min:0'];
         }
 
         return $rules;

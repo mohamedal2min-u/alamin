@@ -65,23 +65,13 @@ class CreateMortalityAction
         $farm = $flock->farm;
         $recipients = collect();
 
-        // Logic requested by user:
-        // 1. Worker records -> Notify Manager & Partners
-        // 2. Manager records -> Notify Partners
-
-        if ($creator->hasRole('worker')) {
-            // Get Managers and Partners of this farm
-            $recipients = $farm->members()
-                ->whereHas('roles', function($q) {
-                    $q->whereIn('name', ['manager', 'partner']);
-                })->get();
-        } elseif ($creator->hasRole('manager')) {
-            // Get Managers (including self) and Partners of this farm
-            $recipients = $farm->members()
-                ->whereHas('roles', function($q) {
-                    $q->whereIn('name', ['manager', 'partner']);
-                })->get();
-        }
+        // تسجيل النفوق من مدير المزرعة؛ الشركاء يُبلَّغون (ومعهم باقي مديري المزرعة، دون المُسجِّل نفسه)
+        $recipients = $farm->members()
+            ->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['farm_admin', 'partner']);
+            })->get()
+            ->reject(fn ($member) => $member->id === $userId)
+            ->values();
 
         if ($recipients->isNotEmpty()) {
             $title = "تسجيل نفوق جديد";

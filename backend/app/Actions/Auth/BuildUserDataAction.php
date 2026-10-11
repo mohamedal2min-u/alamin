@@ -19,9 +19,9 @@ class BuildUserDataAction
         // team_foreign_key = 'farm_id' حسب config/permission.php
         $teamKey = config('permission.column_names.team_foreign_key', 'team_id');
 
-        // Priority: farm_admin > partner > worker
+        // Priority: farm_admin > partner > accountant
         // Group all roles per farm, then pick the highest priority one
-        $rolePriority = ['farm_admin' => 3, 'partner' => 2, 'worker' => 1];
+        $rolePriority = ['farm_admin' => 3, 'partner' => 2, 'accountant' => 1];
 
         $allRoles = DB::table('model_has_roles')
             ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')

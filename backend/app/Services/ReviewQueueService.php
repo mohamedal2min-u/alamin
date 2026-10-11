@@ -10,6 +10,8 @@ use App\Models\FlockWaterLog;
 
 class ReviewQueueService
 {
+    public function __construct(private readonly PriceAuditService $priceAudit) {}
+
     /**
      * @param  array{type?:string, reason?:string, flock_id?:int|string, page?:int, per_page?:int}  $filters
      */
@@ -25,16 +27,21 @@ class ReviewQueueService
 
         // Attach reasons then keep only qualifying rows
         $rows = $rows->map(fn ($row) => $this->attachReasons($row));
-        $rows = $rows->filter(fn ($row) => count($row['review_reasons']) > 0);
+        $qualifying = $rows->filter(fn ($row) => count($row['review_reasons']) > 0);
+
+        // scope=all: كل السجلات بما فيها المسعّرة والمدفوعة، ليتمكن المحاسب من تعديل سعر موضوع مسبقاً
+        $listAll = ($filters['scope'] ?? null) === 'all';
+        $rows    = $listAll ? $rows : $qualifying;
 
         // Filter by specific reason if requested
         if ($reason) {
-            $rows = $rows->filter(fn ($row) => in_array($reason, $row['review_reasons']));
+            $rows       = $rows->filter(fn ($row) => in_array($reason, $row['review_reasons']));
+            $qualifying = $qualifying->filter(fn ($row) => in_array($reason, $row['review_reasons']));
         }
 
         $rows = $rows->values();
 
-        $summary = $this->buildSummary($rows);
+        $summary = $this->buildSummary($listAll ? $qualifying->values() : $rows);
 
         // Filter by category if requested (must match the same fallback key used in buildSummary)
         $category = $filters['category'] ?? null;
@@ -64,7 +71,7 @@ class ReviewQueueService
         // Manual pagination after reason-filtering so summary always reflects full filtered set
         $total     = $rows->count();
         $offset    = ($page - 1) * $perPage;
-        $pageItems = $rows->slice($offset, $perPage)->values();
+        $pageItems = $this->withPriceHistory($farmId, $rows->slice($offset, $perPage)->values());
 
         return [
             'summary' => $summary,
@@ -80,10 +87,13 @@ class ReviewQueueService
     /**
      * Update a single record, recalculate financial fields, return fresh row with reasons.
      */
-    public function updateRecord(int $farmId, string $type, int $recordId, array $data): array
+    public function updateRecord(int $farmId, string $type, int $recordId, array $data, ?int $userId = null): array
     {
+        $priceBefore = null;
+
         if ($type === 'expense') {
             $record = Expense::where('farm_id', $farmId)->findOrFail($recordId);
+            $priceBefore = $this->normalizeExpense($record)['unit_price'];
 
             if (array_key_exists('unit_price', $data)) {
                 $record->unit_price = $data['unit_price'];
@@ -104,10 +114,21 @@ class ReviewQueueService
 
             $record->save();
 
+            // الشحنة المرتبطة تأخذ السعر نفسه كي لا يختلف المخزون عن المحاسبة
+            if (array_key_exists('unit_price', $data) && $record->linked_inventory_transaction_id) {
+                InventoryTransaction::where('farm_id', $farmId)
+                    ->where('id', $record->linked_inventory_transaction_id)
+                    ->update([
+                        'unit_price'   => $record->unit_price,
+                        'total_amount' => $record->total_amount,
+                    ]);
+            }
+
             $row = $this->normalizeExpense($record->load(['flock', 'expenseCategory']));
 
         } elseif ($type === 'water_log') {
             $record = FlockWaterLog::where('farm_id', $farmId)->findOrFail($recordId);
+            $priceBefore = $this->normalizeWaterLog($record)['unit_price'];
 
             if (array_key_exists('unit_price', $data)) {
                 if ($record->quantity !== null && $data['unit_price'] !== null) {
@@ -131,16 +152,15 @@ class ReviewQueueService
 
         } elseif ($type === 'sale') {
             $record = Sale::where('farm_id', $farmId)->with('saleItems')->findOrFail($recordId);
+            $priceBefore = $this->normalizeSale($record)['unit_price'];
 
-            // سعر الكيلو المُدخَل هنا يُطبَّق على سطور البيع التي لم يُحدَّد لها سعر بعد،
-            // ثم يُعاد حساب إجمالي/صافي البيعة من السطور المحدَّثة.
+            // سعر الكيلو المُدخَل هنا يُطبَّق على كل سطور البيع (أول تسعير أو تعديل لاحق؛
+            // التعديل يُسجَّل في سجل الأسعار والسعر القديم يبقى ظاهراً)، ثم يُعاد حساب الإجمالي.
             if (array_key_exists('unit_price', $data) && $data['unit_price'] !== null) {
                 foreach ($record->saleItems as $saleItem) {
-                    if ($saleItem->unit_price_per_kg === null || (float) $saleItem->unit_price_per_kg <= 0) {
-                        $saleItem->unit_price_per_kg = $data['unit_price'];
-                        $saleItem->line_total        = round($saleItem->total_weight_kg * $data['unit_price'], 2);
-                        $saleItem->save();
-                    }
+                    $saleItem->unit_price_per_kg = $data['unit_price'];
+                    $saleItem->line_total        = round($saleItem->total_weight_kg * $data['unit_price'], 2);
+                    $saleItem->save();
                 }
 
                 $record->gross_amount = $record->saleItems()->sum('line_total');
@@ -173,7 +193,34 @@ class ReviewQueueService
             abort(400, "Invalid type");
         }
 
-        return $this->attachReasons($row);
+        if (array_key_exists('unit_price', $data)) {
+            $this->priceAudit->record(
+                $farmId,
+                $userId,
+                $type,
+                $recordId,
+                $priceBefore,
+                $row['unit_price'] !== null ? (float) $row['unit_price'] : null
+            );
+        }
+
+        return $this->withPriceHistory($farmId, collect([$this->attachReasons($row)]))->first();
+    }
+
+    /**
+     * يُلحق بكل صف تاريخ أسعاره (السعر القديم يبقى ظاهراً ولا يُحذف).
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $rows
+     */
+    private function withPriceHistory(int $farmId, \Illuminate\Support\Collection $rows): \Illuminate\Support\Collection
+    {
+        $history = $this->priceAudit->historyFor($farmId, $rows);
+
+        return $rows->map(function (array $row) use ($history): array {
+            $row['price_history'] = $history[$row['type'] . '-' . $row['record_id']] ?? [];
+
+            return $row;
+        });
     }
 
     // ─── Private Helpers ─────────────────────────────────────────────────────

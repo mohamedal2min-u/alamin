@@ -297,7 +297,7 @@ class AdminFarmController extends Controller
         $this->authorizeSuperAdmin($request);
 
         $teamKey = config('permission.column_names.team_foreign_key', 'team_id');
-        $rolePriority = ['farm_admin' => 3, 'partner' => 2, 'worker' => 1];
+        $rolePriority = ['farm_admin' => 3, 'partner' => 2, 'accountant' => 1];
 
         $rolesMap = DB::table('model_has_roles')
             ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
@@ -329,7 +329,7 @@ class AdminFarmController extends Controller
         $this->authorizeSuperAdmin($request);
 
         $data = $request->validate([
-            'role' => 'required|in:farm_admin,partner,worker',
+            'role' => 'required|in:farm_admin,partner,accountant',
         ], [
             'role.required' => 'يجب اختيار الدور',
             'role.in'       => 'الدور غير صالح',
@@ -340,7 +340,7 @@ class AdminFarmController extends Controller
         $registrar->setPermissionsTeamId($farm->id);
 
         // Remove all existing farm roles for this user in this farm
-        foreach (['farm_admin', 'partner', 'worker'] as $r) {
+        foreach (['farm_admin', 'partner', 'accountant', 'worker'] as $r) {
             if ($user->hasRole($r)) {
                 $user->removeRole($r);
             }

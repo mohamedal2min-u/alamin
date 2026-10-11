@@ -34,7 +34,7 @@ class WorkerController extends Controller
         $farm = $request->attributes->get('farm');
 
         $workers = $this->withTeamScope($farm->id, fn () =>
-            User::role('worker')
+            User::role('accountant')
                 ->join('farm_users', 'users.id', '=', 'farm_users.user_id')
                 ->where('farm_users.farm_id', $farm->id)
                 ->select(
@@ -92,7 +92,7 @@ class WorkerController extends Controller
             ]);
 
             // 3. Assign Role via Spatie (Contextualized by team_id = farm->id)
-            $this->withTeamScope($farm->id, fn () => $user->assignRole('worker'));
+            $this->withTeamScope($farm->id, fn () => $user->assignRole('accountant'));
 
             return response()->json([
                 'message' => 'تم إنشاء حساب العامل بنجاح',
@@ -119,7 +119,7 @@ class WorkerController extends Controller
 
         // Also remove the role for this team context
         $user = User::findOrFail($id);
-        $this->withTeamScope($farm->id, fn () => $user->removeRole('worker'));
+        $this->withTeamScope($farm->id, fn () => $user->removeRole('accountant'));
 
         return response()->json([
             'message' => 'تم حذف العامل من المزرعة بنجاح'

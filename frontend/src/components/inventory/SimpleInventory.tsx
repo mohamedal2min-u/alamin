@@ -208,10 +208,10 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
   const field = 'w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800'
 
   return (
-    <Dialog isOpen={!!target} onClose={close} title={target ? `إضافة حمولة — ${locked ? locked.name : sectionTitle}` : ''}>
+    <Dialog isOpen={!!target} onClose={close} title={target ? (section || locked ? `إضافة حمولة — ${locked ? locked.name : sectionTitle}` : 'إضافة حمولة') : ''}>
       {target && !section && (
         <div className="space-y-3 p-5" dir="rtl">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">باركود جديد غير مسجل. ما نوع الصنف؟</p>
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{target.barcode ? 'باركود جديد غير مسجل. ما نوع الصنف؟' : 'ما نوع الصنف الذي وصل؟'}</p>
           <div className="grid grid-cols-3 gap-2">
             {SECTIONS.map((sec) => {
               const Icon = sec.icon

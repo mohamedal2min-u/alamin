@@ -1267,6 +1267,7 @@ export default function InventoryPage() {
   const medItems   = items.filter(i => i.type_code === 'medicine')
   const otherItems = items.filter(i => i.type_code !== 'feed' && i.type_code !== 'medicine')
   const lastShipmentDate = items.map(i => i.last_shipment_date).filter(Boolean).sort().pop() ?? null
+  const daysSinceShipment = lastShipmentDate ? Math.max(0, Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(lastShipmentDate).setHours(0, 0, 0, 0)) / 86_400_000)) : null
 
   const tabs: { id: Tab; label: string; badge?: number; icon: typeof Eye; isAction?: boolean; isPrimary?: boolean }[] = [
     { id: 'overview',     label: 'نظرة عامة',  icon: Eye },
@@ -1391,7 +1392,7 @@ export default function InventoryPage() {
                 <KpiCard label="عدد الأصناف" value={formatNumber(items.length)} sub={`${feedItems.length} علف · ${medItems.length} دواء · ${otherItems.length} أخرى`} icon={Layers} color="text-slate-700" />
                 <KpiCard label="أصناف منخفضة" value={formatNumber(lowItems.filter(i => i.total_quantity > 0).length)} sub="وصلت للحد الأدنى" icon={AlertTriangle} color="text-amber-700" />
                 <KpiCard label="أصناف نفدت" value={formatNumber(items.filter(i => i.total_quantity <= 0).length)} sub="رصيدها صفر" icon={AlertCircle} color="text-red-600" />
-                <KpiCard label="آخر حمولة" value={lastShipmentDate ? formatDate(lastShipmentDate) : '—'} sub={`${formatNumber(items.reduce((n, i) => n + (i.shipment_count ?? 0), 0))} حمولة مسجلة`} icon={Truck} color="text-primary-700" />
+                <KpiCard label="آخر حمولة" value={daysSinceShipment == null ? '—' : daysSinceShipment <= 0 ? 'اليوم' : `منذ ${formatNumber(daysSinceShipment)} يوم`} sub={lastShipmentDate ? `${formatDate(lastShipmentDate)} · ${formatNumber(items.reduce((n, i) => n + (i.shipment_count ?? 0), 0))} حمولة` : 'لا حمولات بعد'} icon={Truck} color="text-primary-700" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <MaterialCard title="العلف"  items={feedItems}  color="text-emerald-700" icon={Package} onOpen={() => openCategory('feed')} />

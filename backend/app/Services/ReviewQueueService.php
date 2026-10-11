@@ -8,6 +8,7 @@ use App\Models\InventoryTransaction;
 use App\Models\Item;
 use App\Models\Sale;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ReviewQueueService
 {
@@ -106,11 +107,19 @@ class ReviewQueueService
      */
     public function updateRecord(int $farmId, string $type, int $recordId, array $data, ?int $userId = null): array
     {
+        // كل التعديل في معاملة واحدة مع قفل السجل: لا كتابة جزئية ولا تعديلان متزامنان يضيّع أحدهما الآخر
+        return DB::transaction(fn () => $this->applyUpdate($farmId, $type, $recordId, $data, $userId));
+    }
+
+    private function applyUpdate(int $farmId, string $type, int $recordId, array $data, ?int $userId): array
+    {
         $priceBefore = null;
+        $paidBefore = null;
 
         if ($type === 'expense') {
-            $record = Expense::where('farm_id', $farmId)->findOrFail($recordId);
+            $record = Expense::where('farm_id', $farmId)->lockForUpdate()->findOrFail($recordId);
             $priceBefore = $this->normalizeExpense($record)['unit_price'];
+            $paidBefore = (float) ($record->paid_amount ?? 0);
 
             if (array_key_exists('unit_price', $data)) {
                 $record->unit_price = $data['unit_price'];
@@ -123,6 +132,8 @@ class ReviewQueueService
                 $record->paid_amount = $data['paid_amount'];
             }
 
+            $this->assertPaymentWithinTotal($data, (float) $record->total_amount, (float) $record->paid_amount);
+
             $record->remaining_amount = max(0, $record->total_amount - $record->paid_amount);
             $record->payment_status = $this->derivePaymentStatus(
                 (float) $record->total_amount,
@@ -133,19 +144,23 @@ class ReviewQueueService
 
             // الشحنة المرتبطة تأخذ السعر نفسه كي لا يختلف المخزون عن المحاسبة
             if (array_key_exists('unit_price', $data) && $record->linked_inventory_transaction_id) {
-                InventoryTransaction::where('farm_id', $farmId)
-                    ->where('id', $record->linked_inventory_transaction_id)
-                    ->update([
+                $shipment = InventoryTransaction::where('farm_id', $farmId)->where('id', $record->linked_inventory_transaction_id)->first();
+                if ($shipment) {
+                    $shipment->update([
                         'unit_price' => $record->unit_price,
                         'total_amount' => $record->total_amount,
                     ]);
+                    // متوسط تكلفة المخزون وما استُهلك قبل التسعير يتبعان السعر الجديد
+                    app(InventoryRepricingService::class)->repriceItem($farmId, (int) $shipment->item_id);
+                }
             }
 
             $row = $this->normalizeExpense($record->load(['flock', 'expenseCategory']));
 
         } elseif ($type === 'water_log') {
-            $record = FlockWaterLog::where('farm_id', $farmId)->findOrFail($recordId);
+            $record = FlockWaterLog::where('farm_id', $farmId)->lockForUpdate()->findOrFail($recordId);
             $priceBefore = $this->normalizeWaterLog($record)['unit_price'];
+            $paidBefore = (float) ($record->paid_amount ?? 0);
 
             if (array_key_exists('unit_price', $data)) {
                 if ($record->quantity !== null && $data['unit_price'] !== null) {
@@ -157,6 +172,8 @@ class ReviewQueueService
                 $record->paid_amount = $data['paid_amount'];
             }
 
+            $this->assertPaymentWithinTotal($data, (float) ($record->total_amount ?? 0), (float) ($record->paid_amount ?? 0));
+
             $record->payment_status = $this->derivePaymentStatus(
                 (float) ($record->total_amount ?? 0),
                 (float) ($record->paid_amount ?? 0)
@@ -167,8 +184,9 @@ class ReviewQueueService
             $row = $this->normalizeWaterLog($record->load('flock'));
 
         } elseif ($type === 'sale') {
-            $record = Sale::where('farm_id', $farmId)->with('saleItems')->findOrFail($recordId);
+            $record = Sale::where('farm_id', $farmId)->with('saleItems')->lockForUpdate()->findOrFail($recordId);
             $priceBefore = $this->normalizeSale($record)['unit_price'];
+            $paidBefore = (float) ($record->received_amount ?? 0);
 
             // سعر الكيلو المُدخَل هنا يُطبَّق على كل سطور البيع (أول تسعير أو تعديل لاحق؛
             // التعديل يُسجَّل في سجل الأسعار والسعر القديم يبقى ظاهراً)، ثم يُعاد حساب الإجمالي.
@@ -189,6 +207,7 @@ class ReviewQueueService
 
             $netAmount = (float) $record->net_amount;
             $received = (float) $record->received_amount;
+            $this->assertPaymentWithinTotal($data, $netAmount, $received);
             $remaining = max(0, round($netAmount - $received, 2));
 
             $record->remaining_amount = $remaining;
@@ -209,6 +228,10 @@ class ReviewQueueService
             abort(400, 'Invalid type');
         }
 
+        if (array_key_exists('paid_amount', $data) && $data['paid_amount'] !== null) {
+            $this->priceAudit->recordPayment($farmId, $userId, $type, $recordId, $paidBefore, (float) $data['paid_amount']);
+        }
+
         if (array_key_exists('unit_price', $data)) {
             $this->priceAudit->record(
                 $farmId,
@@ -221,6 +244,16 @@ class ReviewQueueService
         }
 
         return $this->withPriceHistory($farmId, collect([$this->attachReasons($row)]))->first();
+    }
+
+    /**
+     * لا يُقبل مدفوع أكبر من الإجمالي المسعَّر (السجل غير المسعَّر بعد يقبل دفعة مسبقة، ويظهر كتناقض حتى يُسعَّر).
+     */
+    private function assertPaymentWithinTotal(array $data, float $total, float $paid): void
+    {
+        if (array_key_exists('paid_amount', $data) && $total > 0 && $paid - $total > 0.005) {
+            abort(422, 'المبلغ المدفوع أكبر من إجمالي السجل — لا يمكن أن تتجاوز الدفعة المبلغ المستحق');
+        }
     }
 
     /**

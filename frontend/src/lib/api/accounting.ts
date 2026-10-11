@@ -84,6 +84,17 @@ export interface ShareAuditEntry {
   at: string | null
 }
 
+export interface PaymentAuditEntry {
+  id: number
+  record_type: 'expense' | 'water_log' | 'sale'
+  record_id: number
+  description: string | null
+  old_amount: number | null
+  new_amount: number
+  by: string | null
+  at: string | null
+}
+
 export interface ReviewQueueResponse {
   summary: ReviewSummary
   data: ReviewItem[]
@@ -137,6 +148,17 @@ export const accountingApi = {
     const { data } = await apiClient.get<ReviewQueueResponse>(
       `/accounting/review-queue?${params.toString()}`
     )
+    return data
+  },
+
+  getPaymentAudit: async (params: { page?: number; per_page?: number } = {}) => {
+    const q = new URLSearchParams()
+    if (params.page) q.set('page', String(params.page))
+    if (params.per_page) q.set('per_page', String(params.per_page))
+    const { data } = await apiClient.get<{
+      data: PaymentAuditEntry[]
+      meta: { total: number; current_page: number; per_page: number }
+    }>(`/accounting/payment-audit?${q.toString()}`)
     return data
   },
 

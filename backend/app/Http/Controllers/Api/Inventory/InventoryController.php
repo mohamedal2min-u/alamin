@@ -288,6 +288,7 @@ class InventoryController extends Controller
 
         $userId = $request->user()->id;
 
+        try {
         $newQuantity = DB::transaction(function () use ($item, $farmId, $userId, $validated) {
             $warehouse = Warehouse::where('farm_id', $farmId)->where('is_active', true)->first();
             if (! $warehouse) {
@@ -303,6 +304,11 @@ class InventoryController extends Controller
             $current  = (float) $warehouseItem->current_quantity;
             $target   = (float) $validated['quantity'];
             $delta    = $target - $current;
+
+            // أي نقص يدوي في المخزون يلزمه سبب مكتوب (منع إخفاء النقص بلا أثر)
+            if ($delta < -0.0001 && trim((string) ($validated['notes'] ?? '')) === '') {
+                throw new \Exception('اكتب سبب تخفيض المخزون (مثل: تالف، جرد، فاقد)', 422);
+            }
 
             if (abs($delta) > 0.0001) {
                 InventoryTransaction::create([
@@ -327,6 +333,10 @@ class InventoryController extends Controller
 
             return $target;
         });
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json([
             'message' => 'تم تحديث رصيد المخزون بنجاح',

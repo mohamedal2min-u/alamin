@@ -132,8 +132,8 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::get('flock-report',     [\App\Http\Controllers\Api\Report\ReportsController::class, 'flockReport']);
         Route::get('accounting-summary', [\App\Http\Controllers\Api\Report\ReportsController::class, 'accountingSummary']);
         Route::get('inventory-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'inventoryReport']);
-        Route::get('partners-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'partnersReport']);
-        Route::get('workers-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'workersReport']);
+        Route::get('partners-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'partnersReport'])->middleware('farm.role:farm_admin,accountant');
+        Route::get('workers-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'workersReport'])->middleware('farm.role:farm_admin,accountant');
         Route::get('daily-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'dailyReport']);
         Route::get('flocks/{flock}/daily-summary', [\App\Http\Controllers\Api\Report\ReportsController::class, 'flockDailySummary']);
     });
@@ -144,12 +144,14 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::patch('review-queue/{type}/{id}', [\App\Http\Controllers\Api\Accounting\ReviewQueueController::class, 'update'])->middleware('farm.role:farm_admin,accountant');
         // سجل تعديلات الأسعار — لمدير المزرعة فقط
         Route::get('share-audit',                [\App\Http\Controllers\Api\Accounting\PriceAuditController::class, 'shares'])->middleware('farm.role:farm_admin');
+        Route::get('payment-audit',              [\App\Http\Controllers\Api\Accounting\PriceAuditController::class, 'payments'])->middleware('farm.role:farm_admin,accountant');
         Route::get('price-audit',                [\App\Http\Controllers\Api\Accounting\PriceAuditController::class, 'index'])->middleware('farm.role:farm_admin');
     });
 
     // ── V1-J: Partners Management ─────────────────────────────────────────────
     Route::get('partners/my-info', [\App\Http\Controllers\Api\Partner\PartnerController::class, 'myInfo']);
-    Route::apiResource('partners', \App\Http\Controllers\Api\Partner\PartnerController::class)->only(['index', 'show']);
+    // قائمة الشركاء وحصصهم وبياناتهم: مدير المزرعة والمحاسب فقط (الشريك يرى سجله وحده عبر my-info)
+    Route::apiResource('partners', \App\Http\Controllers\Api\Partner\PartnerController::class)->only(['index', 'show'])->middleware('farm.role:farm_admin,accountant');
     Route::apiResource('partners', \App\Http\Controllers\Api\Partner\PartnerController::class)->only(['store', 'update', 'destroy'])->middleware('farm.role:farm_admin');
     Route::get('partners/{partner}/transactions', [\App\Http\Controllers\Api\Partner\PartnerTransactionController::class, 'index']);
     Route::post('partners/{partner}/transactions', [\App\Http\Controllers\Api\Partner\PartnerTransactionController::class, 'store'])->middleware('farm.role:farm_admin,accountant');

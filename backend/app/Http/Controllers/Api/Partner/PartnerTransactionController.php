@@ -21,6 +21,13 @@ class PartnerTransactionController extends Controller
             abort(403, 'غير مصرح بالوصول إلى هذا المورد');
         }
 
+        // الشريك يرى حركات محفظته وحدها؛ مدير المزرعة والمحاسب يريان الجميع
+        $isStaff = $request->attributes->get('is_super_admin') === true
+            || $request->user()->hasAnyRole(['farm_admin', 'accountant']);
+        if (! $isStaff && $partner->user_id !== $request->user()->id) {
+            abort(403, 'غير مصرح بالوصول إلى هذا المورد');
+        }
+
         $transactions = $partner->transactions()
             ->orderBy('transaction_date', 'desc')
             ->orderBy('id', 'desc')

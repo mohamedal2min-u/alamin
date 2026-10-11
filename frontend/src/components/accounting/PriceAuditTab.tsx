@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, ShieldCheck } from 'lucide-react'
 import { accountingApi } from '@/lib/api/accounting'
-import type { ShareAuditEntry } from '@/lib/api/accounting'
+import type { PaymentAuditEntry, ShareAuditEntry } from '@/lib/api/accounting'
 import { Card, CardContent } from '@/components/ui/Card'
 import { formatNumber } from '@/lib/utils'
 
@@ -18,6 +18,12 @@ export function PriceAuditTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['accounting', 'price-audit', { editsOnly, page }],
     queryFn: () => accountingApi.getPriceAudit({ edits_only: editsOnly, page, per_page: 30 }),
+    staleTime: 15_000,
+  })
+
+  const payments = useQuery({
+    queryKey: ['accounting', 'payment-audit'],
+    queryFn: () => accountingApi.getPaymentAudit({ per_page: 30 }),
     staleTime: 15_000,
   })
 
@@ -82,6 +88,33 @@ export function PriceAuditTab() {
           )}
         </div>
       )}
+
+      {/* ── تعديلات المدفوعات ── */}
+      <div className="pt-2">
+        <h3 className="mb-2 text-sm font-bold text-slate-700">تعديلات المدفوعات والمستلم</h3>
+        {payments.isLoading ? (
+          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+        ) : !payments.data?.data.length ? (
+          <p className="py-6 text-center text-sm text-slate-400">لا توجد تعديلات مدفوعات</p>
+        ) : (
+          <div className="space-y-2">
+            {payments.data.data.map((e: PaymentAuditEntry) => (
+              <Card key={e.id}>
+                <CardContent className="py-3 px-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="font-medium text-slate-800">{e.description ?? '—'}</div>
+                    <div className="text-xs text-slate-400">{TYPE_LABELS[e.record_type]} • {e.by ?? '—'} • {e.at ? new Date(e.at).toLocaleString('ar') : ''}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {e.old_amount != null && <s className="text-red-400 decoration-red-500">{formatNumber(e.old_amount)}</s>}
+                    <strong className="text-slate-800">{formatNumber(e.new_amount)}</strong>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* ── تعديلات حصص الشركاء ── */}
       <div className="pt-2">

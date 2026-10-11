@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/lib/api/reports'
 import { useFarmStore } from '@/stores/farm.store'
+import { useCurrentRole } from '@/lib/roles'
 import { KpiSection } from '@/components/reports/KpiSection'
 import { FiltersBar } from '@/components/reports/FiltersBar'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
@@ -17,6 +18,9 @@ import { Card } from '@/components/ui/Card'
 import { Loader2, Package, Users, CalendarDays, UserCheck } from 'lucide-react'
 
 export default function ReportsPage() {
+  // تقارير الشركاء والعمال (أرصدة وأجور) لمدير المزرعة وحده
+  const role = useCurrentRole()
+  const canSeeStaffReports = role === 'farm_admin' || role === 'super_admin'
   const { activeFlock } = useFarmStore()
   const [activeTab, setActiveTab] = useState('flock')
   const [filters, setFilters] = useState<any>({
@@ -98,8 +102,8 @@ export default function ReportsPage() {
             <TabsTrigger value="flock">تقرير الفوج</TabsTrigger>
             <TabsTrigger value="accounting">المحاسبة</TabsTrigger>
             <TabsTrigger value="inventory">المخزون</TabsTrigger>
-            <TabsTrigger value="partners">الشركاء</TabsTrigger>
-            <TabsTrigger value="workers">العمال</TabsTrigger>
+            {canSeeStaffReports && <TabsTrigger value="partners">الشركاء</TabsTrigger>}
+            {canSeeStaffReports && <TabsTrigger value="workers">العمال</TabsTrigger>}
             <TabsTrigger value="daily">اليومي</TabsTrigger>
           </TabsList>
 

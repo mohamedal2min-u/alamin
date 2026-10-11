@@ -13,6 +13,7 @@ use App\Models\WarehouseItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class InventoryController extends Controller
 {
@@ -85,6 +86,7 @@ class InventoryController extends Controller
         $validated = $request->validate([
             'item_type_id'  => ['required', 'integer', 'exists:item_types,id'],
             'name'          => ['required', 'string', 'max:150'],
+            'barcode'       => ['nullable', 'string', 'max:64', 'regex:/^[0-9A-Za-z\-\.]+$/'],
             'input_unit'    => ['required', 'string', 'max:50'],
             'unit_value'    => ['required', 'numeric', 'min:0.001'],
             'content_unit'  => ['required', 'string', 'max:50'],
@@ -98,10 +100,15 @@ class InventoryController extends Controller
             return response()->json(['message' => 'يوجد صنف بهذا الاسم مسبقاً في المزرعة'], 422);
         }
 
+        if (! empty($validated['barcode']) && Item::where('farm_id', $farmId)->where('barcode', $validated['barcode'])->exists()) {
+            return response()->json(['message' => 'هذا الباركود مسجل لصنف آخر'], 422);
+        }
+
         $item = Item::create([
             'farm_id'       => $farmId,
             'item_type_id'  => $validated['item_type_id'],
             'name'          => $validated['name'],
+            'barcode'       => $validated['barcode'] ?? null,
             'input_unit'    => $validated['input_unit'],
             'unit_value'    => $validated['unit_value'],
             'content_unit'  => $validated['content_unit'],
@@ -117,6 +124,113 @@ class InventoryController extends Controller
             'message' => 'تمت إضافة الصنف بنجاح',
             'data'    => ['id' => $item->id],
         ], 201);
+    }
+
+    // ── GET /api/inventory/barcode/{code} ─────────────────────────────────────
+    // يبحث عن الباركود في أصناف المزرعة، وإن لم يوجد يحاول جلب اسم المنتج من قاعدة مفتوحة.
+
+    public function lookupBarcode(Request $request, string $code): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+
+        if (! preg_match('/^[0-9A-Za-z\-\.]{4,64}$/', $code)) {
+            return response()->json(['message' => 'باركود غير صالح'], 422);
+        }
+
+        $item = Item::where('farm_id', $farmId)->where('status', 'active')->where('barcode', $code)->first();
+        if ($item) {
+            return response()->json(['data' => ['found' => true, 'item_id' => $item->id, 'name' => $item->name]]);
+        }
+
+        $suggestion = ctype_digit($code) ? $this->suggestFromOpenDatabases($code) : null;
+
+        return response()->json(['data' => [
+            'found'          => false,
+            'suggested_name' => $suggestion['name'] ?? null,
+            'suggestion'     => $suggestion,
+        ]]);
+    }
+
+    /**
+     * يجلب اسم المنتج ومعلوماته من قواعد مفتوحة (أغذية ثم أغذية الحيوانات الأليفة).
+     * يرجع الاسم والقسم المحتمل والوزن/الحجم والوحدة إن وُجدت، وإلا null.
+     */
+    private function suggestFromOpenDatabases(string $code): ?array
+    {
+        foreach (['world.openfoodfacts.org', 'world.openpetfoodfacts.org'] as $host) {
+            try {
+                $res = Http::timeout(4)->withHeaders(['User-Agent' => 'AlAminFarm/1.0'])
+                    ->get("https://{$host}/api/v2/product/{$code}.json", ['fields' => 'product_name,product_name_ar,generic_name,brands,quantity,categories_tags']);
+            } catch (\Throwable) {
+                continue; // البحث الخارجي اختياري: نتجاهل الفشل ويكتب المستخدم البيانات بنفسه
+            }
+            if (! $res->ok() || $res->json('status') !== 1) {
+                continue;
+            }
+
+            $p    = $res->json('product') ?? [];
+            $name = trim((string) ($p['product_name_ar'] ?? '')) ?: trim((string) ($p['product_name'] ?? '')) ?: trim((string) ($p['generic_name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $brand = trim(explode(',', (string) ($p['brands'] ?? ''))[0]);
+            if ($brand !== '' && ! str_contains(mb_strtolower($name), mb_strtolower($brand))) {
+                $name .= ' - '.$brand;
+            }
+
+            $suggestion = ['name' => $name, 'section' => null, 'weight_kg' => null, 'unit' => null, 'quantity_text' => null];
+
+            $qty = trim((string) ($p['quantity'] ?? ''));
+            if ($qty !== '') {
+                $suggestion['quantity_text'] = $qty;
+                if (preg_match('/(\d+(?:[.,]\d+)?)\s*(kg|kgs|كغ|كيلو|g|gr|جم|غ|ml|مل|l|ltr|لتر)\b/iu', $qty, $m)) {
+                    $n = (float) str_replace(',', '.', $m[1]);
+                    switch (mb_strtolower($m[2])) {
+                        case 'kg': case 'kgs': case 'كغ': case 'كيلو':
+                            $suggestion['weight_kg'] = $n; $suggestion['unit'] = 'كيلو'; break;
+                        case 'g': case 'gr': case 'جم': case 'غ':
+                            $suggestion['weight_kg'] = $n / 1000; $suggestion['unit'] = 'جرام'; break;
+                        case 'ml': case 'مل':
+                            $suggestion['unit'] = 'مل'; break;
+                        default:
+                            $suggestion['unit'] = 'لتر';
+                    }
+                }
+            }
+
+            $cats = implode(' ', $p['categories_tags'] ?? []);
+            if (preg_match('/feed|fodder|poultry|chicken|animal-food|pet-food/i', $cats) || $host === 'world.openpetfoodfacts.org') {
+                $suggestion['section'] = 'feed';
+            } elseif (preg_match('/vitamin|supplement|medic|vaccine|veterinar|pharma/i', $cats)) {
+                $suggestion['section'] = 'medicine';
+            }
+
+            return $suggestion;
+        }
+
+        return null;
+    }
+
+    // ── PATCH /api/inventory/items/{item}/barcode ─────────────────────────────
+
+    public function setBarcode(Request $request, Item $item): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+        if ($item->farm_id !== $farmId) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $validated = $request->validate([
+            'barcode' => ['required', 'string', 'max:64', 'regex:/^[0-9A-Za-z\-\.]+$/'],
+        ]);
+
+        if (Item::where('farm_id', $farmId)->where('barcode', $validated['barcode'])->where('id', '!=', $item->id)->exists()) {
+            return response()->json(['message' => 'هذا الباركود مسجل لصنف آخر'], 422);
+        }
+
+        $item->update(['barcode' => $validated['barcode'], 'updated_by' => $request->user()->id]);
+
+        return response()->json(['message' => 'تم ربط الباركود بالصنف', 'data' => ['id' => $item->id]]);
     }
 
     public function updateItem(Request $request, Item $item): JsonResponse
@@ -291,6 +405,7 @@ class InventoryController extends Controller
             'name'               => $item->name,
             'type_code'          => $item->itemType?->code,
             'type_name'          => $item->itemType?->name,
+            'barcode'            => $item->barcode,
             'input_unit'         => $item->input_unit,
             'content_unit'       => $item->content_unit,
             'unit_value'         => (float) $item->unit_value,

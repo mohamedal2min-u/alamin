@@ -6,6 +6,7 @@ export interface StockItem {
   name: string
   type_code: string
   type_name: string | null
+  barcode?: string | null
   input_unit: string
   content_unit: string
   unit_value: number
@@ -86,9 +87,19 @@ export interface AddShipmentPayload {
   attachment?: File | null
 }
 
+/** معلومات منتج مقترحة من الباركود (قواعد مفتوحة) — كلها قابلة للتعديل */
+export interface BarcodeSuggestion {
+  name: string
+  section: 'feed' | 'medicine' | null
+  weight_kg: number | null
+  unit: string | null
+  quantity_text: string | null
+}
+
 export interface CreateItemPayload {
   item_type_id: number
   name: string
+  barcode?: string | null
   input_unit: string
   unit_value: number
   content_unit: string
@@ -128,6 +139,17 @@ export const inventoryApi = {
     apiClient
       .post<{ message: string; data: { id: number } }>('/inventory/items', payload)
       .then((r) => r.data),
+
+  /** نتيجة مسح باركود: صنف موجود، أو اسم مقترح من قاعدة مفتوحة إن لم يوجد */
+  lookupBarcode: (code: string) =>
+    apiClient
+      .get<{ data: { found: boolean; item_id?: number; name?: string; suggested_name?: string | null; suggestion?: BarcodeSuggestion | null } }>(
+        `/inventory/barcode/${encodeURIComponent(code)}`,
+      )
+      .then((r) => r.data.data),
+
+  setBarcode: (itemId: number, barcode: string) =>
+    apiClient.patch(`/inventory/items/${itemId}/barcode`, { barcode }).then((r) => r.data),
 
   updateItem: (itemId: number, payload: Partial<CreateItemPayload>) =>
     apiClient

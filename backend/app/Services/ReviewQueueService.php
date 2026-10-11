@@ -3,10 +3,11 @@
 namespace App\Services;
 
 use App\Models\Expense;
+use App\Models\FlockWaterLog;
+use App\Models\InventoryTransaction;
 use App\Models\Item;
 use App\Models\Sale;
-use App\Models\InventoryTransaction;
-use App\Models\FlockWaterLog;
+use Illuminate\Support\Collection;
 
 class ReviewQueueService
 {
@@ -17,10 +18,10 @@ class ReviewQueueService
      */
     public function getQueue(int $farmId, array $filters = []): array
     {
-        $type    = $filters['type']     ?? 'all';
-        $reason  = $filters['reason']   ?? null;
+        $type = $filters['type'] ?? 'all';
+        $reason = $filters['reason'] ?? null;
         $flockId = isset($filters['flock_id']) && $filters['flock_id'] !== '' ? (int) $filters['flock_id'] : null;
-        $page    = max(1, (int) ($filters['page']    ?? 1));
+        $page = max(1, (int) ($filters['page'] ?? 1));
         $perPage = min(100, max(1, (int) ($filters['per_page'] ?? 20)));
 
         $rows = $this->fetchRows($farmId, $type, $flockId);
@@ -31,17 +32,18 @@ class ReviewQueueService
 
         // scope=all: كل السجلات بما فيها المسعّرة والمدفوعة، ليتمكن المحاسب من تعديل سعر موضوع مسبقاً
         $listAll = ($filters['scope'] ?? null) === 'all';
-        $rows    = $listAll ? $rows : $qualifying;
+        $rows = $listAll ? $rows : $qualifying;
 
         // Filter by specific reason if requested
         if ($reason) {
-            $rows       = $rows->filter(fn ($row) => in_array($reason, $row['review_reasons']));
+            $rows = $rows->filter(fn ($row) => in_array($reason, $row['review_reasons']));
             $qualifying = $qualifying->filter(fn ($row) => in_array($reason, $row['review_reasons']));
         }
 
         $rows = $rows->values();
 
-        $summary = $this->buildSummary($listAll ? $qualifying->values() : $rows);
+        // scope=all: ملخص الفئات يشمل كل السجلات (المسعّرة وغير المسعّرة) ليرى المحاسب الإجماليات الكاملة
+        $summary = $this->buildSummary($listAll ? $rows : $rows, $listAll);
 
         // Filter by category if requested (must match the same fallback key used in buildSummary)
         $category = $filters['category'] ?? null;
@@ -69,19 +71,34 @@ class ReviewQueueService
         })->values();
 
         // Manual pagination after reason-filtering so summary always reflects full filtered set
-        $total     = $rows->count();
-        $offset    = ($page - 1) * $perPage;
+        $total = $rows->count();
+        $offset = ($page - 1) * $perPage;
         $pageItems = $this->withPriceHistory($farmId, $rows->slice($offset, $perPage)->values());
 
         return [
             'summary' => $summary,
-            'data'    => $pageItems->toArray(),
-            'meta'    => [
-                'total'        => $total,
+            'data' => $pageItems->toArray(),
+            'meta' => [
+                'total' => $total,
                 'current_page' => $page,
-                'per_page'     => $perPage,
+                'per_page' => $perPage,
             ],
         ];
+    }
+
+    /**
+     * حالة فوج السجل (لمنع التعديل على الأفواج المغلقة).
+     */
+    public function flockStatusOf(int $farmId, string $type, int $recordId): ?string
+    {
+        $record = match ($type) {
+            'expense' => Expense::with('flock:id,status')->where('farm_id', $farmId)->find($recordId),
+            'water_log' => FlockWaterLog::with('flock:id,status')->where('farm_id', $farmId)->find($recordId),
+            'sale' => Sale::with('flock:id,status')->where('farm_id', $farmId)->find($recordId),
+            default => null,
+        };
+
+        return $record?->flock?->status;
     }
 
     /**
@@ -107,7 +124,7 @@ class ReviewQueueService
             }
 
             $record->remaining_amount = max(0, $record->total_amount - $record->paid_amount);
-            $record->payment_status   = $this->derivePaymentStatus(
+            $record->payment_status = $this->derivePaymentStatus(
                 (float) $record->total_amount,
                 (float) $record->paid_amount
             );
@@ -119,7 +136,7 @@ class ReviewQueueService
                 InventoryTransaction::where('farm_id', $farmId)
                     ->where('id', $record->linked_inventory_transaction_id)
                     ->update([
-                        'unit_price'   => $record->unit_price,
+                        'unit_price' => $record->unit_price,
                         'total_amount' => $record->total_amount,
                     ]);
             }
@@ -149,7 +166,6 @@ class ReviewQueueService
 
             $row = $this->normalizeWaterLog($record->load('flock'));
 
-
         } elseif ($type === 'sale') {
             $record = Sale::where('farm_id', $farmId)->with('saleItems')->findOrFail($recordId);
             $priceBefore = $this->normalizeSale($record)['unit_price'];
@@ -159,12 +175,12 @@ class ReviewQueueService
             if (array_key_exists('unit_price', $data) && $data['unit_price'] !== null) {
                 foreach ($record->saleItems as $saleItem) {
                     $saleItem->unit_price_per_kg = $data['unit_price'];
-                    $saleItem->line_total        = round($saleItem->total_weight_kg * $data['unit_price'], 2);
+                    $saleItem->line_total = round($saleItem->total_weight_kg * $data['unit_price'], 2);
                     $saleItem->save();
                 }
 
                 $record->gross_amount = $record->saleItems()->sum('line_total');
-                $record->net_amount   = max(0, round($record->gross_amount - $record->discount_amount, 2));
+                $record->net_amount = max(0, round($record->gross_amount - $record->discount_amount, 2));
             }
 
             if (array_key_exists('paid_amount', $data)) {
@@ -172,7 +188,7 @@ class ReviewQueueService
             }
 
             $netAmount = (float) $record->net_amount;
-            $received  = (float) $record->received_amount;
+            $received = (float) $record->received_amount;
             $remaining = max(0, round($netAmount - $received, 2));
 
             $record->remaining_amount = $remaining;
@@ -182,15 +198,15 @@ class ReviewQueueService
             $record->payment_status = match (true) {
                 $netAmount <= 0 => 'debt',
                 $remaining <= 0 => 'paid',
-                $received > 0   => 'partial',
-                default          => 'debt',
+                $received > 0 => 'partial',
+                default => 'debt',
             };
 
             $record->save();
 
             $row = $this->normalizeSale($record->load(['flock', 'saleItems']));
         } else {
-            abort(400, "Invalid type");
+            abort(400, 'Invalid type');
         }
 
         if (array_key_exists('unit_price', $data)) {
@@ -210,14 +226,14 @@ class ReviewQueueService
     /**
      * يُلحق بكل صف تاريخ أسعاره (السعر القديم يبقى ظاهراً ولا يُحذف).
      *
-     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $rows
+     * @param  Collection<int, array<string, mixed>>  $rows
      */
-    private function withPriceHistory(int $farmId, \Illuminate\Support\Collection $rows): \Illuminate\Support\Collection
+    private function withPriceHistory(int $farmId, Collection $rows): Collection
     {
         $history = $this->priceAudit->historyFor($farmId, $rows);
 
         return $rows->map(function (array $row) use ($history): array {
-            $row['price_history'] = $history[$row['type'] . '-' . $row['record_id']] ?? [];
+            $row['price_history'] = $history[$row['type'].'-'.$row['record_id']] ?? [];
 
             return $row;
         });
@@ -225,7 +241,7 @@ class ReviewQueueService
 
     // ─── Private Helpers ─────────────────────────────────────────────────────
 
-    private function fetchRows(int $farmId, string $type, ?int $flockId): \Illuminate\Support\Collection
+    private function fetchRows(int $farmId, string $type, ?int $flockId): Collection
     {
         $rows = collect();
 
@@ -253,8 +269,6 @@ class ReviewQueueService
             $rows = $rows->concat($q->get()->map(fn ($w) => $this->normalizeWaterLog($w)));
         }
 
-
-
         return $rows;
     }
 
@@ -264,55 +278,55 @@ class ReviewQueueService
             ?? $this->resolveItemFromDescription($e->farm_id, $e->description);
 
         return [
-            'id'               => 'expense-' . $e->id,
-            'type'             => 'expense',
-            'record_id'        => $e->id,
-            'flock_id'         => $e->flock_id,
-            'flock_name'       => $e->flock?->name,
-            'flock_status'     => $e->flock?->status,
-            'entry_date'       => $e->entry_date?->toDateString(),
-            'description'      => $e->description ?: ($e->expenseCategory?->name ?? $e->description),
-            'category_name'    => $e->expenseCategory?->name,
-            'category_code'    => $e->expenseCategory?->code,
-            'total_amount'     => (float) $e->total_amount,
-            'paid_amount'      => (float) ($e->paid_amount ?? 0),
+            'id' => 'expense-'.$e->id,
+            'type' => 'expense',
+            'record_id' => $e->id,
+            'flock_id' => $e->flock_id,
+            'flock_name' => $e->flock?->name,
+            'flock_status' => $e->flock?->status,
+            'entry_date' => $e->entry_date?->toDateString(),
+            'description' => $e->description ?: ($e->expenseCategory?->name ?? $e->description),
+            'category_name' => $e->expenseCategory?->name,
+            'category_code' => $e->expenseCategory?->code,
+            'total_amount' => (float) $e->total_amount,
+            'paid_amount' => (float) ($e->paid_amount ?? 0),
             'remaining_amount' => (float) ($e->remaining_amount ?? $e->total_amount),
-            'payment_status'   => $e->payment_status,
-            'unit_price'       => $e->unit_price !== null ? (float) $e->unit_price : null,
-            'quantity'         => $e->quantity !== null ? (float) $e->quantity : null,
-            'quantity_unit'    => $linkedItem?->input_unit,
+            'payment_status' => $e->payment_status,
+            'unit_price' => $e->unit_price !== null ? (float) $e->unit_price : null,
+            'quantity' => $e->quantity !== null ? (float) $e->quantity : null,
+            'quantity_unit' => $linkedItem?->input_unit,
             'computed_quantity' => $e->linkedInventoryTransaction?->computed_quantity !== null
                 ? (float) $e->linkedInventoryTransaction->computed_quantity
                 : null,
-            'item_type'        => $linkedItem?->itemType?->code,
-            'review_reasons'   => [],
+            'item_type' => $linkedItem?->itemType?->code,
+            'review_reasons' => [],
         ];
     }
 
     private function normalizeSale(Sale $s): array
     {
         $totalWeight = $s->saleItems->sum('total_weight_kg');
-        $avgPrice    = $totalWeight > 0 ? round((float) $s->gross_amount / $totalWeight, 2) : null;
+        $avgPrice = $totalWeight > 0 ? round((float) $s->gross_amount / $totalWeight, 2) : null;
 
         return [
-            'id'               => 'sale-' . $s->id,
-            'type'             => 'sale',
-            'record_id'        => $s->id,
-            'flock_id'         => $s->flock_id,
-            'flock_name'       => $s->flock?->name,
-            'flock_status'     => $s->flock?->status,
-            'entry_date'       => $s->sale_date?->toDateString(),
-            'description'      => $s->buyer_name ?? 'بيع',
-            'category_name'    => 'مبيعات',
-            'category_code'    => 'sales',
-            'total_amount'     => (float) $s->net_amount,
-            'paid_amount'      => (float) ($s->received_amount ?? 0),
+            'id' => 'sale-'.$s->id,
+            'type' => 'sale',
+            'record_id' => $s->id,
+            'flock_id' => $s->flock_id,
+            'flock_name' => $s->flock?->name,
+            'flock_status' => $s->flock?->status,
+            'entry_date' => $s->sale_date?->toDateString(),
+            'description' => $s->buyer_name ?? 'بيع',
+            'category_name' => 'مبيعات',
+            'category_code' => 'sales',
+            'total_amount' => (float) $s->net_amount,
+            'paid_amount' => (float) ($s->received_amount ?? 0),
             'remaining_amount' => (float) ($s->remaining_amount ?? $s->net_amount),
-            'payment_status'   => $s->payment_status,
-            'unit_price'       => $avgPrice,
-            'quantity'         => $totalWeight > 0 ? (float) $totalWeight : null,
-            'quantity_unit'    => 'كغ',
-            'review_reasons'   => [],
+            'payment_status' => $s->payment_status,
+            'unit_price' => $avgPrice,
+            'quantity' => $totalWeight > 0 ? (float) $totalWeight : null,
+            'quantity_unit' => 'كغ',
+            'review_reasons' => [],
         ];
     }
 
@@ -339,27 +353,26 @@ class ReviewQueueService
     private function normalizeWaterLog(FlockWaterLog $w): array
     {
         return [
-            'id'               => 'water_log-' . $w->id,
-            'type'             => 'water_log',
-            'record_id'        => $w->id,
-            'flock_id'         => $w->flock_id,
-            'flock_name'       => $w->flock?->name,
-            'flock_status'     => $w->flock?->status,
-            'entry_date'       => $w->entry_date?->toDateString(),
-            'description'      => 'استهلاك ماء - ' . $w->notes,
-            'category_name'    => 'ماء',
-            'category_code'    => 'water',
-            'total_amount'     => (float) ($w->total_amount ?? 0),
-            'paid_amount'      => (float) ($w->paid_amount ?? 0),
+            'id' => 'water_log-'.$w->id,
+            'type' => 'water_log',
+            'record_id' => $w->id,
+            'flock_id' => $w->flock_id,
+            'flock_name' => $w->flock?->name,
+            'flock_status' => $w->flock?->status,
+            'entry_date' => $w->entry_date?->toDateString(),
+            'description' => 'استهلاك ماء'.($w->notes ? ' - '.$w->notes : ''),
+            'category_name' => 'ماء',
+            'category_code' => 'water',
+            'total_amount' => (float) ($w->total_amount ?? 0),
+            'paid_amount' => (float) ($w->paid_amount ?? 0),
             'remaining_amount' => max(0, (float) (($w->total_amount ?? 0) - ($w->paid_amount ?? 0))),
-            'payment_status'   => $w->payment_status ?? 'unpaid',
-            'unit_price'       => ($w->quantity > 0 && $w->total_amount > 0) ? ($w->total_amount / $w->quantity) : null,
-            'quantity'         => $w->quantity !== null ? (float) $w->quantity : null,
-            'quantity_unit'    => $w->unit_label,
-            'review_reasons'   => [],
+            'payment_status' => $w->payment_status ?? 'unpaid',
+            'unit_price' => ($w->quantity > 0 && $w->total_amount > 0) ? ($w->total_amount / $w->quantity) : null,
+            'quantity' => $w->quantity !== null ? (float) $w->quantity : null,
+            'quantity_unit' => $w->unit_label,
+            'review_reasons' => [],
         ];
     }
-
 
     private function attachReasons(array $row): array
     {
@@ -410,27 +423,27 @@ class ReviewQueueService
         return $row;
     }
 
-    private function buildSummary(\Illuminate\Support\Collection $qualifyingRows): array
+    private function buildSummary(Collection $qualifyingRows, bool $detailed = false): array
     {
         $summary = [
-            'unpaid_count'                       => 0,
-            'partial_payment_count'              => 0,
-            'missing_price_count'                => 0,
-            'missing_payment_status_count'       => 0,
+            'unpaid_count' => 0,
+            'partial_payment_count' => 0,
+            'missing_price_count' => 0,
+            'missing_payment_status_count' => 0,
             'inconsistent_financial_state_count' => 0,
-            'blocking_flock_closure_count'       => 0,
+            'blocking_flock_closure_count' => 0,
         ];
 
         foreach ($qualifyingRows as $row) {
             foreach ($row['review_reasons'] as $reason) {
                 match ($reason) {
-                    'unpaid'                       => $summary['unpaid_count']++,
-                    'partial_payment'              => $summary['partial_payment_count']++,
-                    'missing_price'                => $summary['missing_price_count']++,
-                    'missing_payment_status'       => $summary['missing_payment_status_count']++,
+                    'unpaid' => $summary['unpaid_count']++,
+                    'partial_payment' => $summary['partial_payment_count']++,
+                    'missing_price' => $summary['missing_price_count']++,
+                    'missing_payment_status' => $summary['missing_payment_status_count']++,
                     'inconsistent_financial_state' => $summary['inconsistent_financial_state_count']++,
-                    'blocking_flock_closure'       => $summary['blocking_flock_closure_count']++,
-                    default                        => null,
+                    'blocking_flock_closure' => $summary['blocking_flock_closure_count']++,
+                    default => null,
                 };
             }
         }
@@ -442,23 +455,48 @@ class ReviewQueueService
         foreach ($qualifyingRows as $row) {
             $code = $row['category_code'] ?? 'uncategorized';
             $name = $row['category_name'] ?? 'أخرى';
-            if (!isset($categoryBreakdown[$code])) {
+            if (! isset($categoryBreakdown[$code])) {
                 $categoryBreakdown[$code] = [
-                    'code'             => $code,
-                    'name'             => $name,
-                    'count'            => 0,
-                    'total_amount'     => 0,
+                    'code' => $code,
+                    'name' => $name,
+                    'count' => 0,
+                    'total_amount' => 0,
                     'remaining_amount' => 0,
                 ];
             }
             $categoryBreakdown[$code]['count']++;
-            $categoryBreakdown[$code]['total_amount']     += $row['total_amount'];
+            $categoryBreakdown[$code]['total_amount'] += $row['total_amount'];
             $categoryBreakdown[$code]['remaining_amount'] += $row['remaining_amount'];
+
+            // معلومات شاملة للفئة (الكمية الإجمالية، المسعّر وغير المسعّر، متوسط سعر الوحدة)
+            $c = &$categoryBreakdown[$code];
+            $c['paid_amount'] = ($c['paid_amount'] ?? 0) + $row['paid_amount'];
+            $c['quantity'] = ($c['quantity'] ?? 0) + (float) ($row['quantity'] ?? 0);
+            $c['quantity_units'] = array_values(array_unique(array_merge($c['quantity_units'] ?? [], array_filter([$row['quantity_unit'] ?? null]))));
+            $isPriced = ($row['unit_price'] ?? null) !== null && (float) $row['unit_price'] > 0 && $row['total_amount'] > 0;
+            $c['priced_count'] = ($c['priced_count'] ?? 0) + ($isPriced ? 1 : 0);
+            $c['unpriced_count'] = ($c['unpriced_count'] ?? 0) + ($isPriced ? 0 : 1);
+            $c['priced_quantity'] = ($c['priced_quantity'] ?? 0) + ($isPriced ? (float) ($row['quantity'] ?? 0) : 0);
+            $c['priced_amount'] = ($c['priced_amount'] ?? 0) + ($isPriced ? (float) $row['total_amount'] : 0);
+            if (($row['item_type'] ?? null) === 'feed' && ($row['computed_quantity'] ?? null) !== null) {
+                $c['computed_quantity'] = ($c['computed_quantity'] ?? 0) + (float) $row['computed_quantity'];
+            }
+            unset($c);
         }
 
         // Real money owed first, then busiest category, so the cards read most-urgent-first
         usort($categoryBreakdown, fn (array $a, array $b): int => $b['remaining_amount'] <=> $a['remaining_amount']
             ?: $b['count'] <=> $a['count']);
+
+        foreach ($categoryBreakdown as &$c) {
+            $units = $c['quantity_units'] ?? [];
+            $c['quantity_unit'] = count($units) === 1 ? $units[0] : null; // وحدة واحدة فقط وإلا تُعرض الكمية بلا وحدة
+            $c['avg_unit_price'] = ($c['priced_quantity'] ?? 0) > 0
+                ? round($c['priced_amount'] / $c['priced_quantity'], 4)
+                : null;
+            unset($c['quantity_units'], $c['priced_quantity'], $c['priced_amount']);
+        }
+        unset($c);
 
         $summary['category_breakdown'] = array_values($categoryBreakdown);
 
@@ -467,8 +505,13 @@ class ReviewQueueService
 
     private function derivePaymentStatus(float $total, float $paid): string
     {
-        if ($paid <= 0) return 'unpaid';
-        if ($paid >= $total) return 'paid';
+        if ($paid <= 0) {
+            return 'unpaid';
+        }
+        if ($paid >= $total) {
+            return 'paid';
+        }
+
         return 'partial';
     }
 }

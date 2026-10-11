@@ -31,36 +31,36 @@ class CreateFlockAction
                 'updated_by'        => $userId,
             ]);
 
-            // إنشاء سجل مصروف لتكلفة الكتاكيت إذا كانت التكلفة محددة
-            if ($totalCost !== null && $totalCost > 0) {
-                $remaining     = max(0, $totalCost - $paidAmount);
-                $paymentStatus = match (true) {
-                    $paidAmount >= $totalCost => 'paid',
-                    $paidAmount > 0           => 'partial',
-                    default                   => 'unpaid',
-                };
+            // سجل مصروف الكتاكيت يُنشأ دائماً: إن لم يُحدَّد السعر (مدير المزرعة لا يحدده)
+            // يظهر في قائمة المحاسب ليحدد سعره.
+            $totalCost ??= 0;
+            $remaining = max(0, $totalCost - $paidAmount);
+            $paymentStatus = match (true) {
+                $totalCost > 0 && $paidAmount >= $totalCost => 'paid',
+                $paidAmount > 0 && $totalCost > 0           => 'partial',
+                default                                     => 'unpaid',
+            };
 
-                $category = ExpenseCategory::firstOrCreate(
-                    ['name' => 'شراء كتاكيت', 'farm_id' => null],
-                    ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
-                );
+            $category = ExpenseCategory::firstOrCreate(
+                ['name' => 'شراء كتاكيت', 'farm_id' => null],
+                ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
+            );
 
-                Expense::create([
-                    'farm_id'             => $farmId,
-                    'flock_id'            => $flock->id,
-                    'expense_category_id' => $category->id,
-                    'entry_date'          => $data['start_date'],
-                    'description'         => 'تكلفة شراء كتاكيت — ' . $flock->name,
-                    'quantity'            => $count,
-                    'unit_price'          => $unitPrice,
-                    'total_amount'        => $totalCost,
-                    'paid_amount'         => min($paidAmount, $totalCost),
-                    'remaining_amount'    => $remaining,
-                    'payment_status'      => $paymentStatus,
-                    'created_by'          => $userId,
-                    'updated_by'          => $userId,
-                ]);
-            }
+            Expense::create([
+                'farm_id'             => $farmId,
+                'flock_id'            => $flock->id,
+                'expense_category_id' => $category->id,
+                'entry_date'          => $data['start_date'],
+                'description'         => 'تكلفة شراء كتاكيت — ' . $flock->name,
+                'quantity'            => $count,
+                'unit_price'          => $unitPrice,
+                'total_amount'        => $totalCost,
+                'paid_amount'         => $totalCost > 0 ? min($paidAmount, $totalCost) : 0,
+                'remaining_amount'    => $totalCost > 0 ? $remaining : 0,
+                'payment_status'      => $paymentStatus,
+                'created_by'          => $userId,
+                'updated_by'          => $userId,
+            ]);
 
             return $flock;
         });

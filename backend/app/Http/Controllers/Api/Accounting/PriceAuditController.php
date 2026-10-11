@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Accounting;
 use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\FlockWaterLog;
+use App\Models\PartnerShareAuditLog;
 use App\Models\PriceAuditLog;
 use App\Models\Sale;
 use Illuminate\Http\JsonResponse;
@@ -56,6 +57,33 @@ class PriceAuditController extends Controller
                 'current_page' => $page->currentPage(),
                 'per_page' => $page->perPage(),
             ],
+        ]);
+    }
+
+    /**
+     * GET /accounting/share-audit — سجل كل تعديلات حصص الشركاء (الأحدث أولاً).
+     */
+    public function shares(Request $request): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+        $perPage = min(100, max(1, (int) $request->query('per_page', 30)));
+
+        $page = PartnerShareAuditLog::with(['user:id,name', 'partner:id,name'])
+            ->where('farm_id', $farmId)
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn ($log) => [
+                'id' => $log->id,
+                'partner' => $log->partner?->name,
+                'old_percent' => $log->old_percent,
+                'new_percent' => $log->new_percent,
+                'is_edit' => $log->old_percent !== null,
+                'by' => $log->user?->name,
+                'at' => $log->created_at?->toIso8601String(),
+            ])->values(),
+            'meta' => ['total' => $page->total(), 'current_page' => $page->currentPage(), 'per_page' => $page->perPage()],
         ]);
     }
 

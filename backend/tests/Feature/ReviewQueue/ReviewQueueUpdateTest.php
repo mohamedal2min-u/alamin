@@ -28,7 +28,7 @@ class ReviewQueueUpdateTest extends TestCase
         $this->farm  = Farm::factory()->create();
         $this->flock = Flock::factory()->active()->create(['farm_id' => $this->farm->id]);
 
-        FarmUser::factory()->create([
+        FarmUser::factory()->alsoWithRole('accountant')->create([
             'farm_id' => $this->farm->id,
             'user_id' => $this->user->id,
             'status'  => 'active',

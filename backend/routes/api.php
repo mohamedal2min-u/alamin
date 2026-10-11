@@ -84,8 +84,10 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::prefix('inventory')->group(function (): void {
         Route::get('/overview',      [InventoryController::class, 'overview']);   // كل البيانات في طلب واحد
         Route::get('/items',         [InventoryController::class, 'items']);
+        Route::get('/barcode/{code}', [InventoryController::class, 'lookupBarcode'])->middleware('farm.role:farm_admin,supervisor')->middleware('throttle:60,1');
         Route::post('/items',        [InventoryController::class, 'createItem'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
         Route::put('/items/{item}',  [InventoryController::class, 'updateItem'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
+        Route::patch('/items/{item}/barcode', [InventoryController::class, 'setBarcode'])->middleware('farm.role:farm_admin,supervisor');
         Route::patch('/items/{item}/adjust-stock', [InventoryController::class, 'adjustStock'])->middleware('farm.role:farm_admin,supervisor');
         Route::get('/item-types',    [InventoryController::class, 'itemTypes']);
         Route::get('/stock',         [InventoryController::class, 'stock']);

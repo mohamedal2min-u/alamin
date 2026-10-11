@@ -15,6 +15,7 @@ class Item extends Model
         'farm_id',
         'item_type_id',
         'name',
+        'barcode',
         'input_unit',
         'unit_value',
         'content_unit',

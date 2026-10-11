@@ -13,6 +13,7 @@ use App\Models\WarehouseItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class InventoryController extends Controller
 {
@@ -85,6 +86,7 @@ class InventoryController extends Controller
         $validated = $request->validate([
             'item_type_id'  => ['required', 'integer', 'exists:item_types,id'],
             'name'          => ['required', 'string', 'max:150'],
+            'barcode'       => ['nullable', 'string', 'max:64', 'regex:/^[0-9A-Za-z\-\.]+$/'],
             'input_unit'    => ['required', 'string', 'max:50'],
             'unit_value'    => ['required', 'numeric', 'min:0.001'],
             'content_unit'  => ['required', 'string', 'max:50'],
@@ -98,10 +100,15 @@ class InventoryController extends Controller
             return response()->json(['message' => 'يوجد صنف بهذا الاسم مسبقاً في المزرعة'], 422);
         }
 
+        if (! empty($validated['barcode']) && Item::where('farm_id', $farmId)->where('barcode', $validated['barcode'])->exists()) {
+            return response()->json(['message' => 'هذا الباركود مسجل لصنف آخر'], 422);
+        }
+
         $item = Item::create([
             'farm_id'       => $farmId,
             'item_type_id'  => $validated['item_type_id'],
             'name'          => $validated['name'],
+            'barcode'       => $validated['barcode'] ?? null,
             'input_unit'    => $validated['input_unit'],
             'unit_value'    => $validated['unit_value'],
             'content_unit'  => $validated['content_unit'],
@@ -117,6 +124,64 @@ class InventoryController extends Controller
             'message' => 'تمت إضافة الصنف بنجاح',
             'data'    => ['id' => $item->id],
         ], 201);
+    }
+
+    // ── GET /api/inventory/barcode/{code} ─────────────────────────────────────
+    // يبحث عن الباركود في أصناف المزرعة، وإن لم يوجد يحاول جلب اسم المنتج من قاعدة مفتوحة.
+
+    public function lookupBarcode(Request $request, string $code): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+
+        if (! preg_match('/^[0-9A-Za-z\-\.]{4,64}$/', $code)) {
+            return response()->json(['message' => 'باركود غير صالح'], 422);
+        }
+
+        $item = Item::where('farm_id', $farmId)->where('status', 'active')->where('barcode', $code)->first();
+        if ($item) {
+            return response()->json(['data' => ['found' => true, 'item_id' => $item->id, 'name' => $item->name]]);
+        }
+
+        $suggested = null;
+        if (ctype_digit($code)) {
+            try {
+                $res = Http::timeout(4)->withHeaders(['User-Agent' => 'AlAminFarm/1.0'])
+                    ->get("https://world.openfoodfacts.org/api/v2/product/{$code}.json", ['fields' => 'product_name,product_name_ar,brands']);
+                if ($res->ok() && $res->json('status') === 1) {
+                    $p = $res->json('product') ?? [];
+                    $suggested = trim((string) ($p['product_name_ar'] ?? '')) ?: trim((string) ($p['product_name'] ?? '')) ?: null;
+                    if ($suggested && ! empty($p['brands']) && ! str_contains($suggested, (string) $p['brands'])) {
+                        $suggested .= ' - '.explode(',', $p['brands'])[0];
+                    }
+                }
+            } catch (\Throwable) {
+                // البحث الخارجي اختياري: نتجاهل الفشل ويكتب المستخدم الاسم بنفسه
+            }
+        }
+
+        return response()->json(['data' => ['found' => false, 'suggested_name' => $suggested]]);
+    }
+
+    // ── PATCH /api/inventory/items/{item}/barcode ─────────────────────────────
+
+    public function setBarcode(Request $request, Item $item): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+        if ($item->farm_id !== $farmId) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $validated = $request->validate([
+            'barcode' => ['required', 'string', 'max:64', 'regex:/^[0-9A-Za-z\-\.]+$/'],
+        ]);
+
+        if (Item::where('farm_id', $farmId)->where('barcode', $validated['barcode'])->where('id', '!=', $item->id)->exists()) {
+            return response()->json(['message' => 'هذا الباركود مسجل لصنف آخر'], 422);
+        }
+
+        $item->update(['barcode' => $validated['barcode'], 'updated_by' => $request->user()->id]);
+
+        return response()->json(['message' => 'تم ربط الباركود بالصنف', 'data' => ['id' => $item->id]]);
     }
 
     public function updateItem(Request $request, Item $item): JsonResponse
@@ -291,6 +356,7 @@ class InventoryController extends Controller
             'name'               => $item->name,
             'type_code'          => $item->itemType?->code,
             'type_name'          => $item->itemType?->name,
+            'barcode'            => $item->barcode,
             'input_unit'         => $item->input_unit,
             'content_unit'       => $item->content_unit,
             'unit_value'         => (float) $item->unit_value,

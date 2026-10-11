@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { AlertTriangle, Check, Loader2, Package, Pill, Plus, Search, Wheat } from 'lucide-react'
+import { AlertTriangle, Check, Loader2, Package, Pill, Plus, ScanLine, Search, Wheat } from 'lucide-react'
 import { Dialog } from '@/components/ui/Dialog'
+import { BarcodeScanner } from './BarcodeScanner'
 import { inventoryApi } from '@/lib/api/inventory'
 import type { ItemType, StockItem, Warehouse } from '@/lib/api/inventory'
 import { cn, formatNumber, toEnglishDigits } from '@/lib/utils'
@@ -33,6 +34,14 @@ const today = () => {
 
 const num = (v: string) => parseFloat(toEnglishDigits(v).replace(',', '.'))
 
+interface ShipmentTarget {
+  key: number
+  section: Section | null          // null = غير معروف بعد (باركود جديد): يختاره المستخدم
+  item: StockItem | null
+  barcode?: string
+  suggestedName?: string | null
+}
+
 interface Props {
   items: StockItem[]
   warehouses: Warehouse[]
@@ -42,7 +51,28 @@ interface Props {
 
 export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Props) {
   const [query, setQuery] = useState('')
-  const [shipment, setShipment] = useState<{ section: Section; item: StockItem | null } | null>(null)
+  const [shipment, setShipment] = useState<ShipmentTarget | null>(null)
+  const [scanning, setScanning] = useState(false)
+  const [looking, setLooking] = useState(false)
+
+  const open = (t: Omit<ShipmentTarget, 'key'>) => setShipment({ ...t, key: Date.now() })
+
+  const onScanned = useCallback(async (code: string) => {
+    setScanning(false)
+    const local = items.find((i) => i.barcode === code)
+    if (local) { open({ section: sectionOf(local), item: local, barcode: code }); return }
+    setLooking(true)
+    try {
+      const r = await inventoryApi.lookupBarcode(code)
+      const found = r.found && r.item_id ? items.find((i) => i.id === r.item_id) : undefined
+      if (found) open({ section: sectionOf(found), item: found, barcode: code })
+      else open({ section: null, item: null, barcode: code, suggestedName: r.suggested_name })
+    } catch {
+      open({ section: null, item: null, barcode: code })
+    } finally {
+      setLooking(false)
+    }
+  }, [items])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -51,6 +81,15 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
 
   return (
     <div className="space-y-5 pb-6" dir="rtl">
+      <button
+        onClick={() => setScanning(true)}
+        disabled={looking}
+        className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
+      >
+        {looking ? <Loader2 className="h-5 w-5 animate-spin" /> : <ScanLine className="h-5 w-5" />}
+        مسح باركود
+      </button>
+
       {/* بحث */}
       <div className="relative">
         <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -74,7 +113,7 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
                 <span className="text-xs font-bold text-slate-400">({list.length})</span>
               </h2>
               <button
-                onClick={() => setShipment({ section: sec.key, item: null })}
+                onClick={() => open({ section: sec.key, item: null })}
                 className="flex items-center gap-1 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-bold text-primary-700 active:scale-95 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300"
               >
                 <Plus className="h-3.5 w-3.5" /> إضافة حمولة
@@ -88,7 +127,7 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
             ) : (
               <ul className="space-y-2.5">
                 {list.map((item) => (
-                  <ItemCard key={item.id} item={item} onAdd={() => setShipment({ section: sectionOf(item), item })} />
+                  <ItemCard key={item.id} item={item} onAdd={() => open({ section: sectionOf(item), item })} />
                 ))}
               </ul>
             )}
@@ -96,7 +135,9 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
         )
       })}
 
+      <BarcodeScanner isOpen={scanning} onClose={() => setScanning(false)} onDetected={onScanned} />
       <ShipmentSheet
+        key={shipment?.key ?? 0}
         target={shipment}
         items={items}
         itemTypes={itemTypes}
@@ -146,11 +187,12 @@ function ItemCard({ item, onAdd }: { item: StockItem; onAdd: () => void }) {
 
 // ── إضافة حمولة (صنف موجود أو جديد في نموذج واحد) ─────────────────────────────
 function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }: {
-  target: { section: Section; item: StockItem | null } | null
+  target: ShipmentTarget | null
   items: StockItem[]; itemTypes: ItemType[]; warehouses: Warehouse[]
   onClose: () => void; onDone: () => void
 }) {
-  const [name, setName] = useState('')
+  const [name, setName] = useState(target?.suggestedName ?? '')
+  const [pickedSection, setPickedSection] = useState<Section | null>(null)
   const [qty, setQty] = useState('')
   const [date, setDate] = useState(today())
   const [note, setNote] = useState('')
@@ -161,7 +203,8 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const section = target?.section ?? null
+  const section = target ? (target.section ?? pickedSection) : null
+  const barcode = target?.barcode
   const locked = target?.item ?? null
   const isFeed = section === 'feed'
 
@@ -206,10 +249,14 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
     setSaving(true)
     try {
       let itemId = matched?.id
+      if (matched && barcode && !matched.barcode) {
+        await inventoryApi.setBarcode(matched.id, barcode)   // ربط الباركود بصنف موجود ليُعرف المرة القادمة
+      }
       if (!itemId) {
         const created = await inventoryApi.createItem({
           item_type_id: typeId!,
           name: name.trim(),
+          barcode: barcode ?? null,
           input_unit: isFeed ? 'كيس' : unit,
           unit_value: isFeed ? num(bagKg) : 1,
           content_unit: isFeed ? 'كيلو' : unit,
@@ -240,7 +287,24 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
   const field = 'w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800'
 
   return (
-    <Dialog isOpen={!!target} onClose={close} title={section ? `إضافة حمولة — ${locked ? locked.name : sectionTitle}` : ''}>
+    <Dialog isOpen={!!target} onClose={close} title={target ? `إضافة حمولة — ${locked ? locked.name : sectionTitle}` : ''}>
+      {target && !section && (
+        <div className="space-y-3 p-5" dir="rtl">
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">باركود جديد غير مسجل. ما نوع الصنف؟</p>
+          <div className="grid grid-cols-3 gap-2">
+            {SECTIONS.map((sec) => {
+              const Icon = sec.icon
+              return (
+                <button key={sec.key} onClick={() => setPickedSection(sec.key)}
+                  className="flex flex-col items-center gap-1.5 rounded-2xl border border-slate-200 bg-white py-4 text-sm font-bold text-slate-700 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', sec.tone)}><Icon className="h-5 w-5" /></span>
+                  {sec.title}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {section && (
         <div className="space-y-4 p-5" dir="rtl">
           {locked ? (
@@ -265,6 +329,7 @@ function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }
               )}
               {matched && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-emerald-600"><Check className="h-3.5 w-3.5" /> صنف موجود — الحمولة ستُضاف إليه.</p>}
               {isNew && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-amber-600"><AlertTriangle className="h-3.5 w-3.5" /> هذا الاسم غير موجود في المخزون، سيُعتبر صنفاً جديداً.</p>}
+              {barcode && <p className="mt-1.5 text-[11px] font-semibold text-slate-400">الباركود: {barcode}{target?.suggestedName ? ' — الاسم مقترح تلقائياً، عدّله إن لزم' : ''}</p>}
             </div>
           )}
 

@@ -15,7 +15,8 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
   // farm_admin: كامل الصلاحيات على مزرعته
   farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting'],
 
-  worker:  ['/dashboard', '/worker'],
+  // accountant: يحدد الأسعار فقط — صفحة المحاسبة وحدها
+  accountant: ['/accounting'],
   partner: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/my-wallet'],
 }
 
@@ -26,7 +27,7 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
  *
  * super_admin: dashboard + /admin/* فقط — محجوب عن صفحات التشغيل اليومي
  * farm_admin:  كامل الوصول لمزرعته
- * worker:      الوردية (worker) + الرئيسية (dashboard)
+ * accountant:  صفحة المحاسبة (الأسعار) فقط
  * partner:     الأفواج (قراءة) + التقارير فقط
  * /unauthorized متاحة دائماً
  */
@@ -46,9 +47,8 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
 
   if (role === 'farm_admin') return true
 
-  if (role === 'worker') {
-    if (pathname === '/worker' || pathname === '/dashboard') return true
-    return false
+  if (role === 'accountant') {
+    return pathname === '/accounting' || pathname.startsWith('/accounting/')
   }
 
   if (role === 'partner') {
@@ -70,11 +70,12 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
 
 /**
  * super_admin يهبط على صفحة المداجن (نظرة عامة على كل المزارع).
- * worker و farm_admin يهبطون على الصفحة الرئيسية (Dashboard).
+ * accountant يهبط على صفحة المحاسبة، و farm_admin على الصفحة الرئيسية (Dashboard).
  * partner يهبط على الأفواج.
  */
 export function getDefaultRoute(role: FarmRole | null): string {
   if (role === 'super_admin') return '/admin/farms'
+  if (role === 'accountant') return '/accounting'
   return '/dashboard'
 }
 

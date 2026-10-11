@@ -32,47 +32,47 @@ class FarmRoleAuthorizationTest extends TestCase
         return $this->actingAs($user, 'sanctum')->withHeaders(['X-Farm-Id' => $farm->id]);
     }
 
-    public function test_worker_cannot_create_flock_or_manage_workers(): void
+    public function test_accountant_cannot_create_flock_or_manage_staff(): void
     {
         $farm = Farm::factory()->create();
-        $worker = $this->memberWithRole($farm, 'worker');
+        $accountant = $this->memberWithRole($farm, 'accountant');
 
-        $this->as($worker, $farm)->postJson('/api/flocks', [
+        $this->as($accountant, $farm)->postJson('/api/flocks', [
             'name' => 'فوج اختبار', 'start_date' => '2026-01-01', 'initial_count' => 10,
         ])->assertStatus(403);
 
-        $this->as($worker, $farm)->postJson('/api/workers', [
+        $this->as($accountant, $farm)->postJson('/api/workers', [
             'name' => 'a', 'whatsapp' => '123456789', 'password' => 'password1',
         ])->assertStatus(403);
 
-        $this->as($worker, $farm)->getJson('/api/workers')->assertStatus(403);
-        $this->as($worker, $farm)->deleteJson('/api/workers/1')->assertStatus(403);
+        $this->as($accountant, $farm)->getJson('/api/workers')->assertStatus(403);
+        $this->as($accountant, $farm)->deleteJson('/api/workers/1')->assertStatus(403);
     }
 
-    public function test_worker_cannot_touch_money_or_stock(): void
+    public function test_accountant_cannot_touch_stock_or_payments(): void
     {
         $farm = Farm::factory()->create();
-        $worker = $this->memberWithRole($farm, 'worker');
+        $accountant = $this->memberWithRole($farm, 'accountant');
         $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
 
-        $this->as($worker, $farm)->postJson("/api/flocks/{$flock->id}/sales", [])->assertStatus(403);
-        $this->as($worker, $farm)->patchJson('/api/sales/1/payment', [])->assertStatus(403);
-        $this->as($worker, $farm)->postJson('/api/inventory/items', [])->assertStatus(403);
-        $this->as($worker, $farm)->postJson('/api/inventory/transactions', [])->assertStatus(403);
-        $this->as($worker, $farm)->postJson('/api/expenses', [])->assertStatus(403);
-        $this->as($worker, $farm)->patchJson('/api/accounting/review-queue/expense/1', [])->assertStatus(403);
-        $this->as($worker, $farm)->putJson("/api/flocks/{$flock->id}", ['name' => 'z'])->assertStatus(403);
+        $this->as($accountant, $farm)->postJson("/api/flocks/{$flock->id}/sales", [])->assertStatus(403);
+        $this->as($accountant, $farm)->patchJson('/api/sales/1/payment', [])->assertStatus(403);
+        $this->as($accountant, $farm)->postJson('/api/inventory/items', [])->assertStatus(403);
+        $this->as($accountant, $farm)->postJson('/api/inventory/transactions', [])->assertStatus(403);
+        $this->as($accountant, $farm)->postJson('/api/expenses', [])->assertStatus(403);
+        $this->as($accountant, $farm)->putJson("/api/flocks/{$flock->id}", ['name' => 'z'])->assertStatus(403);
     }
 
-    public function test_worker_can_record_daily_entries(): void
+    public function test_daily_entries_are_admin_only(): void
     {
-        $farm = Farm::factory()->create();
-        $worker = $this->memberWithRole($farm, 'worker');
-        $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
+        $farm       = Farm::factory()->create();
+        $accountant = $this->memberWithRole($farm, 'accountant');
+        $admin      = $this->memberWithRole($farm, 'farm_admin');
+        $flock      = Flock::factory()->active()->create(['farm_id' => $farm->id]);
+        $payload    = ['quantity' => 3, 'entry_date' => now()->toDateString()];
 
-        $this->as($worker, $farm)
-            ->postJson("/api/flocks/{$flock->id}/mortalities", ['quantity' => 3, 'entry_date' => now()->toDateString()])
-            ->assertStatus(201);
+        $this->as($accountant, $farm)->postJson("/api/flocks/{$flock->id}/mortalities", $payload)->assertStatus(403);
+        $this->as($admin, $farm)->postJson("/api/flocks/{$flock->id}/mortalities", $payload)->assertStatus(201);
     }
 
     public function test_partner_is_read_only(): void
@@ -93,7 +93,7 @@ class FarmRoleAuthorizationTest extends TestCase
         $farmA = Farm::factory()->create();
         $farmB = Farm::factory()->create();
         $admin = $this->memberWithRole($farmA, 'farm_admin');
-        FarmUser::factory()->withRole('worker')->create([
+        FarmUser::factory()->withRole('accountant')->create([
             'farm_id' => $farmB->id, 'user_id' => $admin->id, 'status' => 'active', 'is_primary' => false,
         ]);
 

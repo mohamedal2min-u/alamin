@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { formatNumber, formatCurrency } from '@/lib/utils'
+import { PriceWithHistory } from './PriceWithHistory'
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Wheat, Droplets, Pill, ShoppingCart, Package, Layers } from 'lucide-react'
 
 // ── Badge color map — single source of truth ──────────────────────────────────
@@ -111,6 +112,17 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
           </button>
         ))}
 
+        <button
+          onClick={() => setFilters((f) => ({ ...f, scope: f.scope === 'all' ? undefined : 'all', page: 1 }))}
+          className={`rounded-full px-3 py-1 text-sm font-medium border transition-colors ${
+            filters.scope === 'all'
+              ? 'bg-primary-600 text-white border-primary-600'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-primary-400'
+          }`}
+        >
+          كل الأسعار
+        </button>
+
         {(['unpaid', 'partial_payment', 'blocking_flock_closure'] as ReviewReason[]).map((r) => (
           <button
             key={r}
@@ -173,7 +185,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
       ) : !data?.data.length ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400">
           <CheckCircle2 className="mb-3 h-10 w-10 text-primary-400" />
-          <p className="text-sm font-medium">لا توجد سجلات تحتاج مراجعة</p>
+          <p className="text-sm font-medium">{filters.scope === 'all' ? 'لا توجد سجلات' : 'لا توجد سجلات تحتاج مراجعة'}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -350,6 +362,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                     )}
                   </span>
                 )}
+                <PriceWithHistory item={item} />
                 <span>الإجمالي: <strong className="text-slate-700">{formatCurrency(item.total_amount)}</strong></span>
                 <span>المدفوع: <strong className="text-slate-700">{formatCurrency(item.paid_amount)}</strong></span>
                 <span>المتبقي: <strong className="text-red-600">{formatCurrency(item.remaining_amount)}</strong></span>

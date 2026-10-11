@@ -29,7 +29,7 @@ class FarmUserFactory extends Factory
 
     /**
      * كل عضو يُنشأ بدور farm_admin داخل مزرعته افتراضياً؛
-     * استخدم ->withRole('worker') لاستبداله بدور آخر.
+     * استخدم ->withRole('accountant') لاستبداله بدور آخر.
      */
     public function configure(): static
     {

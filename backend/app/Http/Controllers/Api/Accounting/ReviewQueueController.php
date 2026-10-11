@@ -19,7 +19,7 @@ class ReviewQueueController extends Controller
     public function index(Request $request): JsonResponse
     {
         $farmId  = $request->attributes->get('farm_id');
-        $filters = $request->only(['type', 'reason', 'flock_id', 'page', 'per_page', 'category']);
+        $filters = $request->only(['type', 'reason', 'flock_id', 'page', 'per_page', 'category', 'scope']);
 
         $result = $this->service->getQueue($farmId, $filters);
 
@@ -39,8 +39,18 @@ class ReviewQueueController extends Controller
             return response()->json(['message' => 'النوع غير صالح'], 422);
         }
 
-        $farmId  = $request->attributes->get('farm_id');
-        $updated = $this->service->updateRecord($farmId, $type, $id, $request->validated());
+        $farmId = $request->attributes->get('farm_id');
+        $data   = $request->validated();
+
+        // المحاسب يحدد الأسعار فقط؛ تسجيل الدفعات من صلاحية مدير المزرعة
+        $isAdmin = $request->attributes->get('is_super_admin') === true
+            || $request->user()->hasRole('farm_admin');
+
+        if (! $isAdmin && array_key_exists('paid_amount', $data)) {
+            return response()->json(['message' => 'تسجيل المبالغ المدفوعة من صلاحية مدير المزرعة'], 403);
+        }
+
+        $updated = $this->service->updateRecord($farmId, $type, $id, $data, $request->user()->id);
 
         return response()->json($updated);
     }

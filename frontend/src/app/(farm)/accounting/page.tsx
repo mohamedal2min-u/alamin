@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -7,6 +7,9 @@ import { Bird } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { AccountingReportTab } from '@/components/reports/tabs/AccountingReportTab'
 import { ReviewQueueTab } from '@/components/accounting/ReviewQueueTab'
+import { PriceAuditTab } from '@/components/accounting/PriceAuditTab'
+import { AccountantPrices } from '@/components/accounting/AccountantPrices'
+import { useCurrentRole } from '@/lib/roles'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { reportsApi } from '@/lib/api/reports'
 
@@ -38,6 +41,7 @@ function AccountingPageInner() {
         <TabsList>
           <TabsTrigger value="summary">ملخص المحاسبة</TabsTrigger>
           <TabsTrigger value="review">الذمم والمراجعة</TabsTrigger>
+          <TabsTrigger value="audit">سجل الأسعار</TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary">
@@ -70,12 +74,21 @@ function AccountingPageInner() {
         <TabsContent value="review">
           <ReviewQueueTab initialFlockId={flockId} initialFilter={filter} />
         </TabsContent>
+
+        <TabsContent value="audit">
+          <PriceAuditTab />
+        </TabsContent>
       </Tabs>
     </div>
   )
 }
 
 export default function AccountingPage() {
+  const role = useCurrentRole()
+
+  // المحاسب: لوحة أسعار بسيطة فقط
+  if (role === 'accountant') return <AccountantPrices />
+
   return (
     <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
       <AccountingPageInner />

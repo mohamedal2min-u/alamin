@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { cn } from '@/lib/utils'
 import { Calendar, UserCircle, RefreshCcw } from 'lucide-react'
@@ -39,7 +39,10 @@ export function FlockGlobalHeader() {
     roleLabel = 'مدير المدجنة'
   } else if (currentFarm?.role === 'partner') {
     roleLabel = 'شريك'
+  } else if (currentFarm?.role === 'accountant') {
+    roleLabel = 'محاسب'
   }
+  const isAccountant = currentFarm?.role === 'accountant'
 
   const handleGlobalRefresh = async () => {
     setIsRefreshing(true)
@@ -157,15 +160,20 @@ export function FlockGlobalHeader() {
         {/* Metrics: 4 columns */}
         {activeFlock ? (
           <div className="grid grid-cols-4 divide-x divide-x-reverse divide-primary-50/50 dark:divide-primary-900/20">
-            <MetricItem label="الأولي" value={formatNumber(activeFlock.initial_count ?? 0)} color="text-slate-600 dark:text-slate-300" />
+            <MetricItem label={isAccountant ? 'العدد' : 'الأولي'} value={formatNumber(activeFlock.initial_count ?? 0)} color="text-slate-600 dark:text-slate-300" />
             <MetricItem label="النفوق" value={formatNumber(activeFlock.total_mortality ?? 0)} sub={`${mortalityRate}%`} color="text-rose-600 dark:text-rose-400" />
             <MetricItem label="المتبقي" value={formatNumber(activeFlock.remaining_count ?? 0)} sub="طير" color="text-primary-600 dark:text-primary-400" />
-            <MetricItem label="العمر" value={activeFlock.current_age_days ?? '—'} sub="يوم" color="text-primary-950 dark:text-primary-50" />
+            {isAccountant ? (
+              // ملخص المحاسب: المبيعات بدل العمر
+              <MetricItem label="المبيعات" value={formatNumber(activeFlock.total_sales ?? 0)} color="text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <MetricItem label="العمر" value={activeFlock.current_age_days ?? '—'} sub="يوم" color="text-primary-950 dark:text-primary-50" />
+            )}
           </div>
         ) : (
           !isLoading && (
             <div className="py-2 px-3 text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-700/30">
-              يرجى إنشاء وتفعيل فوج للبدء بتسجيل البيانات
+              {isAccountant ? 'لا يوجد فوج نشط حالياً' : 'يرجى إنشاء وتفعيل فوج للبدء بتسجيل البيانات'}
             </div>
           )
         )}

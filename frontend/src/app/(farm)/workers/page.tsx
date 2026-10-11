@@ -37,17 +37,17 @@ export default function WorkersPage() {
   const workers = data ?? []
 
   const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`هل أنت متأكد من حذف العامل "${name}" من المزرعة؟`)) return
+    if (!confirm(`هل أنت متأكد من حذف المحاسب "${name}" من المزرعة؟`)) return
 
     try {
       setIsDeleting(id)
       await workersApi.delete(id)
-      toast.success('تم حذف العامل بنجاح')
+      toast.success('تم حذف المحاسب بنجاح')
       queryClient.setQueryData(['workers', currentFarm?.id], (old: Worker[] | undefined) =>
         old ? old.filter((w) => w.id !== id) : []
       )
     } catch {
-      toast.error('فشل في حذف العامل')
+      toast.error('فشل في حذف المحاسب')
     } finally {
       setIsDeleting(null)
     }
@@ -58,15 +58,15 @@ export default function WorkersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">إدارة العمال</h1>
-          <p className="text-slate-500 text-sm mt-1">عرض وإدارة الحسابات الخاصة بالعمال في المزرعة</p>
+          <h1 className="text-2xl font-bold text-slate-900">إدارة المحاسبين</h1>
+          <p className="text-slate-500 text-sm mt-1">عرض وإدارة حسابات المحاسبين في المزرعة</p>
         </div>
         <Link
           href="/workers/new"
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl font-bold text-sm hover:bg-primary-700 transition-all duration-200 shadow-sm shadow-primary-200 active:scale-95"
         >
           <UserPlus className="h-4 w-4" />
-          إضافة عامل جديد
+          إضافة محاسب جديد
         </Link>
       </div>
 
@@ -80,14 +80,14 @@ export default function WorkersPage() {
           <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
             <Users className="h-8 w-8 text-slate-300" />
           </div>
-          <h3 className="text-lg font-bold text-slate-800">لا يوجد عمال مضافين</h3>
-          <p className="text-slate-500 max-w-sm mt-1 mb-6">لم تقم بإضافة أي عامل لهذه المزرعة بعد. أضف عاملاً لتمكينه من إدخال البيانات اليومية.</p>
+          <h3 className="text-lg font-bold text-slate-800">لا يوجد محاسبون مضافون</h3>
+          <p className="text-slate-500 max-w-sm mt-1 mb-6">لم تقم بإضافة أي محاسب لهذه المزرعة بعد. أضف عاملاً لتمكينه من إدخال البيانات اليومية.</p>
           <Link
             href="/workers/new"
             className="inline-flex items-center justify-center gap-2 px-6 py-2 bg-white border-2 border-primary-600 text-primary-600 rounded-xl font-bold text-sm hover:bg-primary-50 transition-all duration-200 active:scale-95"
           >
             <Plus className="h-4 w-4" />
-            ابدأ بإضافة أول عامل
+            ابدأ بإضافة أول محاسب
           </Link>
         </div>
       ) : (
@@ -117,7 +117,7 @@ export default function WorkersPage() {
                   onClick={() => handleDelete(worker.id, worker.name)}
                   disabled={isDeleting === worker.id}
                   className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                  title="حذف العامل"
+                  title="حذف المحاسب"
                 >
                   {isDeleting === worker.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

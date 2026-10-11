@@ -16,7 +16,7 @@ class DevUsersSeeder extends Seeder
     public function run(): void
     {
         // ── 1. إنشاء الأدوار (بدون team_id — تعريفات عامة) ──────────────────
-        foreach (['super_admin', 'farm_admin', 'worker', 'partner'] as $roleName) {
+        foreach (['super_admin', 'farm_admin', 'accountant', 'partner'] as $roleName) {
             Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
 
@@ -101,7 +101,7 @@ class DevUsersSeeder extends Seeder
         $farmAdmin->assignRole('farm_admin');
 
         $worker->syncRoles([]);
-        $worker->assignRole('worker');
+        $worker->assignRole('accountant');
 
         $partner->syncRoles([]);
         $partner->assignRole('partner');
@@ -116,7 +116,7 @@ class DevUsersSeeder extends Seeder
             [
                 ['mohamed@alamin.se', 'super_admin', '— (global)'],
                 ['1@alamin.se',       'farm_admin',  $farm->name],
-                ['2@alamin.se',       'worker',      $farm->name],
+                ['2@alamin.se',       'accountant',  $farm->name],
                 ['3@alamin.se',       'partner',     $farm->name],
             ]
         );

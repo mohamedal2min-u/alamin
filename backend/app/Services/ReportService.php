@@ -369,7 +369,7 @@ class ReportService
             ->where('farm_users.farm_id', $farmId)
             ->where('model_has_roles.farm_id', $farmId)
             ->where('model_has_roles.model_type', \App\Models\User::class)
-            ->where('roles.name', 'worker')
+            ->where('roles.name', 'accountant')
             ->select('users.id', 'users.name', 'users.whatsapp', 'farm_users.joined_at')
             ->distinct()
             ->get();

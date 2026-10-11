@@ -86,30 +86,42 @@ class ReviewQueueIndexTest extends TestCase
 
     public function test_blocking_count_only_for_active_flock(): void
     {
-        // Active flock + unpaid → blocking
+        // Active flock + missing price → blocking
         Expense::factory()->create([
-            'farm_id'        => $this->farm->id,
-            'flock_id'       => $this->activeFlock->id,
-            'payment_status' => 'unpaid',
-            'paid_amount'    => 0,
-            'total_amount'   => 1000,
-            'quantity'       => 5,
-            'unit_price'     => 200,
+            'farm_id'          => $this->farm->id,
+            'flock_id'         => $this->activeFlock->id,
+            'payment_status'   => 'unpaid',
+            'paid_amount'      => 0,
+            'total_amount'     => 0,
+            'quantity'         => 5,
+            'unit_price'       => 0,
+            'remaining_amount' => 0,
+        ]);
+
+        // Active flock + priced but unpaid → NOT blocking (only a missing price blocks closure)
+        Expense::factory()->create([
+            'farm_id'          => $this->farm->id,
+            'flock_id'         => $this->activeFlock->id,
+            'payment_status'   => 'unpaid',
+            'paid_amount'      => 0,
+            'total_amount'     => 1000,
+            'quantity'         => 5,
+            'unit_price'       => 200,
             'remaining_amount' => 1000,
         ]);
 
         $closedFlock = Flock::factory()->create(['farm_id' => $this->farm->id, 'status' => 'closed']);
 
-        // Closed flock + unpaid → NOT blocking
+        // Closed flock + missing price → NOT blocking
         Expense::factory()->create([
-            'farm_id'        => $this->farm->id,
-            'flock_id'       => $closedFlock->id,
-            'payment_status' => 'unpaid',
-            'paid_amount'    => 0,
-            'total_amount'   => 500,
-            'quantity'       => 5,
-            'unit_price'     => 100,
-            'remaining_amount' => 500,
+            'farm_id'          => $this->farm->id,
+            'flock_id'         => $closedFlock->id,
+            'payment_status'   => 'unpaid',
+            'paid_amount'      => 0,
+            'total_amount'     => 0,
+            'quantity'         => 5,
+            'unit_price'       => 0,
+            'remaining_amount' => 0,
         ]);
 
         $response = $this->actingAs($this->user, 'sanctum')

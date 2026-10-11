@@ -139,6 +139,7 @@ class FeedLogListTest extends TestCase
         $user  = $this->actingAsMember($farm);
         $flock = Flock::factory()->active()->create(['farm_id' => $farm->id]);
         $item  = $this->makeFeedItem($farm);
+        \App\Models\Warehouse::where('farm_id', $farm->id)->delete(); // FarmObserver أنشأ مستودعاً تلقائياً
 
         $this->actingAs($user, 'sanctum')
             ->withHeaders(['X-Farm-Id' => $farm->id])

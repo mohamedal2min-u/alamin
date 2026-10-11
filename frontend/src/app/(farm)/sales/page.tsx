@@ -131,33 +131,36 @@ export default function SalesPage() {
                     <PaymentStatusBadge status={sale.payment_status} />
                   </div>
 
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <p className="text-[9px] font-extrabold text-slate-400">الصافي</p>
-                      <p className="text-[13px] font-black tabular-nums text-slate-900">{formatCurrency(Number(sale.net_amount))}</p>
+                  <div className="mt-3 flex items-end justify-between gap-3">
+                    <div className="flex items-baseline gap-4">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400">الصافي</p>
+                        <p className="text-base font-black tabular-nums text-slate-900">{formatCurrency(Number(sale.net_amount))}</p>
+                      </div>
+                      {Number(sale.received_amount) > 0 && Number(sale.remaining_amount) > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400">المستلم</p>
+                          <p className="text-sm font-bold tabular-nums text-primary-700">{formatCurrency(Number(sale.received_amount))}</p>
+                        </div>
+                      )}
+                      {Number(sale.remaining_amount) > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400">المتبقي</p>
+                          <p className="text-sm font-bold tabular-nums text-red-600">{formatCurrency(Number(sale.remaining_amount))}</p>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-[9px] font-extrabold text-slate-400">المستلم</p>
-                      <p className="text-[13px] font-black tabular-nums text-primary-700">{formatCurrency(Number(sale.received_amount))}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-extrabold text-slate-400">المتبقي</p>
-                      <p className={`text-[13px] font-black tabular-nums ${sale.remaining_amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                        {formatCurrency(Number(sale.remaining_amount))}
-                      </p>
-                    </div>
+                    {sale.payment_status !== 'paid' && (
+                      <PaymentOnly>
+                        <button
+                          onClick={() => setPaymentSale(sale)}
+                          className="shrink-0 rounded-xl bg-primary-50 px-3.5 py-2 text-xs font-bold text-primary-600 transition-colors hover:bg-primary-100"
+                        >
+                          تحديث الدفع
+                        </button>
+                      </PaymentOnly>
+                    )}
                   </div>
-
-                  {sale.payment_status !== 'paid' && (
-                    <PaymentOnly>
-                      <button
-                        onClick={() => setPaymentSale(sale)}
-                        className="mt-3 w-full rounded-xl bg-primary-50 py-2 text-xs font-bold text-primary-600 transition-colors hover:bg-primary-100"
-                      >
-                        تحديث الدفع
-                      </button>
-                    </PaymentOnly>
-                  )}
                 </div>
               )
             })}

@@ -2,7 +2,7 @@
 'use client'
 
 import {
-  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, ChevronLeft, Settings, Calculator, Wallet
+  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, Settings, Calculator, Wallet, UserCog
 } from 'lucide-react'
 import Link from 'next/link'
 import { FarmSelector } from './FarmSelector'
@@ -40,13 +40,13 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
   const allowedHrefs = NAV_HREFS_BY_ROLE[role]
 
   const items = [
-    { label: 'المبيعات',  href: '/sales',      icon: ShoppingCart, color: 'text-primary-600', bg: 'bg-primary-50' },
-    { label: 'المصروفات', href: '/expenses',    icon: Receipt,      color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'الشركاء',   href: '/partners',   icon: Users,        color: 'text-blue-600',    bg: 'bg-blue-50' },
-    { label: 'المحاسبون', href: '/workers',    icon: Users,        color: 'text-slate-600',   bg: 'bg-slate-50' },
-    { label: 'المحاسبة',  href: '/accounting', icon: Calculator,   color: 'text-violet-600',  bg: 'bg-violet-50' },
-    { label: 'التقارير',  href: '/reports',    icon: BarChart3,    color: 'text-sky-600',     bg: 'bg-sky-50' },
-    { label: 'محفظتي',   href: '/my-wallet',  icon: Wallet,       color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'المبيعات',  desc: 'بيع الطيور والمستلم',   href: '/sales',      icon: ShoppingCart, color: 'text-primary-600', bg: 'bg-primary-50 dark:bg-primary-900/30' },
+    { label: 'المصروفات', desc: 'علف، دواء، ماء وغيرها', href: '/expenses',   icon: Receipt,      color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+    { label: 'الشركاء',   desc: 'الحصص والحركات',        href: '/partners',   icon: Users,        color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/30' },
+    { label: 'المحاسبون', desc: 'حسابات الفريق',         href: '/workers',    icon: UserCog,      color: 'text-slate-600',   bg: 'bg-slate-100 dark:bg-slate-700' },
+    { label: 'المحاسبة',  desc: 'الذمم والمراجعة',       href: '/accounting', icon: Calculator,   color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/30' },
+    { label: 'التقارير',  desc: 'ملخصات الأداء',         href: '/reports',    icon: BarChart3,    color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-900/30' },
+    { label: 'محفظتي',    desc: 'رصيدك وحصتك',          href: '/my-wallet',  icon: Wallet,       color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
   ].filter(item => allowedHrefs.includes(item.href))
 
   return (
@@ -59,7 +59,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       
       {/* Sheet */}
       <div 
-        className="relative w-full max-w-2xl rounded-t-[32px] bg-white dark:bg-slate-900 animate-in slide-in-from-bottom duration-300 border-t border-slate-100 dark:border-slate-800"
+        className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[32px] bg-white dark:bg-slate-900 animate-in slide-in-from-bottom duration-300 border-t border-slate-100 dark:border-slate-800"
         style={{ boxShadow: '0 -10px 40px rgba(0,0,0,0.15)' }}
       >
         {/* Handle */}
@@ -103,23 +103,22 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
           <FarmSelector />
         </div>
 
-        {/* Navigation List — Vertical for easier scanning */}
-        <div className="px-5 mb-4 space-y-1">
+        {/* Navigation cards */}
+        <div className="px-5 mb-4 grid grid-cols-2 gap-3">
           {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 active:scale-[0.98] active:bg-slate-50 dark:active:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 group"
+              className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all duration-200 active:scale-[0.97] hover:border-primary-200 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
             >
-              <div className={cn(
-                "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
-                item.bg
-              )}>
+              <div className={cn("h-11 w-11 rounded-xl flex items-center justify-center", item.bg)}>
                 <item.icon className={cn("h-5 w-5", item.color)} />
               </div>
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex-1">{item.label}</span>
-              <ChevronLeft className="h-4 w-4 text-slate-300 dark:text-slate-500 group-hover:text-slate-400 dark:group-hover:text-slate-400 transition-colors" />
+              <div>
+                <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{item.label}</p>
+                <p className="mt-0.5 text-[11px] font-medium text-slate-400">{item.desc}</p>
+              </div>
             </Link>
           ))}
         </div>

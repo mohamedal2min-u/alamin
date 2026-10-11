@@ -36,7 +36,7 @@ import {
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
-import { useIsReadOnly, useIsSupervisor } from '@/lib/roles'
+import { useIsReadOnly, useIsSupervisor, useSimpleInventory } from '@/lib/roles'
 import { SimpleInventory } from '@/components/inventory/SimpleInventory'
 import { formatNumber, formatDate, cn, toEnglishDigits, formatCurrency } from '@/lib/utils'
 
@@ -1443,7 +1443,8 @@ export default function InventoryPage() {
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
   const isReadOnly = useIsReadOnly()
   const isSupervisor = useIsSupervisor()
-  // المشرف: شاشة مبسّطة افتراضياً، والعرض المتقدم (الحركات والتنبيهات) اختياري
+  const useSimple = useSimpleInventory()
+  // مدير المزرعة والمشرف: شاشة مبسّطة افتراضياً، والعرض المتقدم (الحركات والتنبيهات) اختياري
   const [advanced, setAdvanced] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [itemsCategoryFilter, setItemsCategoryFilter] = useState<string>('all')
@@ -1511,7 +1512,7 @@ export default function InventoryPage() {
     { id: 'alerts',       label: 'التنبيهات',   icon: Bell,        badge: lowItems.length || undefined },
   ]
 
-  if (isSupervisor && !advanced) {
+  if (useSimple && !advanced) {
     return (
       <div className="space-y-4">
         {error && (
@@ -1541,7 +1542,7 @@ export default function InventoryPage() {
   return (
     <div className="space-y-5">
 
-      {isSupervisor && (
+      {useSimple && (
         <button
           onClick={() => setAdvanced(false)}
           className="w-full rounded-xl border border-primary-200 bg-primary-50 py-2.5 text-sm font-bold text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300"

@@ -12,7 +12,6 @@ import {
   Layers,
   ArrowDownCircle,
   ArrowUpCircle,
-  Plus,
   CheckCircle,
   Eye,
   ListChecks,
@@ -26,18 +25,15 @@ import {
 import {
   inventoryApi,
   type StockItem,
-  type InventorySummary,
   type InventoryTransaction,
   type Warehouse,
-  type ItemType,
   type AddShipmentPayload,
-  type CreateItemPayload,
 } from '@/lib/api/inventory'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
-import { useIsReadOnly, useIsSupervisor, useSimpleInventory } from '@/lib/roles'
-import { SimpleInventory } from '@/components/inventory/SimpleInventory'
+import { useIsReadOnly } from '@/lib/roles'
+import { ShipmentActions } from '@/components/inventory/SimpleInventory'
 import { formatNumber, formatDate, cn, toEnglishDigits, formatCurrency } from '@/lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -49,8 +45,6 @@ const TYPE_LABEL: Record<string, string> = {
   water:    'ماء',
   other:    'أخرى',
 }
-
-const TARGET_TYPE_CODES = ['feed', 'medicine', 'charcoal', 'water']
 
 const CONTENT_UNIT_OPTIONS = ['كيلو', 'لتر', 'مل', 'جرام', 'عبوة']
 const INPUT_UNIT_OPTIONS = ['كيس', 'شيكارة', 'كرتون', 'صندوق', 'علبة', 'زجاجة', 'برميل', 'جالون', 'طبلية']
@@ -90,7 +84,7 @@ const TX_TYPE_LABEL: Record<string, string> = {
   return:      'مرتجع',
 }
 
-type Tab = 'overview' | 'items' | 'add-item' | 'add-shipment' | 'movements' | 'alerts'
+type Tab = 'overview' | 'items' | 'add-shipment' | 'movements' | 'alerts'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -156,8 +150,8 @@ function StockStatusBadge({ item }: { item: StockItem }) {
     )
   if (item.total_quantity <= item.minimum_stock)
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-[10px] font-bold text-emerald-600">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
         منخفض
       </span>
     )
@@ -232,7 +226,7 @@ function MaterialCard({ title, items, color, icon: CardIcon, onOpen }: { title: 
 
         <div className="flex items-center gap-2">
           {lowCount > 0 && (
-            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-600 border border-emerald-100">
+            <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 border border-amber-200">
               <AlertTriangle className="h-3 w-3" />{lowCount} منخفض
             </span>
           )}
@@ -376,228 +370,6 @@ function ItemsTable({ items, onEdit, categoryFilter = 'all', onCategoryFilterCha
       {(categoryFilter === 'all' || categoryFilter === 'feed')     && <Section title="العلف"  rows={feedItems}  color="text-emerald-700" icon={Package} />}
       {(categoryFilter === 'all' || categoryFilter === 'medicine') && <Section title="الدواء" rows={medItems}   color="text-blue-700"  icon={Package} />}
       {(categoryFilter === 'all' || categoryFilter === 'other')    && <Section title="أخرى"  rows={otherItems} color="text-slate-600" icon={Package} />}
-    </div>
-  )
-}
-
-// ── Add Item form ─────────────────────────────────────────────────────────────
-
-function AddItemForm({
-  itemTypes,
-  onSuccess,
-}: {
-  itemTypes: ItemType[]
-  onSuccess: () => void
-}) {
-  const [form, setForm] = useState<{
-    item_type_id: string
-    name: string
-    input_unit: string
-    unit_value: string
-    content_unit: string
-    minimum_stock: string
-    notes: string
-  }>({
-    item_type_id: '',
-    name: '',
-    input_unit: '',
-    unit_value: '1',
-    content_unit: '',
-    minimum_stock: '',
-    notes: '',
-  })
-  const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
-  const [success,  setSuccess]  = useState(false)
-  const [contentUnitCustom, setContentUnitCustom] = useState(false)
-  const [inputUnitCustom, setInputUnitCustom] = useState(false)
-
-  const selectedTypeCode = itemTypes.find(t => String(t.id) === form.item_type_id)?.code
-  const isMedicine = selectedTypeCode === 'medicine'
-
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(prev => ({ ...prev, [k]: toEnglishDigits(e.target.value) }))
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.item_type_id || !form.name || !form.content_unit || !form.unit_value || (!isMedicine && !form.input_unit)) {
-      setError('يرجى ملء جميع الحقول المطلوبة')
-      return
-    }
-    setSaving(true)
-    setError(null)
-    try {
-      const payload: CreateItemPayload = {
-        item_type_id:  Number(form.item_type_id),
-        name:          form.name,
-        input_unit:    isMedicine ? form.content_unit : form.input_unit,
-        unit_value:    Number(form.unit_value),
-        content_unit:  form.content_unit,
-        minimum_stock: form.minimum_stock ? Number(form.minimum_stock) : null,
-        notes:         form.notes || null,
-      }
-      await inventoryApi.createItem(payload)
-      setSuccess(true)
-      setForm({ item_type_id: '', name: '', input_unit: '', unit_value: '1', content_unit: '', minimum_stock: '', notes: '' })
-      setContentUnitCustom(false)
-      setTimeout(() => { setSuccess(false); onSuccess() }, 1500)
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError(msg ?? 'حدث خطأ أثناء الحفظ')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  if (success) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white py-16 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-          <CheckCircle className="h-8 w-8 text-emerald-500" />
-        </div>
-        <p className="text-lg font-bold text-emerald-700">تمت إضافة الصنف بنجاح</p>
-        <p className="mt-1 text-xs text-emerald-500">سيتم الانتقال لصفحة الأصناف تلقائياً...</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white overflow-hidden" style={{ boxShadow: 'var(--shadow-card)' }}>
-      {/* Form Header */}
-      <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
-        <h2 className="flex items-center gap-2.5 text-sm font-bold text-slate-800">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-100">
-            <Plus className="h-3.5 w-3.5 text-primary-600" />
-          </div>
-          إضافة صنف جديد
-        </h2>
-        <p className="mt-1 text-[10px] text-slate-400 mr-[38px]">أضف صنفاً جديداً لمتابعة مخزونه وحركته تلقائياً</p>
-      </div>
-
-      <div className="p-6">
-        {error && (
-          <div className="mb-5 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700">
-            <AlertCircle className="h-4 w-4 shrink-0" />{error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Section: Basic Info */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="نوع الصنف" required>
-              <select value={form.item_type_id} onChange={(e) => {
-                const val = e.target.value;
-                const typeCode = itemTypes.find(t => String(t.id) === val)?.code;
-                if (typeCode === 'feed') {
-                  setContentUnitCustom(false);
-                  setForm(prev => ({ ...prev, item_type_id: val, input_unit: 'كيس', content_unit: 'كيلو', unit_value: '50' }));
-                } else {
-                  setForm(prev => ({ ...prev, item_type_id: val }));
-                }
-              }} className={inputCls}>
-                <option value="">-- اختر النوع --</option>
-                {itemTypes
-                  .filter(t => t.code && TARGET_TYPE_CODES.includes(t.code))
-                  .map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-              </select>
-            </Field>
-
-            <Field label="اسم الصنف" required>
-              <input value={form.name} onChange={set('name')} placeholder="مثال: كسبة الصويا" className={inputCls} />
-            </Field>
-          </div>
-
-          {/* Section: Units */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
-            <p className="mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">إعداد الوحدات</p>
-            <div className={cn('grid gap-4', isMedicine ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}>
-              {!isMedicine && (
-                <Field label="وحدة الإدخال" required hint="اختر من القائمة، أو 'أخرى' لكتابة وحدة مخصصة">
-                  <select
-                    value={inputUnitCustom ? '__custom__' : (INPUT_UNIT_OPTIONS.includes(form.input_unit) ? form.input_unit : '')}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      if (val === '__custom__') {
-                        setInputUnitCustom(true)
-                        setForm(prev => ({ ...prev, input_unit: '' }))
-                      } else {
-                        setInputUnitCustom(false)
-                        setForm(prev => ({ ...prev, input_unit: val }))
-                      }
-                    }}
-                    className={inputCls}
-                  >
-                    <option value="">-- اختر الوحدة --</option>
-                    {INPUT_UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
-                    <option value="__custom__">أخرى (حدد يدوياً)</option>
-                  </select>
-                  {inputUnitCustom && (
-                    <input value={form.input_unit} onChange={set('input_unit')} placeholder="مثل: قفص" className={cn(inputCls, 'mt-2')} />
-                  )}
-                </Field>
-              )}
-
-              <Field label="قيمة الوحدة" required hint="كم وحدة محتوى بكل وحدة إدخال">
-                <input type="number" min="0.001" step="0.001" value={form.unit_value} onChange={set('unit_value')} className={inputCls} />
-              </Field>
-
-              <Field label="وحدة المحتوى" required hint="اختر من القائمة، أو 'أخرى' لكتابة وحدة مخصصة">
-                <select
-                  value={contentUnitCustom ? '__custom__' : (CONTENT_UNIT_OPTIONS.includes(form.content_unit) ? form.content_unit : '')}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    if (val === '__custom__') {
-                      setContentUnitCustom(true)
-                      setForm(prev => ({ ...prev, content_unit: '' }))
-                    } else {
-                      setContentUnitCustom(false)
-                      setForm(prev => ({ ...prev, content_unit: val }))
-                    }
-                  }}
-                  className={inputCls}
-                >
-                  <option value="">-- اختر الوحدة --</option>
-                  {CONTENT_UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
-                  <option value="__custom__">أخرى (حدد يدوياً)</option>
-                </select>
-                {contentUnitCustom && (
-                  <input value={form.content_unit} onChange={set('content_unit')} placeholder="مثل: صهريج" className={cn(inputCls, 'mt-2')} />
-                )}
-              </Field>
-            </div>
-
-            {!isMedicine && form.input_unit && form.content_unit && form.unit_value && (
-              <p className="mt-3 flex items-center gap-1.5 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2 text-[11px] font-bold text-primary-700">
-                مثال: 1 {form.input_unit} = {form.unit_value} {form.content_unit}
-              </p>
-            )}
-          </div>
-
-          {/* Section: Optional */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="الحد الأدنى للمخزون" hint="سيتم تنبيهك عند بلوغه">
-              <input type="number" min="0" step="0.01" value={form.minimum_stock} onChange={set('minimum_stock')} placeholder="0" className={inputCls} />
-            </Field>
-
-            <Field label="ملاحظات">
-              <input value={form.notes} onChange={set('notes')} placeholder="اختياري" className={inputCls} />
-            </Field>
-          </div>
-
-          <div className="flex justify-end border-t border-slate-100 pt-5">
-            <button
-              type="submit"
-              disabled={saving}
-              className="group flex items-center gap-2 rounded-xl bg-primary-600 px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-primary-700 active:scale-[0.97] disabled:opacity-50 shadow-md shadow-primary-200"
-            >
-              <Plus className="h-4 w-4 transition-transform group-hover:rotate-90 duration-300" />
-              {saving ? 'جارٍ الحفظ...' : 'إضافة الصنف'}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   )
 }
@@ -1442,10 +1214,6 @@ export default function InventoryPage() {
   const { currentFarm } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
   const isReadOnly = useIsReadOnly()
-  const isSupervisor = useIsSupervisor()
-  const useSimple = useSimpleInventory()
-  // مدير المزرعة والمشرف: شاشة مبسّطة افتراضياً، والعرض المتقدم (الحركات والتنبيهات) اختياري
-  const [advanced, setAdvanced] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [itemsCategoryFilter, setItemsCategoryFilter] = useState<string>('all')
 
@@ -1498,58 +1266,20 @@ export default function InventoryPage() {
   const feedItems  = items.filter(i => i.type_code === 'feed')
   const medItems   = items.filter(i => i.type_code === 'medicine')
   const otherItems = items.filter(i => i.type_code !== 'feed' && i.type_code !== 'medicine')
+  const lastShipmentDate = items.map(i => i.last_shipment_date).filter(Boolean).sort().pop() ?? null
 
   const tabs: { id: Tab; label: string; badge?: number; icon: typeof Eye; isAction?: boolean; isPrimary?: boolean }[] = [
     { id: 'overview',     label: 'نظرة عامة',  icon: Eye },
-    ...(!isReadOnly && !isSupervisor ? [
-      { id: 'add-shipment' as Tab, label: 'حمولة جديدة', icon: Truck, isAction: true, isPrimary: true },
-    ] : []),
     { id: 'items',        label: 'الأصناف',     icon: ListChecks,  badge: items.length },
-    ...(!isReadOnly && !isSupervisor ? [
-      { id: 'add-item'     as Tab, label: 'صنف جديد',    icon: Plus,  isAction: true },
+    ...(!isReadOnly ? [
+      { id: 'add-shipment' as Tab, label: 'حمولة بفاتورة', icon: Truck, isAction: true },
     ] : []),
     { id: 'movements',    label: 'الحركات',     icon: BarChart3,   badge: transactions.length },
     { id: 'alerts',       label: 'التنبيهات',   icon: Bell,        badge: lowItems.length || undefined },
   ]
 
-  if (useSimple && !advanced) {
-    return (
-      <div className="space-y-4">
-        {error && (
-          <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-semibold">{error}</p>
-          </div>
-        )}
-        {loading ? (
-          <div className="space-y-3">
-            <div className="h-12 animate-pulse rounded-2xl bg-slate-200/60" />
-            {[1, 2, 3].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-200/60" />)}
-          </div>
-        ) : (
-          <SimpleInventory items={items} warehouses={warehouses} itemTypes={itemTypes} onChanged={() => { loadData() }} />
-        )}
-        <button
-          onClick={() => setAdvanced(true)}
-          className="w-full rounded-xl border border-slate-200 py-2.5 text-xs font-semibold text-slate-500 dark:border-slate-700"
-        >
-          عرض متقدم (الحركات والتنبيهات)
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-5">
-
-      {useSimple && (
-        <button
-          onClick={() => setAdvanced(false)}
-          className="w-full rounded-xl border border-primary-200 bg-primary-50 py-2.5 text-sm font-bold text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300"
-        >
-          ← العودة للعرض المبسّط
-        </button>
-      )}
 
       {error && (
         <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
@@ -1570,6 +1300,24 @@ export default function InventoryPage() {
 
       {!loading && !error && (
         <>
+          {!isReadOnly && (
+            <ShipmentActions items={items} warehouses={warehouses} itemTypes={itemTypes} onChanged={() => { loadData() }} />
+          )}
+
+          {lowItems.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('alerts')}
+              className="flex w-full items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-right dark:border-amber-800 dark:bg-amber-900/20"
+            >
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+              <span className="flex-1 text-sm font-bold text-amber-800 dark:text-amber-200">
+                {lowItems.length} {lowItems.length === 1 ? 'صنف' : 'أصناف'} وصل للحد الأدنى — {lowItems.slice(0, 3).map(i => i.name).join('، ')}{lowItems.length > 3 ? '…' : ''}
+              </span>
+              <ChevronLeft className="h-4 w-4 text-amber-600" />
+            </button>
+          )}
+
           {/* KPI Cards */}
           {summary && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -1638,6 +1386,13 @@ export default function InventoryPage() {
           {/* Tab Content */}
           <div>
             {activeTab === 'overview' && (
+              <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <KpiCard label="عدد الأصناف" value={formatNumber(items.length)} sub={`${feedItems.length} علف · ${medItems.length} دواء · ${otherItems.length} أخرى`} icon={Layers} color="text-slate-700" />
+                <KpiCard label="أصناف منخفضة" value={formatNumber(lowItems.filter(i => i.total_quantity > 0).length)} sub="وصلت للحد الأدنى" icon={AlertTriangle} color="text-amber-700" />
+                <KpiCard label="أصناف نفدت" value={formatNumber(items.filter(i => i.total_quantity <= 0).length)} sub="رصيدها صفر" icon={AlertCircle} color="text-red-600" />
+                <KpiCard label="آخر حمولة" value={lastShipmentDate ? formatDate(lastShipmentDate) : '—'} sub={`${formatNumber(items.reduce((n, i) => n + (i.shipment_count ?? 0), 0))} حمولة مسجلة`} icon={Truck} color="text-primary-700" />
+              </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <MaterialCard title="العلف"  items={feedItems}  color="text-emerald-700" icon={Package} onOpen={() => openCategory('feed')} />
                 <MaterialCard title="الدواء" items={medItems}   color="text-blue-700"  icon={Package} onOpen={() => openCategory('medicine')} />
@@ -1648,17 +1403,10 @@ export default function InventoryPage() {
                       <Package className="h-8 w-8 text-slate-300" />
                     </div>
                     <h3 className="text-lg font-bold text-slate-700">لا توجد أصناف في المخزون</h3>
-                    <p className="mt-1 text-xs text-slate-400">{isReadOnly ? 'لا توجد أصناف مضافة بعد' : 'أضف أصناف من تبويب "صنف جديد"'}</p>
-                    {!isReadOnly && (
-                      <button
-                        onClick={() => setActiveTab('add-item')}
-                        className="mt-4 flex items-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-700 transition-all duration-200 shadow-md shadow-primary-200"
-                      >
-                        <Plus className="h-4 w-4" /> إضافة صنف جديد
-                      </button>
-                    )}
+                    <p className="mt-1 text-xs text-slate-400">{isReadOnly ? 'لا توجد أصناف مضافة بعد' : 'اضغط «إضافة حمولة» أو «مسح باركود» لإضافة أول صنف'}</p>
                   </div>
                 )}
+              </div>
               </div>
             )}
 
@@ -1669,11 +1417,6 @@ export default function InventoryPage() {
                     <Package className="h-7 w-7 text-slate-300" />
                   </div>
                   <h3 className="text-lg font-bold text-slate-700">لا توجد أصناف</h3>
-                  {!isReadOnly && (
-                    <button onClick={() => setActiveTab('add-item')} className="mt-4 flex items-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-700 transition-all duration-200 shadow-md shadow-primary-200">
-                      <Plus className="h-4 w-4" /> إضافة صنف
-                    </button>
-                  )}
                 </div>
               ) : (
                 <ItemsTable
@@ -1683,13 +1426,6 @@ export default function InventoryPage() {
                   onCategoryFilterChange={setItemsCategoryFilter}
                 />
               )
-            )}
-
-            {activeTab === 'add-item' && (
-              <AddItemForm
-                itemTypes={itemTypes}
-                onSuccess={() => { loadData(); setActiveTab('items') }}
-              />
             )}
 
             {activeTab === 'add-shipment' && (

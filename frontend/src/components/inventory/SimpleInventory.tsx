@@ -1,15 +1,15 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
-import { AlertTriangle, Check, Loader2, Package, Pill, Plus, ScanLine, Search, Wheat } from 'lucide-react'
+import { AlertTriangle, Check, Loader2, Package, Pill, Plus, ScanLine, Wheat } from 'lucide-react'
 import { Dialog } from '@/components/ui/Dialog'
 import { BarcodeScanner } from './BarcodeScanner'
 import { inventoryApi } from '@/lib/api/inventory'
 import type { ItemType, StockItem, Warehouse } from '@/lib/api/inventory'
 import { cn, formatNumber, toEnglishDigits } from '@/lib/utils'
 
-// ── مخزون مبسّط للمشرف: أقسام واضحة، وزر واحد لكل خطوة، بلا أسعار ولا وحدات معقّدة ──────────
+// ── إضافة حمولة موحّدة (صنف موجود أو جديد) + مسح باركود — بلا أسعار ──────────────────────────
 
 type Section = 'feed' | 'medicine' | 'other'
 
@@ -49,8 +49,7 @@ interface Props {
   onChanged: () => void
 }
 
-export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Props) {
-  const [query, setQuery] = useState('')
+export function ShipmentActions({ items, warehouses, itemTypes, onChanged }: Props) {
   const [shipment, setShipment] = useState<ShipmentTarget | null>(null)
   const [scanning, setScanning] = useState(false)
   const [looking, setLooking] = useState(false)
@@ -74,66 +73,24 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
     }
   }, [items])
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return q ? items.filter((i) => i.name.toLowerCase().includes(q)) : items
-  }, [items, query])
-
   return (
-    <div className="space-y-5 pb-6" dir="rtl">
-      <button
-        onClick={() => setScanning(true)}
-        disabled={looking}
-        className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
-      >
-        {looking ? <Loader2 className="h-5 w-5 animate-spin" /> : <ScanLine className="h-5 w-5" />}
-        مسح باركود
-      </button>
-
-      {/* بحث */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="ابحث عن صنف..."
-          className="h-12 w-full rounded-2xl border border-slate-200 bg-white pe-4 ps-4 pr-10 text-sm font-semibold text-slate-800 outline-none focus:border-primary-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-        />
+    <>
+      <div className="grid grid-cols-2 gap-3" dir="rtl">
+        <button
+          onClick={() => open({ section: null, item: null })}
+          className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary-600 text-sm font-bold text-white shadow-md shadow-primary-200 active:scale-[0.98]"
+        >
+          <Plus className="h-5 w-5" /> إضافة حمولة
+        </button>
+        <button
+          onClick={() => setScanning(true)}
+          disabled={looking}
+          className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-slate-900 text-sm font-bold text-white shadow-sm active:scale-[0.98] disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
+        >
+          {looking ? <Loader2 className="h-5 w-5 animate-spin" /> : <ScanLine className="h-5 w-5" />}
+          مسح باركود
+        </button>
       </div>
-
-      {SECTIONS.map((sec) => {
-        const list = filtered.filter((i) => sectionOf(i) === sec.key)
-        const Icon = sec.icon
-        return (
-          <section key={sec.key} className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-base font-extrabold text-slate-800 dark:text-slate-100">
-                <span className={cn('flex h-8 w-8 items-center justify-center rounded-xl', sec.tone)}><Icon className="h-4 w-4" /></span>
-                {sec.title}
-                <span className="text-xs font-bold text-slate-400">({list.length})</span>
-              </h2>
-              <button
-                onClick={() => open({ section: sec.key, item: null })}
-                className="flex items-center gap-1 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-bold text-primary-700 active:scale-95 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300"
-              >
-                <Plus className="h-3.5 w-3.5" /> إضافة حمولة
-              </button>
-            </div>
-
-            {list.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-700">
-                {query ? 'لا نتائج' : 'لا توجد أصناف بعد'}
-              </p>
-            ) : (
-              <ul className="space-y-2.5">
-                {list.map((item) => (
-                  <ItemCard key={item.id} item={item} onAdd={() => open({ section: sectionOf(item), item })} />
-                ))}
-              </ul>
-            )}
-          </section>
-        )
-      })}
 
       <BarcodeScanner isOpen={scanning} onClose={() => setScanning(false)} onDetected={onScanned} />
       <ShipmentSheet
@@ -145,43 +102,7 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
         onClose={() => setShipment(null)}
         onDone={() => { setShipment(null); onChanged() }}
       />
-    </div>
-  )
-}
-
-// ── بطاقة صنف ───────────────────────────────────────────────────────────────
-function ItemCard({ item, onAdd }: { item: StockItem; onAdd: () => void }) {
-  const isFeed = item.type_code === 'feed'
-  const low = item.minimum_stock > 0 && item.total_quantity <= item.minimum_stock
-  const empty = item.total_quantity <= 0
-  const bags = isFeed && item.unit_value > 1 ? item.total_quantity / item.unit_value : null
-
-  return (
-    <li className={cn('flex items-center gap-3 rounded-2xl border bg-white p-3.5 shadow-sm dark:bg-slate-800', low || empty ? 'border-amber-300 dark:border-amber-700' : 'border-slate-200 dark:border-slate-700')}>
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate text-[15px] font-bold text-slate-800 dark:text-slate-100">{item.name}</h3>
-        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
-          <span className={cn('text-2xl font-extrabold tabular-nums', empty ? 'text-rose-600' : 'text-slate-800 dark:text-slate-100')}>
-            {formatNumber(item.total_quantity)}
-          </span>
-          <span className="text-xs font-semibold text-slate-500">{item.content_unit}</span>
-          {bags != null && <span className="text-xs text-slate-400">≈ {formatNumber(Math.round(bags * 10) / 10)} {item.input_unit}</span>}
-        </div>
-        {(low || empty) && (
-          <p className="mt-1 flex items-center gap-1 text-[11px] font-bold text-amber-600">
-            <AlertTriangle className="h-3 w-3" /> {empty ? 'نفد المخزون' : 'المخزون قليل'}
-          </p>
-        )}
-      </div>
-      <button
-        onClick={onAdd}
-        className="flex h-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl bg-primary-600 px-4 text-white shadow-sm active:scale-95"
-        aria-label={`إضافة حمولة إلى ${item.name}`}
-      >
-        <Plus className="h-5 w-5" />
-        <span className="text-[10px] font-bold">إضافة حمولة</span>
-      </button>
-    </li>
+    </>
   )
 }
 

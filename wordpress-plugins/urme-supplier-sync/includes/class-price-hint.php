@@ -79,6 +79,33 @@ class URME_SS_Price_Hint {
 		return (int) ( max( 0, ceil( ( $h['price'] - 98 ) / 100 ) ) * 100 + 98 );
 	}
 
+	/**
+	 * The Regular (recommended) price a sale price needs: the current one when the sale price is
+	 * below it, otherwise 20 % higher (next price ending in 98), and in any case above the sale price.
+	 * Null when there is no Regular and nothing to lift.
+	 *
+	 * @param float $regular Current (or suggested) Regular price, 0 when none.
+	 * @param int   $sale    Sale price.
+	 */
+	public static function regular_for_sale( $regular, $sale ) {
+		$regular = (float) $regular;
+		if ( $regular > $sale ) {
+			return $regular > 0 ? (int) round( $regular ) : null;
+		}
+		$lifted = self::ceil_98( ( $regular > 0 ? $regular : $sale ) * 1.2 );
+		if ( $lifted <= $sale ) {
+			$lifted = self::ceil_98( $sale + 1 );
+		}
+		return $lifted;
+	}
+
+	/**
+	 * Next price ending in 98 at or above the amount (1 197.6 → 1 198, 1 199 → 1 298).
+	 */
+	public static function ceil_98( $sek ) {
+		return (int) ( max( 0, ceil( ( (float) $sek - 98 ) / 100 ) ) * 100 + 98 );
+	}
+
 	private static function breakdown( $price, $cost, array $ctx ) {
 		$paid = $price * ( 1 - $ctx['coupon'] );
 		$net  = $paid / ( 1 + $ctx['vat'] );

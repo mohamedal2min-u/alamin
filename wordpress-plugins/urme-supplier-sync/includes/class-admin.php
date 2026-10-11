@@ -645,22 +645,14 @@ class URME_SS_Admin {
 	 * @param int   $sale    Sale price.
 	 */
 	public static function regular_for_sale( $regular, $sale ) {
-		$regular = (float) $regular;
-		if ( $regular > $sale ) {
-			return $regular > 0 ? (int) round( $regular ) : null;
-		}
-		$lifted = self::ceil_98( ( $regular > 0 ? $regular : $sale ) * 1.2 );
-		if ( $lifted <= $sale ) {
-			$lifted = self::ceil_98( $sale + 1 );
-		}
-		return $lifted;
+		return URME_SS_Price_Hint::regular_for_sale( $regular, $sale );
 	}
 
 	/**
 	 * Next price ending in 98 at or above the amount (1 197.6 → 1 198, 1 199 → 1 298).
 	 */
 	public static function ceil_98( $sek ) {
-		return (int) ( max( 0, ceil( ( (float) $sek - 98 ) / 100 ) ) * 100 + 98 );
+		return URME_SS_Price_Hint::ceil_98( $sek );
 	}
 
 	/**
@@ -2072,6 +2064,9 @@ class URME_SS_Admin {
 				<tr><th>Loss protection</th>
 					<td><label><input type="checkbox" name="settings[loss_out_of_stock]" value="1" <?php checked( $s['loss_out_of_stock'] ); ?>> Set Dropshipping watches out of stock when their estimated profit is below <input type="number" name="settings[min_profit_sek]" min="0" max="100000" step="1" value="<?php echo esc_attr( $s['min_profit_sek'] ); ?>" class="small-text"> SEK</label>
 					<p class="description">Same profit calculation as the price hint (coupon, VAT, Klarna fee, cost incl. extra EUR). Stock comes back at the next sync once the price covers the cost.</p></td></tr>
+				<tr><th>Automatic prices</th>
+					<td><label><input type="checkbox" name="settings[auto_reprice]" value="1" <?php checked( $s['auto_reprice'] ); ?>> When a supplier changes the cost of a Dropshipping watch, set its sale price to the Auto price (target profit, …98)</label>
+					<p class="description">Only when the supplier's cost changes, so prices you set yourself stay until then. The regular price is raised 20&nbsp;% when the sale price is not below it.</p></td></tr>
 				<tr><th><label for="urme-ratio">Feed safety check</label></th>
 					<td>Refuse a feed with fewer than <input type="number" id="urme-ratio" name="settings[min_feed_ratio]" min="0" max="100" value="<?php echo esc_attr( $s['min_feed_ratio'] ); ?>" class="small-text"> % of the previous feed's watches
 					<p class="description">Protects against a half-empty feed. 0 disables the check.</p></td></tr>

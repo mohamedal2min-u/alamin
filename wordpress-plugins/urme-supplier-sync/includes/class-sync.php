@@ -317,6 +317,7 @@ class URME_SS_Sync {
 			'checked'       => 0,
 			'stock_updated' => 0,
 			'loss_blocked'  => 0,
+			'price_updated' => 0,
 			'cost_updated'  => 0,
 			'unchanged'     => 0,
 			'unmatched'     => 0,
@@ -356,7 +357,9 @@ class URME_SS_Sync {
 		$rate   = URME_SS_Rates::current();
 		$target = URME_SS_Store::cost_target();
 		$manage = (bool) URME_SS_Settings::get( 'manage_stock' );
-		$hint   = URME_SS_Settings::get( 'loss_out_of_stock' ) ? URME_SS_Price_Hint::context() : null;
+		$reprice = (bool) URME_SS_Settings::get( 'auto_reprice' );
+		$hint    = ( URME_SS_Settings::get( 'loss_out_of_stock' ) || $reprice ) ? URME_SS_Price_Hint::context() : null;
+		$guard   = (bool) URME_SS_Settings::get( 'loss_out_of_stock' );
 		$now    = current_time( 'mysql', true );
 		$notes    = array();
 		$switched = array();
@@ -476,7 +479,14 @@ class URME_SS_Sync {
 					$changes[] = sprintf( 'supplier %s → %s', URME_SS_Suppliers::get( $link['supplier'] )['country'], URME_SS_Suppliers::get( $sup )['country'] );
 					$switched[] = (int) $product->get_id(); // Its delivery days may change.
 				}
-				$loss = $hint ? self::loss_at_current_price( $product, $link['purchase_price'], URME_SS_Suppliers::hint( $hint, $sup ) ) : null;
+				if ( $reprice && $hint ) {
+					$price_change = self::reprice( $product, $link, $sup, URME_SS_Suppliers::hint( $hint, $sup ) );
+					if ( $price_change ) {
+						++$stats['price_updated'];
+						$changes[] = $price_change;
+					}
+				}
+				$loss = ( $guard && $hint ) ? self::loss_at_current_price( $product, $link['purchase_price'], URME_SS_Suppliers::hint( $hint, $sup ) ) : null;
 				if ( null !== $loss ) {
 					// Never sell at a loss: no stock until the price covers the cost again.
 					++$stats['loss_blocked'];
@@ -579,17 +589,18 @@ class URME_SS_Sync {
 			return $stats;
 		}
 		// Quiet hours stay out of the log; the Status tab always shows the latest numbers.
-		$eventful = $stats['stock_updated'] || $stats['cost_updated'] || $stats['errors'] || 'cron' !== $trigger;
+		$eventful = $stats['stock_updated'] || $stats['cost_updated'] || $stats['price_updated'] || $stats['errors'] || 'cron' !== $trigger;
 		if ( $eventful ) {
 			URME_SS_Log::info(
 				sprintf(
-					'Product sync: %d selected (%d in disabled brands, skipped), %d checked, %d stock updates, %d out of stock (low profit), %d cost updates, %d unchanged, %d unlinked, %d missing from feed, %d errors.',
+					'Product sync: %d selected (%d in disabled brands, skipped), %d checked, %d stock updates, %d out of stock (low profit), %d cost updates, %d price updates, %d unchanged, %d unlinked, %d missing from feed, %d errors.',
 					$stats['selected'],
 					$stats['brand_off'],
 					$stats['checked'],
 					$stats['stock_updated'],
 					$stats['loss_blocked'],
 					$stats['cost_updated'],
+					$stats['price_updated'],
 					$stats['unchanged'],
 					$stats['unmatched'],
 					$stats['missing'],
@@ -631,6 +642,50 @@ class URME_SS_Sync {
 		} finally {
 			$busy = false;
 		}
+	}
+
+	/**
+	 * Sale price follows the supplier: when the cost (EUR) of a Dropshipping watch changed since the
+	 * last sync, or it is now bought from another supplier, the sale price becomes the Auto price
+	 * (target profit, …98) and the regular price is raised when the sale would not be below it.
+	 * Nothing happens on the first sync of a link or while the cost is unchanged, so prices set by
+	 * hand stay until the supplier changes the cost. Simple products only.
+	 *
+	 * @return string Change description, or '' when nothing was changed.
+	 */
+	private static function reprice( WC_Product $product, array $link, $sup, array $hint ) {
+		$old = $link['last_cost_eur'] ?? null;
+		$new = $link['purchase_price'] ?? null;
+		if ( null === $old || '' === (string) $old || null === $new || ! is_numeric( $new ) || $product->is_type( array( 'variable', 'grouped' ) ) ) {
+			return '';
+		}
+		$moved = '' !== (string) ( $link['supplier'] ?? '' ) && $link['supplier'] !== $sup;
+		if ( abs( (float) $old - (float) $new ) < 0.005 && ! $moved ) {
+			return '';
+		}
+		$auto = URME_SS_Price_Hint::price_98( $new, $hint );
+		if ( ! $auto ) {
+			return '';
+		}
+		$sale    = (string) $product->get_sale_price();
+		$regular = (string) $product->get_regular_price();
+		$want    = URME_SS_Price_Hint::regular_for_sale( '' !== $regular ? (float) $regular : 0, $auto );
+		if ( '' !== $sale && abs( (float) $sale - $auto ) < 0.001 && null !== $want && abs( (float) $regular - $want ) < 0.001 ) {
+			return '';
+		}
+		if ( null !== $want && ( '' === $regular || abs( (float) $regular - $want ) >= 0.001 ) ) {
+			$product->set_regular_price( (string) $want );
+		}
+		$product->set_sale_price( (string) $auto );
+		$product->save();
+		return sprintf(
+			'price %s → %s kr%s (supplier cost %s → %s EUR)',
+			'' !== $sale ? $sale : ( '' !== $regular ? $regular : '–' ),
+			$auto,
+			null !== $want && (string) $want !== $regular ? sprintf( ', regular %s → %s kr', '' !== $regular ? $regular : '–', $want ) : '',
+			rtrim( rtrim( number_format( (float) $old, 2, '.', '' ), '0' ), '.' ),
+			rtrim( rtrim( number_format( (float) $new, 2, '.', '' ), '0' ), '.' )
+		);
 	}
 
 	/**

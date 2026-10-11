@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.10.1
+Stable tag: 1.11.0
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -224,6 +224,11 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.11.0 =
+* Automatic prices (Settings, on by default): when a supplier changes the cost of a Dropshipping watch, or it is
+  bought from another supplier, the sync sets its sale price to the Auto price (target profit, …98) and raises the
+  regular price 20 % when needed. Prices set by hand stay until the supplier cost changes. Logged per product.
 
 = 1.10.1 =
 * Auto (row button and bulk): when the Auto sale price is not below the regular (recommended) price, or there is

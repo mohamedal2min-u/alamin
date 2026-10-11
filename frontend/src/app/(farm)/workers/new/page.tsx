@@ -47,7 +47,7 @@ export default function NewWorkerPage() {
         salary: formData.salary ? parseFloat(formData.salary) : undefined,
       })
       
-      setSuccessMsg('تم إنشاء حساب العامل وربطه بالمدجنة بنجاح.')
+      setSuccessMsg('تم إنشاء حساب المحاسب وربطه بالمدجنة بنجاح.')
       
       setFormData({
         name: '',
@@ -74,13 +74,13 @@ export default function NewWorkerPage() {
         <Button variant="ghost" size="sm" onClick={() => router.back()} className="w-10 px-0">
           <ArrowRight className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">إضافة عامل جديد</h1>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">إضافة محاسب جديد</h1>
       </div>
 
       <Card className="border-slate-200/60 shadow-sm">
         <CardHeader className="bg-slate-50/50 border-b border-slate-100 flex-row gap-2 items-center p-5 rounded-t-2xl">
           <UserPlus className="h-5 w-5 text-primary-600" />
-          <h2 className="text-lg font-semibold">بيانات العامل</h2>
+          <h2 className="text-lg font-semibold">بيانات المحاسب</h2>
         </CardHeader>
         <div className="p-6">
           
@@ -99,7 +99,7 @@ export default function NewWorkerPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-bold text-slate-700">اسم العامل <span className="text-rose-500">*</span></label>
+              <label htmlFor="name" className="text-sm font-bold text-slate-700">اسم المحاسب <span className="text-rose-500">*</span></label>
               <Input 
                 id="name"
                 name="name" 
@@ -184,7 +184,7 @@ export default function NewWorkerPage() {
                     جاري الحفظ...
                   </>
                 ) : (
-                  <>حفظ بيانات العامل</>
+                  <>حفظ بيانات المحاسب</>
                 )}
               </Button>
             </div>

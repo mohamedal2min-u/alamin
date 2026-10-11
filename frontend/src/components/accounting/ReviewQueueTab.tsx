@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { formatNumber, formatCurrency } from '@/lib/utils'
+import { useCurrentRole } from '@/lib/roles'
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Wheat, Droplets, Pill, ShoppingCart, Package, Layers } from 'lucide-react'
 
 // ── Badge color map — single source of truth ──────────────────────────────────
@@ -27,6 +28,7 @@ interface Props {
 
 export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
   const qc = useQueryClient()
+  const isAccountant = useCurrentRole() === 'accountant'
 
   const [filters, setFilters] = useState<ReviewQueueFilters>({
     type: 'all',
@@ -40,9 +42,12 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
   const [editValues, setEditValues] = useState<{ paid_amount?: string; unit_price?: string }>({})
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // المحاسب يرى كل الأسعار دائماً (ليعدّل ما وضعه سابقاً)؛ المدير يبدأ بما يحتاج مراجعة
+  const effectiveFilters: ReviewQueueFilters = isAccountant ? { ...filters, scope: 'all' } : filters
+
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['accounting', 'review-queue', filters],
-    queryFn: () => accountingApi.getReviewQueue(filters),
+    queryKey: ['accounting', 'review-queue', effectiveFilters],
+    queryFn: () => accountingApi.getReviewQueue(effectiveFilters),
     staleTime: 15_000,
   })
 
@@ -70,7 +75,8 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
 
   const handleSave = (item: ReviewItem) => {
     const payload: { paid_amount?: number; unit_price?: number } = {}
-    if (editValues.paid_amount !== undefined && editValues.paid_amount !== '') {
+    // المحاسب يحدد الأسعار فقط — لا يرسل أي دفعات
+    if (!isAccountant && editValues.paid_amount !== undefined && editValues.paid_amount !== '') {
       payload.paid_amount = parseFloat(editValues.paid_amount)
     }
     if (editValues.unit_price !== undefined && editValues.unit_price !== '' && (item.type === 'expense' || item.type === 'water_log' || item.type === 'sale')) {
@@ -84,7 +90,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
   return (
     <div className="space-y-5" dir="rtl">
       {/* ── Summary Cards ─────────────────────────────────────────────────── */}
-      {summary && (
+      {summary && !isAccountant && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <SummaryCard label="غير مدفوع"        count={summary.unpaid_count}                       color="red" />
           <SummaryCard label="دفع جزئي"         count={summary.partial_payment_count}               color="emerald" />
@@ -111,7 +117,20 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
           </button>
         ))}
 
-        {(['unpaid', 'partial_payment', 'blocking_flock_closure'] as ReviewReason[]).map((r) => (
+        {!isAccountant && (
+        <button
+          onClick={() => setFilters((f) => ({ ...f, scope: f.scope === 'all' ? undefined : 'all', page: 1 }))}
+          className={`rounded-full px-3 py-1 text-sm font-medium border transition-colors ${
+            filters.scope === 'all'
+              ? 'bg-primary-600 text-white border-primary-600'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-primary-400'
+          }`}
+        >
+          كل الأسعار
+        </button>
+        )}
+
+        {!isAccountant && (['unpaid', 'partial_payment', 'blocking_flock_closure'] as ReviewReason[]).map((r) => (
           <button
             key={r}
             onClick={() =>
@@ -173,7 +192,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
       ) : !data?.data.length ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400">
           <CheckCircle2 className="mb-3 h-10 w-10 text-primary-400" />
-          <p className="text-sm font-medium">لا توجد سجلات تحتاج مراجعة</p>
+          <p className="text-sm font-medium">{effectiveFilters.scope === 'all' ? 'لا توجد سجلات' : 'لا توجد سجلات تحتاج مراجعة'}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -187,6 +206,7 @@ export function ReviewQueueTab({ initialFlockId, initialFilter }: Props) {
             <ReviewRow
               key={item.id}
               item={item}
+              isAccountant={isAccountant}
               isEditing={editingId === item.id}
               isUpdating={isUpdating && editingId === item.id}
               editValues={editValues}
@@ -261,6 +281,7 @@ function SummaryCard({ label, count, color }: { label: string; count: number; co
 // ── Review Row ────────────────────────────────────────────────────────────────
 interface ReviewRowProps {
   item: ReviewItem
+  isAccountant: boolean
   isEditing: boolean
   isUpdating: boolean
   editValues: { paid_amount?: string; unit_price?: string }
@@ -271,7 +292,7 @@ interface ReviewRowProps {
   onEditChange: (v: { paid_amount?: string; unit_price?: string }) => void
 }
 
-function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onCancel, onSave, onEditChange }: ReviewRowProps) {
+function ReviewRow({ item, isAccountant, isEditing, isUpdating, editValues, error, onEdit, onCancel, onSave, onEditChange }: ReviewRowProps) {
   const hasBlocking = item.review_reasons.includes('blocking_flock_closure')
 
   return (
@@ -305,6 +326,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
             {/* Edit form or amounts display */}
             {isEditing ? (
               <div className="mt-3 flex flex-wrap items-end gap-2">
+                {!isAccountant && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-slate-500">المدفوع</label>
                   <Input
@@ -316,6 +338,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                     disabled={false}
                   />
                 </div>
+                )}
                 {(item.type === 'expense' || item.type === 'water_log' || item.type === 'sale') && (
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-slate-500">{item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'}</label>
@@ -350,9 +373,14 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                     )}
                   </span>
                 )}
+                <PriceWithHistory item={item} />
                 <span>الإجمالي: <strong className="text-slate-700">{formatCurrency(item.total_amount)}</strong></span>
-                <span>المدفوع: <strong className="text-slate-700">{formatCurrency(item.paid_amount)}</strong></span>
-                <span>المتبقي: <strong className="text-red-600">{formatCurrency(item.remaining_amount)}</strong></span>
+                {!isAccountant && (
+                  <>
+                    <span>المدفوع: <strong className="text-slate-700">{formatCurrency(item.paid_amount)}</strong></span>
+                    <span>المتبقي: <strong className="text-red-600">{formatCurrency(item.remaining_amount)}</strong></span>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -363,12 +391,42 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
               onClick={onEdit}
               className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-primary-400 hover:text-primary-600 transition-colors"
             >
-              تسديد / تعديل
+              {isAccountant ? (item.unit_price != null ? 'تعديل السعر' : 'تحديد السعر') : 'تسديد / تعديل'}
             </button>
           )}
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// ── السعر الحالي مع الأسعار القديمة مشطوبة (لا تُحذف أبداً) ───────────────────
+export function PriceWithHistory({ item }: { item: ReviewItem }) {
+  // للمبيعات السعر المخزَّن للكيلو؛ يُعرض بسعر الطن
+  const toDisplay = (v: number) => (item.type === 'sale' ? v * 1000 : v)
+  const unit = item.type === 'sale' ? 'للطن' : 'للوحدة'
+  const olds = (item.price_history ?? []).filter((h) => h.old_price != null)
+
+  if (item.unit_price == null && olds.length === 0) {
+    return <span>السعر: <strong className="text-emerald-700">لم يُحدَّد</strong></span>
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      السعر ({unit}):
+      {olds.map((h, i) => (
+        <s
+          key={i}
+          className="text-red-400 decoration-red-500"
+          title={`${h.by ?? ''} ${h.at ? new Date(h.at).toLocaleString('ar') : ''}`.trim()}
+        >
+          {formatNumber(toDisplay(h.old_price as number))}
+        </s>
+      ))}
+      {item.unit_price != null && (
+        <strong className="text-slate-800">{formatNumber(toDisplay(item.unit_price))}</strong>
+      )}
+    </span>
   )
 }
 

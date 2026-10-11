@@ -22,16 +22,16 @@ const ALL_NAV_ITEMS = [
   { label: 'المداجن',         href: '/admin/farms',                   icon: Building2 },
   { label: 'طلبات التسجيل',  href: '/admin/registration-requests',   icon: ClipboardList },
 
-  // تشغيل المزرعة — farm_admin / worker / partner
+  // تشغيل المزرعة — farm_admin / accountant / partner
   { label: 'الأفواج',        href: '/flocks',                        icon: Bird },
   { label: 'المخزون',        href: '/inventory',                     icon: Package },
   { label: 'المبيعات',       href: '/sales',                         icon: ShoppingCart },
   { label: 'المصروفات',      href: '/expenses',                      icon: Receipt },
   { label: 'الشركاء',        href: '/partners',                      icon: Users },
-  { label: 'العمال',         href: '/workers',                       icon: Users },
+  { label: 'المحاسبون',        href: '/workers',                       icon: Users },
   { label: 'التقارير',       href: '/reports',                       icon: BarChart3 },
 
-  // الوردية للعامل فقط
+  // الوردية (صفحة قديمة — لا يظهر لأي دور حالياً)
   { label: 'الوردية',        href: '/worker',                        icon: ClipboardList },
 ]
 

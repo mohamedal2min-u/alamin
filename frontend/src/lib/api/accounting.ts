@@ -47,6 +47,23 @@ export interface ReviewItem {
   category_name?: string | null
   category_code?: string | null
   review_reasons: ReviewReason[]
+  price_history?: PriceHistoryEntry[]
+}
+
+/** old_price = null يعني أول تسعير؛ غير ذلك هو سعر قديم يُعرض مشطوباً ولا يُحذف. */
+export interface PriceHistoryEntry {
+  old_price: number | null
+  new_price: number | null
+  by: string | null
+  at: string | null
+}
+
+export interface PriceAuditEntry extends PriceHistoryEntry {
+  id: number
+  record_type: 'expense' | 'water_log' | 'sale'
+  record_id: number
+  description: string | null
+  is_edit: boolean
 }
 
 export interface ReviewQueueResponse {
@@ -67,6 +84,8 @@ export interface ReviewQueueFilters {
   per_page?: number
   filter?: string
   category?: string
+  /** all = كل السجلات بما فيها المسعّرة (لتعديل سعر موضوع مسبقاً) */
+  scope?: 'all'
 }
 
 // Single source of truth for Arabic badge labels
@@ -95,10 +114,23 @@ export const accountingApi = {
     }
 
     if (filters.category) params.set('category', filters.category)
+    if (filters.scope) params.set('scope', filters.scope)
 
     const { data } = await apiClient.get<ReviewQueueResponse>(
       `/accounting/review-queue?${params.toString()}`
     )
+    return data
+  },
+
+  getPriceAudit: async (params: { edits_only?: boolean; page?: number; per_page?: number } = {}) => {
+    const q = new URLSearchParams()
+    if (params.edits_only) q.set('edits_only', '1')
+    if (params.page) q.set('page', String(params.page))
+    if (params.per_page) q.set('per_page', String(params.per_page))
+    const { data } = await apiClient.get<{
+      data: PriceAuditEntry[]
+      meta: { total: number; current_page: number; per_page: number }
+    }>(`/accounting/price-audit?${q.toString()}`)
     return data
   },
 

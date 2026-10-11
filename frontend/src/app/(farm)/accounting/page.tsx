@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -7,6 +7,8 @@ import { Bird } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { AccountingReportTab } from '@/components/reports/tabs/AccountingReportTab'
 import { ReviewQueueTab } from '@/components/accounting/ReviewQueueTab'
+import { PriceAuditTab } from '@/components/accounting/PriceAuditTab'
+import { useCurrentRole } from '@/lib/roles'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { reportsApi } from '@/lib/api/reports'
 
@@ -14,7 +16,9 @@ function AccountingPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const tab     = searchParams.get('tab') ?? 'summary'
+  const isAccountant = useCurrentRole() === 'accountant'
+  // المحاسب يرى الأسعار فقط
+  const tab     = isAccountant ? 'review' : (searchParams.get('tab') ?? 'summary')
   const filter  = searchParams.get('filter') ?? undefined
   const flockId = searchParams.get('flock_id') ?? undefined
 
@@ -31,14 +35,19 @@ function AccountingPageInner() {
     <div className="space-y-5 pb-20 sm:pb-8" dir="rtl">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">المحاسبة</h1>
-        <p className="text-sm text-slate-500 mt-1">ملخص مالي وقائمة الذمم والمراجعة</p>
+        <p className="text-sm text-slate-500 mt-1">
+          {isAccountant ? 'تحديد الأسعار وتعديلها — كل تعديل يُسجَّل ويبقى السعر القديم ظاهراً' : 'ملخص مالي وقائمة الذمم والمراجعة'}
+        </p>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => router.push(`/accounting?tab=${v}`)}>
-        <TabsList>
-          <TabsTrigger value="summary">ملخص المحاسبة</TabsTrigger>
-          <TabsTrigger value="review">الذمم والمراجعة</TabsTrigger>
-        </TabsList>
+        {!isAccountant && (
+          <TabsList>
+            <TabsTrigger value="summary">ملخص المحاسبة</TabsTrigger>
+            <TabsTrigger value="review">الذمم والمراجعة</TabsTrigger>
+            <TabsTrigger value="audit">سجل الأسعار</TabsTrigger>
+          </TabsList>
+        )}
 
         <TabsContent value="summary">
           {!isAccountingLoading && !flockInfo ? (
@@ -70,6 +79,12 @@ function AccountingPageInner() {
         <TabsContent value="review">
           <ReviewQueueTab initialFlockId={flockId} initialFilter={filter} />
         </TabsContent>
+
+        {!isAccountant && (
+          <TabsContent value="audit">
+            <PriceAuditTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

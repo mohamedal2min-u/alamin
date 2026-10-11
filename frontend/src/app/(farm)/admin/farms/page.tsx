@@ -26,7 +26,7 @@ const STATUS_CLASSES: Record<AdminFarm['status'], string> = {
 const ROLE_LABELS: Record<string, string> = {
   farm_admin: 'مدير المزرعة',
   partner:    'شريك',
-  worker:     'عامل',
+  accountant: 'محاسب',
 }
 const ROLE_CLASSES: Record<string, string> = {
   farm_admin: 'bg-violet-50 text-violet-700',
@@ -613,7 +613,7 @@ export default function AdminFarmsPage() {
                                       <option value="">— اختر الدور —</option>
                                       <option value="farm_admin">مدير المزرعة</option>
                                       <option value="partner">شريك</option>
-                                      <option value="worker">عامل</option>
+                                      <option value="accountant">محاسب</option>
                                     </select>
                                     <button
                                       onClick={() => confirmAssignRole((activePanel as { farmId: number }).farmId, member.id)}

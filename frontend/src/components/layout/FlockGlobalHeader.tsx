@@ -42,6 +42,8 @@ export function FlockGlobalHeader() {
     roleLabel = 'شريك'
   } else if (currentFarm?.role === 'accountant') {
     roleLabel = 'محاسب'
+  } else if (currentFarm?.role === 'supervisor') {
+    roleLabel = 'مشرف'
   }
   const isAccountant = currentFarm?.role === 'accountant'
 

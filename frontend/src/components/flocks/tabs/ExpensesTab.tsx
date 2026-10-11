@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useMemo, useState, useEffect } from 'react'
+import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { expensesApi, type ExpenseItem, type ExpenseCategory, type CreateExpensePayload } from '@/lib/api/expenses'
 import {
@@ -320,6 +321,7 @@ function QuickEntryForm({
           required
           autoFocus
         />
+        <PriceOnly>
         <Input
           id={`quick_price_${preset.code}`}
           label="سعر الوحدة ($)"
@@ -330,8 +332,10 @@ function QuickEntryForm({
           value={unitPrice}
           onChange={e => setUnitPrice(e.target.value)}
         />
+        </PriceOnly>
       </div>
 
+      <PriceOnly fallback={<PriceByAccountantNote />}>
       <p className="text-[10px] font-bold text-red-600 px-1 -mt-1">
         إذا تم ترك السعر فارغاً، سوف يتم إضافة المصروف إلى الذمم والمراجعة
       </p>
@@ -354,6 +358,7 @@ function QuickEntryForm({
           </div>
         )}
       </div>
+      </PriceOnly>
 
       {error && (
         <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-bold text-red-700">
@@ -500,6 +505,7 @@ function CustomExpenseForm({
           onChange={e => setQuantity(e.target.value)}
           required
         />
+        <PriceOnly>
         <Input
           id="custom_price"
           label="سعر الوحدة ($)"
@@ -510,8 +516,10 @@ function CustomExpenseForm({
           value={unitPrice}
           onChange={e => setUnitPrice(e.target.value)}
         />
+        </PriceOnly>
       </div>
 
+      <PriceOnly fallback={<PriceByAccountantNote />}>
       <p className="text-[10px] font-bold text-red-600 px-1 -mt-1">
         إذا تم ترك السعر فارغاً، سوف يتم إضافة المصروف إلى الذمم والمراجعة
       </p>
@@ -534,6 +542,7 @@ function CustomExpenseForm({
           </div>
         )}
       </div>
+      </PriceOnly>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input

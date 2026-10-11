@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { formatNumber, formatCurrency } from '@/lib/utils'
+import { PaymentOnly } from '@/components/common/PriceOnly'
 import { PriceWithHistory } from './PriceWithHistory'
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Wheat, Droplets, Pill, ShoppingCart, Package, Layers } from 'lucide-react'
 
@@ -349,12 +350,14 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
 
           {/* Edit trigger */}
           {!isEditing && (
-            <button
-              onClick={onEdit}
-              className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-primary-400 hover:text-primary-600 transition-colors"
-            >
-              تسجيل دفعة
-            </button>
+            <PaymentOnly>
+              <button
+                onClick={onEdit}
+                className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-primary-400 hover:text-primary-600 transition-colors"
+              >
+                تسجيل دفعة
+              </button>
+            </PaymentOnly>
           )}
         </div>
       </CardContent>

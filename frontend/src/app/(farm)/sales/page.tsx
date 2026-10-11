@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { ShoppingCart, AlertCircle, Bird } from 'lucide-react'
@@ -7,6 +7,7 @@ import { salesApi } from '@/lib/api/sales'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { PaymentStatusBadge } from '@/components/sales/PaymentStatusBadge'
+import { PaymentOnly } from '@/components/common/PriceOnly'
 import { UpdatePaymentDialog } from '@/components/sales/UpdatePaymentDialog'
 import { formatDate, formatNumber, formatCurrency } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
@@ -148,12 +149,14 @@ export default function SalesPage() {
                   </div>
 
                   {sale.payment_status !== 'paid' && (
-                    <button
-                      onClick={() => setPaymentSale(sale)}
-                      className="mt-3 w-full rounded-xl bg-primary-50 py-2 text-xs font-bold text-primary-600 transition-colors hover:bg-primary-100"
-                    >
-                      تحديث الدفع
-                    </button>
+                    <PaymentOnly>
+                      <button
+                        onClick={() => setPaymentSale(sale)}
+                        className="mt-3 w-full rounded-xl bg-primary-50 py-2 text-xs font-bold text-primary-600 transition-colors hover:bg-primary-100"
+                      >
+                        تحديث الدفع
+                      </button>
+                    </PaymentOnly>
                   )}
                 </div>
               )
@@ -197,12 +200,14 @@ export default function SalesPage() {
                       </td>
                       <td className="px-5 py-3 text-start">
                         {sale.payment_status !== 'paid' && (
-                          <button
-                            onClick={() => setPaymentSale(sale)}
-                            className="text-xs font-medium text-primary-600 hover:underline"
-                          >
-                            تحديث الدفع
-                          </button>
+                          <PaymentOnly>
+                            <button
+                              onClick={() => setPaymentSale(sale)}
+                              className="text-xs font-medium text-primary-600 hover:underline"
+                            >
+                              تحديث الدفع
+                            </button>
+                          </PaymentOnly>
                         )}
                       </td>
                     </tr>

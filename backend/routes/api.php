@@ -67,57 +67,57 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     // ── V1-B: Flocks ─────────────────────────────────────────────────────────
     Route::prefix('flocks')->group(function (): void {
         Route::get('/',                      [FlockController::class, 'index']);
-        Route::post('/',                     [FlockController::class, 'store'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
+        Route::post('/',                     [FlockController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
         Route::get('/{flock}/today-summary', [FlockController::class, 'todaySummary']);
         Route::get('/{flock}/today_summary', [FlockController::class, 'todaySummary']); // Compatibility alias
         Route::get('/{flock}',               [FlockController::class, 'show']);
-        Route::put('/{flock}',               [FlockController::class, 'update'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
+        Route::put('/{flock}',               [FlockController::class, 'update'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
     });
 
     // ── V1-C: Mortalities ────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/mortalities')->group(function (): void {
         Route::get('/',  [MortalityController::class, 'index']);
-        Route::post('/', [MortalityController::class, 'store'])->middleware('farm.role:farm_admin');
+        Route::post('/', [MortalityController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
     });
 
     // ── V1-D: Inventory ───────────────────────────────────────────────────────
     Route::prefix('inventory')->group(function (): void {
         Route::get('/overview',      [InventoryController::class, 'overview']);   // كل البيانات في طلب واحد
         Route::get('/items',         [InventoryController::class, 'items']);
-        Route::post('/items',        [InventoryController::class, 'createItem'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
-        Route::put('/items/{item}',  [InventoryController::class, 'updateItem'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
-        Route::patch('/items/{item}/adjust-stock', [InventoryController::class, 'adjustStock'])->middleware('farm.role:farm_admin');
+        Route::post('/items',        [InventoryController::class, 'createItem'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
+        Route::put('/items/{item}',  [InventoryController::class, 'updateItem'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
+        Route::patch('/items/{item}/adjust-stock', [InventoryController::class, 'adjustStock'])->middleware('farm.role:farm_admin,supervisor');
         Route::get('/item-types',    [InventoryController::class, 'itemTypes']);
         Route::get('/stock',         [InventoryController::class, 'stock']);
         Route::get('/summary',       [InventoryController::class, 'summary']);
         Route::get('/warehouses',    [InventoryController::class, 'warehouses']);
         Route::get('/transactions',  [InventoryController::class, 'transactions']);
-        Route::post('/transactions', [InventoryController::class, 'addShipment'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
+        Route::post('/transactions', [InventoryController::class, 'addShipment'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
     });
 
     // ── Expenses ──────────────────────────────────────────────────────────────
     Route::get('/expenses',            [ExpenseController::class, 'index']);
-    Route::post('/expenses',           [ExpenseController::class, 'store'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
+    Route::post('/expenses',           [ExpenseController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
     Route::get('/expense-categories',  [ExpenseController::class, 'categories']);
 
     // ── V1-E: Feed Logs ───────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/feed-logs')->group(function (): void {
         Route::get('/',  [FeedLogController::class, 'index']);
-        Route::post('/', [FeedLogController::class, 'store'])->middleware('farm.role:farm_admin');
+        Route::post('/', [FeedLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
     });
 
     // ── V1-F: Medicine Logs ───────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/medicine-logs')->group(function (): void {
         Route::get('/',  [MedicineLogController::class, 'index']);
-        Route::post('/', [MedicineLogController::class, 'store'])->middleware('farm.role:farm_admin');
+        Route::post('/', [MedicineLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
     });
 
     // ── V1-G: Flock Expenses ──────────────────────────────────────────────────
-    Route::post('flocks/{flock}/expenses',      [FlockExpenseController::class, 'store'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
+    Route::post('flocks/{flock}/expenses',      [FlockExpenseController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
 
     // ── V1-H: Temperature Logs ────────────────────────────────────────────────
     Route::get('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'index']);
-    Route::post('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'store'])->middleware('farm.role:farm_admin');
+    Route::post('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
 
     // ── V1-I: Today Summary ───────────────────────────────────────────────────
     Route::get('flocks/{flock}/today-summary',  [FlockController::class, 'todaySummary']);
@@ -161,18 +161,18 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     // ── V1-M: Water Logs ─────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/water-logs')->group(function (): void {
         Route::get('/',  [\App\Http\Controllers\Api\WaterLog\WaterLogController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\Api\WaterLog\WaterLogController::class, 'store'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
+        Route::post('/', [\App\Http\Controllers\Api\WaterLog\WaterLogController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
     });
 
     // ── V1-N: Flock Notes ─────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/notes')->group(function (): void {
         Route::get('/',  [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'store'])->middleware('farm.role:farm_admin');
+        Route::post('/', [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
     });
 
     // ── V1-L: Sales ───────────────────────────────────────────────────────────
     Route::get('flocks/{flock}/sales',  [\App\Http\Controllers\Api\Sale\SaleController::class, 'index']);
-    Route::post('flocks/{flock}/sales', [\App\Http\Controllers\Api\Sale\SaleController::class, 'store'])->middleware(['farm.role:farm_admin', 'farm.noprice']);
+    Route::post('flocks/{flock}/sales', [\App\Http\Controllers\Api\Sale\SaleController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice']);
     Route::get('sales',                 [\App\Http\Controllers\Api\Sale\SaleController::class, 'indexAll']);
     Route::get('sales/{sale}',          [\App\Http\Controllers\Api\Sale\SaleController::class, 'show']);
     Route::patch('sales/{sale}/payment',[\App\Http\Controllers\Api\Sale\SaleController::class, 'updatePayment'])->middleware('farm.role:farm_admin');

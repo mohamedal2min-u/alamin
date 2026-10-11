@@ -26,7 +26,7 @@ export interface AdminFarmMember {
   email: string | null
   whatsapp: string | null
   status: 'active' | 'suspended'
-  role: 'farm_admin' | 'partner' | 'accountant' | null
+  role: 'farm_admin' | 'partner' | 'accountant' | 'supervisor' | null
 }
 
 export interface CreateFarmPayload {

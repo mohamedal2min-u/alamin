@@ -21,6 +21,12 @@ class CreateSaleAction
         }
 
         return DB::transaction(function () use ($flock, $userId, $data): Sale {
+            // قفل الفوج: بيعتان متزامنتان لا تتجاوزان معاً العدد المتبقي
+            $flock = Flock::whereKey($flock->id)->lockForUpdate()->firstOrFail();
+            if ($flock->status !== 'active') {
+                throw new \Exception('لا يمكن تسجيل بيع على فوج غير نشط', 422);
+            }
+
             $requestedBirds = array_sum(array_column($data['items'], 'birds_count'));
             $remainingCount = $flock->computeRemainingCount();
 

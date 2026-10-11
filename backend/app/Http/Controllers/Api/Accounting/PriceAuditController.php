@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\FlockWaterLog;
 use App\Models\PartnerShareAuditLog;
+use App\Models\PaymentAuditLog;
 use App\Models\PriceAuditLog;
 use App\Models\Sale;
 use Illuminate\Http\JsonResponse;
@@ -84,6 +85,41 @@ class PriceAuditController extends Controller
                 'at' => $log->created_at?->toIso8601String(),
             ])->values(),
             'meta' => ['total' => $page->total(), 'current_page' => $page->currentPage(), 'per_page' => $page->perPage()],
+        ]);
+    }
+
+    /**
+     * GET /accounting/payment-audit
+     * سجل كل تعديلات المدفوعات/المستلم (الأحدث أولاً).
+     */
+    public function payments(Request $request): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+        $perPage = min(100, max(1, (int) $request->query('per_page', 30)));
+
+        $page = PaymentAuditLog::with('user:id,name')
+            ->where('farm_id', $farmId)
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        $labels = $this->describeRecords($farmId, collect($page->items()));
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn (PaymentAuditLog $log) => [
+                'id' => $log->id,
+                'record_type' => $log->record_type,
+                'record_id' => $log->record_id,
+                'description' => $labels["{$log->record_type}-{$log->record_id}"] ?? null,
+                'old_amount' => $log->old_amount,
+                'new_amount' => $log->new_amount,
+                'by' => $log->user?->name,
+                'at' => $log->created_at?->toIso8601String(),
+            ])->values(),
+            'meta' => [
+                'total' => $page->total(),
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+            ],
         ]);
     }
 

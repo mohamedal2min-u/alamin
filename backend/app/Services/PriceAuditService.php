@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PaymentAuditLog;
 use App\Models\PriceAuditLog;
 use Illuminate\Support\Collection;
 
@@ -27,6 +28,25 @@ class PriceAuditService
             'record_id' => $recordId,
             'old_price' => $old,
             'new_price' => $new,
+        ]);
+    }
+
+    /**
+     * يسجّل تغيّر المدفوع/المستلم. لا يسجّل شيئاً إن لم تتغير القيمة.
+     */
+    public function recordPayment(int $farmId, ?int $userId, string $type, int $recordId, ?float $old, float $new): void
+    {
+        if ($old !== null && abs($old - $new) < 0.005) {
+            return;
+        }
+
+        PaymentAuditLog::create([
+            'farm_id' => $farmId,
+            'user_id' => $userId,
+            'record_type' => $type,
+            'record_id' => $recordId,
+            'old_amount' => $old,
+            'new_amount' => $new,
         ]);
     }
 

@@ -395,6 +395,7 @@ function EditItemModal({
     stock_quantity: item.total_quantity.toString(),
   })
   const [saving,  setSaving]  = useState(false)
+  const [stockReason, setStockReason] = useState('')
   const [error,   setError]   = useState<string | null>(null)
   const [contentUnitCustom, setContentUnitCustom] = useState(!CONTENT_UNIT_OPTIONS.includes(item.content_unit))
   const [inputUnitCustom, setInputUnitCustom] = useState(!INPUT_UNIT_OPTIONS.includes(item.input_unit || ''))
@@ -411,6 +412,9 @@ function EditItemModal({
     if (isNaN(parseFloat(form.unit_value)) || parseFloat(form.unit_value) <= 0) return setError('قيمة الوحدة يجب أن تكون رقماً أكبر من صفر')
     if (form.stock_quantity === '' || isNaN(parseFloat(form.stock_quantity)) || parseFloat(form.stock_quantity) < 0) return setError('رصيد المخزون يجب أن يكون رقماً صحيحاً')
 
+    // أي نقص في الرصيد يلزمه سبب مكتوب (يُسجَّل مع حركة التسوية)
+    if (parseFloat(form.stock_quantity) < item.total_quantity - 0.0001 && !stockReason.trim()) return setError('اكتب سبب تخفيض الرصيد (تالف، جرد، فاقد…)')
+
     setSaving(true)
     setError(null)
     try {
@@ -424,7 +428,7 @@ function EditItemModal({
       })
       const newStockQty = parseFloat(form.stock_quantity)
       if (Math.abs(newStockQty - item.total_quantity) > 0.0001) {
-        await inventoryApi.adjustStock(item.id, newStockQty, 'تصحيح يدوي لرصيد المخزون من شاشة تعديل الصنف')
+        await inventoryApi.adjustStock(item.id, newStockQty, stockReason.trim() || 'تصحيح يدوي لرصيد المخزون من شاشة تعديل الصنف')
       }
       onSuccess()
       onClose()
@@ -521,6 +525,12 @@ function EditItemModal({
             <Field label={`الرصيد الحالي (${item.content_unit})`} required>
               <input type="number" min="0" step="0.001" value={form.stock_quantity} onChange={set('stock_quantity')} className={inputCls} />
             </Field>
+            {parseFloat(form.stock_quantity) < item.total_quantity - 0.0001 && (
+              <div className="mt-3">
+                <label className="mb-1 block text-xs font-bold text-amber-700">سبب التخفيض (إلزامي)</label>
+                <input value={stockReason} onChange={(e) => setStockReason(e.target.value)} placeholder="مثال: جرد، تالف، فاقد" className={inputCls} />
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

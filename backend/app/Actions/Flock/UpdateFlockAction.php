@@ -22,6 +22,23 @@ class UpdateFlockAction
     public function execute(Flock $flock, int $userId, array $data): Flock
     {
         return DB::transaction(function () use ($flock, $userId, $data): Flock {
+            // قفل صف الفوج: إغلاقان متزامنان لا يوزّعان الأرباح مرتين، وحالته تُقرأ من القاعدة لا من الذاكرة
+            $flock = Flock::whereKey($flock->id)->lockForUpdate()->firstOrFail();
+
+            // الفوج المغلق/الملغى لا يُعدَّل إلا ملاحظاته — يُطبَّق قبل أي تعديل مالي (تكلفة الكتاكيت)
+            if (in_array($flock->status, ['closed', 'cancelled'], true)) {
+                // (status يبقى ليُرفض الانتقال من حالة نهائية برسالة واضحة)
+                $data = array_intersect_key($data, ['notes' => true, 'status' => true]);
+            }
+
+            // لا يجوز خفض العدد الأولي دون ما بيع ونفق فعلاً
+            if (isset($data['initial_count'])) {
+                $consumed = (int) $flock->mortalities()->sum('quantity') + (int) $flock->saleItems()->sum('birds_count');
+                if ((int) $data['initial_count'] < $consumed) {
+                    throw new \Exception("العدد الأولي لا يمكن أن يقل عن ما بيع ونفق فعلاً ({$consumed})", 422);
+                }
+            }
+
             // Recalculate total chick cost if price or count is changed
             $initialCount = $data['initial_count'] ?? $flock->initial_count;
             $unitPrice    = array_key_exists('chick_unit_price', $data) ? $data['chick_unit_price'] : $flock->chick_unit_price;

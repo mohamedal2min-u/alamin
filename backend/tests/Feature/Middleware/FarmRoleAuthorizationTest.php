@@ -136,12 +136,14 @@ class FarmRoleAuthorizationTest extends TestCase
 
         // يرى قائمة المراجعة والأسعار (قراءة)
         $this->as($supervisor, $farm)->getJson('/api/accounting/review-queue')->assertOk();
-        $this->as($supervisor, $farm)->getJson('/api/partners')->assertOk();
+        // قائمة الشركاء وبياناتهم (واتساب/بريد/حصص) ليست من شأنه
+        $this->as($supervisor, $farm)->getJson('/api/partners')->assertStatus(403);
 
         // لا يحدد سعراً ولا يسجّل دفعة ولا يعدّل الشركاء ولا الحسابات
         $this->as($supervisor, $farm)->patchJson('/api/accounting/review-queue/expense/1', ['unit_price' => 5])->assertStatus(403);
         $this->as($supervisor, $farm)->patchJson('/api/accounting/review-queue/expense/1', ['paid_amount' => 5])->assertStatus(403);
-        $this->as($supervisor, $farm)->patchJson('/api/partners/1/share', ['share_percent' => 10])->assertStatus(403);
+        $partner = \App\Models\Partner::create(['farm_id' => $farm->id, 'name' => 'شريك', 'whatsapp' => '0999', 'status' => 'active']);
+        $this->as($supervisor, $farm)->patchJson("/api/partners/{$partner->id}/share", ['share_percent' => 10])->assertStatus(403);
         $this->as($supervisor, $farm)->patchJson('/api/sales/1/payment', [])->assertStatus(403);
         $this->as($supervisor, $farm)->getJson('/api/workers')->assertStatus(403);
         $this->as($supervisor, $farm)->getJson('/api/accounting/price-audit')->assertStatus(403);

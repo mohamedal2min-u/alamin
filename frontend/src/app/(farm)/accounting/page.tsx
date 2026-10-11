@@ -1,17 +1,23 @@
 'use client'
 
 import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Bird } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
-import { AccountingReportTab } from '@/components/reports/tabs/AccountingReportTab'
 import { ReviewQueueTab } from '@/components/accounting/ReviewQueueTab'
 import { PriceAuditTab } from '@/components/accounting/PriceAuditTab'
 import { AccountantBoard } from '@/components/accounting/AccountantBoard'
 import { useCurrentRole, useIsSupervisor } from '@/lib/roles'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { reportsApi } from '@/lib/api/reports'
+
+// مكتبة الرسوم ثقيلة: تُحمَّل عند الحاجة فقط
+const AccountingReportTab = dynamic(
+  () => import('@/components/reports/tabs/AccountingReportTab').then((m) => m.AccountingReportTab),
+  { ssr: false, loading: () => <div className="h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" /> },
+)
 
 function AccountingPageInner() {
   const isSupervisor = useIsSupervisor()

@@ -13,19 +13,21 @@ interface Props {
 export function WorkerTaskChecklist({ summary, onTaskClick }: Props) {
   const tasks = useMemo(() => {
     return [
-      { label: 'النفوق', done: summary.mortalities.entries.length > 0, count: summary.mortalities.total },
-      { label: 'العلف', done: summary.feed.entries.length > 0, count: summary.feed.total },
-      { label: 'الأدوية', done: summary.medicines.entries.length > 0, count: summary.medicines.total },
+      { type: 'mortality', label: 'النفوق', done: summary.mortalities.entries.length > 0, count: summary.mortalities.total },
+      { type: 'feed', label: 'العلف', done: summary.feed.entries.length > 0, count: summary.feed.total },
+      { type: 'medicine', label: 'الأدوية', done: summary.medicines.entries.length > 0, count: summary.medicines.total },
     ]
   }, [summary])
 
   const completed = tasks.filter(t => t.done).length
   const total = tasks.length
   const percent = Math.round((completed / total) * 100)
+  // الضغط على البطاقة يفتح أول مهمة لم تُسجَّل بعد (لا شيء إن اكتملت كلها)
+  const nextPending = tasks.find((t) => !t.done)
 
   return (
     <button 
-      onClick={onTaskClick ? () => onTaskClick('summary') : undefined}
+      onClick={onTaskClick && nextPending ? () => onTaskClick(nextPending.type) : undefined}
       className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 active:scale-[0.98] touch-manipulation focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all"
       dir="rtl"
     >

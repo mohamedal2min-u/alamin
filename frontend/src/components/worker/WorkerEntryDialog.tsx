@@ -235,7 +235,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
     },
   }
 
-  const currentTheme = activeTab ? themes[activeTab] : themes.medicine
+  const currentTheme = (activeTab && themes[activeTab]) || themes.medicine
   const dynamicInputClass = cn(
     'w-full rounded-[1.25rem] border border-primary-100 bg-white px-4 py-3.5 text-sm font-bold text-primary-950',
     'transition-all duration-300 placeholder:text-primary-300',

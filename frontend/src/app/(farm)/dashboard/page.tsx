@@ -131,6 +131,7 @@ export default function DashboardPage() {
   }
 
   const handleTaskClick = (type: 'mortality' | 'feed' | 'medicine' | 'temp' | 'expense' | 'water', extra?: Record<string, unknown>) => {
+    if (!['mortality', 'feed', 'medicine', 'temp', 'expense', 'water'].includes(type)) return
     setEntryExtra(extra ?? null)
     setActiveEntryTab(type)
   }

@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import React, { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/lib/api/reports'
 import { useFarmStore } from '@/stores/farm.store'
@@ -8,14 +9,17 @@ import { useCurrentRole } from '@/lib/roles'
 import { KpiSection } from '@/components/reports/KpiSection'
 import { FiltersBar } from '@/components/reports/FiltersBar'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
-import { FlockReportTab } from '@/components/reports/tabs/FlockReportTab'
-import { AccountingReportTab } from '@/components/reports/tabs/AccountingReportTab'
 import { InventoryReportTab } from '@/components/reports/tabs/InventoryReportTab'
 import { PartnersReportTab } from '@/components/reports/tabs/PartnersReportTab'
 import { WorkersReportTab } from '@/components/reports/tabs/WorkersReportTab'
 import { DailyReportTab } from '@/components/reports/tabs/DailyReportTab'
 import { Card } from '@/components/ui/Card'
 import { Loader2, Package, Users, CalendarDays, UserCheck } from 'lucide-react'
+
+// مكتبة الرسوم (recharts) ثقيلة: تُحمَّل عند فتح التبويب فقط
+const TabLoading = () => <div className="h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+const FlockReportTab = dynamic(() => import('@/components/reports/tabs/FlockReportTab').then((m) => m.FlockReportTab), { ssr: false, loading: TabLoading })
+const AccountingReportTab = dynamic(() => import('@/components/reports/tabs/AccountingReportTab').then((m) => m.AccountingReportTab), { ssr: false, loading: TabLoading })
 
 export default function ReportsPage() {
   // تقارير الشركاء والعمال (أرصدة وأجور) لمدير المزرعة وحده

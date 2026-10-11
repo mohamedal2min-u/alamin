@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { AlertTriangle, Boxes, Check, Loader2, Package, Pill, Plus, Search, Wheat } from 'lucide-react'
+import { AlertTriangle, Check, Loader2, Package, Pill, Plus, Search, Wheat } from 'lucide-react'
 import { Dialog } from '@/components/ui/Dialog'
 import { inventoryApi } from '@/lib/api/inventory'
 import type { ItemType, StockItem, Warehouse } from '@/lib/api/inventory'
@@ -42,8 +42,7 @@ interface Props {
 
 export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Props) {
   const [query, setQuery] = useState('')
-  const [qtyItem, setQtyItem] = useState<StockItem | null>(null)
-  const [newSection, setNewSection] = useState<Section | null>(null)
+  const [shipment, setShipment] = useState<{ section: Section; item: StockItem | null } | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -75,10 +74,10 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
                 <span className="text-xs font-bold text-slate-400">({list.length})</span>
               </h2>
               <button
-                onClick={() => setNewSection(sec.key)}
+                onClick={() => setShipment({ section: sec.key, item: null })}
                 className="flex items-center gap-1 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-bold text-primary-700 active:scale-95 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300"
               >
-                <Plus className="h-3.5 w-3.5" /> صنف جديد
+                <Plus className="h-3.5 w-3.5" /> إضافة حمولة
               </button>
             </div>
 
@@ -89,7 +88,7 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
             ) : (
               <ul className="space-y-2.5">
                 {list.map((item) => (
-                  <ItemCard key={item.id} item={item} onAdd={() => setQtyItem(item)} />
+                  <ItemCard key={item.id} item={item} onAdd={() => setShipment({ section: sectionOf(item), item })} />
                 ))}
               </ul>
             )}
@@ -97,19 +96,13 @@ export function SimpleInventory({ items, warehouses, itemTypes, onChanged }: Pro
         )
       })}
 
-      <AddQuantitySheet
-        item={qtyItem}
-        warehouses={warehouses}
-        onClose={() => setQtyItem(null)}
-        onDone={() => { setQtyItem(null); onChanged() }}
-      />
-      <NewItemSheet
-        section={newSection}
+      <ShipmentSheet
+        target={shipment}
         items={items}
         itemTypes={itemTypes}
         warehouses={warehouses}
-        onClose={() => setNewSection(null)}
-        onDone={() => { setNewSection(null); onChanged() }}
+        onClose={() => setShipment(null)}
+        onDone={() => { setShipment(null); onChanged() }}
       />
     </div>
   )
@@ -142,227 +135,214 @@ function ItemCard({ item, onAdd }: { item: StockItem; onAdd: () => void }) {
       <button
         onClick={onAdd}
         className="flex h-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl bg-primary-600 px-4 text-white shadow-sm active:scale-95"
-        aria-label={`إضافة كمية إلى ${item.name}`}
+        aria-label={`إضافة حمولة إلى ${item.name}`}
       >
         <Plus className="h-5 w-5" />
-        <span className="text-[10px] font-bold">إضافة كمية</span>
+        <span className="text-[10px] font-bold">إضافة حمولة</span>
       </button>
     </li>
   )
 }
 
-// ── إضافة كمية لصنف موجود ─────────────────────────────────────────────────────
-function AddQuantitySheet({ item, warehouses, onClose, onDone }: { item: StockItem | null; warehouses: Warehouse[]; onClose: () => void; onDone: () => void }) {
+// ── إضافة حمولة (صنف موجود أو جديد في نموذج واحد) ─────────────────────────────
+function ShipmentSheet({ target, items, itemTypes, warehouses, onClose, onDone }: {
+  target: { section: Section; item: StockItem | null } | null
+  items: StockItem[]; itemTypes: ItemType[]; warehouses: Warehouse[]
+  onClose: () => void; onDone: () => void
+}) {
+  const [name, setName] = useState('')
   const [qty, setQty] = useState('')
   const [date, setDate] = useState(today())
   const [note, setNote] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const close = () => { setQty(''); setNote(''); setError(null); setDate(today()); onClose() }
-  const q = num(qty)
-  const isFeed = item?.type_code === 'feed'
-  const kg = item && isFeed && q > 0 ? q * item.unit_value : null
-
-  const save = async () => {
-    if (!item) return
-    if (!(q > 0)) { setError('اكتب الكمية'); return }
-    const warehouse = warehouses[0]
-    if (!warehouse) { setError('لا يوجد مستودع، تواصل مع مدير النظام'); return }
-    setSaving(true); setError(null)
-    try {
-      await inventoryApi.addShipment({
-        item_id: item.id,
-        warehouse_id: warehouse.id,
-        transaction_date: date,
-        original_quantity: q,
-        notes: note.trim() || null,
-      })
-      toast.success(`تمت إضافة ${formatNumber(q)} ${item.input_unit} إلى ${item.name}`)
-      setQty(''); setNote('')
-      onDone()
-    } catch (e: unknown) {
-      setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'تعذر الحفظ، حاول مرة أخرى')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Dialog isOpen={!!item} onClose={close} title={item ? `إضافة كمية — ${item.name}` : ''}>
-      {item && (
-        <div className="space-y-4 p-5" dir="rtl">
-          <p className="text-sm text-slate-500">
-            الموجود الآن: <strong className="text-slate-800 dark:text-slate-100">{formatNumber(item.total_quantity)} {item.content_unit}</strong>
-          </p>
-
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-500">الكمية المضافة ({item.input_unit})</label>
-            <input
-              autoFocus
-              inputMode="decimal"
-              value={qty}
-              onChange={(e) => setQty(toEnglishDigits(e.target.value))}
-              placeholder="0"
-              className="h-14 w-full rounded-2xl border border-slate-300 px-4 text-2xl font-extrabold text-slate-800 outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
-            {kg != null && (
-              <p className="mt-1.5 text-xs font-semibold text-primary-600">= {formatNumber(kg)} {item.content_unit}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">التاريخ</label>
-              <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">ملاحظة (اختياري)</label>
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="مثال: من المورد"
-                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800" />
-            </div>
-          </div>
-
-          <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-500 dark:bg-slate-800">السعر يحدده المحاسب لاحقاً.</p>
-          {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
-
-          <button onClick={save} disabled={saving}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 text-base font-bold text-white active:scale-[0.99] disabled:opacity-60">
-            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} إضافة
-          </button>
-        </div>
-      )}
-    </Dialog>
-  )
-}
-
-// ── صنف جديد (نموذج واحد قصير) ────────────────────────────────────────────────
-function NewItemSheet({ section, items, itemTypes, warehouses, onClose, onDone }: {
-  section: Section | null; items: StockItem[]; itemTypes: ItemType[]; warehouses: Warehouse[]; onClose: () => void; onDone: () => void
-}) {
-  const [name, setName] = useState('')
   const [unit, setUnit] = useState('')
   const [bagKg, setBagKg] = useState('50')
   const [otherTypeId, setOtherTypeId] = useState('')
-  const [qty, setQty] = useState('')
+  const [confirmNew, setConfirmNew] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const close = () => { setName(''); setUnit(''); setBagKg('50'); setOtherTypeId(''); setQty(''); setError(null); onClose() }
+  const section = target?.section ?? null
+  const locked = target?.item ?? null
+  const isFeed = section === 'feed'
+
+  const close = () => {
+    setName(''); setQty(''); setNote(''); setUnit(''); setBagKg('50'); setOtherTypeId('')
+    setConfirmNew(false); setError(null); setDate(today()); onClose()
+  }
+
+  const typed = name.trim().toLowerCase()
+  const sectionItems = section ? items.filter((i) => sectionOf(i) === section) : []
+  const matched = locked ?? (typed ? sectionItems.find((i) => i.name.trim().toLowerCase() === typed) : undefined)
+  const suggestions = !locked && typed && !matched ? sectionItems.filter((i) => i.name.toLowerCase().includes(typed)).slice(0, 4) : []
+  const isNew = !matched && typed !== ''
 
   const otherTypes = itemTypes.filter((t) => t.code && t.code !== 'feed' && t.code !== 'medicine')
-  const duplicate = items.find((i) => i.name.trim().toLowerCase() === name.trim().toLowerCase() && name.trim() !== '')
-  const sectionTitle = SECTIONS.find((s) => s.key === section)?.title ?? ''
   const typeId = section === 'feed'
     ? itemTypes.find((t) => t.code === 'feed')?.id
     : section === 'medicine'
       ? itemTypes.find((t) => t.code === 'medicine')?.id
       : otherTypeId ? Number(otherTypeId) : otherTypes.length === 1 ? otherTypes[0].id : undefined
 
-  const save = async () => {
-    if (!section) return
-    if (!name.trim()) { setError('اكتب اسم الصنف'); return }
-    if (duplicate) { setError('هذا الصنف موجود بالفعل — استعمل زر «إضافة كمية» بجانبه'); return }
-    if (section !== 'feed' && !unit) { setError('اختر الوحدة'); return }
-    if (section === 'feed' && !(num(bagKg) > 0)) { setError('اكتب وزن الكيس بالكيلو'); return }
-    if (!typeId) { setError('اختر نوع الصنف'); return }
+  const q = num(qty)
+  const shownUnit = matched ? matched.input_unit : isFeed ? 'كيس' : unit
+  const kg = matched && matched.type_code === 'feed' && q > 0 ? q * matched.unit_value : null
 
-    const isFeed = section === 'feed'
-    setSaving(true); setError(null)
+  const validate = (): boolean => {
+    if (!matched && !name.trim()) { setError('اكتب اسم الصنف'); return false }
+    if (!(q > 0)) { setError('اكتب الكمية'); return false }
+    if (!warehouses[0]) { setError('لا يوجد مستودع، تواصل مع مدير النظام'); return false }
+    if (isNew) {
+      if (!isFeed && !unit) { setError('اختر الوحدة'); return false }
+      if (isFeed && !(num(bagKg) > 0)) { setError('اكتب وزن الكيس بالكيلو'); return false }
+      if (!typeId) { setError('اختر نوع الصنف'); return false }
+    }
+    return true
+  }
+
+  const submit = async () => {
+    setError(null)
+    if (!validate()) return
+    if (isNew && !confirmNew) { setConfirmNew(true); return }   // تأكيد أنه صنف جديد
+    setSaving(true)
     try {
-      const created = await inventoryApi.createItem({
-        item_type_id: typeId,
-        name: name.trim(),
-        input_unit: isFeed ? 'كيس' : unit,
-        unit_value: isFeed ? num(bagKg) : 1,
-        content_unit: isFeed ? 'كيلو' : unit,
-        minimum_stock: null,
-        notes: null,
-      })
-
-      const q = num(qty)
-      if (q > 0 && warehouses[0]) {
-        await inventoryApi.addShipment({
-          item_id: created.data.id,
-          warehouse_id: warehouses[0].id,
-          transaction_date: today(),
-          original_quantity: q,
+      let itemId = matched?.id
+      if (!itemId) {
+        const created = await inventoryApi.createItem({
+          item_type_id: typeId!,
+          name: name.trim(),
+          input_unit: isFeed ? 'كيس' : unit,
+          unit_value: isFeed ? num(bagKg) : 1,
+          content_unit: isFeed ? 'كيلو' : unit,
+          minimum_stock: null,
+          notes: null,
         })
+        itemId = created.data.id
       }
-      toast.success(q > 0 ? `تمت إضافة «${name.trim()}» بكمية ${formatNumber(q)}` : `تمت إضافة «${name.trim()}»`)
+      await inventoryApi.addShipment({
+        item_id: itemId,
+        warehouse_id: warehouses[0].id,
+        transaction_date: date,
+        original_quantity: q,
+        notes: note.trim() || null,
+      })
+      toast.success(`تمت إضافة ${formatNumber(q)} ${shownUnit} إلى ${matched?.name ?? name.trim()}`)
       close()
       onDone()
     } catch (e: unknown) {
       setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'تعذر الحفظ، حاول مرة أخرى')
+      setConfirmNew(false)
     } finally {
       setSaving(false)
     }
   }
 
+  const sectionTitle = SECTIONS.find((s) => s.key === section)?.title ?? ''
+  const field = 'w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800'
+
   return (
-    <Dialog isOpen={!!section} onClose={close} title={section ? `صنف جديد — ${sectionTitle}` : ''}>
+    <Dialog isOpen={!!target} onClose={close} title={section ? `إضافة حمولة — ${locked ? locked.name : sectionTitle}` : ''}>
       {section && (
         <div className="space-y-4 p-5" dir="rtl">
-          {section === 'other' && otherTypes.length > 1 && (
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">النوع</label>
-              <select value={otherTypeId} onChange={(e) => setOtherTypeId(e.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800">
-                <option value="">اختر النوع</option>
-                {otherTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-500">اسم الصنف</label>
-            <input autoFocus value={name} onChange={(e) => setName(e.target.value)}
-              placeholder={section === 'feed' ? 'مثال: علف بادئ' : section === 'medicine' ? 'مثال: لقاح نيوكاسل' : 'اسم الصنف'}
-              className="h-12 w-full rounded-xl border border-slate-300 px-3 text-base font-semibold outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800" />
-            {duplicate && (
-              <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-amber-600">
-                <AlertTriangle className="h-3.5 w-3.5" /> «{duplicate.name}» موجود بالفعل — أضف إليه كمية بدل صنف جديد.
-              </p>
-            )}
-          </div>
-
-          {section === 'feed' ? (
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">وزن الكيس الواحد (كيلو)</label>
-              <input inputMode="decimal" value={bagKg} onChange={(e) => setBagKg(toEnglishDigits(e.target.value))}
-                className="h-12 w-full rounded-xl border border-slate-300 px-3 text-base font-bold outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800" />
-              <p className="mt-1 text-[11px] text-slate-400">يُحسب المخزون بالكيلو تلقائياً من عدد الأكياس.</p>
-            </div>
+          {locked ? (
+            <p className="text-sm text-slate-500">
+              الموجود الآن: <strong className="text-slate-800 dark:text-slate-100">{formatNumber(locked.total_quantity)} {locked.content_unit}</strong>
+            </p>
           ) : (
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-500">الوحدة</label>
-              <div className="flex flex-wrap gap-2">
-                {UNIT_CHIPS[section].map((u) => (
-                  <button key={u} type="button" onClick={() => setUnit(u)}
-                    className={cn('rounded-full border px-4 py-2 text-sm font-bold transition-colors',
-                      unit === u ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300')}>
-                    {u}
-                  </button>
-                ))}
-              </div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">اسم الصنف</label>
+              <input autoFocus value={name} onChange={(e) => { setName(e.target.value); setConfirmNew(false) }}
+                placeholder={isFeed ? 'مثال: علف بادئ' : section === 'medicine' ? 'مثال: لقاح نيوكاسل' : 'اسم الصنف'}
+                className={cn(field, 'h-12 text-base font-semibold')} />
+              {suggestions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {suggestions.map((s) => (
+                    <button key={s.id} type="button" onClick={() => setName(s.name)}
+                      className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {matched && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-emerald-600"><Check className="h-3.5 w-3.5" /> صنف موجود — الحمولة ستُضاف إليه.</p>}
+              {isNew && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-amber-600"><AlertTriangle className="h-3.5 w-3.5" /> هذا الاسم غير موجود في المخزون، سيُعتبر صنفاً جديداً.</p>}
             </div>
           )}
 
+          {isNew && (
+            <>
+              {section === 'other' && otherTypes.length > 1 && (
+                <select value={otherTypeId} onChange={(e) => setOtherTypeId(e.target.value)} className={cn(field, 'h-11 bg-white text-sm')}>
+                  <option value="">اختر النوع</option>
+                  {otherTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              )}
+              {isFeed ? (
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-500">وزن الكيس الواحد (كيلو)</label>
+                  <input inputMode="decimal" value={bagKg} onChange={(e) => setBagKg(toEnglishDigits(e.target.value))} className={cn(field, 'h-12 text-base font-bold')} />
+                </div>
+              ) : (
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-500">الوحدة</label>
+                  <div className="flex flex-wrap gap-2">
+                    {UNIT_CHIPS[section as Exclude<Section, 'feed'>].map((u) => (
+                      <button key={u} type="button" onClick={() => setUnit(u)}
+                        className={cn('rounded-full border px-4 py-2 text-sm font-bold transition-colors',
+                          unit === u ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300')}>
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-500">
-              الكمية الحالية {section === 'feed' ? '(بالأكياس)' : unit ? `(${unit})` : ''} — اختياري
-            </label>
+            <label className="mb-1 block text-xs font-semibold text-slate-500">الكمية{shownUnit ? ` (${shownUnit})` : ''}</label>
             <input inputMode="decimal" value={qty} onChange={(e) => setQty(toEnglishDigits(e.target.value))} placeholder="0"
-              className="h-12 w-full rounded-xl border border-slate-300 px-3 text-lg font-bold outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800" />
+              autoFocus={!!locked}
+              className="h-14 w-full rounded-2xl border border-slate-300 px-4 text-2xl font-extrabold text-slate-800 outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
+            {kg != null && <p className="mt-1.5 text-xs font-semibold text-primary-600">= {formatNumber(kg)} {matched!.content_unit}</p>}
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">التاريخ</label>
+              <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className={cn(field, 'h-11 text-sm')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">ملاحظة (اختياري)</label>
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="مثال: من المورد" className={cn(field, 'h-11 text-sm')} />
+            </div>
+          </div>
+
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-500 dark:bg-slate-800">السعر يحدده المحاسب لاحقاً.</p>
+
+          {confirmNew && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 dark:border-amber-700 dark:bg-amber-900/20">
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                «{name.trim()}» غير موجود في المخزون. هل هو صنف جديد فعلاً؟
+              </p>
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">إن كان مكتوباً بشكل مختلف عن صنف موجود، ارجع واختره من الاقتراحات.</p>
+            </div>
+          )}
 
           {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
 
-          <button onClick={save} disabled={saving}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 text-base font-bold text-white active:scale-[0.99] disabled:opacity-60">
-            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Boxes className="h-5 w-5" />} حفظ الصنف
-          </button>
+          <div className="flex gap-2">
+            {confirmNew && (
+              <button onClick={() => setConfirmNew(false)} disabled={saving}
+                className="h-12 flex-1 rounded-2xl border border-slate-300 text-base font-bold text-slate-600 dark:border-slate-600 dark:text-slate-300">
+                رجوع
+              </button>
+            )}
+            <button onClick={submit} disabled={saving}
+              className="flex h-12 flex-[2] items-center justify-center gap-2 rounded-2xl bg-primary-600 text-base font-bold text-white active:scale-[0.99] disabled:opacity-60">
+              {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+              {confirmNew ? 'نعم، صنف جديد — أضفه' : 'إضافة الحمولة'}
+            </button>
+          </div>
         </div>
       )}
     </Dialog>

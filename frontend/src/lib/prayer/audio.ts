@@ -1,56 +1,7 @@
 'use client'
 
-// ── ملف الأذان المخصص: يُحفظ على الجهاز نفسه (IndexedDB) ولا يُرفع للسيرفر ───────────────
-const DB = 'alamin-prayer-audio'
-const STORE = 'files'
-const KEY = 'custom'
-export const MAX_AUDIO_BYTES = 8 * 1024 * 1024
-
-function open(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1)
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
-
-export async function saveCustomAudio(file: Blob): Promise<void> {
-  const db = await open()
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite')
-    tx.objectStore(STORE).put(file, KEY)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-export async function loadCustomAudio(): Promise<Blob | null> {
-  try {
-    const db = await open()
-    return await new Promise((resolve, reject) => {
-      const req = db.transaction(STORE).objectStore(STORE).get(KEY)
-      req.onsuccess = () => resolve((req.result as Blob) ?? null)
-      req.onerror = () => reject(req.error)
-    })
-  } catch {
-    return null
-  }
-}
-
-export async function clearCustomAudio(): Promise<void> {
-  try {
-    const db = await open()
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite')
-      tx.objectStore(STORE).delete(KEY)
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
-  } catch {
-    /* لا شيء */
-  }
-}
+import { MIN_VOLUME } from './store'
+import { voiceById } from './voices'
 
 // ── التشغيل ──────────────────────────────────────────────────────────────────
 let current: { stop: () => void } | null = null
@@ -111,33 +62,46 @@ function playTone(volume: number): { stop: () => void; done: Promise<void> } {
 }
 
 export interface PlayOptions {
-  sound: 'tone' | 'custom'
+  voice: string
   volume: number
 }
 
-/** يشغّل الأذان. يرجع false إن مُنع التشغيل (سياسة المتصفح) أو لا يوجد ملف مخصص. */
+/** يشغّل الأذان بالصوت المختار. يرجع false إن مُنع التشغيل (سياسة المتصفح)؛ وإن تعذّر الملف تُشغَّل نغمة بدلاً منه. */
 export async function playAdhan(opts: PlayOptions): Promise<boolean> {
   stopAdhan()
+  const volume = Math.max(MIN_VOLUME, Math.min(1, opts.volume))
   try {
-    if (opts.sound === 'custom') {
-      const blob = await loadCustomAudio()
-      if (blob) {
-        const url = URL.createObjectURL(blob)
-        const audio = new Audio(url)
-        audio.volume = Math.max(0, Math.min(1, opts.volume))
-        current = { stop: () => { audio.pause(); URL.revokeObjectURL(url) } }
-        audio.addEventListener('ended', () => { URL.revokeObjectURL(url); current = null })
-        await audio.play()
-        return true
-      }
-      // لا ملف: ننتقل للنغمة
+    const audio = new Audio(voiceById(opts.voice).file)
+    audio.volume = volume
+    current = { stop: () => audio.pause() }
+    audio.addEventListener('ended', () => { current = null })
+    try {
+      await audio.play()
+      return true
+    } catch (e) {
+      if ((e as DOMException)?.name === 'NotAllowedError') { current = null; return false }
+      // الملف غير متاح (بلا اتصال مثلاً): نغمة التنبيه بدلاً منه
     }
-    const tone = playTone(opts.volume)
+    const tone = playTone(volume)
     current = { stop: tone.stop }
     void tone.done.then(() => { current = null })
     return true
   } catch {
     current = null
     return false
+  }
+}
+
+// ── نغمات التعديلات: لكل طرف نغمة مختلفة ───────────────────────────────────
+export type EditKind = 'accountant_edit' | 'manager_edit'
+
+/** نغمة قصيرة عند وصول إشعار تعديل والتطبيق مفتوح */
+export function playEditTone(kind: EditKind) {
+  try {
+    const audio = new Audio(`/adhan/${kind}.wav`)
+    audio.volume = 0.9
+    void audio.play().catch(() => {})
+  } catch {
+    /* لا شيء */
   }
 }

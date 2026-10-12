@@ -13,7 +13,7 @@ class PushNotificationService
      *
      * @param  \Illuminate\Support\Collection|array|User  $users
      */
-    public function sendNotification($users, string $title, string $body, array $data = []): void
+    public function sendNotification($users, string $title, string $body, array $data = [], string $channel = 'default', string $sound = 'default'): void
     {
         if ($users instanceof User) {
             $users = collect([$users]);
@@ -28,7 +28,7 @@ class PushNotificationService
         }
 
         foreach ($tokens as $token) {
-            $this->sendToToken($token, $title, $body, $data);
+            $this->sendToToken($token, $title, $body, $data, $channel, $sound);
         }
     }
 
@@ -37,7 +37,7 @@ class PushNotificationService
      * Note: This is a placeholder for Firebase HTTP v1 implementation.
      * It requires a service account JSON and OAuth2 token.
      */
-    protected function sendToToken(string $token, string $title, string $body, array $data = []): void
+    protected function sendToToken(string $token, string $title, string $body, array $data = [], string $channel = 'default', string $sound = 'default'): void
     {
         try {
             $projectId = 'alamin-1e1ca'; // Hardcoded from user provided JSON
@@ -55,8 +55,8 @@ class PushNotificationService
                         'android' => [
                             'priority' => 'high',
                             'notification' => [
-                                'sound' => 'default',
-                                'channel_id' => 'default'
+                                'sound' => $sound,
+                                'channel_id' => $channel
                             ]
                         ]
                     ]

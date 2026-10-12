@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BellRing, Square, Volume2 } from 'lucide-react'
 import { usePrayerStore } from '@/lib/prayer/store'
-import { upcomingPrayers, REGION_NAME, type PrayerCalcSettings, type PrayerKey } from '@/lib/prayer/times'
+import { upcomingPrayers, REGION_NAME, FIXED_CALC } from '@/lib/prayer/times'
 import { playAdhan, stopAdhan, unlockAudio } from '@/lib/prayer/audio'
 import { isNativeApp, syncNativeSchedule } from '@/lib/prayer/native'
 
@@ -12,12 +12,7 @@ import { isNativeApp, syncNativeSchedule } from '@/lib/prayer/native'
  * أثناء فتح التطبيق، ويجدول إشعارات الأذان على تطبيق الأندرويد ليصل والتطبيق مغلق.
  */
 export function PrayerScheduler() {
-  const enabled = usePrayerStore((s) => s.enabled)
-  const prayers = usePrayerStore((s) => s.prayers)
-  const method = usePrayerStore((s) => s.method)
-  const hanafiAsr = usePrayerStore((s) => s.hanafiAsr)
-  const adjust = usePrayerStore((s) => s.adjust)
-  const sound = usePrayerStore((s) => s.sound)
+  const voice = usePrayerStore((s) => s.voice)
   const volume = usePrayerStore((s) => s.volume)
 
   const [ringing, setRinging] = useState<{ label: string } | null>(null)
@@ -25,17 +20,13 @@ export function PrayerScheduler() {
   const nativeOk = useRef(false)
   const lastFired = useRef(0)
 
-  const calc: PrayerCalcSettings = { method, hanafiAsr, adjust }
-  const calcKey = JSON.stringify(calc)
-  const prayersKey = JSON.stringify(prayers)
-
   const fire = useCallback(async (label: string) => {
-    const ok = await playAdhan({ sound, volume })
+    const ok = await playAdhan({ voice, volume })
     if (ok) { setBlocked(null); setRinging({ label }) } else { setBlocked({ label }) }
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try { new Notification(`حان الآن وقت صلاة ${label}`, { body: `حسب توقيت ${REGION_NAME}`, tag: 'prayer' }) } catch { /* بعض الأجهزة تمنعه */ }
     }
-  }, [sound, volume])
+  }, [voice, volume])
 
   // فتح قفل الصوت بأول لمسة في التطبيق
   useEffect(() => {
@@ -47,21 +38,17 @@ export function PrayerScheduler() {
   // جدولة الإشعارات الأصلية (أندرويد)
   useEffect(() => {
     if (!isNativeApp()) return
-    const parsed = JSON.parse(calcKey) as PrayerCalcSettings
-    void syncNativeSchedule(enabled, JSON.parse(prayersKey), parsed).then((r) => { nativeOk.current = r === 'ok' })
-  }, [enabled, calcKey, prayersKey])
+    void syncNativeSchedule(FIXED_CALC).then((r) => { nativeOk.current = r === 'ok' })
+  }, [])
 
   // مؤقّت داخل التطبيق: الصلاة القادمة المفعّلة
   useEffect(() => {
-    if (!enabled) return
-    const parsed = JSON.parse(calcKey) as PrayerCalcSettings
-    const on = JSON.parse(prayersKey) as Record<PrayerKey, boolean>
     let timer: ReturnType<typeof setTimeout> | undefined
 
     const arm = () => {
       clearTimeout(timer)
       const now = new Date()
-      const next = upcomingPrayers(new Date(now.getTime() - 90_000), parsed, 2).find((p) => on[p.key] && p.at.getTime() > lastFired.current)
+      const next = upcomingPrayers(new Date(now.getTime() - 90_000), FIXED_CALC, 2).find((p) => p.at.getTime() > lastFired.current)
       if (!next) return
       const delay = Math.max(0, next.at.getTime() - Date.now())
       timer = setTimeout(() => {
@@ -76,7 +63,7 @@ export function PrayerScheduler() {
     const onVisible = () => { if (document.visibilityState === 'visible') arm() }
     document.addEventListener('visibilitychange', onVisible)
     return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible) }
-  }, [enabled, calcKey, prayersKey, fire])
+  }, [fire])
 
   if (!ringing && !blocked) return null
 

@@ -181,4 +181,30 @@ class AccountingProtectionTest extends TestCase
         $this->assertEqualsWithDelta(2.0, (float) WarehouseItem::where('item_id', $item->id)->first()->average_cost, 0.0001); // 100 / 50 كغ
         $this->assertEqualsWithDelta(200.0, (float) $consumption->fresh()->total_amount, 0.01);                              // 2 كيس × 100
     }
+
+    public function test_edits_notify_the_other_side_with_the_right_tone_kind(): void
+    {
+        $manager = $this->member('farm_admin');
+        $accountant = $this->member('accountant');
+        $supervisor = $this->member('supervisor');
+        $this->farm->update(['admin_user_id' => $manager->id]);
+        $e = $this->expense();
+
+        // المحاسب يسعّر → المدير والمشرف يُبلَّغان بنغمة المحاسب
+        $this->as($accountant)->patchJson("/api/accounting/review-queue/expense/{$e->id}", ['unit_price' => 7])->assertOk();
+        $this->assertSame(1, \App\Models\UserNotification::where('user_id', $manager->id)->where('kind', 'accountant_edit')->count());
+        $this->assertSame(1, \App\Models\UserNotification::where('user_id', $supervisor->id)->where('kind', 'accountant_edit')->count());
+        $this->assertSame(0, \App\Models\UserNotification::where('user_id', $accountant->id)->count());
+
+        // المدير يضيف مصروفاً → المحاسب يُبلَّغ بنغمة المدير
+        $flock = Flock::factory()->create(['farm_id' => $this->farm->id, 'status' => 'active']);
+        $cat = ExpenseCategory::firstOrCreate(['name' => 'علف', 'farm_id' => null], ['is_system' => true, 'is_active' => true]);
+        $this->as($manager)->postJson('/api/expenses', ['flock_id' => $flock->id, 'expense_category_id' => $cat->id, 'entry_date' => now()->toDateString(), 'description' => 'اختبار', 'quantity' => 1])->assertSuccessful();
+        $this->assertSame(1, \App\Models\UserNotification::where('user_id', $accountant->id)->where('kind', 'manager_edit')->count());
+
+        // التطبيق المفتوح يستعلم عن الجديد
+        $first = $this->as($manager)->getJson('/api/auth/notifications/feed')->assertOk()->json('last_id');
+        $this->as($accountant)->getJson('/api/auth/notifications/feed?after_id=0')->assertOk()->assertJsonPath('data.0.kind', 'manager_edit');
+        $this->assertGreaterThan(0, $first);
+    }
 }

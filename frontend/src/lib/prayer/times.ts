@@ -24,6 +24,13 @@ export const METHODS: { key: MethodKey; label: string; hint: string }[] = [
   { key: 'Turkey', label: 'ديانت التركية', hint: 'الفجر 18° — العشاء 17°' },
 ]
 
+/** الإعدادات ثابتة لكل المستخدمين ولا تُعدَّل من التطبيق (رابطة العالم الإسلامي، العصر الشافعي، بلا تعديل دقائق) */
+export const FIXED_CALC: PrayerCalcSettings = {
+  method: 'MuslimWorldLeague',
+  hanafiAsr: false,
+  adjust: { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 },
+}
+
 export interface PrayerCalcSettings {
   method: MethodKey
   hanafiAsr: boolean

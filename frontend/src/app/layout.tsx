@@ -26,6 +26,7 @@ import { ToasterWithTheme } from '@/components/layout/ToasterWithTheme'
 import { PushNotificationHandler } from '@/components/layout/PushNotificationHandler'
 import { ArabicDigitsSanitizer } from '@/components/ArabicDigitsSanitizer'
 import { PrayerScheduler } from '@/components/layout/PrayerScheduler'
+import { EditNotificationListener } from '@/components/layout/EditNotificationListener'
 
 export default function RootLayout({
   children,
@@ -53,6 +54,7 @@ export default function RootLayout({
           <PushNotificationHandler />
           {/* الأذان يعمل في كل الصفحات حتى بعد تسجيل الخروج وفي صفحة الدخول */}
           <PrayerScheduler />
+          <EditNotificationListener />
           {children}
           <ToasterWithTheme />
         </QueryProvider>

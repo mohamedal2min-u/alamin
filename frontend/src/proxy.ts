@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
-const PUBLIC_PATHS = ['/login']
+// صفحة الأذان عامة: تعمل ويمكن ضبطها حتى بدون تسجيل دخول
+const PUBLIC_PATHS = ['/login', '/prayer']
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl

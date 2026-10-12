@@ -13,14 +13,14 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
   super_admin: ['/admin/farms', '/admin/registration-requests'],
 
   // farm_admin: كامل الصلاحيات على مزرعته
-  farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting'],
+  farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting', '/prayer'],
 
   // supervisor (مشرف): تشغيل المزرعة بلا أسعار ولا دفعات ولا إدارة حسابات أو شركاء؛ يرى الأسعار التي يضعها المحاسب
-  supervisor: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/accounting'],
+  supervisor: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/accounting', '/prayer'],
 
   // accountant: يحدد الأسعار فقط — صفحة المحاسبة وحدها
-  accountant: ['/accounting'],
-  partner: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/my-wallet'],
+  accountant: ['/accounting', '/prayer'],
+  partner: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/my-wallet', '/prayer'],
 }
 
 // ── Route access guard ────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
   if (pathname === '/unauthorized') return true
 
   // إعدادات الحساب متاحة لجميع الأدوار
-  if (pathname === '/settings') return true
+  if (pathname === '/settings' || pathname === '/prayer') return true
 
   if (role === 'super_admin') {
     if (pathname === '/dashboard') return true

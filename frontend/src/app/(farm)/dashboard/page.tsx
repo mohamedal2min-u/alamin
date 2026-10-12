@@ -15,6 +15,7 @@ import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
 import { DayEntriesModal, type DayEntryType } from '@/components/dashboard/DayEntriesModal'
 import { FlockDaySelector } from '@/components/dashboard/FlockDaySelector'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
+import { PrayerChip } from '@/components/dashboard/PrayerChip'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
@@ -147,7 +148,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 px-3 pt-3 pb-8" dir="rtl">
-      
+      {/* الأذان وتوقيت الصلاة القادمة */}
+      <PrayerChip />
+
       {/* Error */}
       {hasError && (
         <div className="flex items-center gap-3 rounded-xl bg-red-50 p-4 text-red-600">

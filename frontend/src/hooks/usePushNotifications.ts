@@ -2,8 +2,13 @@ import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications, type Token } from '@capacitor/push-notifications';
 import { apiClient } from '@/lib/api/client';
+import { useAuthStore } from '@/stores/auth.store';
+import { playEditTone } from '@/lib/prayer/audio';
 
 export const usePushNotifications = () => {
+  // يُعاد التسجيل بعد تسجيل الدخول ليُربط رمز الجهاز بالحساب
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   useEffect(() => {
     // Only run on native platforms (Android/iOS)
     if (Capacitor.getPlatform() === 'web') {
@@ -11,6 +16,12 @@ export const usePushNotifications = () => {
     }
 
     const registerPush = async () => {
+      // قنوات بنغمات مميّزة: المحاسب عدّل ← نغمة، المدير عدّل ← نغمة أخرى (ملفات في res/raw)
+      try {
+        await PushNotifications.createChannel({ id: 'accountant_edit', name: 'تعديلات المحاسب', importance: 5, sound: 'accountant_edit.wav', vibration: true });
+        await PushNotifications.createChannel({ id: 'manager_edit', name: 'تعديلات المدير', importance: 5, sound: 'manager_edit.wav', vibration: true });
+      } catch { /* القنوات تُنشأ مرة واحدة */ }
+
       let permStatus = await PushNotifications.checkPermissions();
 
       if (permStatus.receive === 'prompt') {
@@ -43,8 +54,9 @@ export const usePushNotifications = () => {
       });
 
       await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        console.log('Push notification received: ', notification);
-        // You can add logic here to show a toast or update local state
+        // والتطبيق مفتوح لا يعرض النظام الإشعار، فنُصدر النغمة هنا
+        const kind = notification.data?.type;
+        if (kind === 'accountant_edit' || kind === 'manager_edit') playEditTone(kind);
       });
 
       await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
@@ -57,6 +69,7 @@ export const usePushNotifications = () => {
       });
     };
 
+    if (!isAuthenticated) return;
     registerPush();
     addListeners();
 
@@ -64,5 +77,5 @@ export const usePushNotifications = () => {
     return () => {
       PushNotifications.removeAllListeners();
     };
-  }, []);
+  }, [isAuthenticated]);
 };

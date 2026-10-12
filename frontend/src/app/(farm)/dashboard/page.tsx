@@ -148,8 +148,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 px-3 pt-3 pb-8" dir="rtl">
-      {/* الأذان وتوقيت الصلاة القادمة */}
-      <PrayerChip />
 
       {/* Error */}
       {hasError && (
@@ -322,6 +320,9 @@ export default function DashboardPage() {
           <EmptyState title="لا توجد أفواج نشطة" subtitle="أنشئ فوجاً جديداً من صفحة الأفواج" />
         )
       )}
+
+      {/* بطاقة الأذان: أسفل الصفحة دائماً */}
+      <PrayerChip />
     </div>
   )
 }

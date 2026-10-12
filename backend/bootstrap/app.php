@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super_admin'  => \App\Http\Middleware\EnsureSuperAdmin::class,
             'farm.role'    => \App\Http\Middleware\EnsureFarmRole::class,
             'farm.noprice' => \App\Http\Middleware\StripPriceFields::class,
+            'farm.notify'  => \App\Http\Middleware\NotifyEdit::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

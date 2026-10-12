@@ -2,7 +2,7 @@
 'use client'
 
 import {
-  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, Settings, Calculator, Wallet, UserCog
+  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, Settings, Calculator, Wallet, UserCog, BellRing
 } from 'lucide-react'
 import Link from 'next/link'
 import { FarmSelector } from './FarmSelector'
@@ -46,6 +46,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     { label: 'المحاسبون', desc: 'حسابات الفريق',         href: '/workers',    icon: UserCog,      color: 'text-slate-600',   bg: 'bg-slate-100 dark:bg-slate-700' },
     { label: 'المحاسبة',  desc: 'الذمم والمراجعة',       href: '/accounting', icon: Calculator,   color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/30' },
     { label: 'التقارير',  desc: 'ملخصات الأداء',         href: '/reports',    icon: BarChart3,    color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-900/30' },
+    { label: 'الأذان',    desc: 'أوقات الصلاة والتنبيه', href: '/prayer',    icon: BellRing,     color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/30' },
     { label: 'محفظتي',    desc: 'رصيدك وحصتك',          href: '/my-wallet',  icon: Wallet,       color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
   ].filter(item => allowedHrefs.includes(item.href))
 

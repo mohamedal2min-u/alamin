@@ -25,6 +25,7 @@ import { ThemeApplier } from '@/components/layout/ThemeApplier'
 import { ToasterWithTheme } from '@/components/layout/ToasterWithTheme'
 import { PushNotificationHandler } from '@/components/layout/PushNotificationHandler'
 import { ArabicDigitsSanitizer } from '@/components/ArabicDigitsSanitizer'
+import { PrayerScheduler } from '@/components/layout/PrayerScheduler'
 
 export default function RootLayout({
   children,
@@ -50,6 +51,8 @@ export default function RootLayout({
           <ThemeApplier />
           <ArabicDigitsSanitizer />
           <PushNotificationHandler />
+          {/* الأذان يعمل في كل الصفحات حتى بعد تسجيل الخروج وفي صفحة الدخول */}
+          <PrayerScheduler />
           {children}
           <ToasterWithTheme />
         </QueryProvider>

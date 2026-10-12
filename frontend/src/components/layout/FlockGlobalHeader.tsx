@@ -88,7 +88,7 @@ export function FlockGlobalHeader() {
       className={cn(
         "sticky top-0 z-40 w-full transition-all duration-500 ease-in-out pb-2 px-2",
         shouldHide ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100",
-        "bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md pt-2 border-b border-transparent dark:border-slate-800"
+        "bg-slate-50 dark:bg-slate-900 pt-2 border-b border-transparent dark:border-slate-800"
       )} 
       dir="rtl"
     >

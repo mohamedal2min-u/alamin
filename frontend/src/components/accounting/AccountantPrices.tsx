@@ -7,6 +7,7 @@ import { accountingApi } from '@/lib/api/accounting'
 import type { CategoryBreakdown, ReviewItem } from '@/lib/api/accounting'
 import { cn, formatNumber } from '@/lib/utils'
 import { PriceWithHistory } from './PriceWithHistory'
+import { ItemGroups, groupByItem } from './ItemGroups'
 
 // ── لوحة المحاسب: قائمة أسعار بسيطة. تحديد السعر وتعديله فقط ──────────────────
 
@@ -59,8 +60,30 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
     staleTime: 15_000,
   })
 
+  // العلف (مراحل) والدواء (أصناف): بطاقات حسب الصنف وتسعير كل نقلاته دفعة واحدة
+  const [itemFilter, setItemFilter] = useState<string | null>(null)
+  const groupsEnabled = category === 'feed' || category === 'medicine'
+  const groupRowsQuery = useQuery({
+    queryKey: ['accounting', 'review-queue', 'groups', category, flock_id],
+    queryFn: async () => {
+      const out: ReviewItem[] = []
+      for (let page = 1; page <= 20; page++) {
+        const r = await accountingApi.getReviewQueue({ scope: 'all', category, flock_id, per_page: 100, page })
+        out.push(...r.data)
+        if (r.data.length === 0 || out.length >= r.meta.total) break
+      }
+      return out
+    },
+    staleTime: 15_000,
+    enabled: groupsEnabled,
+  })
+  const groups = groupsEnabled ? groupByItem(groupRowsQuery.data ?? []) : []
+
   const current = tab === 'pending' ? pending : all
-  const items = current.data?.data ?? []
+  // عند اختيار صنف تُعرض كل نقلاته (وفي «بانتظار السعر» غير المسعّرة فقط)
+  const items: ReviewItem[] = itemFilter && groupsEnabled
+    ? (groupRowsQuery.data ?? []).filter((i) => i.item_name === itemFilter && (tab === 'all' || i.review_reasons.includes('missing_price')))
+    : current.data?.data ?? []
   const pendingCount = pending.data?.meta.total ?? 0
 
   const save = useMutation({
@@ -131,7 +154,7 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
         {CATEGORIES.map((c) => (
           <button
             key={c.label}
-            onClick={() => setCategory(c.code)}
+            onClick={() => { setCategory(c.code); setItemFilter(null) }}
             className={cn(
               'flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full border px-1.5 py-2 text-[13px] font-semibold transition-colors',
               category === c.code
@@ -144,6 +167,17 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
           </button>
         ))}
       </div>
+
+      {/* ── بطاقات الأصناف: مراحل العلف / أصناف الأدوية ── */}
+      {groupsEnabled && (
+        <ItemGroups
+          isFeed={category === 'feed'}
+          groups={groups}
+          selected={itemFilter}
+          onSelect={setItemFilter}
+          onDone={() => qc.invalidateQueries({ queryKey: ['accounting', 'review-queue'] })}
+        />
+      )}
 
       {/* ── القائمة ── */}
       {current.isLoading ? (

@@ -130,6 +130,19 @@ class PurgeFlockMedicinesTest extends TestCase
         $this->assertEquals($feedStock, $this->stock($this->feed));
     }
 
+    public function test_removes_flock_medicine_debts_whose_shipment_is_not_on_the_flock(): void
+    {
+        $shipment = $this->ship($this->medicine, 10, 8);
+        // الدين على الفوج، والشحنة بلا فوج
+        $shipment->update(['flock_id' => null]);
+
+        $this->artisan('flock:purge-medicines', ['flock' => $this->flock->id, '--force' => true, '--zero-stock' => true])->assertSuccessful();
+
+        $this->assertSame(0, Expense::where('flock_id', $this->flock->id)->count());
+        $this->assertNull(InventoryTransaction::find($shipment->id));
+        $this->assertEquals(0, $this->stock($this->medicine));
+    }
+
     public function test_refuses_closed_flock(): void
     {
         $closed = Flock::factory()->closed()->create(['farm_id' => $this->farm->id]);

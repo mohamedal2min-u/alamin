@@ -65,7 +65,18 @@ class PurgeFlockMedicines extends Command
                 ->orWhereIn('id', $logs->pluck('inventory_transaction_id')->filter()))
             ->with('item')->get();
 
-        $expenses = Expense::whereIn('linked_inventory_transaction_id', $purchases->pluck('id'))->get();
+        // ديون الشراء: المرتبطة بشحنات الفوج، وكذلك ديون أدوية مسجّلة على الفوج وشحنتها غير مسجّلة عليه
+        $expenses = Expense::where(fn ($q) => $q
+            ->whereIn('linked_inventory_transaction_id', $purchases->pluck('id'))
+            ->orWhere(fn ($q2) => $q2->where('flock_id', $flock->id)
+                ->whereHas('linkedInventoryTransaction', fn ($t) => $t->whereIn('item_id', $medItemIds)
+                    ->where('direction', 'in')->where('transaction_type', 'purchase'))))
+            ->get();
+        $purchases = $purchases->merge(
+            InventoryTransaction::whereIn('id', $expenses->pluck('linked_inventory_transaction_id')->filter())
+                ->whereNotIn('id', $purchases->pluck('id'))
+                ->with('item')->get()
+        );
 
         // للعلم فقط (لا تُحذف): حركات أخرى على أدوية الفوج، ومصاريف أدوية يدوية غير مرتبطة بشحنة
         $otherTxns = InventoryTransaction::where('flock_id', $flock->id)->whereIn('item_id', $medItemIds)

@@ -15,6 +15,21 @@ defined( 'ABSPATH' ) || exit;
 
 class URME_SS_Price_Hint {
 
+	/** Product meta: 1 = the sale price is set by hand, automatic pricing leaves it alone. */
+	const MANUAL_META = '_urme_price_manual';
+
+	public static function is_manual( $product_id ) {
+		return '1' === (string) get_post_meta( (int) $product_id, self::MANUAL_META, true );
+	}
+
+	public static function set_manual( $product_id, $manual ) {
+		if ( $manual ) {
+			update_post_meta( (int) $product_id, self::MANUAL_META, '1' );
+		} else {
+			delete_post_meta( (int) $product_id, self::MANUAL_META );
+		}
+	}
+
 	/**
 	 * Settings and EUR/SEK rate for one page render (read once, not per row).
 	 *

@@ -24,6 +24,9 @@ class URME_SS_Admin {
 	 */
 	private static $others = array();
 
+	/** True while the Auto button / bulk Auto / switch to Auto saves a price (it does not make the price Manual). */
+	private static $auto_call = false;
+
 	/**
 	 * Set while one admin page is being rendered.
 	 *
@@ -120,7 +123,7 @@ class URME_SS_Admin {
 			$raw    = ( isset( $post['sale_price'] ) && is_scalar( $post['sale_price'] ) ) ? sanitize_text_field( (string) $post['sale_price'] ) : null;
 			$reg    = ( isset( $post['regular_price'] ) && is_scalar( $post['regular_price'] ) ) ? sanitize_text_field( (string) $post['regular_price'] ) : null;
 			$result = self::save_sale_price( $key, $raw, $reg );
-		} elseif ( in_array( $op, array( 'start_supplier', 'start_local', 'dropship', 'lager', 'resume', 'sync', 'auto98' ), true ) ) {
+		} elseif ( in_array( $op, array( 'start_supplier', 'start_local', 'dropship', 'lager', 'resume', 'sync', 'auto98', 'pricemode' ), true ) ) {
 			$key    = in_array( $op, array( 'dropship', 'lager', 'resume', 'sync' ), true ) ? (string) ( URME_SS_DB::get_link_by_id( absint( $arg ) )['item_key'] ?? '' ) : $arg;
 			$result = self::run_row_action( $action );
 		} else {
@@ -473,6 +476,29 @@ class URME_SS_Admin {
 				}
 				return self::auto_price( $arg, $price );
 
+			case 'pricemode':
+				$pid = self::confirmed_product_id( $arg );
+				if ( ! $pid ) {
+					return array( 'This supplier watch has no linked or uniquely matched URME product.', 'error' );
+				}
+				if ( URME_SS_Price_Hint::is_manual( $pid ) ) {
+					$item = URME_SS_DB::get_item( $arg );
+					if ( $item ) {
+						self::$others = URME_SS_DB::other_sources( array( $item ) );
+						$item         = self::buy_row( $item );
+					}
+					$price = $item ? URME_SS_Price_Hint::price_98( $item['purchase_price'], URME_SS_Suppliers::hint( URME_SS_Price_Hint::context(), URME_SS_Suppliers::of_key( $item['item_key'] ), $item['manufacturer'] ) ) : null;
+					URME_SS_Price_Hint::set_manual( $pid, false );
+					if ( $price ) {
+						$res = self::auto_price( $arg, $price );
+						return array( 'Automatic prices on for this watch. ' . $res[0], $res[1] );
+					}
+					return array( 'Automatic prices on for this watch (no suggested price yet: cost or exchange rate missing).', 'success' );
+				}
+				URME_SS_Price_Hint::set_manual( $pid, true );
+				URME_SS_Log::info( sprintf( 'Product #%d set to Manual prices.', $pid ) );
+				return array( 'Manual prices: this watch keeps the price you set; automatic pricing leaves it alone.', 'success' );
+
 			case 'start_local':
 				return array( 'A watch with URME stock simply stays URME Lager; there is nothing to start.', 'info' );
 
@@ -615,6 +641,20 @@ class URME_SS_Admin {
 	 * @param int    $price    Price ending in 98 (SEK).
 	 */
 	private static function auto_price( $item_key, $price ) {
+		self::$auto_call = true;
+		try {
+			$res = self::auto_price_run( $item_key, $price );
+		} finally {
+			self::$auto_call = false;
+		}
+		$pid = self::confirmed_product_id( (string) $item_key );
+		if ( $pid && in_array( $res[1], array( 'success', 'info' ), true ) ) {
+			URME_SS_Price_Hint::set_manual( $pid, false ); // Back to Automatic.
+		}
+		return $res;
+	}
+
+	private static function auto_price_run( $item_key, $price ) {
 		$pid     = self::confirmed_product_id( (string) $item_key );
 		$product = $pid ? wc_get_product( $pid ) : null;
 		if ( $product && 'trash' !== $product->get_status() && ! $product->is_type( array( 'variable', 'grouped' ) ) ) {
@@ -723,6 +763,9 @@ class URME_SS_Admin {
 			return array( sprintf( 'Sale price %s kr is not below the regular price %s kr of "%s"; nothing was changed.', wc_format_decimal( $sale, 2 ), wc_format_decimal( $regular, 2 ), $name ), 'error' );
 		}
 		$sale_changed = $sale !== $old;
+		if ( null !== $raw && ! self::$auto_call ) {
+			URME_SS_Price_Hint::set_manual( $pid, true ); // A price typed by hand: automatic pricing leaves it alone.
+		}
 
 		if ( ! $reg_changed && ! $sale_changed ) {
 			if ( null !== $raw && '' === $clean( $raw ) && null === $raw_regular ) {
@@ -1371,7 +1414,7 @@ class URME_SS_Admin {
 			esc_attr( $key ),
 			esc_attr( $info['sale'] ),
 			self::row_button( 'sale|' . $key, 'Save', 'button button-small' ),
-			self::auto98_button( $row )
+			self::auto98_button( $row ) . self::price_mode_button( $row )
 		);
 	}
 
@@ -1557,6 +1600,23 @@ class URME_SS_Admin {
 			}
 		}
 		return $best && $best[1] === ( null === $key ? $row['item_key'] : $key ) ? ' <span class="urme-cheapest" title="Cheapest after shipping + fees">✓</span>' : '';
+	}
+
+	/**
+	 * Per-watch switch: Automatic (the sale price follows the Auto price) or Manual (the price you typed stays).
+	 */
+	private static function price_mode_button( array $row ) {
+		$pid = self::urme_product_id( $row );
+		if ( ! $pid ) {
+			return '';
+		}
+		$manual = URME_SS_Price_Hint::is_manual( $pid );
+		return sprintf(
+			'<div class="urme-price-mode"><button type="submit" name="row_action" value="%s" class="button button-small" title="%s">%s</button></div>',
+			esc_attr( 'pricemode|' . $row['item_key'] ),
+			esc_attr( $manual ? 'Click: back to Automatic (the sale price follows the Auto price again)' : 'Click: Manual (keep the price you type; automatic pricing leaves this watch alone)' ),
+			esc_html( $manual ? 'Manual price · switch to Auto' : 'Auto price ✓ · switch to Manual' )
+		);
 	}
 
 	/**
@@ -2113,8 +2173,8 @@ class URME_SS_Admin {
 					<td><label><input type="checkbox" name="settings[loss_out_of_stock]" value="1" <?php checked( $s['loss_out_of_stock'] ); ?>> Set Dropshipping watches out of stock when their estimated profit is below <input type="number" name="settings[min_profit_sek]" min="0" max="100000" step="1" value="<?php echo esc_attr( $s['min_profit_sek'] ); ?>" class="small-text"> SEK</label>
 					<p class="description">Same profit calculation as the price hint (coupon, VAT, Klarna fee, cost incl. extra EUR). Stock comes back at the next sync once the price covers the cost.</p></td></tr>
 				<tr><th>Automatic prices</th>
-					<td><label><input type="checkbox" name="settings[auto_reprice]" value="1" <?php checked( $s['auto_reprice'] ); ?>> When a supplier changes the cost of a Dropshipping watch, set its sale price to the Auto price (target profit, …98)</label>
-					<p class="description">Only when the supplier's cost changes, so prices you set yourself stay until then. The regular price is raised 20&nbsp;% when the sale price is not below it.</p></td></tr>
+					<td><label><input type="checkbox" name="settings[auto_reprice]" value="1" <?php checked( $s['auto_reprice'] ); ?>> Once a week, set the sale price of every Dropshipping watch to the Auto price (target profit, …98)</label>
+					<p class="description">Last run: <?php $urme_last = (int) get_option( 'urme_ss_reprice_last', 0 ); echo esc_html( $urme_last ? wp_date( 'Y-m-d H:i', $urme_last ) : 'not yet' ); ?>. Stock and cost still sync every hour. Follows the supplier's cost and the exchange rate. A watch set to <strong>Manual</strong> in the catalog (or whose sale price you typed and saved) is never touched. The regular price is raised 20&nbsp;% when the sale price is not below it.</p></td></tr>
 				<tr><th><label for="urme-ratio">Feed safety check</label></th>
 					<td>Refuse a feed with fewer than <input type="number" id="urme-ratio" name="settings[min_feed_ratio]" min="0" max="100" value="<?php echo esc_attr( $s['min_feed_ratio'] ); ?>" class="small-text"> % of the previous feed's watches
 					<p class="description">Protects against a half-empty feed. 0 disables the check.</p></td></tr>

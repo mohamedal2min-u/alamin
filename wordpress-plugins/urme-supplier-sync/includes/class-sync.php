@@ -357,7 +357,16 @@ class URME_SS_Sync {
 		$rate   = URME_SS_Rates::current();
 		$target = URME_SS_Store::cost_target();
 		$manage = (bool) URME_SS_Settings::get( 'manage_stock' );
+		// Automatic prices run once a week on a full sync (stock and cost still sync every run); "Sync now"
+		// on one watch prices that watch at once. Watches set to Manual are never repriced.
 		$reprice = (bool) URME_SS_Settings::get( 'auto_reprice' );
+		if ( $reprice && ! $only_link_id ) {
+			$last    = (int) get_option( 'urme_ss_reprice_last', 0 );
+			$reprice = ( time() - $last ) >= 6.5 * DAY_IN_SECONDS;
+			if ( $reprice ) {
+				update_option( 'urme_ss_reprice_last', time(), false );
+			}
+		}
 		$hint    = ( URME_SS_Settings::get( 'loss_out_of_stock' ) || $reprice ) ? URME_SS_Price_Hint::context() : null;
 		$guard   = (bool) URME_SS_Settings::get( 'loss_out_of_stock' );
 		$now    = current_time( 'mysql', true );
@@ -645,24 +654,21 @@ class URME_SS_Sync {
 	}
 
 	/**
-	 * Sale price follows the supplier: when the cost (EUR) of a Dropshipping watch changed since the
-	 * last sync, or it is now bought from another supplier, the sale price becomes the Auto price
-	 * (target profit, …98) and the regular price is raised when the sale would not be below it.
-	 * Nothing happens on the first sync of a link or while the cost is unchanged, so prices set by
-	 * hand stay until the supplier changes the cost. Simple products only.
+	 * Sale price follows the supplier: the sale price of a Dropshipping watch is kept at the Auto price
+	 * (target profit, …98) from its current cost, and the regular price is raised when the sale would
+	 * not be below it. Watches set to Manual (per product, in the catalog) are never touched.
+	 * Simple products only.
 	 *
 	 * @return string Change description, or '' when nothing was changed.
 	 */
 	private static function reprice( WC_Product $product, array $link, $sup, array $hint ) {
 		$old = $link['last_cost_eur'] ?? null;
 		$new = $link['purchase_price'] ?? null;
-		if ( null === $old || '' === (string) $old || null === $new || ! is_numeric( $new ) || $product->is_type( array( 'variable', 'grouped' ) ) ) {
-			return '';
+		if ( null === $new || ! is_numeric( $new ) || $product->is_type( array( 'variable', 'grouped' ) ) || URME_SS_Price_Hint::is_manual( $product->get_id() ) ) {
+			return ''; // No cost, not a simple product, or the price is set by hand (Manual).
 		}
-		$moved = '' !== (string) ( $link['supplier'] ?? '' ) && $link['supplier'] !== $sup;
-		if ( abs( (float) $old - (float) $new ) < 0.005 && ! $moved ) {
-			return '';
-		}
+		// Automatic: the sale price always follows the Auto price, unless the watch is set to Manual.
+		$old = ( null === $old || '' === (string) $old ) ? $new : $old;
 		$auto = URME_SS_Price_Hint::price_98( $new, $hint );
 		if ( ! $auto ) {
 			return '';
@@ -678,13 +684,15 @@ class URME_SS_Sync {
 		}
 		$product->set_sale_price( (string) $auto );
 		$product->save();
+		$cost_note = abs( (float) $old - (float) $new ) < 0.005
+			? sprintf( 'Auto price, supplier cost %s EUR', rtrim( rtrim( number_format( (float) $new, 2, '.', '' ), '0' ), '.' ) )
+			: sprintf( 'supplier cost %s → %s EUR', rtrim( rtrim( number_format( (float) $old, 2, '.', '' ), '0' ), '.' ), rtrim( rtrim( number_format( (float) $new, 2, '.', '' ), '0' ), '.' ) );
 		return sprintf(
-			'price %s → %s kr%s (supplier cost %s → %s EUR)',
+			'price %s → %s kr%s (%s)',
 			'' !== $sale ? $sale : ( '' !== $regular ? $regular : '–' ),
 			$auto,
 			null !== $want && (string) $want !== $regular ? sprintf( ', regular %s → %s kr', '' !== $regular ? $regular : '–', $want ) : '',
-			rtrim( rtrim( number_format( (float) $old, 2, '.', '' ), '0' ), '.' ),
-			rtrim( rtrim( number_format( (float) $new, 2, '.', '' ), '0' ), '.' )
+			$cost_note
 		);
 	}
 

@@ -27,6 +27,15 @@ export async function syncNativeSchedule(calc: PrayerCalcSettings): Promise<Nati
     if (perm.display !== 'granted') perm = await LocalNotifications.requestPermissions()
     if (perm.display !== 'granted') return 'denied'
 
+    // أندرويد 12+: بدون إذن «المنبّهات والتذكيرات» قد يتأخر الأذان أو لا يصل بدقة. نطلبه مرة واحدة فقط.
+    try {
+      const exact = await LocalNotifications.checkExactNotificationSetting()
+      if (exact.exact_alarm !== 'granted' && !localStorage.getItem('exact_alarm_asked')) {
+        localStorage.setItem('exact_alarm_asked', '1')
+        await LocalNotifications.changeExactNotificationSetting()
+      }
+    } catch { /* نسخ أندرويد القديمة لا تحتاجه */ }
+
     // قناة جديدة بصوت الأذان المضمّن (res/raw/adhan.mp3)؛ القناة القديمة بلا صوت أذان تُترك كما هي
     await LocalNotifications.createChannel({
       id: 'adhan',

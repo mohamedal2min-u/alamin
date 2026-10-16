@@ -162,6 +162,17 @@ function PrayerContent() {
         )}
       </Section>
 
+      {isNativeApp() && (
+        <Section title="إن لم يصلك الأذان والتطبيق مغلق">
+          <ol className="list-decimal space-y-1.5 pr-5 text-[12px] leading-relaxed text-slate-600 dark:text-slate-300">
+            <li>الإعدادات ← التطبيقات ← YMD ← الإشعارات: فعّلها وفعّل قناة «الأذان».</li>
+            <li>الإعدادات ← التطبيقات ← الوصول الخاص ← المنبّهات والتذكيرات: اسمح لـ YMD.</li>
+            <li>سامسونغ: الإعدادات ← البطارية ← حدود الاستخدام في الخلفية ← «التطبيقات التي لا تنام أبداً» ← أضف YMD.</li>
+            <li>تأكد أن الهاتف ليس على وضع «عدم الإزعاج» ولا الصامت.</li>
+          </ol>
+        </Section>
+      )}
+
       <p className="text-center text-[10px] leading-relaxed text-slate-400">
         تسجيلات الأذان مرخّصة للاستخدام الحر (CC0 / ملكية عامة) — مصدرها Wikimedia Commons.
       </p>

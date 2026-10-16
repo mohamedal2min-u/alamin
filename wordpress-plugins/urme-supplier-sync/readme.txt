@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.11.0
+Stable tag: 1.11.1
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -224,6 +224,10 @@ Uses WP-Cron (hook `urme_ss_hourly`). On a low-traffic site add a real cron job,
 or `wp cron event run --due-now` from the server.
 
 == Changelog ==
+
+= 1.11.1 =
+* Sales: "Paid to supplier" now shows the watch plus the supplier's shipping + fees (what you actually pay them, e.g. the
+  invoice total); the payment fee (Klarna) is its own column. Profit is unchanged.
 
 = 1.11.0 =
 * Automatic prices (Settings, on by default): when a supplier changes the cost of a Dropshipping watch, or it is

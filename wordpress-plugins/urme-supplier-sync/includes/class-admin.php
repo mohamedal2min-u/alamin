@@ -1721,8 +1721,8 @@ class URME_SS_Admin {
 			self::card( 'Orders', number_format_i18n( $t['orders'] ), number_format_i18n( $t['units'] ) . ' watches' . ( $t['returned'] ? ' · ' . number_format_i18n( $t['returned'] ) . ' returned/cancelled (not counted)' : '' ) );
 			self::card( 'Sales incl. VAT', self::kr0( $t['paid'] ), 'What customers paid for these watches' );
 			self::card( 'Sales excl. VAT', self::kr0( $t['net'] ) );
-			self::card( 'Supplier cost', self::kr0( $t['cost'] ), $t['estimates'] ? number_format_i18n( $t['estimates'] ) . ' line(s) estimated' : 'Cost frozen on each order' );
-			self::card( 'Extra cost + fee', self::kr0( $t['extra'] + $t['fee'] ), 'Extra ' . self::kr0( $t['extra'] ) . ' · fee ' . self::kr0( $t['fee'] ) );
+			self::card( 'Paid to supplier', self::kr0( $t['cost'] + $t['extra'] ), 'Watch ' . self::kr0( $t['cost'] ) . ' · their shipping + fees ' . self::kr0( $t['extra'] ) . ( $t['estimates'] ? ' · ' . number_format_i18n( $t['estimates'] ) . ' line(s) estimated' : '' ) );
+			self::card( 'Payment fee', self::kr0( $t['fee'] ), 'Klarna etc. on what customers paid' );
 			self::card( 'Profit', self::kr0( $t['profit'] ), $margin, $t['profit'] < 0 );
 			?>
 		</div>
@@ -1737,7 +1737,7 @@ class URME_SS_Admin {
 		?>
 		<h2>By supplier</h2>
 		<table class="widefat striped urme-table urme-sales-suppliers">
-			<thead><tr><th>Supplier</th><th class="num">Orders</th><th class="num">Watches</th><th class="num">Sales excl. VAT</th><th class="num">Supplier cost</th><th class="num">Shipping + fees</th><th class="num">Profit</th><th class="num">Margin</th></tr></thead>
+			<thead><tr><th>Supplier</th><th class="num">Orders</th><th class="num">Watches</th><th class="num">Sales excl. VAT</th><th class="num">Paid to supplier</th><th class="num">Payment fee</th><th class="num">Profit</th><th class="num">Margin</th></tr></thead>
 			<tbody>
 			<?php foreach ( $r['suppliers'] as $sid => $b ) : ?>
 				<tr>
@@ -1745,8 +1745,8 @@ class URME_SS_Admin {
 					<td class="num"><?php echo esc_html( number_format_i18n( $b['orders'] ) ); ?></td>
 					<td class="num"><?php echo esc_html( number_format_i18n( $b['units'] ) ); ?></td>
 					<td class="num"><?php echo esc_html( self::kr0( $b['net'] ) ); ?></td>
-					<td class="num"><?php echo esc_html( self::kr0( $b['cost'] ) ); ?></td>
-					<td class="num"><?php echo esc_html( self::kr0( $b['extra'] + $b['fee'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $b['cost'] + $b['extra'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $b['fee'] ) ); ?></td>
 					<td class="num <?php echo $b['profit'] < 0 ? 'urme-bad' : 'urme-good'; ?>"><?php echo esc_html( self::kr0( $b['profit'] ) ); ?></td>
 					<td class="num"><?php echo esc_html( $b['net'] > 0 ? round( $b['profit'] / $b['net'] * 100 ) . '%' : '—' ); ?></td>
 				</tr>
@@ -1758,8 +1758,8 @@ class URME_SS_Admin {
 					<th class="num"><?php echo esc_html( number_format_i18n( $t['orders'] ) ); ?></th>
 					<th class="num"><?php echo esc_html( number_format_i18n( $t['units'] ) ); ?></th>
 					<th class="num"><?php echo esc_html( self::kr0( $t['net'] ) ); ?></th>
-					<th class="num"><?php echo esc_html( self::kr0( $t['cost'] ) ); ?></th>
-					<th class="num"><?php echo esc_html( self::kr0( $t['extra'] + $t['fee'] ) ); ?></th>
+					<th class="num"><?php echo esc_html( self::kr0( $t['cost'] + $t['extra'] ) ); ?></th>
+					<th class="num"><?php echo esc_html( self::kr0( $t['fee'] ) ); ?></th>
 					<th class="num <?php echo $t['profit'] < 0 ? 'urme-bad' : 'urme-good'; ?>"><?php echo esc_html( self::kr0( $t['profit'] ) ); ?></th>
 					<th class="num"><?php echo esc_html( $t['net'] > 0 ? round( $t['profit'] / $t['net'] * 100 ) . '%' : '—' ); ?></th>
 				</tr>
@@ -1782,7 +1782,7 @@ class URME_SS_Admin {
 		</table>
 		<h2>Orders</h2>
 		<table class="widefat striped urme-table urme-sales-lines">
-			<thead><tr><th>Date</th><th>Order</th><th>Product</th><th class="num">Qty</th><th class="num">Paid incl. VAT</th><th class="num">Excl. VAT</th><th class="num">Supplier cost</th><th class="num">Extra + fee</th><th class="num">Profit</th></tr></thead>
+			<thead><tr><th>Date</th><th>Order</th><th>Product</th><th class="num">Qty</th><th class="num">Paid incl. VAT</th><th class="num">Excl. VAT</th><th class="num">Paid to supplier</th><th class="num">Payment fee</th><th class="num">Profit</th></tr></thead>
 			<tbody>
 			<?php foreach ( $r['lines'] as $line ) : ?>
 				<tr>
@@ -1792,14 +1792,14 @@ class URME_SS_Admin {
 					<td class="num"><?php echo esc_html( number_format_i18n( $line['units'] ) ); ?></td>
 					<td class="num"><?php echo esc_html( self::kr0( $line['paid'] ) ); ?></td>
 					<td class="num"><?php echo esc_html( self::kr0( $line['net'] ) ); ?></td>
-					<td class="num"><?php echo esc_html( self::kr0( $line['cost'] ) ); ?><?php echo $line['estimate'] ? '<br><small class="urme-warn" title="No cost was saved on this order: the watch\'s last synced supplier cost is used.">estimated</small>' : ''; ?></td>
-					<td class="num"><?php echo esc_html( self::kr0( $line['extra'] + $line['fee'] ) ); ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $line['cost'] + $line['extra'] ) ); ?><br><small class="urme-muted" title="Watch + the supplier's shipping + fees"><?php echo esc_html( self::kr0( $line['cost'] ) . ' + ' . self::kr0( $line['extra'] ) ); ?></small><?php echo $line['estimate'] ? '<br><small class="urme-warn" title="No cost was saved on this order: the watch\'s last synced supplier cost is used.">estimated</small>' : ''; ?></td>
+					<td class="num"><?php echo esc_html( self::kr0( $line['fee'] ) ); ?></td>
 					<td class="num <?php echo $line['profit'] < 0 ? 'urme-bad' : 'urme-good'; ?>"><?php echo esc_html( self::kr0( $line['profit'] ) ); ?></td>
 				</tr>
 			<?php endforeach; ?>
 			</tbody>
 		</table>
-		<p class="description">Only units sold as Dropshipping are counted (URME Lager units, cancelled and refunded orders and units given back are left out). Profit = sales excl. VAT − supplier cost − the supplier's shipping + fees (<?php echo esc_html( implode( ', ', array_map( static function ( $id ) { return URME_SS_Suppliers::name( $id ) . ' ' . URME_SS_Suppliers::extra_eur( $id ) . ' EUR'; }, URME_SS_Suppliers::ids() ) ) ); ?> per order, at today's rate) − payment fee (<?php echo esc_html( URME_SS_Settings::get( 'hint_fee_pct' ) ); ?>% of what the customer paid). Shipping charged to the customer is not included.</p>
+		<p class="description">Only units sold as Dropshipping are counted (URME Lager units, cancelled and refunded orders and units given back are left out). Profit = sales excl. VAT − paid to supplier (watch + the supplier's shipping + fees: <?php echo esc_html( implode( ', ', array_map( static function ( $id ) { return URME_SS_Suppliers::name( $id ) . ' ' . URME_SS_Suppliers::extra_eur( $id ) . ' EUR'; }, URME_SS_Suppliers::ids() ) ) ); ?> per order, at today's rate) − payment fee (<?php echo esc_html( URME_SS_Settings::get( 'hint_fee_pct' ) ); ?>% of what the customer paid). Shipping charged to the customer is not included.</p>
 		<?php
 	}
 

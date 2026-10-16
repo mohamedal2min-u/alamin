@@ -7,7 +7,7 @@ on:
       task:
         description: المهمة
         type: choice
-        options: [purge-medicines-preview, purge-medicines]
+        options: [purge-medicines-preview, purge-medicines, purge-medicines-zero]
         default: purge-medicines-preview
       flock_id:
         description: رقم الفوج (فارغ = عرض الأفواج المفتوحة)
@@ -42,7 +42,7 @@ jobs:
         run: |
           [ "$REF" = "refs/heads/main" ] || { echo "::error::مسموح من فرع main فقط"; exit 1; }
           if [ -n "$FLOCK" ] && ! [[ "$FLOCK" =~ ^[0-9]+$ ]]; then echo "::error::رقم الفوج غير صالح"; exit 1; fi
-          if [ "$TASK" = "purge-medicines" ]; then
+          if [ "$TASK" != "purge-medicines-preview" ]; then
             [ -n "$FLOCK" ] || { echo "::error::الحذف يحتاج رقم الفوج"; exit 1; }
             [ "$CONFIRM" = "DELETE" ] || { echo "::error::للحذف الفعلي اكتب DELETE في خانة التأكيد"; exit 1; }
           fi
@@ -59,6 +59,7 @@ jobs:
           printf '%s %s\n' "$SERVER_HOST" "$HOST_KEY" > ~/.ssh/known_hosts
           FORCE=""
           [ "$TASK" = "purge-medicines" ] && FORCE="--force"
+          [ "$TASK" = "purge-medicines-zero" ] && FORCE="--force --zero-stock"
           set +e
           out=$(ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
               "alamin-api@$SERVER_HOST" "cd /home/alamin-api/app/backend && /usr/bin/php8.3 artisan flock:purge-medicines $FLOCK $FORCE --no-ansi" 2>&1)

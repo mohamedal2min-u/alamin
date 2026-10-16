@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class PurgeFlockMedicines extends Command
 {
-    protected $signature = 'flock:purge-medicines {flock? : رقم الفوج (بدونه تُعرض الأفواج المفتوحة)} {--force : تنفيذ الحذف فعلاً (بدونه عرض فقط)}';
+    protected $signature = 'flock:purge-medicines {flock? : رقم الفوج (بدونه تُعرض الأفواج المفتوحة)} {--force : تنفيذ الحذف فعلاً (بدونه عرض فقط)} {--zero-stock : بعد المسح يُصفَّر مخزون كل أصناف الأدوية بدل إرجاعه}';
 
     protected $description = 'مسح شحنات الأدوية وديونها وسجلات إعطاء الدواء لفوج مفتوح، مع إرجاع المخزون (عرض فقط بدون --force)';
 
@@ -126,7 +126,12 @@ class PurgeFlockMedicines extends Command
             $this->warn("تنبيه: مُسجّل دفع {$paid} على ديون الشراء — سيُحذف مع الديون.");
         }
 
-        if ($negative !== []) {
+        $zero = (bool) $this->option('zero-stock');
+        if ($zero) {
+            $this->warn("\nتصفير: بعد المسح يصير مخزون كل أصناف الأدوية في المزرعة 0.");
+        }
+
+        if ($negative !== [] && ! $zero) {
             $this->error("\nتوقف: المخزون سيصير بالسالب لـ: ".implode('، ', $negative).' (استُهلك منها خارج هذا الفوج). لم يُحذف شيء.');
 
             return self::FAILURE;
@@ -138,6 +143,8 @@ class PurgeFlockMedicines extends Command
             return self::SUCCESS;
         }
 
+        $medStock = WarehouseItem::where('farm_id', $flock->farm_id)->whereIn('item_id', $medItemIds)->get(['id', 'item_id', 'current_quantity']);
+
         // نسخة احتياطية كاملة قبل الحذف
         $path = sprintf('purge-backups/flock-%d-medicines-%s.json', $flock->id, now()->format('Ymd-His'));
         Storage::disk('local')->put($path, json_encode([
@@ -147,13 +154,20 @@ class PurgeFlockMedicines extends Command
             'expenses' => $expenses->map->getAttributes()->values(),
             'inventory_transactions' => $purchases->merge($consumptions)->map->getAttributes()->values(),
             'stock' => $stock,
+            'medicine_stock_before' => $medStock->map->getAttributes()->values(),
         ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 
-        DB::transaction(function () use ($logs, $expenses, $purchases, $consumptions, $stock): void {
+        DB::transaction(function () use ($logs, $expenses, $purchases, $consumptions, $stock, $zero, $medStock): void {
             // الترتيب يحترم المفاتيح الأجنبية: السجلات والديون قبل حركات المخزون
             FlockMedicine::whereIn('id', $logs->pluck('id'))->delete();
             Expense::whereIn('id', $expenses->pluck('id'))->delete();
             InventoryTransaction::whereIn('id', $purchases->pluck('id')->merge($consumptions->pluck('id')))->delete();
+
+            if ($zero) {
+                WarehouseItem::whereIn('id', $medStock->pluck('id'))->update(['current_quantity' => 0]);
+
+                return;
+            }
 
             foreach ($stock as $s) {
                 if ($s['warehouse_item_id']) {
@@ -166,7 +180,7 @@ class PurgeFlockMedicines extends Command
 
         // متوسط التكلفة من الشحنات المتبقية
         $repricing = app(InventoryRepricingService::class);
-        foreach (collect($stock)->pluck('item_id')->unique() as $itemId) {
+        foreach (($zero ? $medStock->pluck('item_id') : collect($stock)->pluck('item_id'))->unique() as $itemId) {
             $repricing->repriceItem($flock->farm_id, (int) $itemId);
         }
 

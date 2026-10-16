@@ -113,6 +113,23 @@ class PurgeFlockMedicinesTest extends TestCase
         $this->assertSame(1, InventoryTransaction::where('flock_id', $this->flock->id)->count());
     }
 
+    public function test_zero_stock_purges_even_when_stock_would_go_negative_and_zeroes_all_medicines(): void
+    {
+        $this->ship($this->medicine, 10, 8);
+        WarehouseItem::where('item_id', $this->medicine->id)->update(['current_quantity' => 1]);
+        $other = Item::factory()->forFarm($this->farm)->create(['item_type_id' => $this->medicine->item_type_id, 'name' => 'فيتامين']);
+        WarehouseItem::factory()->create(['farm_id' => $this->farm->id, 'warehouse_id' => $this->warehouse->id, 'item_id' => $other->id, 'current_quantity' => 7]);
+        $this->ship($this->feed, 20, 400);
+        $feedStock = $this->stock($this->feed);
+
+        $this->artisan('flock:purge-medicines', ['flock' => $this->flock->id, '--force' => true, '--zero-stock' => true])->assertSuccessful();
+
+        $this->assertSame(0, InventoryTransaction::where('item_id', $this->medicine->id)->count());
+        $this->assertEquals(0, $this->stock($this->medicine));
+        $this->assertEquals(0, $this->stock($other));
+        $this->assertEquals($feedStock, $this->stock($this->feed));
+    }
+
     public function test_refuses_closed_flock(): void
     {
         $closed = Flock::factory()->closed()->create(['farm_id' => $this->farm->id]);

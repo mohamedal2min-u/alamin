@@ -132,6 +132,7 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::get('summary-kpis',      [\App\Http\Controllers\Api\Report\ReportsController::class, 'summaryKpis']);
         Route::get('flock-report',     [\App\Http\Controllers\Api\Report\ReportsController::class, 'flockReport']);
         Route::get('accounting-summary', [\App\Http\Controllers\Api\Report\ReportsController::class, 'accountingSummary']);
+        Route::get('flock-profit', [\App\Http\Controllers\Api\Report\ReportsController::class, 'flockProfit'])->middleware('farm.role:farm_admin,accountant');
         Route::get('inventory-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'inventoryReport']);
         Route::get('partners-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'partnersReport'])->middleware('farm.role:farm_admin,accountant');
         Route::get('workers-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'workersReport'])->middleware('farm.role:farm_admin,accountant');

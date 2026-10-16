@@ -106,6 +106,34 @@ class ReportsController extends Controller
     }
 
     /**
+     * GET reports/flock-profit
+     * ربح/خسارة الفوج وحصة كل شريك (بنفس معادلة التوزيع عند الإغلاق).
+     * بدون flock_id: الفوج النشط، وإلا الأحدث مغلقاً.
+     */
+    public function flockProfit(Request $request, \App\Services\FlockProfitService $profit, \App\Services\ReviewQueueService $reviewQueue): JsonResponse
+    {
+        $farmId  = $request->attributes->get('farm_id');
+        $flockId = $request->query('flock_id');
+
+        $flock = $flockId
+            ? \App\Models\Flock::where('farm_id', $farmId)->find((int) $flockId)
+            : (\App\Models\Flock::where('farm_id', $farmId)->where('status', 'active')->first()
+                ?? \App\Models\Flock::where('farm_id', $farmId)->where('status', 'closed')
+                    ->orderByDesc('close_date')->orderByDesc('id')->first());
+
+        if (! $flock) {
+            return response()->json(['flock' => null]);
+        }
+
+        $data = $profit->summary($flock);
+        // سجلات بلا سعر تجعل الربح غير نهائي
+        $queue = $reviewQueue->getQueue($farmId, ['reason' => 'missing_price', 'flock_id' => $flock->id, 'per_page' => 1]);
+        $data['unpriced_count'] = (int) ($queue['meta']['total'] ?? 0);
+
+        return response()->json($data);
+    }
+
+    /**
      * GET reports/inventory-report
      */
     public function inventoryReport(Request $request): JsonResponse

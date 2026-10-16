@@ -130,7 +130,7 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   return (
     <div className="space-y-4" dir="rtl">
       {/* ١) ما المطلوب منك الآن */}
-      <TodoBanner loading={overview.isLoading} pending={pendingTotal} total={breakdown.reduce((n, c) => n + (c.total_amount ?? 0), 0)} />
+      <TodoBanner loading={overview.isLoading} pending={pendingTotal} />
 
       {/* ٢) الفئات: البطاقة نفسها هي زر الاختيار، وفيها العدد والكمية والسعر */}
       <CategoryCards breakdown={breakdown} selected={category} onSelect={pickCategory} />
@@ -196,17 +196,11 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   )
 }
 
-function TodoBanner({ loading, pending, total }: { loading: boolean; pending: number; total: number }) {
-  if (loading) return <div className="h-16 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+function TodoBanner({ loading, pending }: { loading: boolean; pending: number }) {
+  if (loading) return <div className="h-12 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
   return (
-    <div className={cn('flex items-center justify-between rounded-2xl px-4 py-3.5', pending > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white')}>
-      <div className="flex items-center gap-2 text-sm font-extrabold">
-        {pending > 0 ? <>{pending} سجل بانتظار السعر</> : <><CheckCircle2 className="h-5 w-5" /> كل الأسعار محدّدة</>}
-      </div>
-      <div className="text-left">
-        <div className="text-[10px] font-semibold opacity-80">الإجمالي</div>
-        <div className="text-lg font-extrabold tabular-nums">{formatNumber(total)}</div>
-      </div>
+    <div className={cn('flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-extrabold text-white', pending > 0 ? 'bg-amber-500' : 'bg-emerald-600')}>
+      {pending > 0 ? <>المطلوب منك: تسعير {pending} سجل</> : <><CheckCircle2 className="h-5 w-5" /> كل الأسعار محدّدة</>}
     </div>
   )
 }
@@ -252,7 +246,7 @@ function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryB
             </div>
             {c && (
               <div className={cn('mt-0.5 truncate text-[13px] font-extrabold tabular-nums', !priced && !active && 'text-amber-600')}>
-                {priced ? formatNumber(c.total_amount ?? 0) : 'بلا سعر'}
+                {priced ? <>{formatNumber(c.total_amount ?? 0)} <span className="text-[10px] font-semibold opacity-70">{code === 'sales' ? 'مبيعات' : 'تكلفة'}</span></> : 'بلا سعر'}
               </div>
             )}
           </button>

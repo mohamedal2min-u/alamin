@@ -9,7 +9,7 @@ import { useFarmStore } from '@/stores/farm.store'
 import { cn } from '@/lib/utils'
 import { AccountantPrices } from './AccountantPrices'
 import { AccountantPartners } from './AccountantPartners'
-import { ProfitCard } from './ProfitCard'
+import { PartnerBalances, ProfitCard } from './ProfitCard'
 import type { Flock } from '@/types/flock'
 
 type Section = 'prices' | 'partners'
@@ -98,6 +98,7 @@ export function AccountantBoard() {
         <div className="space-y-4">
           {/* الربح والخسارة ونصيب كل شريك — يظهر بعد تسعير كل السجلات */}
           <ProfitCard flockId={effectiveFlockId} />
+          <PartnerBalances flockId={effectiveFlockId} />
           <AccountantPartners flock={selected} sharesLocked={!!activeFlock} />
         </div>
       )}

@@ -80,6 +80,8 @@ export interface FlockProfit {
   /** true = الفوج مغلق والمبالغ مسجّلة فعلاً في حسابات الشركاء */
   recorded?: boolean
   unpriced_count?: number
+  /** رصيد كل شريك: في هذا الفوج ولكل الأفواج (إيداع + أرباح − سحب − خسائر − تسويات) */
+  balances?: { partner_id: number; name: string | null; flock_balance: number; total_balance: number }[]
 }
 
 export const reportsApi = {

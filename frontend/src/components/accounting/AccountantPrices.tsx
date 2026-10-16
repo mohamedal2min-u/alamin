@@ -7,10 +7,9 @@ import { accountingApi } from '@/lib/api/accounting'
 import type { CategoryBreakdown, ReviewItem } from '@/lib/api/accounting'
 import { cn, formatNumber } from '@/lib/utils'
 import { PriceWithHistory } from './PriceWithHistory'
+import { ItemGroups, groupByItem } from './ItemGroups'
 
-// ── لوحة المحاسب: قائمة أسعار بسيطة. تحديد السعر وتعديله فقط ──────────────────
-
-type Tab = 'pending' | 'all'
+// ── لوحة المحاسب: ما المطلوب ← اختر الفئة ← سعّر السجلات (أو الصنف كاملاً) ─────
 
 const CATEGORIES: { code: string | undefined; label: string; icon: React.ElementType }[] = [
   { code: undefined,   label: 'الكل',    icon: Layers },
@@ -30,8 +29,9 @@ const CATEGORY_TONE: Record<string, string> = {
 export function AccountantPrices({ flockId }: { flockId: string }) {
   const qc = useQueryClient()
 
-  const [tab, setTab] = useState<Tab>('all')
+  const [onlyPending, setOnlyPending] = useState(false)
   const [category, setCategory] = useState<string | undefined>(undefined)
+  const [itemFilter, setItemFilter] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [mode, setMode] = useState<'price' | 'payment'>('price')
   const [value, setValue] = useState('')
@@ -39,29 +39,44 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
 
   const flock_id = flockId || undefined
 
-  const pending = useQuery({
-    queryKey: ['accounting', 'review-queue', 'pending', category, flock_id],
-    queryFn: () => accountingApi.getReviewQueue({ reason: 'missing_price', category, flock_id, per_page: 50 }),
-    staleTime: 15_000,
-  })
-
-  const all = useQuery({
-    queryKey: ['accounting', 'review-queue', 'all', category, flock_id],
-    queryFn: () => accountingApi.getReviewQueue({ scope: 'all', category, flock_id, per_page: 50 }),
-    staleTime: 15_000,
-    enabled: tab === 'all',
-  })
-
-  // ملخص شامل لكل الفئات (الكميات والأسعار الإجمالية) — لا يتأثر بتبويب القائمة
+  // ملخص كل الفئات (العدد والكمية والسعر الإجمالي)
   const overview = useQuery({
     queryKey: ['accounting', 'review-queue', 'overview', flock_id],
     queryFn: () => accountingApi.getReviewQueue({ scope: 'all', flock_id, per_page: 1 }),
     staleTime: 15_000,
   })
 
-  const current = tab === 'pending' ? pending : all
-  const items = current.data?.data ?? []
-  const pendingCount = pending.data?.meta.total ?? 0
+  // كل سجلات الفئة المختارة (لتجميعها حسب الصنف وعرضها)
+  const rowsQuery = useQuery({
+    queryKey: ['accounting', 'review-queue', 'rows', category, flock_id],
+    queryFn: async () => {
+      const out: ReviewItem[] = []
+      for (let page = 1; page <= 20; page++) {
+        const r = await accountingApi.getReviewQueue({ scope: 'all', category, flock_id, per_page: 100, page })
+        out.push(...r.data)
+        if (r.data.length === 0 || out.length >= r.meta.total) break
+      }
+      return out
+    },
+    staleTime: 15_000,
+  })
+
+  const breakdown = overview.data?.summary.category_breakdown ?? []
+  const allRows = rowsQuery.data ?? []
+  const isUnpriced = (i: ReviewItem) => i.unit_price == null || i.unit_price <= 0
+  const pendingTotal = breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
+
+  // العلف (مراحل) والدواء (أصناف): قائمة الأصناف مع سعر موحّد لكل نقلاتها
+  const groupsEnabled = category === 'feed' || category === 'medicine'
+  const groups = groupsEnabled ? groupByItem(allRows) : []
+
+  // القائمة: غير المسعّر أولاً
+  const items = allRows
+    .filter((i) => !itemFilter || i.item_name === itemFilter)
+    .filter((i) => !onlyPending || isUnpriced(i))
+    .sort((a, b) => Number(isUnpriced(b)) - Number(isUnpriced(a)))
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ['accounting', 'review-queue'] })
 
   const save = useMutation({
     mutationFn: ({ item, price }: { item: ReviewItem; price: number }) =>
@@ -73,7 +88,7 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
             unit_price: item.type === 'sale' ? price / 1000 : price,
           }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['accounting', 'review-queue'] })
+      refresh()
       setEditingId(null)
       setValue('')
       setError(null)
@@ -110,48 +125,50 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
     save.mutate({ item, price })
   }
 
+  const pickCategory = (code: string | undefined) => { setCategory(code); setItemFilter(null) }
+
   return (
     <div className="space-y-4" dir="rtl">
-      {/* ── ملخص الفئة المختارة: الكمية والسعر الإجمالي وغيرها ── */}
-      <CategorySummary breakdown={overview.data?.summary.category_breakdown ?? []} category={category} loading={overview.isLoading} onSelect={setCategory} />
+      {/* ١) ما المطلوب منك الآن */}
+      <TodoBanner loading={overview.isLoading} pending={pendingTotal} total={breakdown.reduce((n, c) => n + (c.total_amount ?? 0), 0)} />
 
-      {/* ── تبويبان فقط ── */}
-      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
-        <TabButton active={tab === 'pending'} onClick={() => setTab('pending')}>
-          بانتظار السعر
-          {pendingCount > 0 && (
-            <span className="ms-1.5 rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold text-white">{pendingCount}</span>
+      {/* ٢) الفئات: البطاقة نفسها هي زر الاختيار، وفيها العدد والكمية والسعر */}
+      <CategoryCards breakdown={breakdown} selected={category} onSelect={pickCategory} />
+
+      {/* ٣) العلف والدواء: الأصناف مع سعر موحّد */}
+      {groupsEnabled && (
+        <ItemGroups
+          isFeed={category === 'feed'}
+          groups={groups}
+          selected={itemFilter}
+          onSelect={setItemFilter}
+          onDone={refresh}
+        />
+      )}
+
+      {/* ٤) السجلات */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
+          {itemFilter ? `نقلات ${itemFilter}` : 'السجلات'} <span className="text-slate-400">({items.length})</span>
+        </h2>
+        <button
+          type="button"
+          onClick={() => setOnlyPending((v) => !v)}
+          className={cn(
+            'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+            onlyPending ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-200 bg-white text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300'
           )}
-        </TabButton>
-        <TabButton active={tab === 'all'} onClick={() => setTab('all')}>كل الأسعار</TabButton>
+        >
+          بانتظار السعر فقط
+        </button>
       </div>
 
-      {/* ── تصنيف: شريط أفقي صغير ── */}
-      <div className="flex gap-1.5">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.label}
-            onClick={() => setCategory(c.code)}
-            className={cn(
-              'flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full border px-1.5 py-2 text-[13px] font-semibold transition-colors',
-              category === c.code
-                ? 'border-primary-600 bg-primary-600 text-white'
-                : 'border-slate-200 bg-white text-slate-600'
-            )}
-          >
-            <c.icon className="h-3.5 w-3.5 shrink-0" />
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── القائمة ── */}
-      {current.isLoading ? (
+      {rowsQuery.isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-16 text-slate-400">
           <CheckCircle2 className="h-12 w-12 text-primary-400" />
-          <p className="text-sm font-semibold">{tab === 'pending' ? 'كل الأسعار محدّدة' : 'لا توجد سجلات'}</p>
+          <p className="text-sm font-semibold">{onlyPending ? 'كل الأسعار محدّدة' : 'لا توجد سجلات'}</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -159,6 +176,7 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
             <PriceCard
               key={item.id}
               item={item}
+              showCategory={!category}
               locked={item.flock_status === 'closed' || item.flock_status === 'cancelled'}
               isEditing={editingId === item.id}
               mode={mode}
@@ -178,22 +196,75 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   )
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TodoBanner({ loading, pending, total }: { loading: boolean; pending: number; total: number }) {
+  if (loading) return <div className="h-16 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex items-center justify-center rounded-xl py-2.5 text-sm font-bold transition-all',
-        active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
-      )}
-    >
-      {children}
-    </button>
+    <div className={cn('flex items-center justify-between rounded-2xl px-4 py-3.5', pending > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white')}>
+      <div className="flex items-center gap-2 text-sm font-extrabold">
+        {pending > 0 ? <>{pending} سجل بانتظار السعر</> : <><CheckCircle2 className="h-5 w-5" /> كل الأسعار محدّدة</>}
+      </div>
+      <div className="text-left">
+        <div className="text-[10px] font-semibold opacity-80">الإجمالي</div>
+        <div className="text-lg font-extrabold tabular-nums">{formatNumber(total)}</div>
+      </div>
+    </div>
+  )
+}
+
+function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryBreakdown[]; selected: string | undefined; onSelect: (code: string | undefined) => void }) {
+  const totalCount = breakdown.reduce((n, c) => n + c.count, 0)
+  const cards = [
+    { code: undefined as string | undefined, name: 'الكل', count: totalCount, c: null as CategoryBreakdown | null },
+    ...CATEGORIES.filter((x) => x.code).map((x) => {
+      const c = breakdown.find((b) => b.code === x.code) ?? null
+      return { code: x.code, name: x.label, count: c?.count ?? 0, c }
+    }),
+  ]
+  return (
+    <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
+      {cards.map(({ code, name, count, c }) => {
+        const Icon = CATEGORIES.find((x) => x.code === code)?.icon ?? Layers
+        const active = selected === code
+        const unpriced = c?.unpriced_count ?? 0
+        const kg = c?.computed_quantity ?? 0
+        const qty = c && (c.quantity ?? 0) > 0
+          ? (kg > 0 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim())
+          : null
+        const priced = c ? count - unpriced > 0 : false
+        return (
+          <button
+            key={name}
+            type="button"
+            onClick={() => onSelect(code)}
+            className={cn(
+              'relative w-[7.5rem] shrink-0 snap-start rounded-2xl border p-3 text-right transition-colors',
+              active ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+            )}
+          >
+            {unpriced > 0 && (
+              <span className="absolute -top-1.5 left-2 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{unpriced}</span>
+            )}
+            <div className="flex items-center gap-1.5 text-[13px] font-extrabold">
+              <Icon className="h-4 w-4 shrink-0" /> {name}
+            </div>
+            <div className={cn('mt-1.5 text-[11px] font-semibold', active ? 'text-white/80' : 'text-slate-400')}>
+              {count} سجل{qty ? ` · ${qty}` : ''}
+            </div>
+            {c && (
+              <div className={cn('mt-0.5 truncate text-[13px] font-extrabold tabular-nums', !priced && !active && 'text-amber-600')}>
+                {priced ? formatNumber(c.total_amount ?? 0) : 'بلا سعر'}
+              </div>
+            )}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
 interface CardProps {
   item: ReviewItem
+  showCategory: boolean
   locked: boolean
   isEditing: boolean
   mode: 'price' | 'payment'
@@ -207,7 +278,7 @@ interface CardProps {
   onSave: () => void
 }
 
-function PriceCard({ item, locked, isEditing, mode, value, error, isSaving, onValue, onEdit, onPay, onCancel, onSave }: CardProps) {
+function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, isSaving, onValue, onEdit, onPay, onCancel, onSave }: CardProps) {
   const unpriced = item.unit_price == null
   const unitLabel = mode === 'payment' ? 'إجمالي المدفوع حتى الآن' : item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'
   const remaining = Number(item.remaining_amount ?? 0)
@@ -217,7 +288,7 @@ function PriceCard({ item, locked, isEditing, mode, value, error, isSaving, onVa
       {/* العنوان + التصنيف */}
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-[15px] font-bold leading-snug text-slate-800">{item.description}</h3>
-        {item.category_name && (
+        {showCategory && item.category_name && (
           <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold', CATEGORY_TONE[item.category_code ?? ''] ?? 'bg-slate-100 text-slate-600')}>
             {item.category_name}
           </span>
@@ -300,114 +371,5 @@ function PriceCard({ item, locked, isEditing, mode, value, error, isSaving, onVa
         </div>
       )}
     </li>
-  )
-}
-
-// ── ملخص شامل للفئة المختارة (أو لكل الفئات) ─────────────────────────────────
-function CategorySummary({ breakdown, category, loading, onSelect }: { breakdown: CategoryBreakdown[]; category: string | undefined; loading: boolean; onSelect: (code: string | undefined) => void }) {
-  if (loading) return <div className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-  if (breakdown.length === 0) return null
-
-  // «الكل»: بطاقة لكل نوع (علف، دواء، ماء، مبيعات...) بعدد السجلات والكمية الإجمالية والسعر إن وُجد
-  if (!category) {
-    const grandTotal = breakdown.reduce((n, c) => n + (c.total_amount ?? 0), 0)
-    const grandUnpriced = breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
-    return (
-      <div className="space-y-2.5">
-        <div className="grid grid-cols-2 gap-2.5">
-          {breakdown.map((c) => <CategoryCard key={c.code} c={c} onClick={() => onSelect(c.code)} />)}
-        </div>
-        <div className="flex items-center justify-between rounded-2xl bg-slate-800 px-4 py-3 text-white dark:bg-slate-700">
-          <span className="text-xs font-semibold text-slate-300">
-            الإجمالي{grandUnpriced > 0 ? ` · ${grandUnpriced} سجل بدون سعر` : ''}
-          </span>
-          <span className="text-lg font-extrabold tabular-nums">{formatNumber(grandTotal)}</span>
-        </div>
-      </div>
-    )
-  }
-
-  const rows = category ? breakdown.filter((c) => c.code === category) : breakdown
-  if (rows.length === 0) {
-    return <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-400">لا توجد سجلات في هذه الفئة</div>
-  }
-
-  const count        = rows.reduce((n, c) => n + c.count, 0)
-  const totalAmount  = rows.reduce((n, c) => n + (c.total_amount ?? 0), 0)
-  const unpriced     = rows.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
-  const quantity     = rows.reduce((n, c) => n + (c.quantity ?? 0), 0)
-  const units        = Array.from(new Set(rows.map((c) => c.quantity_unit).filter(Boolean)))
-  const single       = rows.length === 1 ? rows[0] : null
-  const isSales      = category === 'sales'
-  // الكمية لا تُجمع عبر وحدات مختلفة (كغ + عبوة + م³) ولا معنى لمتوسط سعر مختلط
-  const quantityText = single || units.length <= 1
-    ? `${formatNumber(quantity)} ${units[0] ?? ''}`.trim()
-    : '—'
-  const feedKg       = single?.computed_quantity
-
-  const avg = single?.avg_unit_price
-  const avgText = avg == null ? '—' : formatNumber(isSales ? avg * 1000 : avg)
-
-  return (
-    <div className="grid grid-cols-2 gap-2.5">
-      <Stat label="عدد السجلات" value={String(count)} sub={unpriced > 0 ? `${unpriced} بدون سعر` : 'كلها مسعّرة'} tone={unpriced > 0 ? 'amber' : 'emerald'} />
-      <Stat
-        label="الكمية الإجمالية"
-        value={quantityText}
-        sub={feedKg != null && feedKg > 0 ? (feedKg >= 1000 ? `${formatNumber(feedKg / 1000)} طن` : `${formatNumber(feedKg)} كغ`) : undefined}
-      />
-      <Stat label="السعر الإجمالي" value={formatNumber(totalAmount)} tone="slate" strong />
-      <Stat label={isSales ? 'متوسط سعر الطن' : 'متوسط سعر الوحدة'} value={single ? avgText : '—'} sub={single ? undefined : 'اختر فئة'} />
-    </div>
-  )
-}
-
-function CategoryCard({ c, onClick }: { c: CategoryBreakdown; onClick: () => void }) {
-  const Icon = CATEGORIES.find((x) => x.code === c.code)?.icon ?? Layers
-  const tone = CATEGORY_TONE[c.code] ?? 'bg-slate-100 text-slate-600'
-  const unpriced = c.unpriced_count ?? 0
-  const priced = (c.priced_count ?? c.count - unpriced) > 0
-  const quantity = (c.quantity ?? 0) > 0 ? `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim() : '—'
-  const kg = c.computed_quantity ?? 0
-  const kgText = kg > 0 ? (kg >= 1000 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(kg)} كغ`) : null
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-2xl border border-slate-200 bg-white p-3.5 text-right transition-colors active:bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
-    >
-      <div className="flex items-center justify-between">
-        <span className={cn('flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold', tone)}>
-          <Icon className="h-3.5 w-3.5" /> {c.name}
-        </span>
-        <span className="text-[11px] font-semibold text-slate-400">{c.count} سجل</span>
-      </div>
-      <dl className="mt-3 space-y-1.5 text-[12px]">
-        <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-slate-400">الكمية</dt>
-          <dd className="truncate font-extrabold tabular-nums text-slate-800 dark:text-slate-100">
-            {quantity}{kgText ? <span className="ms-1 text-[10px] font-semibold text-slate-400">({kgText})</span> : null}
-          </dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-slate-400">السعر</dt>
-          <dd className={cn('font-extrabold tabular-nums', priced ? 'text-slate-800 dark:text-slate-100' : 'text-amber-600')}>
-            {priced ? formatNumber(c.total_amount ?? 0) : 'لم يُحدَّد'}
-          </dd>
-        </div>
-      </dl>
-      {unpriced > 0 && priced && <div className="mt-1.5 text-[11px] font-semibold text-amber-600">{unpriced} بدون سعر</div>}
-    </button>
-  )
-}
-
-function Stat({ label, value, sub, tone, strong }: { label: string; value: string; sub?: string; tone?: 'amber' | 'emerald' | 'slate'; strong?: boolean }) {
-  const subTone = tone === 'amber' ? 'text-amber-600' : tone === 'emerald' ? 'text-emerald-600' : 'text-slate-400'
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-800">
-      <div className="text-[11px] font-semibold text-slate-400">{label}</div>
-      <div className={cn('mt-1 truncate text-lg font-extrabold tabular-nums text-slate-800 dark:text-slate-100', strong && 'text-xl')}>{value}</div>
-      {sub && <div className={cn('mt-0.5 text-[11px] font-semibold', subTone)}>{sub}</div>}
-    </div>
   )
 }

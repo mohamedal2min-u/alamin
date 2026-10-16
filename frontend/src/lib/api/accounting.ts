@@ -52,6 +52,8 @@ export interface ReviewItem {
   quantity_unit?: string | null
   computed_quantity?: number | null
   item_type?: string | null
+  item_id?: number | null
+  item_name?: string | null
   category_name?: string | null
   category_code?: string | null
   review_reasons: ReviewReason[]

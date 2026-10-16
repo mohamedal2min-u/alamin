@@ -332,6 +332,8 @@ class ReviewQueueService
                 ? (float) $e->linkedInventoryTransaction->computed_quantity
                 : null,
             'item_type' => $linkedItem?->itemType?->code,
+            'item_id' => $linkedItem?->id,
+            'item_name' => $linkedItem?->name,
             'review_reasons' => [],
         ];
     }

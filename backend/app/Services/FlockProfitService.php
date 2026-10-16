@@ -6,6 +6,7 @@ use App\Models\FarmPartnerShare;
 use App\Models\Flock;
 use App\Models\FlockWaterLog;
 use App\Models\InventoryTransaction;
+use App\Models\Partner;
 use App\Models\PartnerTransaction;
 
 /**
@@ -77,6 +78,38 @@ class FlockProfitService
         return FarmPartnerShare::where('farm_id', $farmId)->where('is_active', true)->get();
     }
 
+    /** نفس صيغة الرصيد في محفظة الشريك وسجله؛ «تعديل» بلا اتجاه ثابت فلا يُحتسب. */
+    private const BALANCE_SIGN = ['deposit' => 1, 'profit' => 1, 'withdraw' => -1, 'loss' => -1, 'settlement' => -1];
+
+    /**
+     * رصيد كل شريك: في هذا الفوج (الحركات المرتبطة به) ولكل الأفواج (كل حركاته في المزرعة).
+     *
+     * @return array<int, array{partner_id: int, name: string|null, flock_balance: float, total_balance: float}>
+     */
+    public function balances(Flock $flock): array
+    {
+        $txns = PartnerTransaction::where('farm_id', $flock->farm_id)
+            ->whereIn('transaction_type', array_keys(self::BALANCE_SIGN))
+            ->get(['partner_id', 'flock_id', 'transaction_type', 'amount']);
+
+        $partners = Partner::where('farm_id', $flock->farm_id)
+            ->where(fn ($q) => $q->where('status', 'active')->orWhereIn('id', $txns->pluck('partner_id')->unique()))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return $partners->map(function (Partner $p) use ($txns, $flock): array {
+            $mine = $txns->where('partner_id', $p->id);
+            $sum = fn ($rows) => round($rows->sum(fn ($t) => self::BALANCE_SIGN[$t->transaction_type] * (float) $t->amount), 2);
+
+            return [
+                'partner_id' => $p->id,
+                'name' => $p->name,
+                'flock_balance' => $sum($mine->where('flock_id', $flock->id)),
+                'total_balance' => $sum($mine),
+            ];
+        })->values()->all();
+    }
+
     /**
      * ملخص للعرض: الربح الحالي وحصة كل شريك.
      * الفوج المغلق: المبالغ المسجّلة فعلاً في حسابات الشركاء عند الإغلاق.
@@ -119,6 +152,7 @@ class FlockProfitService
         return [
             'flock' => ['id' => $flock->id, 'name' => $flock->name, 'status' => $flock->status],
             ...$totals,
+            'balances' => $this->balances($flock),
             'shares_total' => round((float) $shares->sum('share_percent'), 2),
             'partners' => $partners,
             'recorded' => $isRecorded,

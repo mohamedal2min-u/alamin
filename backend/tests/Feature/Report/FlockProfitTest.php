@@ -112,6 +112,25 @@ class FlockProfitTest extends TestCase
         $this->assertEquals(600, collect($after->json('partners'))->sum('amount'));
     }
 
+    public function test_balances_per_flock_and_across_all_flocks(): void
+    {
+        $flock = $this->flockWith(1000, 400);
+        $old = Flock::factory()->closed()->create(['farm_id' => $this->farm->id]);
+        $tx = fn (array $a) => PartnerTransaction::create(array_merge([
+            'farm_id' => $this->farm->id, 'partner_id' => $this->partner->id, 'transaction_date' => now()->toDateString(),
+        ], $a));
+        $tx(['flock_id' => $old->id, 'transaction_type' => 'profit', 'amount' => 500]);
+        $tx(['flock_id' => null, 'transaction_type' => 'deposit', 'amount' => 1000]);
+        $tx(['flock_id' => $flock->id, 'transaction_type' => 'withdraw', 'amount' => 200]);
+        $tx(['flock_id' => $flock->id, 'transaction_type' => 'adjustment', 'amount' => 999]); // لا يُحتسب
+
+        $row = collect($this->as($this->accountant)->getJson("/api/reports/flock-profit?flock_id={$flock->id}")->assertOk()->json('balances'))
+            ->firstWhere('partner_id', $this->partner->id);
+
+        $this->assertEquals(-200, $row['flock_balance']);
+        $this->assertEquals(1300, $row['total_balance']);
+    }
+
     public function test_supervisor_cannot_see_partner_shares(): void
     {
         $supervisor = $this->member('supervisor');

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, ChevronDown, TrendingDown, TrendingUp, Users } from 'lucide-react'
+import { ChevronDown, Lock, TrendingDown, TrendingUp, Users } from 'lucide-react'
 import { reportsApi } from '@/lib/api/reports'
 import { cn, formatNumber } from '@/lib/utils'
 
@@ -18,10 +18,23 @@ export function ProfitCard({ flockId }: { flockId: string }) {
   if (isLoading) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
   if (!data?.flock) return null
 
+  // الربح لا يظهر قبل اكتمال الحسابات: أي سجل بلا سعر يجعل الرقم مضلِّلاً
+  if ((data.unpriced_count ?? 0) > 0 && !data.recorded) {
+    return (
+      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+        <div className="flex items-center gap-2 text-sm font-extrabold text-amber-800 dark:text-amber-300">
+          <Lock className="h-4 w-4" /> الربح ونصيب الشركاء · {data.flock.name}
+        </div>
+        <p className="mt-1.5 text-sm text-amber-800 dark:text-amber-200">
+          يظهر بعد تسجيل كل الحسابات. بقي <b className="tabular-nums">{data.unpriced_count}</b> سجل بلا سعر في قسم «الأسعار».
+        </p>
+      </section>
+    )
+  }
+
   const net = data.net ?? 0
   const isProfit = net >= 0
   const partners = data.partners ?? []
-  const unpriced = data.unpriced_count ?? 0
   const sharesOk = Math.abs((data.shares_total ?? 0) - 100) <= 0.01
 
   return (
@@ -52,11 +65,6 @@ export function ProfitCard({ flockId }: { flockId: string }) {
             <Row label="مصاريف (كتاكيت وغيرها)" value={data.operations ?? 0} small />
             <Row label="ماء" value={data.water ?? 0} small />
           </div>
-        )}
-        {unpriced > 0 && (
-          <p className="flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
-            <AlertTriangle className="h-4 w-4 shrink-0" /> {unpriced} سجل بلا سعر — الربح غير نهائي حتى تسعيرها
-          </p>
         )}
       </div>
 
@@ -102,5 +110,59 @@ function Row({ label, value, tone, sign, small }: { label: React.ReactNode; valu
         {sign}{formatNumber(value)}
       </span>
     </div>
+  )
+}
+
+/** أرصدة الشركاء الفعلية (مبالغ مسجّلة): تظهر دائماً، لا تنتظر التسعير. */
+export function PartnerBalances({ flockId }: { flockId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['accounting', 'review-queue', 'profit', flockId],
+    queryFn: () => reportsApi.getFlockProfit(flockId || undefined),
+    staleTime: 15_000,
+  })
+  if (isLoading) return <div className="h-32 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+  const rows = data?.balances ?? []
+  if (!data?.flock || rows.length === 0) return null
+
+  const totalFlock = rows.reduce((n, r) => n + r.flock_balance, 0)
+  const totalAll = rows.reduce((n, r) => n + r.total_balance, 0)
+  const money = (v: number) => (
+    <span className={cn('font-extrabold tabular-nums', v > 0 ? 'text-emerald-700 dark:text-emerald-400' : v < 0 ? 'text-rose-700 dark:text-rose-400' : 'text-slate-400')}>
+      {v < 0 ? '−' : ''}{formatNumber(Math.abs(v))}
+    </span>
+  )
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <h3 className="flex items-center gap-1.5 px-4 pt-3 text-sm font-extrabold text-slate-700 dark:text-slate-200">
+        <Users className="h-4 w-4" /> أرصدة الشركاء
+      </h3>
+      <table className="mt-2 w-full text-sm">
+        <thead>
+          <tr className="text-[11px] text-slate-400">
+            <th className="px-4 py-1.5 text-right font-semibold">الشريك</th>
+            <th className="px-2 py-1.5 text-left font-semibold">{data.flock.name}</th>
+            <th className="px-4 py-1.5 text-left font-semibold">كل الأفواج</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+          {rows.map((r) => (
+            <tr key={r.partner_id}>
+              <td className="px-4 py-2 font-semibold text-slate-700 dark:text-slate-200">{r.name ?? 'شريك'}</td>
+              <td className="px-2 py-2 text-left">{money(r.flock_balance)}</td>
+              <td className="px-4 py-2 text-left">{money(r.total_balance)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="bg-slate-50 dark:bg-slate-900/40">
+            <td className="px-4 py-2.5 text-xs font-extrabold text-slate-600 dark:text-slate-300">الإجمالي</td>
+            <td className="px-2 py-2.5 text-left">{money(totalFlock)}</td>
+            <td className="px-4 py-2.5 text-left">{money(totalAll)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <p className="px-4 pb-3 pt-2 text-[11px] text-slate-400">الرصيد = إيداعات + أرباح − سحوبات − خسائر − تسويات (المسجّل فعلاً).</p>
+    </section>
   )
 }

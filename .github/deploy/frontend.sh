@@ -4,12 +4,20 @@
 source ~/.profile 2>/dev/null || true
 source ~/.bashrc 2>/dev/null || true
 export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
+# nvm: ملف .bashrc يتوقف مبكراً في الجلسات غير التفاعلية، فنحمّله صراحةً
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 || true
+command -v nvm >/dev/null 2>&1 && nvm use default >/dev/null 2>&1 || true
+if ! command -v node >/dev/null 2>&1; then
+  for d in "$HOME"/.nvm/versions/node/*/bin; do [ -d "$d" ] && PATH="$d:$PATH"; done
+  export PATH
+fi
 
 set -euo pipefail
 
 # فحص مبكر قبل تغيير أي شيء
-command -v pm2 >/dev/null || { echo "pm2 غير موجود في PATH للمستخدم maa" >&2; exit 1; }
-command -v node >/dev/null || { echo "node غير موجود في PATH للمستخدم maa" >&2; exit 1; }
+command -v pm2 >/dev/null || { echo "pm2 غير موجود في PATH للمستخدم maa. PATH=$PATH" >&2; exit 1; }
+command -v node >/dev/null || { echo "node غير موجود في PATH للمستخدم maa. PATH=$PATH" >&2; exit 1; }
 
 SITE=/home/maa/htdocs/ch.alamin.se
 SERVICE=alamin-frontend

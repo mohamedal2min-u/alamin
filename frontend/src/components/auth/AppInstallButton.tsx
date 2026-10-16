@@ -38,7 +38,7 @@ async function installedBuild(): Promise<number | null> {
 /**
  * زر في صفحة الدخول:
  *  - داخل تطبيق الأندرويد: «تحديث التطبيق» يظهر فقط إن وُجدت نسخة أحدث.
- *  - في متصفح أندرويد: «تثبيت التطبيق» لتحميل ملف APK.
+ *  - في أي متصفح آخر (عدا آيفون): «تحميل تطبيق أندرويد» لتحميل ملف APK.
  */
 export function AppInstallButton() {
   const [state, setState] = useState<{ mode: 'install' | 'update'; latest: Latest } | null>(null)
@@ -47,7 +47,7 @@ export function AppInstallButton() {
     let alive = true
     void (async () => {
       const native = Capacitor.isNativePlatform()
-      if (!native && !/Android/i.test(navigator.userAgent)) return // ملف APK للأندرويد فقط
+      if (!native && /iPhone|iPad|iPod/i.test(navigator.userAgent)) return // ملف APK لا يُثبَّت على آيفون
       const latest = await fetchLatest()
       if (!latest || !alive) return
       if (!native) { setState({ mode: 'install', latest }); return }
@@ -80,7 +80,7 @@ export function AppInstallButton() {
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 py-2.5 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-500/20"
       >
         {isUpdate ? <RefreshCw size={14} /> : <Download size={14} />}
-        {isUpdate ? 'تحديث التطبيق' : 'تثبيت التطبيق على أندرويد'}
+        {isUpdate ? 'تحديث التطبيق' : 'تحميل وتثبيت تطبيق أندرويد'}
       </button>
       <p className="mt-1 text-center text-[10px] text-slate-500">
         بعد التحميل افتح الملف واسمح بالتثبيت من هذا المصدر عند الطلب.

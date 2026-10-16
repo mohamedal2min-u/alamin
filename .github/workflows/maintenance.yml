@@ -1,0 +1,75 @@
+name: Maintenance
+
+# تشغيل يدوي لمهام صيانة البيانات على السيرفر. العرض أولاً دائماً، والحذف يتطلب كتابة DELETE.
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: المهمة
+        type: choice
+        options: [purge-medicines-preview, purge-medicines]
+        default: purge-medicines-preview
+      flock_id:
+        description: رقم الفوج (فارغ = عرض الأفواج المفتوحة)
+        type: string
+        required: false
+      confirm:
+        description: للحذف الفعلي اكتب DELETE
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  SERVER_HOST: 82.29.181.61
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate
+        env:
+          TASK: ${{ inputs.task }}
+          FLOCK: ${{ inputs.flock_id }}
+          CONFIRM: ${{ inputs.confirm }}
+          REF: ${{ github.ref }}
+        run: |
+          [ "$REF" = "refs/heads/main" ] || { echo "::error::مسموح من فرع main فقط"; exit 1; }
+          if [ -n "$FLOCK" ] && ! [[ "$FLOCK" =~ ^[0-9]+$ ]]; then echo "::error::رقم الفوج غير صالح"; exit 1; fi
+          if [ "$TASK" = "purge-medicines" ]; then
+            [ -n "$FLOCK" ] || { echo "::error::الحذف يحتاج رقم الفوج"; exit 1; }
+            [ "$CONFIRM" = "DELETE" ] || { echo "::error::للحذف الفعلي اكتب DELETE في خانة التأكيد"; exit 1; }
+          fi
+
+      - name: Run on server (as alamin-api)
+        env:
+          SSH_KEY: ${{ secrets.BACKEND_SSH_KEY }}
+          HOST_KEY: ${{ secrets.SERVER_HOST_KEY }}
+          TASK: ${{ inputs.task }}
+          FLOCK: ${{ inputs.flock_id }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s %s\n' "$SERVER_HOST" "$HOST_KEY" > ~/.ssh/known_hosts
+          FORCE=""
+          [ "$TASK" = "purge-medicines" ] && FORCE="--force"
+          set +e
+          out=$(ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "alamin-api@$SERVER_HOST" "cd /home/alamin-api/app/backend && /usr/bin/php8.3 artisan flock:purge-medicines $FLOCK $FORCE --no-ansi" 2>&1)
+          rc=$?
+          set -e
+          rm -f ~/.ssh/id_deploy
+          printf '%s\n' "$out"
+          # النتيجة كاملة في ملاحظات التشغيل (تُقرأ دون فتح السجل)
+          msg=$(printf '%s' "$out" | tail -n 60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          if [ "$rc" -ne 0 ]; then
+            echo "::error title=فشل (رمز $rc)::$msg"
+            exit "$rc"
+          fi
+          echo "::notice title=النتيجة::$msg"

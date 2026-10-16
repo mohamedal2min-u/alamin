@@ -16,7 +16,7 @@ import type { Farm } from '@/types/farm'
 import type { FarmRole } from '@/types/auth'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { ShieldCheck, Sparkles, Server, Brain, Cpu, User, Lock, Eye, EyeOff, Phone, Mail, Home, MapPin, UserPlus, RefreshCw, BellRing } from 'lucide-react'
+import { ShieldCheck, Sparkles, Server, Brain, Cpu, User, Lock, Eye, EyeOff, Phone, Mail, Home, MapPin, UserPlus, RefreshCw } from 'lucide-react'
 
 // ── Local Utils (Fallback for build issues) ──────────────────────────────────
 function cn(...inputs: ClassValue[]) {
@@ -341,16 +341,6 @@ function LoginPageInner() {
                 {loginForm.formState.isSubmitting ? 'جاري الدخول...' : 'دخول للنظام'}
               </Button>
             </form>
-          )}
-
-          {/* رابط الأذان: متاح بلا تسجيل دخول */}
-          {mode === 'login' && (
-            <a
-              href="/prayer"
-              className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-bold text-slate-300 transition-colors hover:bg-white/10"
-            >
-              <BellRing size={14} /> أوقات الصلاة وإعدادات الأذان
-            </a>
           )}
 
           {/* تثبيت/تحديث تطبيق أندرويد */}

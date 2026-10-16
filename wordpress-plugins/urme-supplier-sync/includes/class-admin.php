@@ -467,7 +467,7 @@ class URME_SS_Admin {
 					self::$others = URME_SS_DB::other_sources( array( $item ) );
 					$item         = self::buy_row( $item );
 				}
-				$price = $item ? URME_SS_Price_Hint::price_98( $item['purchase_price'], URME_SS_Suppliers::hint( URME_SS_Price_Hint::context(), URME_SS_Suppliers::of_key( $item['item_key'] ) ) ) : null;
+				$price = $item ? URME_SS_Price_Hint::price_98( $item['purchase_price'], URME_SS_Suppliers::hint( URME_SS_Price_Hint::context(), URME_SS_Suppliers::of_key( $item['item_key'] ), $item['manufacturer'] ) ) : null;
 				if ( ! $price ) {
 					return array( 'No suggested price for this watch (cost or exchange rate missing); nothing was changed.', 'error' );
 				}
@@ -1061,10 +1061,11 @@ class URME_SS_Admin {
 			<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
 			<input type="hidden" name="tab" value="catalog">
 			<label>Brand
-				<select name="brand">
+				<select name="brand" class="urme-brand-select">
 					<option value="">All</option>
 					<?php foreach ( $brands as $b ) : ?>
-						<option value="<?php echo esc_attr( $b['manufacturer'] ); ?>" <?php selected( $f['brand'], $b['manufacturer'] ); ?>><?php echo esc_html( $b['manufacturer'] . ' (' . (int) $b['n'] . ')' . ( URME_SS_Settings::brand_enabled( $b['manufacturer'] ) ? '' : ' – sync off' ) ); ?></option>
+						<?php $missing = max( 0, (int) $b['listed'] - (int) $b['synced'] ); ?>
+						<option value="<?php echo esc_attr( $b['manufacturer'] ); ?>" data-avail="<?php echo (int) $b['listed']; ?>" data-missing="<?php echo (int) $missing; ?>" data-off="<?php echo URME_SS_Settings::brand_enabled( $b['manufacturer'] ) ? '0' : '1'; ?>" <?php selected( $f['brand'], $b['manufacturer'] ); ?>><?php echo esc_html( self::brand_option_label( $b ) ); ?></option>
 					<?php endforeach; ?>
 				</select>
 			</label>
@@ -1162,7 +1163,7 @@ class URME_SS_Admin {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="urme-select-form">
 			<?php echo self::hidden_fields( 'select' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<div class="tablenav top"><button type="submit" class="button button-primary urme-bulk" disabled>Select checked for sync</button>
-				<span class="description">Manual selection · URME stock 0 only · in store first, then most supplier stock.</span>
+				<span class="description">Manual selection · URME stock 0 only · in store and not synced first, then synced, most supplier stock first.</span>
 				<span class="urme-bulk-prices">Prices of checked:
 					<button type="submit" name="bulk_price" value="rrp" class="button urme-bulk" disabled title="Regular = the highest recommended price of the suppliers (SEK, ending in 98). The sale price is kept.">Rek. pris (highest)</button>
 					<button type="submit" name="bulk_price" value="auto" class="button urme-bulk" disabled title="Sale price = Auto (…98) from the supplier the watch is bought from now (the cheapest). Only when it is below Regular.">Auto sale price</button>
@@ -1240,7 +1241,7 @@ class URME_SS_Admin {
 			// The hint is for the supplier the watch is bought from now (the cheapest with stock).
 			$buy      = self::buy_row( $row );
 			$buy_sup  = URME_SS_Suppliers::of_key( $buy['item_key'] );
-			$row_hint = URME_SS_Suppliers::hint( $hint, $buy_sup );
+			$row_hint = URME_SS_Suppliers::hint( $hint, $buy_sup, $row['manufacturer'] );
 			?>
 			<td class="urme-hint-col"><?php echo URME_SS_Price_Hint::html( $buy['purchase_price'], $row_hint, $stock[ self::urme_product_id( $row ) ]['price'] ?? null, $alts ? URME_SS_Suppliers::flag( $buy_sup ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 			<?php $row_info = $stock[ self::urme_product_id( $row ) ] ?? null; ?>
@@ -1475,7 +1476,7 @@ class URME_SS_Admin {
 				$res = self::save_sale_price( $row['item_key'], null, (string) max( $list ) );
 			} else {
 				$buy   = self::buy_row( $row );
-				$price = URME_SS_Price_Hint::price_98( $buy['purchase_price'], URME_SS_Suppliers::hint( $ctx, URME_SS_Suppliers::of_key( $buy['item_key'] ) ) );
+				$price = URME_SS_Price_Hint::price_98( $buy['purchase_price'], URME_SS_Suppliers::hint( $ctx, URME_SS_Suppliers::of_key( $buy['item_key'] ), $row['manufacturer'] ) );
 				if ( ! $price ) {
 					$fail[] = $row['product_no'] . ': no suggested price (cost or rate missing)';
 					continue;
@@ -1567,7 +1568,7 @@ class URME_SS_Admin {
 			$ctx = URME_SS_Price_Hint::context(); // Once per page, like the price hint column.
 		}
 		$buy   = self::buy_row( $row );
-		$price = URME_SS_Price_Hint::price_98( $buy['purchase_price'], URME_SS_Suppliers::hint( $ctx, URME_SS_Suppliers::of_key( $buy['item_key'] ) ) );
+		$price = URME_SS_Price_Hint::price_98( $buy['purchase_price'], URME_SS_Suppliers::hint( $ctx, URME_SS_Suppliers::of_key( $buy['item_key'] ), $row['manufacturer'] ) );
 		if ( ! $price ) {
 			return '';
 		}
@@ -1956,6 +1957,53 @@ class URME_SS_Admin {
 		<?php
 	}
 
+	/**
+	 * Brand filter option: watches the suppliers have in stock (stock 0 and watches you keep in your
+	 * own URME stock never counted, like the catalog list) and, as +N,
+	 * how many of them you can still add: not synced and without URME stock of their own (the same
+	 * watches the catalog lists as not in sync), e.g. "ORIENT 91 +51". admin.js shows the number in
+	 * black and +N in green; this plain text is what shows without JavaScript.
+	 */
+	private static function brand_option_label( array $b ) {
+		$missing = max( 0, (int) $b['listed'] - (int) $b['synced'] );
+		return sprintf( '%s %d', $b['manufacturer'], (int) $b['listed'] ) . ( $missing ? sprintf( ' +%d', $missing ) : '' ) . ( URME_SS_Settings::brand_enabled( $b['manufacturer'] ) ? '' : ' – sync off' );
+	}
+
+	/**
+	 * Own target profit per brand (enabled brands, plus any brand that already has one).
+	 * An empty field means the brand uses the general target profit.
+	 */
+	private static function render_brand_profit( array $s ) {
+		$own    = (array) $s['hint_profit_brands'];
+		$brands = array();
+		foreach ( (array) $s['enabled_brands'] as $name ) {
+			$brands[ URME_SS_Settings::brand_key( $name ) ] = $name;
+		}
+		foreach ( array_keys( $own ) as $key ) {
+			if ( ! isset( $brands[ $key ] ) ) {
+				$brands[ $key ] = $key;
+			}
+		}
+		ksort( $brands );
+		echo '<input type="hidden" name="settings[hint_profit_brands_present]" value="1">';
+		if ( ! $brands ) {
+			echo '<p class="description">Enable a brand for sync to give it its own target profit.</p>';
+			return;
+		}
+		echo '<div class="urme-brand-list urme-brand-profit">';
+		foreach ( $brands as $key => $name ) {
+			printf(
+				'<label>%1$s <input type="number" name="settings[hint_profit_brands][%2$s]" min="0" max="1000" step="0.01" value="%3$s" placeholder="%4$s" class="small-text"> %%</label>',
+				esc_html( $name ),
+				esc_attr( $key ),
+				esc_attr( isset( $own[ $key ] ) ? (string) $own[ $key ] : '' ),
+				esc_attr( (string) $s['hint_profit_pct'] )
+			);
+		}
+		echo '</div>';
+		echo '<p class="description">% of the cost, like Target profit. Empty = the general Target profit. Used for that brand\'s suggested price, Auto price and automatic repricing.</p>';
+	}
+
 	/* --- Settings tab --------------------------------------------------- */
 
 	/**
@@ -2085,6 +2133,8 @@ class URME_SS_Admin {
 					<td><input type="number" id="urme-h-vat" name="settings[hint_vat_pct]" min="0" max="100" step="0.01" value="<?php echo esc_attr( $s['hint_vat_pct'] ); ?>" class="small-text"> % included in the selling price</td></tr>
 				<tr><th><label for="urme-h-profit">Target profit</label></th>
 					<td><input type="number" id="urme-h-profit" name="settings[hint_profit_pct]" min="0" max="1000" step="0.01" value="<?php echo esc_attr( $s['hint_profit_pct'] ); ?>" class="small-text"> % of the cost per watch (cost incl. the supplier's shipping + fees)</td></tr>
+				<tr><th>Target profit per brand</th>
+					<td><?php self::render_brand_profit( $s ); ?></td></tr>
 				<tr><th><label for="urme-h-round">Rounding</label></th>
 					<td>Round up to the next <input type="number" id="urme-h-round" name="settings[hint_round_sek]" min="1" max="1000" step="1" value="<?php echo esc_attr( $s['hint_round_sek'] ); ?>" class="small-text"> SEK (never down)</td></tr>
 			</table>

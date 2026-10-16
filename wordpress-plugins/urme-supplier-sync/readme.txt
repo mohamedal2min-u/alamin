@@ -4,7 +4,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.11.1
+Stable tag: 1.12.6
 
 Browse the supplier's watch catalog and keep stock and cost price in sync for the WooCommerce products you explicitly select.
 
@@ -225,9 +225,41 @@ or `wp cron event run --due-now` from the server.
 
 == Changelog ==
 
-= 1.11.1 =
-* Sales: "Paid to supplier" now shows the watch plus the supplier's shipping + fees (what you actually pay them, e.g. the
-  invoice total); the payment fee (Klarna) is its own column. Profit is unchanged.
+= 1.12.6 =
+* Brand filter: watches under 10 EUR (straps, cheap items), which the catalog never lists, are no longer counted
+  (e.g. TOMMY HILFIGER showed +32 for 32 such items while every listed watch was synced).
+* Supplier catalog order: watches in the store and not synced yet first, then synced watches, then Needs review,
+  then Not in URME; inside each group the largest supplier stock first.
+
+= 1.12.5 =
+* Brand filter: the number counts only the suppliers' watches, without the ones you keep in your own URME
+  stock, so it equals the watches the catalog lists for that brand (e.g. "HUGO BOSS 11").
+
+= 1.12.4 =
+* Brand filter: +N no longer counts a watch you have with your own URME stock (URME Lager). +N is now the
+  same watches the catalog lists as not in sync (watches with URME stock are hidden there too).
+
+= 1.12.3 =
+* Brand filter fix: a watch the two suppliers list with a different EAN (or without one) was counted twice,
+  once synced and once not (e.g. "HUGO BOSS 12 +1" with 11 watches, all synced). Rows are now the same
+  watch when they share the EAN, the model number (letters and digits only) or the URME product.
+
+= 1.12.2 =
+* Brand filter fix: a watch linked at one supplier but in stock only at the other was shown as +1 (not synced).
+  A watch's supplier rows are now combined first: in stock when any supplier has it, synced when any of its
+  rows is linked with sync on.
+
+= 1.12.1 =
+* Brand filter, simpler: the brand, the number of watches the suppliers have in stock (black) and, in green,
+  +N = how many of them are not synced yet (not linked, or not in URME at all), e.g. "ORIENT 91 +51".
+
+= 1.12.0 =
+* Supplier catalog: the Brand filter shows per brand how many watches the suppliers have in stock, how many
+  of them are already in URME, and how many arrived in the last 4 days, e.g.
+  "ORIENT · 91 at supplier · 40 in URME · 4 new". Supplier stock 0 is never counted; a watch sold by both
+  suppliers counts once.
+* Target profit per brand (Settings > Selling price hint). Empty = the general Target profit. Used for that
+  brand's suggested price, Auto price (button and bulk) and automatic prices.
 
 = 1.11.0 =
 * Automatic prices (Settings, on by default): when a supplier changes the cost of a Dropshipping watch, or it is

@@ -121,11 +121,11 @@ class URME_SS_Suppliers {
 	}
 
 	/**
-	 * Price hint settings with this supplier's extra cost.
+	 * Price hint settings with this supplier's extra cost and, when given, the brand's own target profit.
 	 */
-	public static function hint( array $ctx, $id ) {
+	public static function hint( array $ctx, $id, $brand = null ) {
 		$ctx['extra_eur'] = self::extra_eur( $id );
-		return $ctx;
+		return null === $brand ? $ctx : URME_SS_Price_Hint::for_brand( $ctx, $brand );
 	}
 
 	/**

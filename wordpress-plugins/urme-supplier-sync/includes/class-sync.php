@@ -480,7 +480,7 @@ class URME_SS_Sync {
 					$switched[] = (int) $product->get_id(); // Its delivery days may change.
 				}
 				if ( $reprice && $hint ) {
-					$price_change = self::reprice( $product, $link, $sup, URME_SS_Suppliers::hint( $hint, $sup ) );
+					$price_change = self::reprice( $product, $link, $sup, URME_SS_Suppliers::hint( $hint, $sup, $link['manufacturer'] ?? '' ) );
 					if ( $price_change ) {
 						++$stats['price_updated'];
 						$changes[] = $price_change;

@@ -499,9 +499,9 @@ class URME_SS_DB {
 		$urme  = in_array( $args['urme_stock'] ?? '', array( 'in', 'out', 'unmanaged' ), true ) ? $args['urme_stock'] : '';
 		$ready = ! empty( $args['ready'] );
 		$hide  = ! empty( $args['hide_stocked'] );
-		// 1.8.0: in the store first (linked or a unique URME match), then Needs review, then Not in URME;
-		// inside each group the largest supplier stock first (out of stock last).
-		$order = "CASE WHEN l.product_id > 0 OR c.match_status = 'exists' THEN 0 WHEN c.match_status = 'review' THEN 1 ELSE 2 END, c.stock DESC";
+		// 1.12.6: in the store and not synced yet first, then in the store and synced, then Needs review,
+		// then Not in URME; inside each group the largest supplier stock first (out of stock last).
+		$order = "CASE WHEN l.product_id > 0 AND l.sync_enabled = 1 THEN 1 WHEN l.product_id > 0 OR c.match_status = 'exists' THEN 0 WHEN c.match_status = 'review' THEN 2 ELSE 3 END, c.stock DESC";
 		if ( $urme || $ready || $hide ) {
 			$pm      = $wpdb->postmeta;
 			$joins   = " LEFT JOIN {$wpdb->posts} up ON up.ID = (CASE WHEN l.product_id > 0 THEN l.product_id WHEN c.match_status = 'exists' THEN c.match_product_id ELSE 0 END) AND up.post_status <> 'trash'"
@@ -552,20 +552,116 @@ class URME_SS_DB {
 	/**
 	 * Brands in the catalog with watch and selection counts.
 	 *
-	 * @return array[] manufacturer, n (watches in feed), selected (links).
+	 * avail, in_urme, synced and fresh count watches the suppliers have in stock now (stock 0 never
+	 * counts), once per watch even when several suppliers sell it (same EAN, model or URME product).
+	 *
+	 * @return array[] manufacturer, n (watches in feed), selected (links), avail (in stock at a
+	 *                 supplier), in_urme (of avail: in URME), synced (of avail: linked, sync on),
+	 *                 have (of avail: synced, or in URME with its own URME stock), listed (of avail:
+	 *                 not kept in your own URME stock: the watches the catalog lists),
+	 *                 fresh (of avail: NEW, see new_age()).
 	 */
 	public static function brands() {
 		global $wpdb;
-		$c    = self::catalog_table();
-		$l    = self::links_table();
-		$cats = URME_SS_Settings::get( 'categories' );
-		$sql  = "SELECT c.manufacturer, SUM(c.in_feed = 1) AS n, COUNT(l.id) AS selected
-			FROM {$c} c LEFT JOIN {$l} l ON l.item_key = c.item_key
-			WHERE c.manufacturer <> '' AND (c.in_feed = 1 OR l.id IS NOT NULL)";
+		$c      = self::catalog_table();
+		$l      = self::links_table();
+		$cats   = (array) URME_SS_Settings::get( 'categories' );
+		$params = array();
+		$new    = self::new_condition( $params );
+		// URME stock of the linked or matched product, the same way the catalog hides watches with URME stock.
+		$pm      = $wpdb->postmeta;
+		$joins   = " LEFT JOIN {$wpdb->posts} up ON up.ID = (CASE WHEN l.product_id > 0 THEN l.product_id WHEN c.match_status = 'exists' THEN c.match_product_id ELSE 0 END) AND up.post_status <> 'trash'"
+			. " LEFT JOIN {$pm} ums ON ums.post_id = up.ID AND ums.meta_key = '_manage_stock'"
+			. " LEFT JOIN {$pm} ust ON ust.post_id = up.ID AND ust.meta_key = '_stock'"
+			. " LEFT JOIN {$pm} pms ON pms.post_id = up.post_parent AND up.post_parent > 0 AND pms.meta_key = '_manage_stock'"
+			. " LEFT JOIN {$pm} pst ON pst.post_id = up.post_parent AND up.post_parent > 0 AND pst.meta_key = '_stock'";
+		$own     = "COALESCE(ums.meta_value, '') = 'yes'";
+		$managed = "({$own} OR (up.post_type = 'product_variation' AND COALESCE(pms.meta_value, '') = 'yes'))";
+		$qty     = "(CASE WHEN {$own} THEN COALESCE(ust.meta_value, '0') ELSE COALESCE(pst.meta_value, '0') END + 0)";
+		$sql    = "SELECT c.manufacturer, c.item_key, c.item_id, c.product_no, c.in_feed,
+			(c.in_feed = 1 AND c.stock > 0) AS avail, ({$new}) AS is_new,
+			IF(l.product_id > 0, l.product_id, IF(c.match_status = 'exists', c.match_product_id, 0)) AS urme_id,
+			IF(l.id IS NULL, 0, 1) AS selected, IF(l.product_id > 0 AND l.sync_enabled = 1, 1, 0) AS synced,
+			IF(l.id IS NULL AND up.ID IS NOT NULL AND {$managed} AND {$qty} > 0, 1, 0) AS own_stock
+			FROM {$c} c LEFT JOIN {$l} l ON l.item_key = c.item_key{$joins}
+			WHERE c.manufacturer <> '' AND (c.in_feed = 1 OR l.id IS NOT NULL)
+			AND (c.purchase_price IS NULL OR c.purchase_price >= %f OR l.id IS NOT NULL)"; // Like the catalog: no watches under MIN_EUR.
+		$params[] = self::MIN_EUR;
 		if ( $cats ) {
-			$sql = $wpdb->prepare( $sql . ' AND c.category IN (' . implode( ',', array_fill( 0, count( $cats ), '%s' ) ) . ')', $cats ); // phpcs:ignore WordPress.DB
+			$sql   .= ' AND c.category IN (' . implode( ',', array_fill( 0, count( $cats ), '%s' ) ) . ')';
+			$params = array_merge( $params, $cats );
 		}
-		return $wpdb->get_results( $sql . ' GROUP BY c.manufacturer ORDER BY c.manufacturer', ARRAY_A ); // phpcs:ignore WordPress.DB
+		// phpcs:ignore WordPress.DB
+		$rows = (array) $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A );
+
+		// One watch sold by several suppliers is one watch: rows are the same watch when they share
+		// the EAN (leading zeros ignored), the model number (brand + letters and digits only), or the
+		// URME product they are linked or matched to. Rows are combined first, so a watch is in stock
+		// when any supplier has it, and synced when any of its rows is linked with sync on.
+		$parent = array();
+		$find   = static function ( $i ) use ( &$parent ) {
+			while ( $parent[ $i ] !== $i ) {
+				$parent[ $i ] = $parent[ $parent[ $i ] ];
+				$i            = $parent[ $i ];
+			}
+			return $i;
+		};
+		$seen = array();
+		foreach ( $rows as $i => $r ) {
+			$parent[ $i ] = $i;
+			$brand        = URME_SS_Settings::brand_key( $r['manufacturer'] );
+			$keys         = array();
+			$ean          = URME_SS_Matcher::normalize_ean( $r['item_id'] );
+			if ( '' !== $ean ) {
+				$keys[] = 'e:' . $ean;
+			}
+			$model = preg_replace( '/[^A-Z0-9]/', '', strtoupper( (string) $r['product_no'] ) );
+			if ( strlen( $model ) >= 4 ) {
+				$keys[] = 'm:' . $brand . '|' . $model;
+			}
+			if ( (int) $r['urme_id'] > 0 ) {
+				$keys[] = 'u:' . (int) $r['urme_id'];
+			}
+			foreach ( $keys as $k ) {
+				if ( isset( $seen[ $k ] ) ) {
+					$parent[ $find( $i ) ] = $find( $seen[ $k ] );
+				} else {
+					$seen[ $k ] = $i;
+				}
+			}
+		}
+
+		$watches = array();
+		$out     = array();
+		foreach ( $rows as $i => $r ) {
+			$brand = URME_SS_Settings::brand_key( $r['manufacturer'] );
+			if ( ! isset( $out[ $brand ] ) ) {
+				$out[ $brand ] = array( 'manufacturer' => $r['manufacturer'], 'n' => 0, 'selected' => 0, 'avail' => 0, 'in_urme' => 0, 'synced' => 0, 'have' => 0, 'listed' => 0, 'fresh' => 0 );
+			}
+			$out[ $brand ]['n']        += (int) $r['in_feed'];
+			$out[ $brand ]['selected'] += (int) $r['selected'];
+			$w = $brand . '#' . $find( $i );
+			if ( ! isset( $watches[ $w ] ) ) {
+				$watches[ $w ] = array( 'brand' => $brand, 'avail' => 0, 'in_urme' => 0, 'synced' => 0, 'own_stock' => 0, 'fresh' => 0 );
+			}
+			$watches[ $w ]['avail']   |= (int) $r['avail'];
+			$watches[ $w ]['in_urme'] |= (int) $r['urme_id'] > 0 ? 1 : 0;
+			$watches[ $w ]['synced']  |= (int) $r['synced'];
+			$watches[ $w ]['own_stock'] |= (int) $r['own_stock'];
+			$watches[ $w ]['fresh']   |= (int) $r['avail'] && (int) $r['is_new'] ? 1 : 0;
+		}
+		foreach ( $watches as $w ) {
+			if ( $w['avail'] ) { // Supplier stock 0 is never counted.
+				++$out[ $w['brand'] ]['avail'];
+				$out[ $w['brand'] ]['in_urme'] += $w['in_urme'];
+				$out[ $w['brand'] ]['synced']  += $w['synced'];
+				$out[ $w['brand'] ]['have']    += $w['synced'] || $w['own_stock'] ? 1 : 0; // Synced, or in URME with own stock.
+				$out[ $w['brand'] ]['listed']  += $w['synced'] || ! $w['own_stock'] ? 1 : 0; // Not a watch you keep in your own stock.
+				$out[ $w['brand'] ]['fresh']   += $w['fresh'];
+			}
+		}
+		ksort( $out );
+		return array_values( $out );
 	}
 
 	public static function match_counts() {

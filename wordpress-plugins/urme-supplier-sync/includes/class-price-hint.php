@@ -18,7 +18,7 @@ class URME_SS_Price_Hint {
 	/**
 	 * Settings and EUR/SEK rate for one page render (read once, not per row).
 	 *
-	 * @return array{extra_eur: float, coupon: float, fee: float, vat: float, profit_pct: float, step: int, rate: float|null}
+	 * @return array{extra_eur: float, coupon: float, fee: float, vat: float, profit_pct: float, profit_brands: array, step: int, rate: float|null}
 	 */
 	public static function context() {
 		$s    = URME_SS_Settings::all();
@@ -29,9 +29,21 @@ class URME_SS_Price_Hint {
 			'fee'       => (float) $s['hint_fee_pct'] / 100,
 			'vat'       => (float) $s['hint_vat_pct'] / 100,
 			'profit_pct' => (float) $s['hint_profit_pct'] / 100,
+			'profit_brands' => array_map( 'floatval', (array) $s['hint_profit_brands'] ), // Brand key => %.
 			'step'      => max( 1, (int) $s['hint_round_sek'] ),
 			'rate'      => $rate ? (float) $rate['rate'] : null,
 		);
+	}
+
+	/**
+	 * The context for one brand: its own target profit when set in the settings, else the general one.
+	 */
+	public static function for_brand( array $ctx, $brand ) {
+		$key = URME_SS_Settings::brand_key( (string) $brand );
+		if ( isset( $ctx['profit_brands'][ $key ] ) ) {
+			$ctx['profit_pct'] = (float) $ctx['profit_brands'][ $key ] / 100;
+		}
+		return $ctx;
 	}
 
 	/**

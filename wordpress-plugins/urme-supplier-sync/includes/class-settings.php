@@ -49,6 +49,7 @@ class URME_SS_Settings {
 			'hint_fee_pct'       => 5,   // Klarna/payment fee, % of what the customer pays.
 			'hint_vat_pct'       => 25,  // Swedish VAT included in the listed price.
 			'hint_profit_pct'    => 20,  // Target profit per watch, % of its cost (cost incl. the extra supplier cost).
+			'hint_profit_brands' => array(), // Brand key (upper case) => target profit %, overriding hint_profit_pct for that brand.
 			'hint_round_sek'     => 10,  // Round the suggested price up to this step.
 			// Second supplier (ILA Uhren, Germany). Inactive while the feed URL is empty.
 			'ila_feed_url'       => '',
@@ -101,6 +102,8 @@ class URME_SS_Settings {
 			'hint_fee_pct'       => self::number( $input, $current, 'hint_fee_pct', 0, 50 ),
 			'hint_vat_pct'       => self::number( $input, $current, 'hint_vat_pct', 0, 100 ),
 			'hint_profit_pct'    => self::number( $input, $current, 'hint_profit_pct', 0, 1000 ),
+			// Only change the per-brand targets when the form contained them.
+			'hint_profit_brands' => isset( $input['hint_profit_brands_present'] ) ? self::profit_brands( (array) ( $input['hint_profit_brands'] ?? array() ) ) : (array) $current['hint_profit_brands'],
 			'hint_round_sek'     => (int) self::number( $input, $current, 'hint_round_sek', 1, 1000 ),
 			'ila_feed_url'       => esc_url_raw( trim( (string) ( $input['ila_feed_url'] ?? $current['ila_feed_url'] ) ) ),
 			'ila_extra_eur'      => self::number( $input, $current, 'ila_extra_eur', 0, 1000 ),
@@ -198,6 +201,26 @@ class URME_SS_Settings {
 		}
 		list( $min, $max ) = URME_SS_Suppliers::parse_days( $raw );
 		return $min === $max ? (string) $min : $min . '-' . $max;
+	}
+
+	/**
+	 * Per-brand target profit from the form: brand => % (comma or dot decimals, 0–1000).
+	 * An empty field removes the brand's own target, so it uses the general one again.
+	 *
+	 * @return array<string, float> Brand key => %.
+	 */
+	private static function profit_brands( array $posted ) {
+		$out = array();
+		foreach ( $posted as $brand => $raw ) {
+			$key = self::brand_key( sanitize_text_field( (string) $brand ) );
+			$raw = str_replace( array( ',', ' ' ), array( '.', '' ), trim( (string) $raw ) );
+			if ( '' === $key || '' === $raw || ! is_numeric( $raw ) ) {
+				continue;
+			}
+			$out[ $key ] = max( 0, min( 1000, round( (float) $raw, 2 ) ) );
+		}
+		ksort( $out );
+		return $out;
 	}
 
 	public static function sanitize_brands( array $brands ) {

@@ -156,3 +156,79 @@
 		$( '.urme-brand-list input[type=checkbox]' ).prop( 'checked', $( this ).hasClass( 'urme-brands-all' ) );
 	} );
 } )( jQuery );
+
+( function ( $ ) {
+	// Catalog Brand filter: the supplier's in-stock count in black and "+N" (watches you can still
+	// add) in green. A native <select> cannot colour part of an option, so the select stays (it is
+	// what the form submits) and a small list is drawn over it.
+	$( 'select.urme-brand-select' ).each( function () {
+		var $sel = $( this ).hide(),
+			$box = $( '<div class="urme-bsel"></div>' ).insertAfter( $sel ),
+			$btn = $( '<button type="button" class="urme-bsel-btn" aria-haspopup="listbox" aria-expanded="false"></button>' ).appendTo( $box ),
+			$list = $( '<ul class="urme-bsel-list" role="listbox" hidden></ul>' ).appendTo( $box );
+
+		function line( $opt ) {
+			var $out = $( '<span class="urme-bsel-line"></span>' ),
+				avail = $opt.data( 'avail' ),
+				missing = parseInt( $opt.data( 'missing' ), 10 ) || 0;
+			if ( undefined === avail ) {
+				return $out.text( $opt.text() ); // "All".
+			}
+			$out.append( $( '<span class="urme-bsel-name"></span>' ).text( $opt.val() ) );
+			$out.append( $( '<span class="urme-bsel-n"></span>' ).text( avail ) );
+			if ( missing ) {
+				$out.append( $( '<span class="urme-bsel-add"></span>' ).text( '+' + missing ).attr( 'title', missing + ' in stock at the supplier, not synced yet' ) );
+			}
+			if ( '1' === String( $opt.data( 'off' ) ) ) {
+				$out.append( $( '<span class="urme-bsel-off"></span>' ).text( 'sync off' ) );
+			}
+			return $out;
+		}
+		function show() {
+			$btn.empty().append( line( $sel.find( 'option:selected' ) ) );
+		}
+		function close() {
+			$list.prop( 'hidden', true );
+			$btn.attr( 'aria-expanded', 'false' );
+		}
+		$sel.find( 'option' ).each( function () {
+			var $opt = $( this );
+			$( '<li role="option" tabindex="-1"></li>' ).append( line( $opt ) ).attr( 'aria-selected', $opt.is( ':selected' ) ? 'true' : 'false' ).data( 'value', $opt.val() ).appendTo( $list );
+		} );
+		show();
+
+		$btn.on( 'click', function () {
+			var open = $list.prop( 'hidden' );
+			$list.prop( 'hidden', ! open );
+			$btn.attr( 'aria-expanded', open ? 'true' : 'false' );
+			if ( open ) {
+				$list.find( '[aria-selected="true"]' ).trigger( 'focus' );
+			}
+		} );
+		$list.on( 'click', 'li', function () {
+			$sel.val( $( this ).data( 'value' ) ).trigger( 'change' );
+			$list.find( 'li' ).attr( 'aria-selected', 'false' );
+			$( this ).attr( 'aria-selected', 'true' );
+			show();
+			close();
+			$btn.trigger( 'focus' );
+		} );
+		$list.on( 'keydown', 'li', function ( e ) {
+			if ( 13 === e.which || 32 === e.which ) {
+				e.preventDefault();
+				$( this ).trigger( 'click' );
+			} else if ( 40 === e.which || 38 === e.which ) {
+				e.preventDefault();
+				$( this )[ 40 === e.which ? 'next' : 'prev' ]().trigger( 'focus' );
+			} else if ( 27 === e.which ) {
+				close();
+				$btn.trigger( 'focus' );
+			}
+		} );
+		$( document ).on( 'click', function ( e ) {
+			if ( ! $box.is( e.target ) && ! $box.has( e.target ).length ) {
+				close();
+			}
+		} );
+	} );
+} )( jQuery );

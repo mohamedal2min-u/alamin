@@ -116,29 +116,13 @@ class UpdateFlockAction
 
                 // ======= Profit/Loss Distribution on Closure =======
                 if ($data['status'] === 'closed') {
-                    $totalSales = $flock->sales()->sum('net_amount');
+                    // المعادلة نفسها التي يعرضها المحاسب مباشرة (FlockProfitService)
+                    $profit = app(\App\Services\FlockProfitService::class);
+                    $totals = $profit->totals($flock);
+                    $totalSales = $totals['sales'];
+                    $totalExpenses = $totals['total_expenses'];
 
-                    // 1. Operational Expenses (manual entry). Purchase-debt expenses (linked to an
-                    // inventory purchase) are excluded — their cost is already counted below via
-                    // $inventoryCost once the stock is consumed; counting both would double it.
-                    $opExpenses = $flock->expenses()->whereNull('linked_inventory_transaction_id')->sum('total_amount');
-
-                    // 2. Chick Cost (initial investment)
-                    $chickCost = (float) $flock->total_chick_cost;
-                    
-                    // 3. Inventory Consumption (feed, medicine, etc.)
-                    $inventoryCost = (float) \App\Models\InventoryTransaction::where('flock_id', $flock->id)
-                        ->where('direction', 'out')
-                        ->where('transaction_type', 'consumption')
-                        ->sum('total_amount');
-
-                    // 4. Water Cost (Tankers)
-                    $waterCost = (float) \App\Models\FlockWaterLog::where('flock_id', $flock->id)->sum('total_amount');
-
-                    // $opExpenses already includes the "شراء كتاكيت" expense record — do NOT add $chickCost
-                    $totalExpenses = $opExpenses + $inventoryCost + $waterCost;
-                    
-                    $netProfit = $totalSales - $totalExpenses;
+                    $netProfit = $totals['net'];
                     $transactionType = $netProfit >= 0 ? 'profit' : 'loss';
                     $amountToDistribute = abs($netProfit);
 
@@ -162,20 +146,10 @@ class UpdateFlockAction
                         }
                     }
 
-                    $payableShares = $activeShares->filter(fn ($s) => (float) $s->share_percent > 0)->values();
-                    $shareCount = $payableShares->count();
-                    $distributed = 0.0;
-
-                    foreach ($payableShares as $index => $share) {
-                        $percent = (float) $share->share_percent;
-
-                        // Round every partner's cut to the cent; the last partner absorbs whatever
-                        // rounding remainder is left so the sum of all cuts always equals
-                        // $amountToDistribute exactly (no pennies silently created or lost).
-                        $partnerAmount = ($index === $shareCount - 1)
-                            ? round($amountToDistribute - $distributed, 2)
-                            : round($amountToDistribute * ($percent / 100), 2);
-                        $distributed += $partnerAmount;
+                    foreach ($profit->split($flock->farm_id, $amountToDistribute) as $cut) {
+                        $percent = $cut['percent'];
+                        $partnerAmount = $cut['amount'];
+                        $share = (object) ['partner_id' => $cut['partner_id']];
 
                         \App\Models\PartnerTransaction::create([
                             'farm_id' => $flock->farm_id,

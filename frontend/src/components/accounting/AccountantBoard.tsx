@@ -9,6 +9,7 @@ import { useFarmStore } from '@/stores/farm.store'
 import { cn } from '@/lib/utils'
 import { AccountantPrices } from './AccountantPrices'
 import { AccountantPartners } from './AccountantPartners'
+import { ProfitCard } from './ProfitCard'
 import type { Flock } from '@/types/flock'
 
 type Section = 'prices' | 'partners'
@@ -90,6 +91,9 @@ export function AccountantBoard() {
           </p>
         )}
       </div>
+
+      {/* الربح والخسارة ونصيب كل شريك: يظهر دائماً أعلى اللوحة */}
+      <ProfitCard flockId={effectiveFlockId} />
 
       {section === 'prices' ? (
         <AccountantPrices flockId={effectiveFlockId} />

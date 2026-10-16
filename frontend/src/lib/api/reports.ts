@@ -67,7 +67,27 @@ export interface AccountingSummary {
   currency: string
 }
 
+export interface FlockProfit {
+  flock: { id: number; name: string; status: string } | null
+  sales?: number
+  operations?: number
+  inventory?: number
+  water?: number
+  total_expenses?: number
+  net?: number
+  shares_total?: number
+  partners?: { partner_id: number; name: string | null; percent: number; amount: number }[]
+  /** true = الفوج مغلق والمبالغ مسجّلة فعلاً في حسابات الشركاء */
+  recorded?: boolean
+  unpriced_count?: number
+}
+
 export const reportsApi = {
+  getFlockProfit: async (flockId?: string) => {
+    const { data } = await apiClient.get<FlockProfit>('/reports/flock-profit', { params: flockId ? { flock_id: flockId } : {} })
+    return data
+  },
+
   getSummaryKpis: async () => {
     const { data } = await apiClient.get<SummaryKpis>('/reports/summary-kpis')
     return data

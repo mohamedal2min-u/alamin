@@ -92,13 +92,14 @@ export function AccountantBoard() {
         )}
       </div>
 
-      {/* الربح والخسارة ونصيب كل شريك: يظهر دائماً أعلى اللوحة */}
-      <ProfitCard flockId={effectiveFlockId} />
-
       {section === 'prices' ? (
         <AccountantPrices flockId={effectiveFlockId} />
       ) : (
-        <AccountantPartners flock={selected} sharesLocked={!!activeFlock} />
+        <div className="space-y-4">
+          {/* الربح والخسارة ونصيب كل شريك — يظهر بعد تسعير كل السجلات */}
+          <ProfitCard flockId={effectiveFlockId} />
+          <AccountantPartners flock={selected} sharesLocked={!!activeFlock} />
+        </div>
       )}
     </div>
   )

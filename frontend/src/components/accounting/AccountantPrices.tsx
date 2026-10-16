@@ -113,7 +113,7 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   return (
     <div className="space-y-4" dir="rtl">
       {/* ── ملخص الفئة المختارة: الكمية والسعر الإجمالي وغيرها ── */}
-      <CategorySummary breakdown={overview.data?.summary.category_breakdown ?? []} category={category} loading={overview.isLoading} />
+      <CategorySummary breakdown={overview.data?.summary.category_breakdown ?? []} category={category} loading={overview.isLoading} onSelect={setCategory} />
 
       {/* ── تبويبان فقط ── */}
       <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
@@ -304,9 +304,28 @@ function PriceCard({ item, locked, isEditing, mode, value, error, isSaving, onVa
 }
 
 // ── ملخص شامل للفئة المختارة (أو لكل الفئات) ─────────────────────────────────
-function CategorySummary({ breakdown, category, loading }: { breakdown: CategoryBreakdown[]; category: string | undefined; loading: boolean }) {
+function CategorySummary({ breakdown, category, loading, onSelect }: { breakdown: CategoryBreakdown[]; category: string | undefined; loading: boolean; onSelect: (code: string | undefined) => void }) {
   if (loading) return <div className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
   if (breakdown.length === 0) return null
+
+  // «الكل»: بطاقة لكل نوع (علف، دواء، ماء، مبيعات...) بعدد السجلات والكمية الإجمالية والسعر إن وُجد
+  if (!category) {
+    const grandTotal = breakdown.reduce((n, c) => n + (c.total_amount ?? 0), 0)
+    const grandUnpriced = breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
+    return (
+      <div className="space-y-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
+          {breakdown.map((c) => <CategoryCard key={c.code} c={c} onClick={() => onSelect(c.code)} />)}
+        </div>
+        <div className="flex items-center justify-between rounded-2xl bg-slate-800 px-4 py-3 text-white dark:bg-slate-700">
+          <span className="text-xs font-semibold text-slate-300">
+            الإجمالي{grandUnpriced > 0 ? ` · ${grandUnpriced} سجل بدون سعر` : ''}
+          </span>
+          <span className="text-lg font-extrabold tabular-nums">{formatNumber(grandTotal)}</span>
+        </div>
+      </div>
+    )
+  }
 
   const rows = category ? breakdown.filter((c) => c.code === category) : breakdown
   if (rows.length === 0) {
@@ -340,6 +359,45 @@ function CategorySummary({ breakdown, category, loading }: { breakdown: Category
       <Stat label="السعر الإجمالي" value={formatNumber(totalAmount)} tone="slate" strong />
       <Stat label={isSales ? 'متوسط سعر الطن' : 'متوسط سعر الوحدة'} value={single ? avgText : '—'} sub={single ? undefined : 'اختر فئة'} />
     </div>
+  )
+}
+
+function CategoryCard({ c, onClick }: { c: CategoryBreakdown; onClick: () => void }) {
+  const Icon = CATEGORIES.find((x) => x.code === c.code)?.icon ?? Layers
+  const tone = CATEGORY_TONE[c.code] ?? 'bg-slate-100 text-slate-600'
+  const unpriced = c.unpriced_count ?? 0
+  const priced = (c.priced_count ?? c.count - unpriced) > 0
+  const quantity = (c.quantity ?? 0) > 0 ? `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim() : '—'
+  const kg = c.computed_quantity ?? 0
+  const kgText = kg > 0 ? (kg >= 1000 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(kg)} كغ`) : null
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-2xl border border-slate-200 bg-white p-3.5 text-right transition-colors active:bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
+    >
+      <div className="flex items-center justify-between">
+        <span className={cn('flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold', tone)}>
+          <Icon className="h-3.5 w-3.5" /> {c.name}
+        </span>
+        <span className="text-[11px] font-semibold text-slate-400">{c.count} سجل</span>
+      </div>
+      <dl className="mt-3 space-y-1.5 text-[12px]">
+        <div className="flex items-baseline justify-between gap-2">
+          <dt className="text-slate-400">الكمية</dt>
+          <dd className="truncate font-extrabold tabular-nums text-slate-800 dark:text-slate-100">
+            {quantity}{kgText ? <span className="ms-1 text-[10px] font-semibold text-slate-400">({kgText})</span> : null}
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <dt className="text-slate-400">السعر</dt>
+          <dd className={cn('font-extrabold tabular-nums', priced ? 'text-slate-800 dark:text-slate-100' : 'text-amber-600')}>
+            {priced ? formatNumber(c.total_amount ?? 0) : 'لم يُحدَّد'}
+          </dd>
+        </div>
+      </dl>
+      {unpriced > 0 && priced && <div className="mt-1.5 text-[11px] font-semibold text-amber-600">{unpriced} بدون سعر</div>}
+    </button>
   )
 }
 

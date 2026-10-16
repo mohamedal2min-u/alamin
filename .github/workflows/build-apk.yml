@@ -1,0 +1,79 @@
+name: Build Android APK
+
+# تشغيل يدوي فقط: زر Run workflow من تبويب Actions.
+# يبني تطبيق الأندرويد وينشره كـ Release عام؛ صفحة الدخول تقرأ آخر Release لتعرض «تثبيت/تحديث التطبيق».
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # التطبيق غلاف يفتح الموقع مباشرة (server.url)، لذا يكفي مجلد ويب فارغ للمزامنة
+      - name: Sync Capacitor
+        working-directory: frontend
+        run: |
+          mkdir -p out && echo '<!doctype html><title>YMD</title>' > out/index.html
+          npx cap sync android
+
+      - name: Set version
+        working-directory: frontend/android/app
+        run: |
+          sed -i "s/versionCode 1/versionCode $((100 + VERSION_CODE))/; s/versionName \"1.0\"/versionName \"1.$VERSION_CODE\"/" build.gradle
+          grep -n "versionCode\|versionName" build.gradle
+
+      # مفتاح توقيع ثابت (اختياري): بدونه يُوقَّع كل APK بمفتاح عشوائي ولا يمكن تحديث التطبيق فوق القديم دون حذفه
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.android
+            printf '%s' "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "تم استخدام مفتاح التوقيع الثابت"
+          else
+            echo "::warning::لا يوجد ANDROID_DEBUG_KEYSTORE_BASE64؛ التوقيع عشوائي ولن يتحدّث التطبيق فوق نسخة سابقة"
+          fi
+
+      - name: Build APK
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CODE=$((100 + VERSION_CODE))
+          cp frontend/android/app/build/outputs/apk/debug/app-debug.apk "ymd-$CODE.apk"
+          gh release create "apk-$CODE" "ymd-$CODE.apk" \
+            --title "YMD $CODE" \
+            --notes "نسخة تطبيق الأندرويد رقم $CODE" \
+            --latest

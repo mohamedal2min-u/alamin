@@ -11,6 +11,7 @@ import { canAccessRoute, getDefaultRoute } from '@/lib/roles'
 import { apiClient } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { AppInstallButton } from '@/components/auth/AppInstallButton'
 import type { Farm } from '@/types/farm'
 import type { FarmRole } from '@/types/auth'
 import { clsx, type ClassValue } from 'clsx'
@@ -351,6 +352,9 @@ function LoginPageInner() {
               <BellRing size={14} /> أوقات الصلاة وإعدادات الأذان
             </a>
           )}
+
+          {/* تثبيت/تحديث تطبيق أندرويد */}
+          {mode === 'login' && <AppInstallButton />}
 
           {/* ── Register ───────────────────────────────────────── */}
           {mode === 'register' && !registerSuccess && (

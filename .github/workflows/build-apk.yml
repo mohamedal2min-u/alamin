@@ -72,7 +72,8 @@ jobs:
         working-directory: frontend/android
         run: |
           chmod +x gradlew
-          if [ "$BUILD_TYPE" = release ]; then ./gradlew assembleRelease --no-daemon; else ./gradlew assembleDebug --no-daemon; fi
+          # release: APK للتحميل من الموقع + AAB للرفع على Google Play (الموقَّع بالمفتاح نفسه = مفتاح الرفع)
+          if [ "$BUILD_TYPE" = release ]; then ./gradlew assembleRelease bundleRelease --no-daemon; else ./gradlew assembleDebug --no-daemon; fi
 
       - name: Publish release
         env:
@@ -80,7 +81,12 @@ jobs:
         run: |
           CODE=$((100 + VERSION_CODE))
           cp "frontend/android/app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk" "ymd-$CODE.apk"
-          gh release create "apk-$CODE" "ymd-$CODE.apk" \
+          FILES="ymd-$CODE.apk"
+          if [ "$BUILD_TYPE" = release ]; then
+            cp frontend/android/app/build/outputs/bundle/release/app-release.aab "ymd-$CODE.aab"
+            FILES="$FILES ymd-$CODE.aab"
+          fi
+          gh release create "apk-$CODE" $FILES \
             --title "YMD $CODE" \
             --notes "نسخة تطبيق الأندرويد رقم $CODE" \
             --latest

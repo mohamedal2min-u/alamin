@@ -128,7 +128,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         {/* Logout */}
         {/* تحميل/تحديث تطبيق أندرويد: يظهر هنا أيضاً لمن هو مسجّل الدخول */}
         <div className="mb-3 px-5">
-          <AppInstallButton />
+          <AppInstallButton light />
         </div>
 
         <div className="px-5 pb-6">

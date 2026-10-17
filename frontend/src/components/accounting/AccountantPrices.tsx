@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Droplets, Layers, Loader2, Lock, Pill, ShoppingCart, Wheat } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, Droplets, Layers, Loader2, Lock, Pill, ShoppingCart, Wheat } from 'lucide-react'
 import { accountingApi } from '@/lib/api/accounting'
 import type { CategoryBreakdown, ReviewItem } from '@/lib/api/accounting'
 import { cn, formatNumber } from '@/lib/utils'
@@ -224,70 +224,97 @@ function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryB
     { key: 'all', code: undefined as string | undefined, name: 'الكل', c: null as CategoryBreakdown | null },
     ...CATEGORIES.filter((x) => x.code).map((x) => ({ key: x.code as string, code: x.code, name: x.label, c: breakdown.find((b) => b.code === x.code) ?? null })),
   ]
+  const stripRef = useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = useState({ start: true, end: cards.length <= 3 })
+
+  // شريط أفقي: ثلاث بطاقات ظاهرة، وسهمان للتنقل (والسحب باللمس)
+  const scroll = (dir: 1 | -1) => {
+    const el = stripRef.current
+    if (!el) return
+    // الصفحة RTL: «التالي» يعني التمرير نحو اليسار
+    el.scrollBy({ left: -dir * (el.clientWidth / 3), behavior: 'smooth' })
+  }
+  const updateEdges = () => {
+    const el = stripRef.current
+    if (!el) return
+    const pos = Math.abs(el.scrollLeft)
+    setEdges({ start: pos < 4, end: pos + el.clientWidth >= el.scrollWidth - 4 })
+  }
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-      {cards.map(({ key, code, name, c }) => {
-        const Icon = CATEGORIES.find((x) => x.code === code)?.icon ?? Layers
-        const tone = CARD_TONE[key] ?? CARD_TONE.all
-        const active = selected === code
-        const isAll = key === 'all'
-        const count = isAll ? all.count : c?.count ?? 0
-        const unpriced = isAll ? all.unpriced : c?.unpriced_count ?? 0
-        const priced = count - unpriced > 0
-        const amount = isAll ? all.amount : c?.total_amount ?? 0
-        const kg = c?.computed_quantity ?? 0
-        const qty = !isAll && c && (c.quantity ?? 0) > 0
-          ? (kg > 0 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim())
-          : null
-        const empty = count === 0
+    <div className="relative">
+      <div
+        ref={stripRef}
+        onScroll={updateEdges}
+        className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth py-1"
+      >
+        {cards.map(({ key, code, name, c }) => {
+          const Icon = CATEGORIES.find((x) => x.code === code)?.icon ?? Layers
+          const tone = CARD_TONE[key] ?? CARD_TONE.all
+          const active = selected === code
+          const isAll = key === 'all'
+          const count = isAll ? all.count : c?.count ?? 0
+          const unpriced = isAll ? all.unpriced : c?.unpriced_count ?? 0
+          const priced = count - unpriced > 0
+          const amount = isAll ? all.amount : c?.total_amount ?? 0
+          const kg = c?.computed_quantity ?? 0
+          const qty = !isAll && c && (c.quantity ?? 0) > 0
+            ? (kg > 0 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim())
+            : null
+          const empty = count === 0
 
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onSelect(code)}
-            className={cn(
-              'flex flex-col rounded-2xl border p-3 text-right transition-all active:scale-[0.98]',
-              isAll && 'col-span-2 sm:col-span-1',
-              active ? cn('border-transparent ring-2', tone.ring, tone.tint) : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800',
-              empty && !active && 'opacity-60'
-            )}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-[13px] font-extrabold text-slate-800 dark:text-slate-100">
-                <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', tone.icon)}><Icon className="h-4 w-4" /></span>
-                {name}
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onSelect(code)}
+              className={cn(
+                'flex w-[calc((100%-1rem)/3)] shrink-0 snap-start flex-col items-center rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98]',
+                active ? cn('border-transparent ring-2', tone.ring, tone.tint) : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800',
+                empty && !active && 'opacity-60'
+              )}
+            >
+              <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl', tone.icon)}><Icon className="h-5 w-5" /></span>
+              <span className="mt-1.5 text-[13px] font-extrabold text-slate-800 dark:text-slate-100">{name}</span>
+
+              <span className="mt-1.5 flex min-h-[2.5rem] flex-col items-center justify-center">
+                {empty ? (
+                  <span className="text-xs font-semibold text-slate-400">لا سجلات</span>
+                ) : priced ? (
+                  <>
+                    <span className="text-base font-black tabular-nums leading-tight text-slate-800 sm:text-lg dark:text-slate-100">{formatNumber(amount)}</span>
+                    <span className="text-[10px] font-semibold text-slate-400">{key === 'sales' ? 'مبيعات' : isAll ? 'إجمالي التكاليف' : 'تكلفة'}</span>
+                  </>
+                ) : (
+                  <span className="text-xs font-bold text-amber-600">بانتظار السعر</span>
+                )}
               </span>
+
+              {!empty && (
+                <span className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  {count} سجل{qty ? ` · ${qty}` : ''}
+                </span>
+              )}
               {unpriced > 0 && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{unpriced} بلا سعر</span>
+                <span className="mt-1.5 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{unpriced} بلا سعر</span>
               )}
-            </div>
+            </button>
+          )
+        })}
+      </div>
 
-            <div className="mt-2.5 min-h-[2.75rem]">
-              {empty ? (
-                <div className="text-sm font-semibold text-slate-400">لا سجلات</div>
-              ) : priced ? (
-                <>
-                  <div className="text-lg font-black tabular-nums leading-tight text-slate-800 dark:text-slate-100">{formatNumber(amount)}</div>
-                  <div className="text-[10px] font-semibold text-slate-400">{key === 'sales' ? 'مبيعات' : isAll ? 'إجمالي التكاليف' : 'تكلفة'}</div>
-                </>
-              ) : (
-                <>
-                  <div className="text-lg font-black leading-tight text-amber-600">—</div>
-                  <div className="text-[10px] font-semibold text-amber-600">بانتظار السعر</div>
-                </>
-              )}
-            </div>
-
-            {!empty && (
-              <div className="mt-1.5 border-t border-slate-100 pt-1.5 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                {count} سجل{qty ? ` · ${qty}` : ''}
-              </div>
-            )}
-          </button>
-        )
-      })}
+      {!edges.start && (
+        <button type="button" aria-label="السابق" onClick={() => scroll(-1)}
+          className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 translate-x-1/3 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
+      {!edges.end && (
+        <button type="button" aria-label="التالي" onClick={() => scroll(1)}
+          className="absolute left-0 top-1/2 flex h-7 w-7 -translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      )}
     </div>
   )
 }

@@ -8,6 +8,7 @@ import type { CategoryBreakdown, ReviewItem } from '@/lib/api/accounting'
 import { cn, formatNumber } from '@/lib/utils'
 import { PriceWithHistory } from './PriceWithHistory'
 import { ItemGroups, groupByItem } from './ItemGroups'
+import { WaterTotal } from './WaterTotal'
 
 // ── لوحة المحاسب: ما المطلوب ← اختر الفئة ← سعّر السجلات (أو الصنف كاملاً) ─────
 
@@ -144,6 +145,11 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
           onSelect={setItemFilter}
           onDone={refresh}
         />
+      )}
+
+      {/* الماء: مبلغ إجمالي واحد يُقسَّم على الصهاريج */}
+      {category === 'water' && !rowsQuery.isLoading && (
+        <WaterTotal rows={allRows} flockSelected={!!flockId} onDone={refresh} />
       )}
 
       {/* ٤) السجلات */}

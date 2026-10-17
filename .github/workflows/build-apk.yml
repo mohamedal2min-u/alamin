@@ -48,31 +48,38 @@ jobs:
           sed -i "s/versionCode 1/versionCode $((100 + VERSION_CODE))/; s/versionName \"1.0\"/versionName \"1.$VERSION_CODE\"/" build.gradle
           grep -n "versionCode\|versionName" build.gradle
 
-      # مفتاح توقيع ثابت (اختياري): بدونه يُوقَّع كل APK بمفتاح عشوائي ولا يمكن تحديث التطبيق فوق القديم دون حذفه
+      # مفتاح توقيع ثابت: السر ANDROID_KEYSTORE بصيغة «كلمة-السر:الملف-بـbase64».
+      # به يُبنى إصدار release موقَّع دائماً بالمفتاح نفسه، فيتحدّث التطبيق فوق القديم دون حذفه.
+      # بدونه نرجع للطريقة القديمة (نسخة debug بمفتاح عشوائي).
       - name: Signing key
         env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            mkdir -p ~/.android
-            printf '%s' "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+          if [ -n "$KEYSTORE" ]; then
+            printf '%s' "${KEYSTORE#*:}" | base64 -d > "$RUNNER_TEMP/ymd.p12"
+            PW="${KEYSTORE%%:*}"
+            echo "::add-mask::$PW"
+            echo "YMD_KEYSTORE_FILE=$RUNNER_TEMP/ymd.p12" >> "$GITHUB_ENV"
+            echo "YMD_KEYSTORE_PASSWORD=$PW" >> "$GITHUB_ENV"
+            echo "BUILD_TYPE=release" >> "$GITHUB_ENV"
             echo "تم استخدام مفتاح التوقيع الثابت"
           else
-            echo "::warning::لا يوجد ANDROID_DEBUG_KEYSTORE_BASE64؛ التوقيع عشوائي ولن يتحدّث التطبيق فوق نسخة سابقة"
+            echo "BUILD_TYPE=debug" >> "$GITHUB_ENV"
+            echo "::warning::لا يوجد السر ANDROID_KEYSTORE؛ التوقيع عشوائي ولن يتحدّث التطبيق فوق نسخة سابقة"
           fi
 
       - name: Build APK
         working-directory: frontend/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          if [ "$BUILD_TYPE" = release ]; then ./gradlew assembleRelease --no-daemon; else ./gradlew assembleDebug --no-daemon; fi
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           CODE=$((100 + VERSION_CODE))
-          cp frontend/android/app/build/outputs/apk/debug/app-debug.apk "ymd-$CODE.apk"
+          cp "frontend/android/app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk" "ymd-$CODE.apk"
           gh release create "apk-$CODE" "ymd-$CODE.apk" \
             --title "YMD $CODE" \
             --notes "نسخة تطبيق الأندرويد رقم $CODE" \

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useFarmStore } from '@/stores/farm.store'
 import { ChickenLogo } from './ChickenLogo'
+import { AppInstallButton } from '@/components/auth/AppInstallButton'
 import { NAV_HREFS_BY_ROLE } from '@/lib/roles'
 import type { FarmRole } from '@/types/auth'
 
@@ -103,8 +104,13 @@ export function Sidebar() {
         </ul>
       </nav>
 
+      {/* تحميل/تحديث تطبيق أندرويد */}
+      <div className="mt-auto px-3 pb-3">
+        <AppInstallButton light />
+      </div>
+
       {/* Footer / Credits */}
-      <div className="p-5 mt-auto border-t border-slate-50 dark:border-slate-700/40 opacity-70" dir="ltr">
+      <div className="p-5 border-t border-slate-50 dark:border-slate-700/40 opacity-70" dir="ltr">
         <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed text-center uppercase tracking-wider">
           © {new Date().getFullYear()} Smart Accounting App — All Rights Reserved
         </p>

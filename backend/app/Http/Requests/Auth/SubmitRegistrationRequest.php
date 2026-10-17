@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Requests\Concerns\ChecksHuman;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SubmitRegistrationRequest extends FormRequest
 {
+    use ChecksHuman;
+
     public function authorize(): bool
     {
         return true;
@@ -14,6 +17,7 @@ class SubmitRegistrationRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->humanRules(),
             'name'      => ['required', 'string', 'max:150'],
             'whatsapp'  => ['required', 'string', 'max:30'],
             'password'  => ['required', 'string', 'min:8', 'confirmed'],
@@ -26,6 +30,7 @@ class SubmitRegistrationRequest extends FormRequest
     public function messages(): array
     {
         return [
+            ...$this->humanMessages(),
             'name.required'         => 'الاسم مطلوب',
             'whatsapp.required'     => 'رقم الواتساب مطلوب',
             'password.required'     => 'كلمة المرور مطلوبة',

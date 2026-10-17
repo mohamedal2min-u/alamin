@@ -11,7 +11,7 @@ interface AuthState {
   setAuth: (token: string, user: User) => void
   setUser: (user: User) => void
   logout: () => void
-  login: (login: string, password: string) => Promise<void>
+  login: (login: string, password: string, extra?: Record<string, unknown>) => Promise<void>
 }
 
 // ── Cookie helper (SSR-safe) ──────────────────────────────────────────────────
@@ -49,10 +49,11 @@ export const useAuthStore = create<AuthState>()(
         set({ token: null, user: null, isAuthenticated: false })
       },
 
-      login: async (login, password) => {
+      login: async (login, password, extra = {}) => {
         const response = await apiClient.post<{ token: string; user: User }>('/auth/login', {
           login,
           password,
+          ...extra,
         })
         const { token, user } = response.data
         get().setAuth(token, user)

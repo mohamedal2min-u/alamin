@@ -5,6 +5,7 @@ import {
   ShoppingCart, Users, BarChart3, LogOut, X, Receipt, Settings, Calculator, Wallet, UserCog, BellRing
 } from 'lucide-react'
 import Link from 'next/link'
+import { AppInstallButton } from '@/components/auth/AppInstallButton'
 import { FarmSelector } from './FarmSelector'
 import { useAuthStore } from '@/stores/auth.store'
 import { apiClient } from '@/lib/api/client'
@@ -125,6 +126,11 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         </div>
 
         {/* Logout */}
+        {/* تحميل/تحديث تطبيق أندرويد: يظهر هنا أيضاً لمن هو مسجّل الدخول */}
+        <div className="mb-3 px-5">
+          <AppInstallButton />
+        </div>
+
         <div className="px-5 pb-6">
           <button
             onClick={handleLogout}

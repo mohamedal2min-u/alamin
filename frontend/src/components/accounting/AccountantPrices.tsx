@@ -225,14 +225,14 @@ function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryB
     ...CATEGORIES.filter((x) => x.code).map((x) => ({ key: x.code as string, code: x.code, name: x.label, c: breakdown.find((b) => b.code === x.code) ?? null })),
   ]
   const stripRef = useRef<HTMLDivElement>(null)
-  const [edges, setEdges] = useState({ start: true, end: cards.length <= 3 })
+  const [edges, setEdges] = useState({ start: true, end: cards.length <= 4 })
 
-  // شريط أفقي: ثلاث بطاقات ظاهرة، وسهمان للتنقل (والسحب باللمس)
+  // شريط أفقي: أربع بطاقات ظاهرة، وسهمان للتنقل (والسحب باللمس)
   const scroll = (dir: 1 | -1) => {
     const el = stripRef.current
     if (!el) return
     // الصفحة RTL: «التالي» يعني التمرير نحو اليسار
-    el.scrollBy({ left: -dir * (el.clientWidth / 3), behavior: 'smooth' })
+    el.scrollBy({ left: -dir * (el.clientWidth / 4), behavior: 'smooth' })
   }
   const updateEdges = () => {
     const el = stripRef.current
@@ -246,7 +246,7 @@ function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryB
       <div
         ref={stripRef}
         onScroll={updateEdges}
-        className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth py-1"
+        className="no-scrollbar flex snap-x snap-mandatory scroll-px-1 gap-2 overflow-x-auto scroll-smooth p-1"
       >
         {cards.map(({ key, code, name, c }) => {
           const Icon = CATEGORIES.find((x) => x.code === code)?.icon ?? Layers
@@ -269,7 +269,7 @@ function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryB
               type="button"
               onClick={() => onSelect(code)}
               className={cn(
-                'flex w-[calc((100%-1rem)/3)] shrink-0 snap-start flex-col items-center rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98]',
+                'flex w-[calc((100%-1.5rem)/4)] shrink-0 snap-start flex-col items-center rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98]',
                 active ? cn('border-transparent ring-2', tone.ring, tone.tint) : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800',
                 empty && !active && 'opacity-60'
               )}
@@ -282,7 +282,7 @@ function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryB
                   <span className="text-xs font-semibold text-slate-400">لا سجلات</span>
                 ) : priced ? (
                   <>
-                    <span className="text-base font-black tabular-nums leading-tight text-slate-800 sm:text-lg dark:text-slate-100">{formatNumber(amount)}</span>
+                    <span className="text-sm font-black tabular-nums leading-tight text-slate-800 sm:text-lg dark:text-slate-100">{formatNumber(amount)}</span>
                     <span className="text-[10px] font-semibold text-slate-400">{key === 'sales' ? 'مبيعات' : isAll ? 'إجمالي التكاليف' : 'تكلفة'}</span>
                   </>
                 ) : (
@@ -291,8 +291,9 @@ function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryB
               </span>
 
               {!empty && (
-                <span className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  {count} سجل{qty ? ` · ${qty}` : ''}
+                <span className="mt-1 flex flex-col text-[11px] font-semibold leading-snug text-slate-500 dark:text-slate-400">
+                  <span className="whitespace-nowrap">{count} سجل</span>
+                  {qty && <span className="whitespace-nowrap">{qty}</span>}
                 </span>
               )}
               {unpriced > 0 && (

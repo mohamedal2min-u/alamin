@@ -24,7 +24,7 @@ export function AccountantBoard() {
   const [flockId, setFlockId] = useState<string>('') // '' = كل الأفواج
   const [flockTouched, setFlockTouched] = useState(false)
 
-  const { data: flocks = [], isFetching } = useQuery<Flock[]>({
+  const { data: flocks = [], isFetching, isPending: flocksPending } = useQuery<Flock[]>({
     queryKey: ['flocks', farmId],
     queryFn: () => flocksApi.list().then((r) => r.data),
     enabled: !!farmId,
@@ -36,6 +36,8 @@ export function AccountantBoard() {
   const effectiveFlockId = flockTouched ? flockId : activeFlock ? String(activeFlock.id) : ''
 
   const selected = flocks.find((f) => String(f.id) === effectiveFlockId) ?? null
+  // ننتظر قائمة الأفواج قبل جلب السجلات: وإلا تُجلب سجلات كل الأفواج أولاً ثم تُعاد للفوج النشط
+  const waitForFlocks = flocksPending && !flockTouched
 
   return (
     <div className="space-y-4 pb-6 pt-3" dir="rtl">
@@ -92,7 +94,9 @@ export function AccountantBoard() {
         )}
       </div>
 
-      {section === 'prices' ? (
+      {waitForFlocks ? (
+        <div className="h-11 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+      ) : section === 'prices' ? (
         <AccountantPrices flockId={effectiveFlockId} />
       ) : (
         <div className="space-y-4">

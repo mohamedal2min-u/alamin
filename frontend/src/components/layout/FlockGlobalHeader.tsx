@@ -174,12 +174,17 @@ export function FlockGlobalHeader() {
               <MetricItem label="العمر" value={activeFlock.current_age_days ?? '—'} sub="يوم" color="text-primary-950 dark:text-primary-50" />
             )}
           </div>
+        ) : isLoading ? (
+          // أثناء التحميل نحجز مكان صف الأرقام بنفس الارتفاع، كي لا تنزل الصفحة كلها عند وصول البيانات
+          <div className="grid grid-cols-4 divide-x divide-x-reverse divide-primary-50/50 dark:divide-primary-900/20 animate-pulse">
+            {[0, 1, 2, 3].map((i) => (
+              <MetricItem key={i} label={'\u00a0'} value="—" sub={'\u00a0'} color="text-slate-200 dark:text-slate-700" />
+            ))}
+          </div>
         ) : (
-          !isLoading && (
-            <div className="py-2 px-3 text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-700/30">
-              {isAccountant ? 'لا يوجد فوج نشط حالياً' : 'يرجى إنشاء وتفعيل فوج للبدء بتسجيل البيانات'}
-            </div>
-          )
+          <div className="py-2 px-3 text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-700/30">
+            {isAccountant ? 'لا يوجد فوج نشط حالياً' : 'يرجى إنشاء وتفعيل فوج للبدء بتسجيل البيانات'}
+          </div>
         )}
       </div>
     </header>

@@ -197,9 +197,9 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
 }
 
 function TodoBanner({ loading, pending }: { loading: boolean; pending: number }) {
-  if (loading) return <div className="h-12 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+  if (loading) return <div className="h-11 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
   return (
-    <div className={cn('flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-extrabold text-white', pending > 0 ? 'bg-amber-500' : 'bg-emerald-600')}>
+    <div className={cn('flex h-11 items-center gap-2 rounded-2xl px-4 text-sm font-extrabold text-white', pending > 0 ? 'bg-amber-500' : 'bg-emerald-600')}>
       {pending > 0 ? <>المطلوب منك: تسعير {pending} سجل</> : <><CheckCircle2 className="h-5 w-5" /> كل الأسعار محدّدة</>}
     </div>
   )

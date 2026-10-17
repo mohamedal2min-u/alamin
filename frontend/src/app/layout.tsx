@@ -28,21 +28,18 @@ import { ArabicDigitsSanitizer } from '@/components/ArabicDigitsSanitizer'
 import { PrayerScheduler } from '@/components/layout/PrayerScheduler'
 import { EditNotificationListener } from '@/components/layout/EditNotificationListener'
 
+const THEME_SCRIPT = `try{if(JSON.parse(localStorage.getItem('alamin-theme')||'{}').state?.theme==='dark')document.documentElement.classList.add('dark')}catch(e){}`
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-          precedence="default"
-        />
+        {/* الوضع الليلي قبل أول رسم للصفحة، بدل وميض الوضع الفاتح حتى يعمل ThemeApplier */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body
         suppressHydrationWarning

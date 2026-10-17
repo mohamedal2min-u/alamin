@@ -160,21 +160,21 @@ export default function DashboardPage() {
       {/* Loading */}
       {loadingFlocks && flocks.length === 0 && (
         <div className="space-y-4 pt-1">
-          <div className="rounded-2xl bg-white border border-slate-100 p-4 animate-pulse space-y-3">
+          <div className="rounded-2xl bg-white border border-slate-100 p-4 animate-pulse space-y-3 dark:bg-slate-800 dark:border-slate-700">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-slate-100" />
+              <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-700" />
               <div className="space-y-1.5 flex-1">
-                <div className="h-3.5 w-20 bg-slate-100 rounded" />
-                <div className="h-2.5 w-14 bg-slate-100 rounded" />
+                <div className="h-3.5 w-20 bg-slate-100 rounded dark:bg-slate-700" />
+                <div className="h-2.5 w-14 bg-slate-100 rounded dark:bg-slate-700" />
               </div>
-              <div className="h-5 w-12 bg-slate-100 rounded-full" />
+              <div className="h-5 w-12 bg-slate-100 rounded-full dark:bg-slate-700" />
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-slate-50 rounded-xl" />)}
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-slate-50 rounded-xl dark:bg-slate-700/60" />)}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl bg-slate-50 animate-pulse" />)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl bg-slate-50 animate-pulse dark:bg-slate-800" />)}
           </div>
         </div>
       )}

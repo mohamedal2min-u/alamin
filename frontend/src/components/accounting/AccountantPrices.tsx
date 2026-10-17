@@ -205,48 +205,84 @@ function TodoBanner({ loading, pending }: { loading: boolean; pending: number })
   )
 }
 
+const CARD_TONE: Record<string, { icon: string; ring: string; tint: string }> = {
+  all:      { icon: 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900', ring: 'ring-slate-700 dark:ring-slate-300', tint: 'bg-slate-50 dark:bg-slate-700/40' },
+  feed:     { icon: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', ring: 'ring-amber-500', tint: 'bg-amber-50/70 dark:bg-amber-900/20' },
+  medicine: { icon: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300', ring: 'ring-teal-500', tint: 'bg-teal-50/70 dark:bg-teal-900/20' },
+  water:    { icon: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300', ring: 'ring-sky-500', tint: 'bg-sky-50/70 dark:bg-sky-900/20' },
+  sales:    { icon: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', ring: 'ring-emerald-500', tint: 'bg-emerald-50/70 dark:bg-emerald-900/20' },
+}
+
 function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryBreakdown[]; selected: string | undefined; onSelect: (code: string | undefined) => void }) {
-  const totalCount = breakdown.reduce((n, c) => n + c.count, 0)
+  const costs = breakdown.filter((c) => c.code !== 'sales')
+  const all = {
+    count: breakdown.reduce((n, c) => n + c.count, 0),
+    unpriced: breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0),
+    amount: costs.reduce((n, c) => n + (c.total_amount ?? 0), 0),
+  }
   const cards = [
-    { code: undefined as string | undefined, name: 'الكل', count: totalCount, c: null as CategoryBreakdown | null },
-    ...CATEGORIES.filter((x) => x.code).map((x) => {
-      const c = breakdown.find((b) => b.code === x.code) ?? null
-      return { code: x.code, name: x.label, count: c?.count ?? 0, c }
-    }),
+    { key: 'all', code: undefined as string | undefined, name: 'الكل', c: null as CategoryBreakdown | null },
+    ...CATEGORIES.filter((x) => x.code).map((x) => ({ key: x.code as string, code: x.code, name: x.label, c: breakdown.find((b) => b.code === x.code) ?? null })),
   ]
+
   return (
-    <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
-      {cards.map(({ code, name, count, c }) => {
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      {cards.map(({ key, code, name, c }) => {
         const Icon = CATEGORIES.find((x) => x.code === code)?.icon ?? Layers
+        const tone = CARD_TONE[key] ?? CARD_TONE.all
         const active = selected === code
-        const unpriced = c?.unpriced_count ?? 0
+        const isAll = key === 'all'
+        const count = isAll ? all.count : c?.count ?? 0
+        const unpriced = isAll ? all.unpriced : c?.unpriced_count ?? 0
+        const priced = count - unpriced > 0
+        const amount = isAll ? all.amount : c?.total_amount ?? 0
         const kg = c?.computed_quantity ?? 0
-        const qty = c && (c.quantity ?? 0) > 0
+        const qty = !isAll && c && (c.quantity ?? 0) > 0
           ? (kg > 0 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim())
           : null
-        const priced = c ? count - unpriced > 0 : false
+        const empty = count === 0
+
         return (
           <button
-            key={name}
+            key={key}
             type="button"
             onClick={() => onSelect(code)}
             className={cn(
-              'relative w-[7.5rem] shrink-0 snap-start rounded-2xl border p-3 text-right transition-colors',
-              active ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+              'flex flex-col rounded-2xl border p-3 text-right transition-all active:scale-[0.98]',
+              isAll && 'col-span-2 sm:col-span-1',
+              active ? cn('border-transparent ring-2', tone.ring, tone.tint) : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800',
+              empty && !active && 'opacity-60'
             )}
           >
-            {unpriced > 0 && (
-              <span className="absolute -top-1.5 left-2 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{unpriced}</span>
-            )}
-            <div className="flex items-center gap-1.5 text-[13px] font-extrabold">
-              <Icon className="h-4 w-4 shrink-0" /> {name}
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-[13px] font-extrabold text-slate-800 dark:text-slate-100">
+                <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', tone.icon)}><Icon className="h-4 w-4" /></span>
+                {name}
+              </span>
+              {unpriced > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{unpriced} بلا سعر</span>
+              )}
             </div>
-            <div className={cn('mt-1.5 text-[11px] font-semibold', active ? 'text-white/80' : 'text-slate-400')}>
-              {count} سجل{qty ? ` · ${qty}` : ''}
+
+            <div className="mt-2.5 min-h-[2.75rem]">
+              {empty ? (
+                <div className="text-sm font-semibold text-slate-400">لا سجلات</div>
+              ) : priced ? (
+                <>
+                  <div className="text-lg font-black tabular-nums leading-tight text-slate-800 dark:text-slate-100">{formatNumber(amount)}</div>
+                  <div className="text-[10px] font-semibold text-slate-400">{key === 'sales' ? 'مبيعات' : isAll ? 'إجمالي التكاليف' : 'تكلفة'}</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-lg font-black leading-tight text-amber-600">—</div>
+                  <div className="text-[10px] font-semibold text-amber-600">بانتظار السعر</div>
+                </>
+              )}
             </div>
-            {c && (
-              <div className={cn('mt-0.5 truncate text-[13px] font-extrabold tabular-nums', !priced && !active && 'text-amber-600')}>
-                {priced ? <>{formatNumber(c.total_amount ?? 0)} <span className="text-[10px] font-semibold opacity-70">{code === 'sales' ? 'مبيعات' : 'تكلفة'}</span></> : 'بلا سعر'}
+
+            {!empty && (
+              <div className="mt-1.5 border-t border-slate-100 pt-1.5 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                {count} سجل{qty ? ` · ${qty}` : ''}
               </div>
             )}
           </button>

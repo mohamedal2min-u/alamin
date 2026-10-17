@@ -102,8 +102,11 @@ export function AppInstallButton({ light = false }: { light?: boolean }) {
         {isUpdate ? <RefreshCw size={14} /> : <Download size={14} />}
         {isUpdate ? 'تحديث التطبيق' : 'تحميل وتثبيت تطبيق أندرويد'}
       </button>
-      <p className="mt-1 text-center text-[10px] text-slate-500">
-        بعد التحميل افتح الملف واسمح بالتثبيت من هذا المصدر عند الطلب.
+      <p className="mt-1 text-center text-[10px] leading-relaxed text-slate-500">
+        بعد التحميل افتح الملف واسمح بالتثبيت من هذا المصدر.
+        <br />
+        إن ظهر تحذير «تم حظر التطبيق»: اضغط «مزيد من التفاصيل» ثم «التثبيت على أي حال».
+        {state.latest.code > 0 && <><br />آخر نسخة: {state.latest.code}</>}
       </p>
     </div>
   )

@@ -20,6 +20,7 @@ class LoginTest extends TestCase
         ]);
 
         $response = $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'login'    => 'test@example.com',
             'password' => 'secret123',
         ]);
@@ -39,6 +40,7 @@ class LoginTest extends TestCase
         ]);
 
         $response = $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'login'    => '966512345678',
             'password' => 'secret123',
         ]);
@@ -54,6 +56,7 @@ class LoginTest extends TestCase
         $this->assertNull($user->last_login_at);
 
         $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'login'    => $user->email,
             'password' => 'secret123',
         ]);
@@ -66,6 +69,7 @@ class LoginTest extends TestCase
         $user = User::factory()->create(['password' => bcrypt('secret123')]);
 
         $response = $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'login'    => $user->email,
             'password' => 'wrongpassword',
         ]);
@@ -77,6 +81,7 @@ class LoginTest extends TestCase
     public function test_login_nonexistent_user_returns_401(): void
     {
         $response = $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'login'    => 'nobody@example.com',
             'password' => 'anypassword',
         ]);
@@ -89,6 +94,7 @@ class LoginTest extends TestCase
         $user = User::factory()->inactive()->create(['password' => bcrypt('secret123')]);
 
         $response = $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'login'    => $user->email,
             'password' => 'secret123',
         ]);
@@ -102,6 +108,7 @@ class LoginTest extends TestCase
         $user = User::factory()->suspended()->create(['password' => bcrypt('secret123')]);
 
         $response = $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'login'    => $user->email,
             'password' => 'secret123',
         ]);
@@ -113,6 +120,7 @@ class LoginTest extends TestCase
     public function test_login_missing_login_field_returns_422(): void
     {
         $response = $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'password' => 'secret123',
         ]);
 
@@ -123,10 +131,39 @@ class LoginTest extends TestCase
     public function test_login_missing_password_field_returns_422(): void
     {
         $response = $this->postJson('/api/auth/login', [
+            'form_ms' => 3000,
             'login' => 'test@example.com',
         ]);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['password']);
+    }
+
+    public function test_bot_filled_hidden_field_is_rejected(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('password123')]);
+
+        $this->postJson('/api/auth/login', [
+            'login'    => $user->email,
+            'password' => 'password123',
+            'form_ms'  => 3000,
+            'website'  => 'http://spam.example',
+        ])->assertStatus(422)->assertJsonValidationErrors('website');
+    }
+
+    public function test_instant_submission_is_rejected(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('password123')]);
+
+        $this->postJson('/api/auth/login', [
+            'login'    => $user->email,
+            'password' => 'password123',
+            'form_ms'  => 50,
+        ])->assertStatus(422)->assertJsonValidationErrors('form_ms');
+
+        $this->postJson('/api/auth/login', [
+            'login'    => $user->email,
+            'password' => 'password123',
+        ])->assertStatus(422)->assertJsonValidationErrors('form_ms');
     }
 }

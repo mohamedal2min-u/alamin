@@ -14,6 +14,7 @@ class RegisterRequestTest extends TestCase
         'whatsapp'              => '966512345678',
         'password'              => 'Secret123',
         'password_confirmation' => 'Secret123',
+        'form_ms'               => 3000,
     ];
 
     public function test_register_request_created_successfully(): void

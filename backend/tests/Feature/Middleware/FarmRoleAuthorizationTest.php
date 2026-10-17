@@ -105,10 +105,10 @@ class FarmRoleAuthorizationTest extends TestCase
     public function test_login_is_rate_limited(): void
     {
         for ($i = 0; $i < 10; $i++) {
-            $this->postJson('/api/auth/login', ['login' => 'nobody@example.com', 'password' => 'wrong-pass']);
+            $this->postJson('/api/auth/login', ['login' => 'nobody@example.com', 'password' => 'wrong-pass', 'form_ms' => 3000]);
         }
 
-        $this->postJson('/api/auth/login', ['login' => 'nobody@example.com', 'password' => 'wrong-pass'])
+        $this->postJson('/api/auth/login', ['login' => 'nobody@example.com', 'password' => 'wrong-pass', 'form_ms' => 3000])
             ->assertStatus(429);
     }
 

@@ -5,6 +5,8 @@ import { Capacitor } from '@capacitor/core'
 import { Download, RefreshCw } from 'lucide-react'
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/mohamedal2min-u/alamin/releases/latest'
+// إن تعذّر سؤال GitHub (حد الطلبات مثلاً) نفتح صفحة آخر نسخة مباشرة
+const LATEST_RELEASE_PAGE = 'https://github.com/mohamedal2min-u/alamin/releases/latest'
 
 type Latest = { code: number; url: string }
 
@@ -48,11 +50,12 @@ export function AppInstallButton() {
     void (async () => {
       const native = Capacitor.isNativePlatform()
       if (!native && /iPhone|iPad|iPod/i.test(navigator.userAgent)) return // ملف APK لا يُثبَّت على آيفون
-      const latest = await fetchLatest()
-      if (!latest || !alive) return
+      const latest = (await fetchLatest()) ?? { code: 0, url: LATEST_RELEASE_PAGE }
+      if (!alive) return
       if (!native) { setState({ mode: 'install', latest }); return }
       const current = await installedBuild()
-      if (alive && (current === null || current < latest.code)) setState({ mode: 'update', latest })
+      // نسخة قديمة بلا إضافة App تحتاج تحديثاً حتماً؛ غير ذلك نقارن الرقم إن عرفناه
+      if (alive && (current === null || (latest.code > 0 && current < latest.code))) setState({ mode: 'update', latest })
     })()
     return () => { alive = false }
   }, [])

@@ -16,8 +16,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // مفتاح التوقيع الثابت يأتي من متغيرات بيئة يضبطها build-apk.yml (السر ANDROID_KEYSTORE)
+    signingConfigs {
+        release {
+            if (System.getenv('YMD_KEYSTORE_FILE')) {
+                storeFile file(System.getenv('YMD_KEYSTORE_FILE'))
+                storeType 'pkcs12'
+                storePassword System.getenv('YMD_KEYSTORE_PASSWORD')
+                keyAlias 'ymd'
+                keyPassword System.getenv('YMD_KEYSTORE_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (System.getenv('YMD_KEYSTORE_FILE')) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

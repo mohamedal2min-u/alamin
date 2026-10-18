@@ -49,6 +49,46 @@ class FlockProfitService
     }
 
     /**
+     * تفصيل التكاليف لكشف الفوج — نفس فلاتر totals() بالضبط، فمجموع البنود = total_expenses.
+     * الكتاكيت والعلف والدواء والماء، والباقي «مستهلكات أخرى» و«مصاريف أخرى» حسب الفئة.
+     *
+     * @return array{chicks: float, feed: float, medicine: float, water: float, other_inventory: float, other_expenses: float, other_by_category: array<string, float>}
+     */
+    public function costBreakdown(Flock $flock): array
+    {
+        $ops = $flock->expenses()->whereNull('expenses.linked_inventory_transaction_id')
+            ->leftJoin('expense_categories', 'expenses.expense_category_id', '=', 'expense_categories.id')
+            ->selectRaw('expense_categories.name as category, SUM(expenses.total_amount) as total')
+            ->groupBy('expense_categories.name')
+            ->pluck('total', 'category')
+            ->map(fn ($v) => (float) $v);
+        $chicks = (float) ($ops['شراء كتاكيت'] ?? 0);
+        $other = $ops->except(['شراء كتاكيت'])->mapWithKeys(fn ($v, $k) => [($k ?: 'أخرى') => $v]);
+
+        $inv = InventoryTransaction::where('inventory_transactions.flock_id', $flock->id)
+            ->where('inventory_transactions.direction', 'out')
+            ->where('inventory_transactions.transaction_type', 'consumption')
+            ->leftJoin('items', 'inventory_transactions.item_id', '=', 'items.id')
+            ->leftJoin('item_types', 'items.item_type_id', '=', 'item_types.id')
+            ->selectRaw('item_types.code as code, SUM(inventory_transactions.total_amount) as total')
+            ->groupBy('item_types.code')
+            ->pluck('total', 'code')
+            ->map(fn ($v) => (float) $v);
+        $feed = (float) ($inv['feed'] ?? 0);
+        $medicine = (float) ($inv['medicine'] ?? 0);
+
+        return [
+            'chicks' => $chicks,
+            'feed' => $feed,
+            'medicine' => $medicine,
+            'water' => (float) FlockWaterLog::where('flock_id', $flock->id)->sum('total_amount'),
+            'other_inventory' => (float) $inv->sum() - $feed - $medicine,
+            'other_expenses' => (float) $other->sum(),
+            'other_by_category' => $other->all(),
+        ];
+    }
+
+    /**
      * حصص الشركاء الفعالة ذات النسبة الموجبة، مع مبلغ كل شريك من $amount.
      * كل حصة تُقرَّب للسنت، والشريك الأخير يأخذ فرق التقريب ليبقى المجموع مساوياً للمبلغ بالضبط.
      *
@@ -79,7 +119,7 @@ class FlockProfitService
     }
 
     /** نفس صيغة الرصيد في محفظة الشريك وسجله؛ «تعديل» بلا اتجاه ثابت فلا يُحتسب. */
-    private const BALANCE_SIGN = ['deposit' => 1, 'profit' => 1, 'withdraw' => -1, 'loss' => -1, 'settlement' => -1];
+    public const BALANCE_SIGN = ['deposit' => 1, 'profit' => 1, 'withdraw' => -1, 'loss' => -1, 'settlement' => -1];
 
     /**
      * رصيد كل شريك: في هذا الفوج (الحركات المرتبطة به) ولكل الأفواج (كل حركاته في المزرعة).

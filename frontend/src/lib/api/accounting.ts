@@ -58,6 +58,28 @@ export interface ReviewItem {
   category_code?: string | null
   review_reasons: ReviewReason[]
   price_history?: PriceHistoryEntry[]
+  /** سجل الدفعات المؤرَّخ (الأقدم أولاً) */
+  payments?: PaymentEntry[]
+  contact_id?: number | null
+  contact_name?: string | null
+}
+
+export type PaymentMethod = 'cash' | 'transfer' | 'other'
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'نقداً',
+  transfer: 'حوالة',
+  other: 'أخرى',
+}
+
+export interface PaymentEntry {
+  id: number
+  amount: number
+  paid_at: string | null
+  method: PaymentMethod
+  note: string | null
+  is_opening: boolean
+  created_by_name: string | null
 }
 
 /** old_price = null يعني أول تسعير؛ غير ذلك هو سعر قديم يُعرض مشطوباً ولا يُحذف. */
@@ -187,10 +209,23 @@ export const accountingApi = {
     return data
   },
 
+  /** تسجيل دفعة جديدة (للمحاسب): تُضاف إلى المدفوع، ويعيد السجل المحدَّث مع دفعاته */
+  recordPayment: async (payload: {
+    payable_type: 'expense' | 'sale' | 'water_log'
+    payable_id: number
+    amount: number
+    paid_at: string
+    method: PaymentMethod
+    note?: string | null
+  }): Promise<ReviewItem> => {
+    const { data } = await apiClient.post<{ data: ReviewItem }>('/accounting/payments', payload)
+    return data.data
+  },
+
   updateReviewItem: async (
     type: 'expense' | 'sale' | 'water_log',
     id: number,
-    payload: { paid_amount?: number; unit_price?: number }
+    payload: { paid_amount?: number; unit_price?: number; contact_id?: number | null }
   ): Promise<ReviewItem> => {
     const { data } = await apiClient.patch<ReviewItem>(
       `/accounting/review-queue/${type}/${id}`,

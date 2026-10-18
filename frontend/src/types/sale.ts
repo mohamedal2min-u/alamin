@@ -54,6 +54,7 @@ export interface CreateSaleItemPayload {
 export interface CreateSalePayload {
   sale_date: string
   buyer_name?: string
+  contact_id?: number
   reference_no?: string
   vehicle_weight_before_kg?: number
   vehicle_weight_after_kg?: number

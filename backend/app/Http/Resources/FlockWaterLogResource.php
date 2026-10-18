@@ -22,6 +22,7 @@ class FlockWaterLogResource extends JsonResource
             'paid_amount'    => $this->paid_amount !== null ? (float) $this->paid_amount : null,
             'payment_status' => $this->payment_status,
             'notes'          => $this->notes,
+            'contact_id'     => $this->contact_id,
             'created_at'     => $this->created_at?->toISOString(),
         ];
     }

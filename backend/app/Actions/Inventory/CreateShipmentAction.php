@@ -15,6 +15,11 @@ class CreateShipmentAction
     {
         return DB::transaction(function () use ($farmId, $userId, $data): InventoryTransaction {
             $item        = Item::findOrFail($data['item_id']);
+
+            // المورد المختار يحدد الاسم النصي (للتوافق مع الشاشات القديمة ووصف الدين)
+            if (! empty($data['contact_id'])) {
+                $data['supplier_name'] = \App\Models\Contact::where('farm_id', $farmId)->whereKey($data['contact_id'])->value('name') ?? ($data['supplier_name'] ?? null);
+            }
             $originalQty = (float) $data['original_quantity'];
             $computedQty = $originalQty * (float) $item->unit_value;
 
@@ -77,6 +82,7 @@ class CreateShipmentAction
                 'paid_amount'       => min($paidAmount, $totalAmount ?? $paidAmount),
                 'payment_status'    => $paymentStatus,
                 'supplier_name'     => $data['supplier_name'] ?? null,
+                'contact_id'        => $data['contact_id'] ?? null,
                 'invoice_no'        => $data['invoice_no'] ?? null,
                 'notes'             => $data['notes'] ?? null,
                 'attachment_path'   => $data['attachment_path'] ?? null,
@@ -110,6 +116,7 @@ class CreateShipmentAction
                     'payment_status'                => $debtStatus,
                     'reference_no'                  => $data['invoice_no'] ?? null,
                     'linked_inventory_transaction_id' => $transaction->id,
+                    'contact_id'                    => $data['contact_id'] ?? null,
                     'created_by'                    => $userId,
                     'updated_by'                    => $userId,
                 ]);

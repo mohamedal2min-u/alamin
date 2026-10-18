@@ -704,6 +704,7 @@ class InventoryController extends Controller
             'paid_amount'       => ['nullable', 'numeric', 'min:0'],
             'payment_status'    => ['nullable', 'in:paid,unpaid,partial'],
             'supplier_name'     => ['nullable', 'string', 'max:255'],
+            'contact_id'        => ['nullable', 'integer', \App\Http\Requests\Contact\ContactRule::exists($request)],
             'invoice_no'        => ['nullable', 'string', 'max:100'],
             'notes'             => ['nullable', 'string', 'max:2000'],
             'attachment'        => ['nullable', 'file', 'image', 'max:5120'], // Max 5MB

@@ -18,6 +18,7 @@ class StoreWaterLogRequest extends FormRequest
             'paid_amount'    => ['nullable', 'numeric', 'min:0', 'lte:total_amount'],
             'payment_status' => ['nullable', 'string', 'in:paid,partial,unpaid'],
             'notes'          => ['nullable', 'string', 'max:5000'],
+            'contact_id'     => ['nullable', 'integer', \App\Http\Requests\Contact\ContactRule::exists($this)],
         ];
     }
 

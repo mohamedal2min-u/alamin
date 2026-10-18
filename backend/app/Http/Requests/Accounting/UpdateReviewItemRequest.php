@@ -17,6 +17,8 @@ class UpdateReviewItemRequest extends FormRequest
 
         $rules = [
             'paid_amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            // ربط سجل قديم بمورد/تاجر من المزرعة نفسها
+            'contact_id' => ['sometimes', 'nullable', 'integer', \App\Http\Requests\Contact\ContactRule::exists($this)],
         ];
 
         if ($type === 'expense' || $type === 'water_log' || $type === 'sale') {

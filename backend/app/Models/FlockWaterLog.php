@@ -3,16 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HasContact;
+use App\Models\Concerns\IsPayable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FlockWaterLog extends Model
 {
-    use HasFactory;
+    use HasFactory, HasContact, IsPayable;
 
     protected $table = 'flock_water_logs';
 
     protected $fillable = [
+        'contact_id',
         'farm_id',
         'flock_id',
         'entry_date',

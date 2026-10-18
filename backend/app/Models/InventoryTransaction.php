@@ -3,17 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HasContact;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InventoryTransaction extends Model
 {
-    use HasFactory;
+    use HasFactory, HasContact;
 
     protected $table = 'inventory_transactions';
 
+    /** الحقل النصي القديم الذي يُزامَن مع اسم الجهة */
+    public ?string $contactNameColumn = 'supplier_name';
+
     protected $fillable = [
+        'contact_id',
         'farm_id',
         'warehouse_id',
         'item_id',

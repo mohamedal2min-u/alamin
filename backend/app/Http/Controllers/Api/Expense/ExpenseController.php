@@ -47,6 +47,7 @@ class ExpenseController extends Controller
             'description'         => 'nullable|string|max:255',
             'notes'               => 'nullable|string|max:5000',
             'expense_type'        => 'nullable|string|max:50',
+            'contact_id'          => ['nullable', 'integer', \App\Http\Requests\Contact\ContactRule::exists($request)],
         ]);
 
         // Validate flock belongs to farm
@@ -95,6 +96,7 @@ class ExpenseController extends Controller
             'payment_status'      => $paymentStatus,
             'description'         => $validated['description'] ?? null,
             'notes'               => $validated['notes'] ?? null,
+            'contact_id'          => $validated['contact_id'] ?? null,
             'created_by'          => $userId,
             'updated_by'          => $userId,
         ]);

@@ -41,6 +41,8 @@ export interface CreateExpensePayload {
   description?: string
   notes?: string
   expense_type?: string
+  /** المورد (اختياري) */
+  contact_id?: number
 }
 
 export const expensesApi = {

@@ -3,15 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HasContact;
+use App\Models\Concerns\IsPayable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sale extends Model
 {
-    use HasFactory;
+    use HasFactory, HasContact, IsPayable;
+
+    /** الحقل النصي القديم الذي يُزامَن مع اسم الجهة */
+    public ?string $contactNameColumn = 'buyer_name';
 
     protected $fillable = [
+        'contact_id',
         'farm_id',
         'flock_id',
         'sale_date',

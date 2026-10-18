@@ -51,7 +51,9 @@ class ReviewQueueController extends Controller
         }
 
         // لا أحد يعدّل سعراً أو دفعة على فوج مغلق: ربحه وُزِّع على الشركاء ويجب أن يبقى مطابقاً لما وُزِّع
-        if (in_array($this->service->flockStatusOf($farmId, $type, $id), ['closed', 'cancelled'], true)) {
+        // (ربط السجل بمورد/تاجر فقط لا يغيّر أي مبلغ، فيُسمح به)
+        $touchesMoney = array_key_exists('unit_price', $data) || array_key_exists('paid_amount', $data);
+        if ($touchesMoney && in_array($this->service->flockStatusOf($farmId, $type, $id), ['closed', 'cancelled'], true)) {
             return response()->json(['message' => 'الفوج مغلق: لا يمكن التعديل عليه'], 403);
         }
 

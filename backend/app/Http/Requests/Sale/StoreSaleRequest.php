@@ -16,6 +16,7 @@ class StoreSaleRequest extends FormRequest
         return [
             'sale_date'              => ['required', 'date_format:Y-m-d'],
             'buyer_name'             => ['nullable', 'string', 'max:190'],
+            'contact_id'             => ['nullable', 'integer', \App\Http\Requests\Contact\ContactRule::exists($this)],
             'reference_no'           => ['nullable', 'string', 'max:100'],
             'vehicle_weight_before_kg' => ['nullable', 'numeric', 'min:0'],
             'vehicle_weight_after_kg' => [

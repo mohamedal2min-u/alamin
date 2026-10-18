@@ -1,5 +1,6 @@
 'use client'
 
+import { ContactPicker } from '@/components/common/ContactPicker'
 import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -593,6 +594,8 @@ function AddShipmentForm({
     attachment:        null as File | null,
   })
   const [bags, setBags] = useState('')
+  // المورد المختار (اختياري) — اسمه يبقى في supplier_name
+  const [contactId, setContactId] = useState<number | null>(null)
   const [extraKg, setExtraKg] = useState('')
   const [lastEdited, setLastEdited] = useState<'price' | 'total'>('price')
   const [saving,  setSaving]  = useState(false)
@@ -662,6 +665,7 @@ function AddShipmentForm({
         paid_amount:       paidAmt,
         payment_status:    form.payment_status as 'paid' | 'unpaid',
         supplier_name:     form.supplier_name || null,
+        contact_id:        contactId,
         invoice_no:        form.invoice_no    || null,
         notes:             form.notes         || null,
         attachment:        form.attachment,
@@ -671,6 +675,7 @@ function AddShipmentForm({
       setSuccess(true)
       setBags('')
       setExtraKg('')
+      setContactId(null)
       setForm({
         item_id: '',
         warehouse_id: warehouses.length === 1 ? String(warehouses[0].id) : '',
@@ -900,9 +905,14 @@ function AddShipmentForm({
 
           {/* Section: Supplier */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="اسم المورد">
-              <input value={form.supplier_name} onChange={set('supplier_name')} placeholder="اختياري" className={inputCls} />
-            </Field>
+            <ContactPicker
+              id="shipment_supplier"
+              label="المورد"
+              kind="supplier"
+              text={form.supplier_name}
+              contactId={contactId}
+              onChange={(text, id) => { setForm((f) => ({ ...f, supplier_name: text })); setContactId(id) }}
+            />
 
             <Field label="رقم الفاتورة">
               <input value={form.invoice_no} onChange={set('invoice_no')} placeholder="اختياري" className={inputCls} />

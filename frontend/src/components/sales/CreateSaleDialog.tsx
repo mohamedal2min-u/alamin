@@ -1,5 +1,6 @@
 'use client'
 
+import { ContactPicker } from '@/components/common/ContactPicker'
 import { PriceOnly, PaymentOnly } from '@/components/common/PriceOnly'
 import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
@@ -70,6 +71,8 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props) {
   const [serverError, setServerError] = useState<string | null>(null)
+  // التاجر المختار (اختياري) — اسمه يبقى في buyer_name للتوافق
+  const [contactId, setContactId] = useState<number | null>(null)
 
   const {
     register,
@@ -151,6 +154,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
 
   const handleClose = () => {
     reset()
+    setContactId(null)
     setServerError(null)
     onClose()
   }
@@ -161,6 +165,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
       const res = await salesApi.create(flockId, {
         sale_date:       data.sale_date,
         buyer_name:      data.buyer_name || undefined,
+        contact_id:      contactId ?? undefined,
         reference_no:    data.reference_no || undefined,
         vehicle_weight_before_kg: data.vehicle_weight_before_kg ?? undefined,
         vehicle_weight_after_kg:  data.vehicle_weight_after_kg ?? undefined,
@@ -205,11 +210,13 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
             error={errors.sale_date?.message}
             required
           />
-          <Input
-            {...register('buyer_name')}
+          <ContactPicker
             id="buyer_name"
-            label="اسم المشتري"
-            placeholder="اختياري"
+            label="المشتري (التاجر)"
+            kind="buyer"
+            text={watch('buyer_name') ?? ''}
+            contactId={contactId}
+            onChange={(text, id) => { setValue('buyer_name', text); setContactId(id) }}
             error={errors.buyer_name?.message}
           />
           <Input

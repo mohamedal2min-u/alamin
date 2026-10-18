@@ -49,6 +49,7 @@ class CreateWaterLogAction
                 'paid_amount'    => $paidAmount,
                 'payment_status' => $paymentStatus,
                 'notes'          => $data['notes'] ?? null,
+                'contact_id'     => $data['contact_id'] ?? null,
                 'worker_id'      => $userId,
                 'editable_until' => now()->addMinutes(15),
                 'created_by'     => $userId,

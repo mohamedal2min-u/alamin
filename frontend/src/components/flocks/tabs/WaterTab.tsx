@@ -1,5 +1,6 @@
 'use client'
 
+import { ContactPicker } from '@/components/common/ContactPicker'
 import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -55,6 +56,8 @@ export function WaterTab({ flockId, flockStatus }: Props) {
   const queryClient = useQueryClient()
   const [showForm, setShowForm]       = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  // صاحب الصهريج (اختياري)
+  const [supplier, setSupplier] = useState<{ text: string; id: number | null }>({ text: '', id: null })
 
   const canAdd = flockStatus === 'active'
 
@@ -82,6 +85,7 @@ export function WaterTab({ flockId, flockStatus }: Props) {
 
   const handleCancel = () => {
     reset({ entry_date: getTodayLocalISO(), unit_label: 'صهريج', payment_status: 'paid' })
+    setSupplier({ text: '', id: null })
     setServerError(null)
     setShowForm(false)
   }
@@ -97,6 +101,7 @@ export function WaterTab({ flockId, flockStatus }: Props) {
         paid_amount:    data.paid_amount,
         payment_status: data.payment_status,
         notes:          data.notes || undefined,
+        contact_id:     supplier.id ?? undefined,
       })
       handleCancel()
       queryClient.invalidateQueries({ queryKey: ['water-logs', flockId] })
@@ -206,6 +211,15 @@ export function WaterTab({ flockId, flockStatus }: Props) {
             </div>
           </div>
           </PriceOnly>
+
+          <ContactPicker
+            id="water_supplier"
+            label="صاحب الصهريج (المورد)"
+            kind="supplier"
+            text={supplier.text}
+            contactId={supplier.id}
+            onChange={(text, id) => setSupplier({ text, id })}
+          />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* Entry date */}

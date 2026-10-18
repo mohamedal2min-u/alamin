@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HasContact;
+use App\Models\Concerns\IsPayable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
-    use HasFactory;
+    use HasFactory, HasContact, IsPayable;
 
     protected $fillable = [
+        'contact_id',
         'farm_id',
         'flock_id',
         'expense_category_id',

@@ -152,6 +152,21 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::get('price-audit',                [\App\Http\Controllers\Api\Accounting\PriceAuditController::class, 'index'])->middleware('farm.role:farm_admin');
     });
 
+    // ── Contacts (suppliers/traders) + dated payments ledger ─────────────────
+    // الدفعات للمحاسب فقط؛ الكشوف للمدير والمحاسب والشريك (قراءة)
+    Route::get('accounting/payments',  [\App\Http\Controllers\Api\Accounting\PaymentController::class, 'index'])->middleware('farm.role:farm_admin,accountant,partner');
+    Route::post('accounting/payments', [\App\Http\Controllers\Api\Accounting\PaymentController::class, 'store'])->middleware('farm.role:accountant')->middleware('farm.notify:سجّل دفعة');
+    Route::prefix('contacts')->group(function (): void {
+        $c = \App\Http\Controllers\Api\Contact\ContactController::class;
+        Route::get('/',                    [$c, 'index']);
+        // المشرف يضيف جهة جديدة من نماذج الإدخال («إضافة جديد»)
+        Route::post('/',                   [$c, 'store'])->middleware('farm.role:farm_admin,accountant,supervisor');
+        Route::get('/balances',            [$c, 'balances'])->middleware('farm.role:farm_admin,accountant,partner');
+        Route::get('/{contact}/statement', [$c, 'statement'])->whereNumber('contact')->middleware('farm.role:farm_admin,accountant,partner');
+        Route::put('/{contact}',           [$c, 'update'])->whereNumber('contact')->middleware('farm.role:farm_admin,accountant');
+        Route::delete('/{contact}',        [$c, 'destroy'])->whereNumber('contact')->middleware('farm.role:farm_admin,accountant');
+    });
+
     // ── V1-J: Partners Management ─────────────────────────────────────────────
     Route::get('partners/my-info', [\App\Http\Controllers\Api\Partner\PartnerController::class, 'myInfo']);
     // قائمة الشركاء وحصصهم وبياناتهم: مدير المزرعة والمحاسب فقط (الشريك يرى سجله وحده عبر my-info)

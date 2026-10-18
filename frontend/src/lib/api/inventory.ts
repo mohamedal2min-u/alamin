@@ -82,6 +82,7 @@ export interface AddShipmentPayload {
   payment_status?: 'paid' | 'unpaid'
   flock_id?: number
   supplier_name?: string | null
+  contact_id?: number | null
   invoice_no?: string | null
   notes?: string | null
   attachment?: File | null

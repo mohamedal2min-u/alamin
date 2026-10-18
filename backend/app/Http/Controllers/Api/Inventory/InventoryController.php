@@ -47,6 +47,7 @@ class InventoryController extends Controller
                 'content_unit'   => $item->content_unit,
                 'unit_value'     => (float) $item->unit_value,
                 'type_code'      => $item->itemType?->code,
+                'withdrawal_days' => $item->withdrawal_days,
                 'total_quantity' => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
             ]),
         ]);
@@ -92,6 +93,7 @@ class InventoryController extends Controller
             'content_unit'  => ['required', 'string', 'max:50'],
             'minimum_stock' => ['nullable', 'numeric', 'min:0'],
             'default_cost'  => ['nullable', 'numeric', 'min:0'],
+            'withdrawal_days' => ['nullable', 'integer', 'min:0', 'max:365'],
             'notes'         => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -114,6 +116,7 @@ class InventoryController extends Controller
             'content_unit'  => $validated['content_unit'],
             'minimum_stock' => $validated['minimum_stock'] ?? null,
             'default_cost'  => $validated['default_cost'] ?? null,
+            'withdrawal_days' => $validated['withdrawal_days'] ?? null,
             'status'        => 'active',
             'notes'         => $validated['notes'] ?? null,
             'created_by'    => $userId,
@@ -247,6 +250,7 @@ class InventoryController extends Controller
             'content_unit'  => 'required|string|max:50',
             'minimum_stock' => 'nullable|numeric|min:0',
             'default_cost'  => 'nullable|numeric|min:0',
+            'withdrawal_days' => 'nullable|integer|min:0|max:365',
             'notes'         => 'nullable|string',
         ]);
 
@@ -262,6 +266,8 @@ class InventoryController extends Controller
             'content_unit'  => $validated['content_unit'],
             'minimum_stock' => $validated['minimum_stock'] ?? null,
             'default_cost'  => $validated['default_cost'] ?? null,
+            // فترة السحب تُحدَّث فقط إن أُرسلت (لا تُمسح من نماذج لا تعرفها)
+            ...(array_key_exists('withdrawal_days', $validated) ? ['withdrawal_days' => $validated['withdrawal_days']] : []),
             'notes'         => $validated['notes'] ?? null,
         ]);
 
@@ -371,6 +377,7 @@ class InventoryController extends Controller
                 'content_unit'      => $item->content_unit,
                 'unit_value'        => (float) $item->unit_value,
                 'minimum_stock'     => (float) ($item->minimum_stock ?? 0),
+                'withdrawal_days'   => $item->withdrawal_days,
                 'total_quantity'    => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
                 'total_received'    => (float) ($item->total_received ?? 0),
                 'shipment_count'    => (int) $item->shipment_count,
@@ -420,6 +427,7 @@ class InventoryController extends Controller
             'content_unit'       => $item->content_unit,
             'unit_value'         => (float) $item->unit_value,
             'minimum_stock'      => (float) ($item->minimum_stock ?? 0),
+            'withdrawal_days'    => $item->withdrawal_days,
             'total_quantity'     => (float) ($item->warehouse_items_sum_current_quantity ?? 0),
             'total_received'     => (float) ($item->total_received ?? 0),
             'shipment_count'     => (int) $item->shipment_count,

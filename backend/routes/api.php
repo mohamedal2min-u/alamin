@@ -197,6 +197,14 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::patch('daily-entries/{type}/{id}', [\App\Http\Controllers\Api\DailyEntry\DailyEntryController::class, 'update'])->whereNumber('id')->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice', 'farm.notify:عدّل سجلاً يومياً,daily_entry']);
     Route::post('daily-entries/{type}/{id}/void', [\App\Http\Controllers\Api\DailyEntry\DailyEntryController::class, 'void'])->whereNumber('id')->middleware(['farm.role:farm_admin,supervisor', 'farm.notify:ألغى سجلاً يومياً,daily_entry']);
     Route::get('activity-logs', [\App\Http\Controllers\Api\DailyEntry\DailyEntryController::class, 'activity'])->middleware('farm.role:farm_admin');
+    // ── Vaccinations: برنامج اللقاحات وفترة السحب ──────────────────────────
+    Route::get('vaccine-template',               [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'template']);
+    Route::put('vaccine-template',               [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'updateTemplate'])->middleware('farm.role:farm_admin');
+    Route::post('vaccine-template/apply-active', [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'applyToActive'])->middleware('farm.role:farm_admin');
+    Route::get('vaccinations/active',            [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'active']);
+    Route::get('flocks/{flock}/vaccinations',    [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'index']);
+    Route::patch('flocks/{flock}/vaccinations/{vaccination}', [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'update'])->middleware('farm.role:farm_admin,supervisor');
+    Route::get('flocks/{flock}/withdrawal',      [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'withdrawal']);
 
     // ── V1-L: Sales ───────────────────────────────────────────────────────────
     Route::get('flocks/{flock}/sales',  [\App\Http\Controllers\Api\Sale\SaleController::class, 'index']);

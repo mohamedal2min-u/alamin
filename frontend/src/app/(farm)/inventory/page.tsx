@@ -392,6 +392,7 @@ function EditItemModal({
     unit_value:     item.unit_value.toString(),
     content_unit:   item.content_unit,
     minimum_stock:  item.minimum_stock.toString(),
+    withdrawal_days: item.withdrawal_days != null ? item.withdrawal_days.toString() : '',
     notes:          item.notes || '',
     stock_quantity: item.total_quantity.toString(),
   })
@@ -426,6 +427,8 @@ function EditItemModal({
         content_unit:  form.content_unit,
         minimum_stock: parseFloat(form.minimum_stock || '0'),
         notes:         form.notes,
+        // فترة السحب للأدوية فقط (فارغ = بلا فترة سحب)
+        ...(isMedicine ? { withdrawal_days: form.withdrawal_days === '' ? null : parseInt(form.withdrawal_days, 10) } : {}),
       })
       const newStockQty = parseFloat(form.stock_quantity)
       if (Math.abs(newStockQty - item.total_quantity) > 0.0001) {
@@ -541,6 +544,11 @@ function EditItemModal({
             <Field label="ملاحظات">
               <input value={form.notes} onChange={set('notes')} className={inputCls} />
             </Field>
+            {isMedicine && (
+              <Field label="فترة السحب (أيام) — لا بيع قبل انتهائها">
+                <input type="number" min="0" max="365" step="1" value={form.withdrawal_days} onChange={set('withdrawal_days')} placeholder="فارغ = بلا فترة سحب" className={inputCls} />
+              </Field>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-5 mt-6">

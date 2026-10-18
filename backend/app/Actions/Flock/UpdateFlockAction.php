@@ -183,7 +183,18 @@ class UpdateFlockAction
                 $data = array_intersect_key($data, ['notes' => true]);
             }
 
+            $previousStatus = $flock->status;
+            $previousStart = $flock->start_date?->toDateString();
+
             $flock->update(array_merge($data, ['updated_by' => $userId]));
+
+            // برنامج اللقاحات: يُولَّد عند تفعيل الفوج، وتُزاح مواعيد المستحق إن تغيّر تاريخ البدء
+            $vaccines = app(\App\Services\VaccinationService::class);
+            if ($previousStatus !== 'active' && $flock->status === 'active') {
+                $vaccines->generateIfMissing($flock);
+            } elseif ($flock->status === 'active' && $previousStart !== $flock->start_date?->toDateString()) {
+                $vaccines->shiftDueDates($flock);
+            }
 
             return $flock->fresh();
         });

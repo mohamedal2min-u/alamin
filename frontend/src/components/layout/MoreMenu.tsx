@@ -2,7 +2,7 @@
 'use client'
 
 import {
-  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, Settings, Calculator, Wallet, UserCog, BellRing, Scale, Contact, History
+  ShoppingCart, Users, BarChart3, LogOut, X, Receipt, Settings, Calculator, Wallet, UserCog, BellRing, Scale, Contact, History, Syringe
 } from 'lucide-react'
 import Link from 'next/link'
 import { AppInstallButton } from '@/components/auth/AppInstallButton'
@@ -50,6 +50,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     { label: 'التقارير',  desc: 'ملخصات الأداء',         href: '/reports',    icon: BarChart3,    color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-900/30' },
     { label: 'مقارنة الأفواج', desc: 'التحويل والتكلفة لكل فوج', href: '/reports/flock-comparison', icon: Scale, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/30' },
     { label: 'سجل النشاطات', desc: 'الإضافات والتعديلات والإلغاء', href: '/activity', icon: History, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-900/30' },
+    { label: 'برنامج اللقاحات', desc: 'مواعيد اللقاحات بالعمر', href: '/vaccines', icon: Syringe, color: 'text-sky-600', bg: 'bg-sky-50 dark:bg-sky-900/30' },
     { label: 'الأذان',    desc: 'أوقات الصلاة والتنبيه', href: '/prayer',    icon: BellRing,     color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/30' },
     { label: 'محفظتي',    desc: 'رصيدك وحصتك',          href: '/my-wallet',  icon: Wallet,       color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
   ].filter(item => allowedHrefs.includes(item.href))

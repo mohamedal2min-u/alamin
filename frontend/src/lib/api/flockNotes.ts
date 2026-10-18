@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { withIdempotencyKey } from '@/lib/offline/outbox'
 import type { FlockNote, CreateFlockNotePayload } from '@/types/flockNote'
 
 export const flockNotesApi = {
@@ -9,6 +10,6 @@ export const flockNotesApi = {
 
   create: (flockId: number, payload: CreateFlockNotePayload) =>
     apiClient
-      .post<{ message: string; data: FlockNote }>(`/flocks/${flockId}/notes`, payload)
+      .post<{ message: string; data: FlockNote }>(`/flocks/${flockId}/notes`, payload, withIdempotencyKey())
       .then((r) => r.data),
 }

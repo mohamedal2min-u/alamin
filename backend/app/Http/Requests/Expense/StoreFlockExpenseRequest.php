@@ -18,6 +18,7 @@ class StoreFlockExpenseRequest extends FormRequest
             'entry_date'   => ['nullable', 'date_format:Y-m-d'],
             'description'  => ['nullable', 'string', 'max:255'],
             'notes'        => ['nullable', 'string', 'max:5000'],
+            'contact_id'   => ['nullable', 'integer', \App\Http\Requests\Contact\ContactRule::exists($this)],
         ];
     }
 

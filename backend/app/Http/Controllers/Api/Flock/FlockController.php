@@ -34,7 +34,7 @@ class FlockController extends Controller
 
         try {
             $flock   = $this->showAction->execute($farmId, $flockId);
-            $history = $this->historyAction->execute($flock);
+            $history = $this->historyAction->execute($flock, $request->user(), $request->attributes->get('is_super_admin') === true);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 404);
         }
@@ -91,7 +91,7 @@ class FlockController extends Controller
 
         try {
             $flock   = $this->showAction->execute($farmId, $flockId);
-            $summary = $this->todaySummaryAction->execute($flock, $request->query('date'));
+            $summary = $this->todaySummaryAction->execute($flock, $request->query('date'), $request->user(), $request->attributes->get('is_super_admin') === true);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("todaySummary Error: " . $e->getMessage(), [
                 'flockId' => $flockId,

@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'farm.role'    => \App\Http\Middleware\EnsureFarmRole::class,
             'farm.noprice' => \App\Http\Middleware\StripPriceFields::class,
             'farm.notify'  => \App\Http\Middleware\NotifyEdit::class,
+            'idempotent'   => \App\Http\Middleware\Idempotency::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

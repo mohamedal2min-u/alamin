@@ -1,5 +1,6 @@
 'use client'
 
+import { ContactPicker } from '@/components/common/ContactPicker'
 import { useState } from 'react'
 import { Receipt, AlertCircle, Plus, X, ClipboardList } from 'lucide-react'
 import Link from 'next/link'
@@ -47,6 +48,8 @@ export default function ExpensesPage() {
   const isReadOnly = useIsReadOnly()
   const canSetPrices = useCanSetPrices()
   const [showForm, setShowForm] = useState(false)
+  // المورد (اختياري)
+  const [supplier, setSupplier] = useState<{ text: string; id: number | null }>({ text: '', id: null })
 
   // Always fetch flocks to get the reliable active flock ID
   const { data: flocksData } = useQuery({
@@ -92,6 +95,7 @@ export default function ExpensesPage() {
 
   const handleCancel = () => {
     reset({ entry_date: getTodayLocalISO() })
+    setSupplier({ text: '', id: null })
     setShowForm(false)
   }
 
@@ -111,6 +115,7 @@ export default function ExpensesPage() {
         payment_status:      'unpaid',
         description:         data.description || undefined,
         notes:               data.notes || undefined,
+        contact_id:          supplier.id ?? undefined,
       })
       toast.success('تم تسجيل المصروف بنجاح')
       handleCancel()
@@ -225,6 +230,15 @@ export default function ExpensesPage() {
             type="text"
             placeholder="مثال: شراء علف أسبوعي"
             error={errors.description?.message}
+          />
+
+          <ContactPicker
+            id="exp_supplier"
+            label="المورد"
+            kind="supplier"
+            text={supplier.text}
+            contactId={supplier.id}
+            onChange={(text, id) => setSupplier({ text, id })}
           />
 
           <div className="flex gap-2 justify-end">

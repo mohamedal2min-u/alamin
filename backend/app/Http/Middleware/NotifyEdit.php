@@ -8,12 +8,13 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * بعد نجاح الطلب يُبلَّغ الطرف الآخر بنغمة: farm.notify:<وصف التعديل>
+ * بعد نجاح الطلب يُبلَّغ الطرف الآخر بنغمة: farm.notify:<وصف التعديل>[,daily_entry]
+ * daily_entry: تصحيح إدخال يومي يُبلَّغ به كل أعضاء المزرعة الآخرين.
  * لا يعطّل الطلب أبداً، ويُرسَل بعد الاستجابة.
  */
 class NotifyEdit
 {
-    public function handle(Request $request, Closure $next, string $what = 'تعديل جديد'): Response
+    public function handle(Request $request, Closure $next, string $what = 'تعديل جديد', ?string $kind = null): Response
     {
         $response = $next($request);
 
@@ -21,9 +22,9 @@ class NotifyEdit
             $farmId = $request->attributes->get('farm_id');
             $actor = $request->user();
             if ($farmId && $actor) {
-                dispatch(function () use ($farmId, $actor, $what): void {
+                dispatch(function () use ($farmId, $actor, $what, $kind): void {
                     try {
-                        app(EditNotifier::class)->notify((int) $farmId, $actor, $what);
+                        app(EditNotifier::class)->notify((int) $farmId, $actor, $what, $kind);
                     } catch (\Throwable $e) {
                         report($e);
                     }

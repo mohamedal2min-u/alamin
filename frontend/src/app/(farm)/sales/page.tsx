@@ -12,11 +12,17 @@ import { UpdatePaymentDialog } from '@/components/sales/UpdatePaymentDialog'
 import { formatDate, formatNumber, formatCurrency } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
 import type { Flock } from '@/types/flock'
+import { useCurrentRole } from '@/lib/roles'
+import { ShareStatementButtons } from '@/components/statements/ShareStatementButtons'
 
 export default function SalesPage() {
   const { currentFarm } = useFarmStore()
   const queryClient = useQueryClient()
   const [paymentSale, setPaymentSale] = useState<Sale | null>(null)
+  // ورقة الوزن: للمدير والمشرف والمحاسب (لا الشريك)
+  const role = useCurrentRole()
+  const canTicket = role !== null && role !== 'partner'
+  const ticketMessage = (sale: Sale) => `ورقة وزن${sale.buyer_name ? ` — ${sale.buyer_name}` : ''} — ${formatDate(sale.sale_date)}`
 
   const { data: flocks = [] } = useQuery<Flock[]>({
     queryKey: ['flocks', currentFarm?.id],
@@ -161,6 +167,9 @@ export default function SalesPage() {
                       </PaymentOnly>
                     )}
                   </div>
+                  {canTicket && (
+                    <ShareStatementButtons kind="sale" id={sale.id} size="xs" label="ورقة الوزن" message={ticketMessage(sale)} className="mt-2.5" />
+                  )}
                 </div>
               )
             })}
@@ -202,6 +211,9 @@ export default function SalesPage() {
                         <PaymentStatusBadge status={sale.payment_status} />
                       </td>
                       <td className="px-5 py-3 text-start">
+                        {canTicket && (
+                          <ShareStatementButtons kind="sale" id={sale.id} size="xs" label="ورقة الوزن" message={ticketMessage(sale)} className="mb-1.5 flex-nowrap" />
+                        )}
                         {sale.payment_status !== 'paid' && (
                           <PaymentOnly>
                             <button

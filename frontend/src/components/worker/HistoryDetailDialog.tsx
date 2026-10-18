@@ -3,15 +3,23 @@
 import React from 'react'
 import { Dialog } from '@/components/ui/Dialog'
 
-import { Bird, Wheat, Pill, Thermometer, Clock, User } from 'lucide-react'
+import { Bird, Wheat, Pill, Thermometer, Clock, User, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EntryCorrectionActions, type EntryValues } from '@/components/common/EntryCorrectionActions'
+import type { DailyEntryType } from '@/lib/api/dailyEntries'
 
 interface TimelineItem {
-  type: 'mortality' | 'feed' | 'medicine' | 'temp'
+  type: 'mortality' | 'feed' | 'medicine' | 'temp' | 'note'
   title: string
   detail: string
   time: string
   worker: string
+  // بيانات التصحيح (من الخادم حسب صلاحية المستخدم)
+  entry_type?: DailyEntryType
+  id?: number
+  values?: EntryValues
+  can_edit?: boolean
+  can_void?: boolean
 }
 
 interface Props {
@@ -29,6 +37,7 @@ export function HistoryDetailDialog({ isOpen, onClose, date, age, timeline }: Pr
       case 'feed': return <Wheat className="h-4 w-4 text-emerald-500" />
       case 'medicine': return <Pill className="h-4 w-4 text-indigo-500" />
       case 'temp': return <Thermometer className="h-4 w-4 text-primary-500" />
+      case 'note': return <StickyNote className="h-4 w-4 text-amber-500" />
       default: return <Clock className="h-4 w-4 text-slate-400" />
     }
   }
@@ -39,6 +48,7 @@ export function HistoryDetailDialog({ isOpen, onClose, date, age, timeline }: Pr
       case 'feed': return 'bg-emerald-50'
       case 'medicine': return 'bg-indigo-50'
       case 'temp': return 'bg-primary-50'
+      case 'note': return 'bg-amber-50'
       default: return 'bg-slate-50'
     }
   }
@@ -68,7 +78,7 @@ export function HistoryDetailDialog({ isOpen, onClose, date, age, timeline }: Pr
           ) : (
             <div className="relative space-y-8 before:absolute before:inset-y-0 before:right-4 before:w-px before:bg-slate-100 pb-2">
               {timeline.map((item, idx) => (
-                <div key={idx} className="relative pr-10">
+                <div key={item.entry_type && item.id ? `${item.entry_type}-${item.id}` : idx} className="relative pr-10">
                   {/* Timeline Dot */}
                   <div className={cn(
                     "absolute right-0 top-0 h-8 w-8 rounded-xl flex items-center justify-center border-2 border-white shadow-sm z-10",
@@ -92,6 +102,15 @@ export function HistoryDetailDialog({ isOpen, onClose, date, age, timeline }: Pr
                        </div>
                        <span className="text-[10px] font-bold text-slate-400">{item.worker}</span>
                     </div>
+                    {item.entry_type && item.id && (item.can_edit || item.can_void) && (
+                      <EntryCorrectionActions
+                        entryType={item.entry_type}
+                        id={item.id}
+                        canEdit={item.can_edit}
+                        canVoid={item.can_void}
+                        values={item.values ?? {}}
+                      />
+                    )}
                   </div>
                 </div>
               ))}

@@ -2,6 +2,8 @@
 
 import { X, Skull, Wheat, Syringe, Receipt, FileText, Droplets } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
+import { EntryCorrectionActions } from '@/components/common/EntryCorrectionActions'
+import type { DailyEntryType } from '@/lib/api/dailyEntries'
 import type {
   TodayMortalityEntry,
   TodayFeedEntry,
@@ -10,6 +12,14 @@ import type {
 } from '@/types/dashboard'
 
 export type DayEntryType = 'mortality' | 'feed' | 'medicine' | 'expense' | 'water'
+
+// نوع السجل في واجهة التصحيح (المصروفات ليست ضمن الإدخالات اليومية)
+const ENTRY_TYPES: Record<Exclude<DayEntryType, 'expense'>, DailyEntryType> = {
+  mortality: 'mortality',
+  feed: 'feed_log',
+  medicine: 'medicine_log',
+  water: 'water_log',
+}
 
 interface Props {
   type: DayEntryType | null
@@ -156,7 +166,7 @@ export function DayEntriesModal({ type, date, summary, onClose }: Props) {
           ) : (
             <div className="divide-y divide-slate-50">
               {(entries as any[]).map((entry, i) => (
-                <div key={i} className="px-5 py-3.5 flex items-start justify-between gap-3">
+                <div key={`${type}-${entry.id ?? i}`} className="px-5 py-3.5 flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0 space-y-0.5">
                     {/* Mortality */}
                     {type === 'mortality' && (
@@ -210,6 +220,17 @@ export function DayEntriesModal({ type, date, summary, onClose }: Props) {
                         {entry.worker_name && entry.time && ' · '}
                         {entry.time}
                       </p>
+                    )}
+
+                    {/* تعديل / إلغاء (حسب صلاحية المستخدم) */}
+                    {type !== 'expense' && entry.id && (entry.can_edit || entry.can_void) && (
+                      <EntryCorrectionActions
+                        entryType={ENTRY_TYPES[type]}
+                        id={entry.id}
+                        canEdit={entry.can_edit}
+                        canVoid={entry.can_void}
+                        values={{ quantity: entry.quantity, reason: entry.reason ?? null }}
+                      />
                     )}
                   </div>
 

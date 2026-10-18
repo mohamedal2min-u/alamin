@@ -103,6 +103,7 @@ class CreateSaleAction
                 'sale_date'                => $data['sale_date'],
                 'reference_no'             => $data['reference_no'] ?? null,
                 'buyer_name'               => $data['buyer_name'] ?? null,
+                'contact_id'               => $data['contact_id'] ?? null, // اسم الجهة يُنسخ إلى buyer_name تلقائياً
                 'vehicle_weight_before_kg' => $data['vehicle_weight_before_kg'] ?? null,
                 'vehicle_weight_after_kg'  => $data['vehicle_weight_after_kg'] ?? null,
                 'weight_deduction_kg'      => $data['weight_deduction_kg'] ?? null,

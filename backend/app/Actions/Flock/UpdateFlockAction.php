@@ -39,49 +39,54 @@ class UpdateFlockAction
                 }
             }
 
-            // Recalculate total chick cost if price or count is changed
-            $initialCount = $data['initial_count'] ?? $flock->initial_count;
-            $unitPrice    = array_key_exists('chick_unit_price', $data) ? $data['chick_unit_price'] : $flock->chick_unit_price;
-            
-            if (isset($data['chick_unit_price']) || isset($data['initial_count'])) {
-                $data['total_chick_cost'] = ($unitPrice !== null && $initialCount !== null) ? ($unitPrice * $initialCount) : null;
-                
-                // Sync the "شراء كتاكيت" expense record
+            // مزامنة مصروف «شراء كتاكيت» فقط عند تغيّر العدد أو السعر فعلاً.
+            // السعر يضعه المحاسب على المصروف نفسه (سعر الفوج يبقى فارغاً عادةً)، فلا يُحذف المصروف ولا دفعاته أبداً هنا.
+            $countChanged = isset($data['initial_count']) && (int) $data['initial_count'] !== (int) $flock->initial_count;
+            $priceGiven = array_key_exists('chick_unit_price', $data) && $data['chick_unit_price'] !== null;
+
+            if ($countChanged || $priceGiven) {
                 $category = \App\Models\ExpenseCategory::firstOrCreate(
                     ['name' => 'شراء كتاكيت', 'farm_id' => null],
                     ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
                 );
-                
                 $expense = \App\Models\Expense::where('flock_id', $flock->id)->where('expense_category_id', $category->id)->first();
-                
-                if ($data['total_chick_cost'] > 0) {
-                    if ($expense) {
-                        $expense->update([
-                            'quantity'         => $initialCount,
-                            'unit_price'       => $unitPrice,
-                            'total_amount'     => $data['total_chick_cost'],
-                            'remaining_amount' => max(0, $data['total_chick_cost'] - $expense->paid_amount),
-                            'updated_by'       => $userId,
-                        ]);
-                    } else {
-                        \App\Models\Expense::create([
-                            'farm_id'             => $flock->farm_id,
-                            'flock_id'            => $flock->id,
-                            'expense_category_id' => $category->id,
-                            'entry_date'          => $flock->start_date,
-                            'description'         => 'تكلفة شراء كتاكيت — ' . $flock->name,
-                            'quantity'            => $initialCount,
-                            'unit_price'          => $unitPrice,
-                            'total_amount'        => $data['total_chick_cost'],
-                            'paid_amount'         => 0,
-                            'remaining_amount'    => $data['total_chick_cost'],
-                            'payment_status'      => 'unpaid',
-                            'created_by'          => $userId,
-                            'updated_by'          => $userId,
-                        ]);
+
+                $initialCount = (int) ($data['initial_count'] ?? $flock->initial_count);
+                $unitPrice = $priceGiven ? (float) $data['chick_unit_price']
+                    : (($expense && $expense->unit_price > 0) ? (float) $expense->unit_price
+                    : ($flock->chick_unit_price !== null ? (float) $flock->chick_unit_price : null));
+                $total = $unitPrice !== null ? round($unitPrice * $initialCount, 2) : null;
+                $data['total_chick_cost'] = $total;
+
+                if ($expense) {
+                    $paid = (float) $expense->paid_amount;
+                    if ($total !== null && $paid > $total + 0.001) {
+                        throw new \Exception('المدفوع لمصروف الكتاكيت ('.$paid.') أكبر من التكلفة الجديدة ('.$total.')', 422);
                     }
-                } elseif ($expense) {
-                    $expense->delete();
+                    $expense->update([
+                        'quantity'         => $initialCount,
+                        'unit_price'       => $unitPrice,
+                        'total_amount'     => $total ?? 0,
+                        'remaining_amount' => $total !== null ? max(0, $total - $paid) : 0,
+                        'payment_status'   => $total > 0 && $paid >= $total ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'),
+                        'updated_by'       => $userId,
+                    ]);
+                } else {
+                    \App\Models\Expense::create([
+                        'farm_id'             => $flock->farm_id,
+                        'flock_id'            => $flock->id,
+                        'expense_category_id' => $category->id,
+                        'entry_date'          => $flock->start_date,
+                        'description'         => 'تكلفة شراء كتاكيت — ' . $flock->name,
+                        'quantity'            => $initialCount,
+                        'unit_price'          => $unitPrice,
+                        'total_amount'        => $total ?? 0,
+                        'paid_amount'         => 0,
+                        'remaining_amount'    => $total ?? 0,
+                        'payment_status'      => 'unpaid',
+                        'created_by'          => $userId,
+                        'updated_by'          => $userId,
+                    ]);
                 }
             }
 
@@ -169,12 +174,8 @@ class UpdateFlockAction
                         ]);
                     }
                 }
-                // ======= Stock Carry-Over / Settlement on Closure =======
-                if ($data['status'] === 'closed' && ($data['stock_action'] ?? 'transfer') === 'settle') {
-                    $this->settleRemainingStock($flock, $userId, $data['close_date'] ?? now()->toDateString());
-                }
-                // If stock_action = 'transfer' (default): do nothing — stock stays in warehouse for next flock.
-                // ===================================================
+                // المخزون المتبقي يبقى في المستودع للفوج التالي بقيمته (أو يُباع). لا شطب بلا تكلفة:
+                // الشطب كان يُخرج قيمة المخزون من الحسابات بعد توزيع الربح.
             }
 
             // ── الفوج المغلق/الملغى: لا يُعدَّل إلا الملاحظات ──────────────
@@ -182,7 +183,18 @@ class UpdateFlockAction
                 $data = array_intersect_key($data, ['notes' => true]);
             }
 
+            $previousStatus = $flock->status;
+            $previousStart = $flock->start_date?->toDateString();
+
             $flock->update(array_merge($data, ['updated_by' => $userId]));
+
+            // برنامج اللقاحات: يُولَّد عند تفعيل الفوج، وتُزاح مواعيد المستحق إن تغيّر تاريخ البدء
+            $vaccines = app(\App\Services\VaccinationService::class);
+            if ($previousStatus !== 'active' && $flock->status === 'active') {
+                $vaccines->generateIfMissing($flock);
+            } elseif ($flock->status === 'active' && $previousStart !== $flock->start_date?->toDateString()) {
+                $vaccines->shiftDueDates($flock);
+            }
 
             return $flock->fresh();
         });
@@ -248,7 +260,17 @@ class UpdateFlockAction
             })
             ->count();
 
-        $blockingCount = $unpaidExpenses + $unpaidSales + $missingPriceExpenses + $missingPriceSales + $missingPriceInventory;
+        // الماء يدخل في الربح، فبلا سعر أو بلا تسديد يمنع الإغلاق مثل المصاريف
+        $blockingWater = $flock->waterLogs()
+            ->where(function ($q): void {
+                $q->whereNull('total_amount')
+                  ->orWhere('total_amount', '<=', 0)
+                  ->orWhereNull('payment_status')
+                  ->orWhereIn('payment_status', ['unpaid', 'partial']);
+            })
+            ->count();
+
+        $blockingCount = $unpaidExpenses + $unpaidSales + $missingPriceExpenses + $missingPriceSales + $missingPriceInventory + $blockingWater;
 
         if ($blockingCount > 0) {
             throw new \Exception(
@@ -259,41 +281,6 @@ class UpdateFlockAction
                 ]),
                 422
             );
-        }
-    }
-
-    /**
-     * Write off remaining farm stock as a loss expense on flock closure.
-     * Creates one "adjustment" inventory transaction per item with remaining stock.
-     */
-    private function settleRemainingStock(Flock $flock, int $userId, string $closeDate): void
-    {
-        $warehouseItems = \App\Models\WarehouseItem::with('item')
-            ->whereHas('warehouse', fn ($q) => $q->where('farm_id', $flock->farm_id))
-            ->where('current_quantity', '>', 0)
-            ->get();
-
-        foreach ($warehouseItems as $wi) {
-            if ((float) $wi->current_quantity <= 0) continue;
-
-            \App\Models\InventoryTransaction::create([
-                'farm_id'          => $flock->farm_id,
-                'flock_id'         => $flock->id,
-                'item_id'          => $wi->item_id,
-                'warehouse_id'     => $wi->warehouse_id,
-                'transaction_date' => $closeDate,
-                'transaction_type' => 'adjustment',
-                'direction'        => 'out',
-                'original_quantity'=> (float) $wi->current_quantity,
-                'computed_quantity'=> (float) $wi->current_quantity,
-                'unit_price'       => null,
-                'total_amount'     => null,
-                'notes'            => 'تسوية مخزون عند إغلاق الفوج: ' . $flock->name,
-                'created_by'       => $userId,
-            ]);
-
-            // Zero out warehouse item stock
-            $wi->update(['current_quantity' => 0]);
         }
     }
 }

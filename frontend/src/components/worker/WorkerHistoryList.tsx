@@ -28,7 +28,10 @@ interface Props {
 
 export function WorkerHistoryList({ history, isLoading, isRefreshing, role = 'worker' }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const [selectedDay, setSelectedDay] = useState<HistoryDay | null>(null)
+  // نحفظ التاريخ فقط ونقرأ اليوم من البيانات الحديثة، كي يظهر أثر التعديل/الإلغاء فوراً
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const selectedDay = selectedDate ? history.find(day => day.date === selectedDate) ?? null : null
+  const setSelectedDay = (day: HistoryDay | null) => setSelectedDate(day?.date ?? null)
 
   const today = getTodayLocalISO()
   const todayDay = history.find(day => day.date === today)

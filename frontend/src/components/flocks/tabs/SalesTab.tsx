@@ -12,6 +12,8 @@ import { UpdatePaymentDialog } from '@/components/sales/UpdatePaymentDialog'
 import { formatDate, formatNumber } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
 import type { FlockStatus } from '@/types/flock'
+import { useCurrentRole } from '@/lib/roles'
+import { ShareStatementButtons } from '@/components/statements/ShareStatementButtons'
 
 interface Props {
   flockId: number
@@ -35,6 +37,7 @@ export function SalesTab({ flockId, flockStatus }: Props) {
   const handleCreated = () => {
     setShowCreate(false)
     queryClient.invalidateQueries({ queryKey: ['sales', flockId] })
+    queryClient.invalidateQueries({ queryKey: ['flock', flockId, 'kpis'] })
   }
 
   const handlePaymentUpdated = () => {
@@ -112,6 +115,9 @@ export function SalesTab({ flockId, flockStatus }: Props) {
 function SaleRow({ sale, onUpdatePayment }: { sale: Sale; onUpdatePayment: () => void }) {
   const totalBirds  = sale.items.reduce((s, i) => s + i.birds_count, 0)
   const totalWeight = sale.items.reduce((s, i) => s + Number(i.total_weight_kg), 0)
+  // ورقة الوزن: للمدير والمشرف والمحاسب (لا الشريك)
+  const role = useCurrentRole()
+  const canTicket = role !== null && role !== 'partner'
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3" style={{ boxShadow: 'var(--shadow-card)' }}>
@@ -138,13 +144,23 @@ function SaleRow({ sale, onUpdatePayment }: { sale: Sale; onUpdatePayment: () =>
       </div>
 
       {/* Payment row */}
-      <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs text-slate-500">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
         <span>
           مستلم: <span className="tabular-nums font-medium text-primary-700">{formatNumber(Number(sale.received_amount))}</span>
           {sale.discount_amount > 0 && (
             <span className="ms-3">خصم: <span className="tabular-nums text-emerald-600">{formatNumber(Number(sale.discount_amount))}</span></span>
           )}
         </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {canTicket && (
+            <ShareStatementButtons
+              kind="sale"
+              id={sale.id}
+              size="xs"
+              label="ورقة الوزن"
+              message={`ورقة وزن${sale.buyer_name ? ` — ${sale.buyer_name}` : ''} — ${formatDate(sale.sale_date)}`}
+            />
+          )}
         {sale.payment_status !== 'paid' && (
           <PaymentOnly>
             <Button size="sm" variant="outline" onClick={onUpdatePayment}>
@@ -152,6 +168,7 @@ function SaleRow({ sale, onUpdatePayment }: { sale: Sale; onUpdatePayment: () =>
             </Button>
           </PaymentOnly>
         )}
+        </div>
       </div>
     </div>
   )

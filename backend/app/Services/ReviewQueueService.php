@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class ReviewQueueService
 {
-    public function __construct(private readonly PriceAuditService $priceAudit) {}
+    public function __construct(
+        private readonly PriceAuditService $priceAudit,
+        private readonly PaymentLedgerService $ledger,
+    ) {}
 
     /**
      * @param  array{type?:string, reason?:string, flock_id?:int|string, page?:int, per_page?:int}  $filters
@@ -105,19 +108,23 @@ class ReviewQueueService
     /**
      * Update a single record, recalculate financial fields, return fresh row with reasons.
      */
-    public function updateRecord(int $farmId, string $type, int $recordId, array $data, ?int $userId = null): array
+    public function updateRecord(int $farmId, string $type, int $recordId, array $data, ?int $userId = null, ?array $paymentMeta = null): array
     {
         // كل التعديل في معاملة واحدة مع قفل السجل: لا كتابة جزئية ولا تعديلان متزامنان يضيّع أحدهما الآخر
-        return DB::transaction(fn () => $this->applyUpdate($farmId, $type, $recordId, $data, $userId));
+        return DB::transaction(fn () => $this->applyUpdate($farmId, $type, $recordId, $data, $userId, $paymentMeta));
     }
 
-    private function applyUpdate(int $farmId, string $type, int $recordId, array $data, ?int $userId): array
+    /**
+     * @param  array{paid_at?:string, method?:string, note?:?string}|null  $paymentMeta  بيانات الدفعة الجديدة (من مسار تسجيل الدفعات)
+     */
+    private function applyUpdate(int $farmId, string $type, int $recordId, array $data, ?int $userId, ?array $paymentMeta = null): array
     {
         $priceBefore = null;
         $paidBefore = null;
 
         if ($type === 'expense') {
             $record = Expense::where('farm_id', $farmId)->lockForUpdate()->findOrFail($recordId);
+            $this->applyContact($record, $data);
             $priceBefore = $this->normalizeExpense($record)['unit_price'];
             $paidBefore = (float) ($record->paid_amount ?? 0);
 
@@ -155,10 +162,11 @@ class ReviewQueueService
                 }
             }
 
-            $row = $this->normalizeExpense($record->load(['flock', 'expenseCategory']));
+            $row = $this->normalizeExpense($record->load(['flock', 'expenseCategory', 'contact:id,name']));
 
         } elseif ($type === 'water_log') {
             $record = FlockWaterLog::where('farm_id', $farmId)->lockForUpdate()->findOrFail($recordId);
+            $this->applyContact($record, $data);
             $priceBefore = $this->normalizeWaterLog($record)['unit_price'];
             $paidBefore = (float) ($record->paid_amount ?? 0);
 
@@ -181,10 +189,11 @@ class ReviewQueueService
 
             $record->save();
 
-            $row = $this->normalizeWaterLog($record->load('flock'));
+            $row = $this->normalizeWaterLog($record->load(['flock', 'contact:id,name']));
 
         } elseif ($type === 'sale') {
             $record = Sale::where('farm_id', $farmId)->with('saleItems')->lockForUpdate()->findOrFail($recordId);
+            $this->applyContact($record, $data);
             $priceBefore = $this->normalizeSale($record)['unit_price'];
             $paidBefore = (float) ($record->received_amount ?? 0);
 
@@ -223,13 +232,28 @@ class ReviewQueueService
 
             $record->save();
 
-            $row = $this->normalizeSale($record->load(['flock', 'saleItems']));
+            $row = $this->normalizeSale($record->load(['flock', 'saleItems', 'contact:id,name']));
         } else {
             abort(400, 'Invalid type');
         }
 
         if (array_key_exists('paid_amount', $data) && $data['paid_amount'] !== null) {
             $this->priceAudit->recordPayment($farmId, $userId, $type, $recordId, $paidBefore, (float) $data['paid_amount']);
+
+            // الفرق عن مجموع الدفعات يُسجَّل صفاً في سجل الدفعات (تعديل المدفوع التراكمي القديم يبقى يعمل)
+            $this->ledger->sync(
+                $record,
+                $paymentMeta['paid_at'] ?? now()->toDateString(),
+                $paymentMeta['method'] ?? 'cash',
+                $paymentMeta ? ($paymentMeta['note'] ?? null) : 'تعديل المدفوع من قائمة المراجعة',
+                $userId
+            );
+        }
+
+        // الدفعات تتبع جهة السجل إن تغيّرت
+        if (array_key_exists('contact_id', $data)) {
+            \App\Models\Payment::where('farm_id', $farmId)->where('payable_type', $type)
+                ->where('payable_id', $recordId)->update(['contact_id' => $record->contact_id]);
         }
 
         if (array_key_exists('unit_price', $data)) {
@@ -247,12 +271,18 @@ class ReviewQueueService
     }
 
     /**
-     * لا يُقبل مدفوع أكبر من الإجمالي المسعَّر (السجل غير المسعَّر بعد يقبل دفعة مسبقة، ويظهر كتناقض حتى يُسعَّر).
+     * لا يُقبل مدفوع أكبر من الإجمالي المسعَّر، لا بدفعة جديدة ولا بخفض السعر (السجل غير المسعَّر بعد يقبل دفعة مسبقة، ويظهر كتناقض حتى يُسعَّر).
      */
     private function assertPaymentWithinTotal(array $data, float $total, float $paid): void
     {
-        if (array_key_exists('paid_amount', $data) && $total > 0 && $paid - $total > 0.005) {
-            abort(422, 'المبلغ المدفوع أكبر من إجمالي السجل — لا يمكن أن تتجاوز الدفعة المبلغ المستحق');
+        if ($total > 0 && $paid - $total > 0.005) {
+            if (array_key_exists('paid_amount', $data)) {
+                abort(422, 'المبلغ المدفوع أكبر من إجمالي السجل — لا يمكن أن تتجاوز الدفعة المبلغ المستحق');
+            }
+            // خفض السعر تحت ما دُفع فعلاً يجعل السجل «مسدداً» بأكثر من قيمته
+            if (array_key_exists('unit_price', $data)) {
+                abort(422, 'السعر الجديد يجعل الإجمالي أقل من المبلغ المدفوع ('.round($paid, 2).') — عدّل الدفعة أولاً');
+            }
         }
     }
 
@@ -264,12 +294,26 @@ class ReviewQueueService
     private function withPriceHistory(int $farmId, Collection $rows): Collection
     {
         $history = $this->priceAudit->historyFor($farmId, $rows);
+        $payments = $this->ledger->historyFor($farmId, $rows);
 
-        return $rows->map(function (array $row) use ($history): array {
+        return $rows->map(function (array $row) use ($history, $payments): array {
             $row['price_history'] = $history[$row['type'].'-'.$row['record_id']] ?? [];
+            $row['payments'] = $payments[$row['type'].'-'.$row['record_id']] ?? [];
 
             return $row;
         });
+    }
+
+    /**
+     * ربط السجل بمورد/تاجر من المزرعة نفسها (أو فكّ الربط بـ null).
+     */
+    private function applyContact(\Illuminate\Database\Eloquent\Model $record, array $data): void
+    {
+        if (! array_key_exists('contact_id', $data)) {
+            return;
+        }
+
+        $record->contact_id = $data['contact_id'] !== null ? (int) $data['contact_id'] : null;
     }
 
     // ─── Private Helpers ─────────────────────────────────────────────────────
@@ -279,7 +323,7 @@ class ReviewQueueService
         $rows = collect();
 
         if ($type === 'all' || $type === 'expense') {
-            $q = Expense::with(['flock', 'expenseCategory', 'linkedInventoryTransaction.item.itemType'])->where('farm_id', $farmId);
+            $q = Expense::with(['flock', 'expenseCategory', 'linkedInventoryTransaction.item.itemType', 'contact:id,name'])->where('farm_id', $farmId);
             if ($flockId) {
                 $q->where('flock_id', $flockId);
             }
@@ -287,7 +331,7 @@ class ReviewQueueService
         }
 
         if ($type === 'all' || $type === 'sale') {
-            $q = Sale::with(['flock', 'saleItems'])->where('farm_id', $farmId);
+            $q = Sale::with(['flock', 'saleItems', 'contact:id,name'])->where('farm_id', $farmId);
             if ($flockId) {
                 $q->where('flock_id', $flockId);
             }
@@ -295,7 +339,7 @@ class ReviewQueueService
         }
 
         if ($type === 'all' || $type === 'water_log') {
-            $q = FlockWaterLog::with('flock')->where('farm_id', $farmId);
+            $q = FlockWaterLog::with(['flock', 'contact:id,name'])->where('farm_id', $farmId);
             if ($flockId) {
                 $q->where('flock_id', $flockId);
             }
@@ -317,6 +361,8 @@ class ReviewQueueService
             'flock_id' => $e->flock_id,
             'flock_name' => $e->flock?->name,
             'flock_status' => $e->flock?->status,
+            'contact_id' => $e->contact_id,
+            'contact_name' => $e->contact?->name,
             'entry_date' => $e->entry_date?->toDateString(),
             'description' => $e->description ?: ($e->expenseCategory?->name ?? $e->description),
             'category_name' => $e->expenseCategory?->name,
@@ -341,7 +387,8 @@ class ReviewQueueService
     private function normalizeSale(Sale $s): array
     {
         $totalWeight = $s->saleItems->sum('total_weight_kg');
-        $avgPrice = $totalWeight > 0 ? round((float) $s->gross_amount / $totalWeight, 2) : null;
+        // 4 منازل: الواجهة تعرض السعر للطن (×1000)، ومنزلتان كانتا تحرّفان سعر الطن (1855 تظهر 1860)
+        $avgPrice = $totalWeight > 0 ? round((float) $s->gross_amount / $totalWeight, 4) : null;
 
         return [
             'id' => 'sale-'.$s->id,
@@ -350,6 +397,8 @@ class ReviewQueueService
             'flock_id' => $s->flock_id,
             'flock_name' => $s->flock?->name,
             'flock_status' => $s->flock?->status,
+            'contact_id' => $s->contact_id,
+            'contact_name' => $s->contact?->name,
             'entry_date' => $s->sale_date?->toDateString(),
             'description' => $s->buyer_name ?? 'بيع',
             'category_name' => 'مبيعات',
@@ -394,6 +443,8 @@ class ReviewQueueService
             'flock_id' => $w->flock_id,
             'flock_name' => $w->flock?->name,
             'flock_status' => $w->flock?->status,
+            'contact_id' => $w->contact_id,
+            'contact_name' => $w->contact?->name,
             'entry_date' => $w->entry_date?->toDateString(),
             'description' => 'استهلاك ماء'.($w->notes ? ' - '.$w->notes : ''),
             'category_name' => 'ماء',

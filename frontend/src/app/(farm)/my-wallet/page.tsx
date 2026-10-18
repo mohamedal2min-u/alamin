@@ -14,6 +14,7 @@ import {
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { formatCurrency } from '@/lib/utils'
+import { ShareStatementButtons } from '@/components/statements/ShareStatementButtons'
 
 const TRANSACTION_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any; sign: '+' | '-' | '' }> = {
   deposit:    { label: 'إيداع نقدي',  color: 'text-primary-600', bgColor: 'bg-primary-50',  icon: ArrowDownLeft,  sign: '+' },
@@ -98,6 +99,11 @@ export default function MyWalletPage() {
           <Printer className="w-4 h-4" />
         </button>
       </div>
+
+      {/* كشف حسابي PDF — يعمل داخل تطبيق الأندرويد */}
+      {partnerId && (
+        <ShareStatementButtons kind="partner" id={partnerId} label="كشف حساب" message="كشف حسابي في المزرعة" className="no-print" />
+      )}
 
       {/* Balance Cards */}
       {!isLoading && (

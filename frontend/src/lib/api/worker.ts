@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { withIdempotencyKey } from '@/lib/offline/outbox'
 
 export interface TemperatureLogPayload {
   log_date: string
@@ -10,7 +11,7 @@ export interface TemperatureLogPayload {
 export const workerApi = {
   logTemperature: (flockId: number, payload: TemperatureLogPayload) =>
     apiClient
-      .post<{ message: string }>(`/flocks/${flockId}/temperature-logs`, payload)
+      .post<{ message: string }>(`/flocks/${flockId}/temperature-logs`, payload, withIdempotencyKey())
       .then((r) => r.data),
       
   closeDay: (flockId: number, date: string) =>

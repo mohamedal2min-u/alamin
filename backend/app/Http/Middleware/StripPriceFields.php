@@ -27,14 +27,13 @@ class StripPriceFields
         $isFarmAdminOnly = ! $canSetPrices;
 
         if ($isFarmAdminOnly) {
-            foreach (self::FIELDS as $field) {
+            // الدفعات والمستلم وحالة الدفع أرقام مالية أيضاً: للمحاسب فقط.
+            // تُحذف من الجسم ومن رابط الطلب (query) معاً، فـ input() يقرأ الاثنين
+            foreach ([...self::FIELDS, 'paid_amount', 'received_amount', 'chick_paid_amount', 'payment_status'] as $field) {
                 $request->offsetUnset($field);
+                $request->query->remove($field);
             }
-
-            // الدفعات والمستلم وحالة الدفع أرقام مالية أيضاً: للمحاسب فقط
-            foreach (['paid_amount', 'received_amount', 'chick_paid_amount', 'payment_status'] as $field) {
-                $request->offsetUnset($field);
-            }
+            $request->query->remove('items');
 
             // أسطر البيع: سعر الكيلو
             $items = $request->input('items');

@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { withIdempotencyKey } from '@/lib/offline/outbox'
 
 export interface FeedLogPayload {
   item_id: number
@@ -32,12 +33,12 @@ export interface WaterLogPayload {
 export const quickEntryApi = {
   logFeed: (flockId: number, payload: FeedLogPayload) =>
     apiClient
-      .post<{ message: string }>(`/flocks/${flockId}/feed-logs`, payload)
+      .post<{ message: string }>(`/flocks/${flockId}/feed-logs`, payload, withIdempotencyKey())
       .then((r) => r.data),
 
   logMedicine: (flockId: number, payload: MedicineLogPayload) =>
     apiClient
-      .post<{ message: string }>(`/flocks/${flockId}/medicine-logs`, payload)
+      .post<{ message: string }>(`/flocks/${flockId}/medicine-logs`, payload, withIdempotencyKey())
       .then((r) => r.data),
 
   logExpense: (flockId: number, payload: ExpensePayload) =>
@@ -47,6 +48,6 @@ export const quickEntryApi = {
 
   logWater: (flockId: number, payload: WaterLogPayload) =>
     apiClient
-      .post<{ message: string }>(`/flocks/${flockId}/water-logs`, payload)
+      .post<{ message: string }>(`/flocks/${flockId}/water-logs`, payload, withIdempotencyKey())
       .then((r) => r.data),
 }

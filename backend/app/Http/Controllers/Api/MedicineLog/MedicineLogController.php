@@ -58,8 +58,10 @@ class MedicineLogController extends Controller
         $medicine->load('item:id,name,input_unit');
 
         return response()->json([
-            'message' => 'تم تسجيل الدواء بنجاح',
-            'data'    => new FlockMedicineResource($medicine),
+            'message'    => 'تم تسجيل الدواء بنجاح',
+            'data'       => new FlockMedicineResource($medicine),
+            // تاريخ «لا بيع قبل» بعد هذا الدواء (فترة السحب)
+            'withdrawal' => app(\App\Services\VaccinationService::class)->withdrawal($flock),
         ], 201);
     }
 }

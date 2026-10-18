@@ -1,5 +1,6 @@
 'use client'
 
+import { ContactPicker } from '@/components/common/ContactPicker'
 import React, { useMemo, useState, useEffect } from 'react'
 import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -397,6 +398,7 @@ function CustomExpenseForm({
   const [unitPrice, setUnitPrice] = useState('')
   const [entryDate, setEntryDate] = useState(today)
   const [notes, setNotes] = useState('')
+  const [supplier, setSupplier] = useState<{ text: string; id: number | null }>({ text: '', id: null })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -440,6 +442,7 @@ function CustomExpenseForm({
         payment_status: 'unpaid',
         description: description.trim(),
         notes: notes.trim() || undefined,
+        contact_id: supplier.id ?? undefined,
       }
       await expensesApi.create(payload)
       onSuccess()
@@ -543,6 +546,15 @@ function CustomExpenseForm({
         )}
       </div>
       </PriceOnly>
+
+      <ContactPicker
+        id="custom_supplier"
+        label="المورد (اختياري)"
+        kind="supplier"
+        text={supplier.text}
+        contactId={supplier.id}
+        onChange={(text, id) => setSupplier({ text, id })}
+      />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input

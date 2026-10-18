@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   Lock, LayoutDashboard, Bird, Package, ShoppingCart,
-  Receipt, Users, BarChart3, Building2, ClipboardList,
+  Receipt, Users, BarChart3, Building2, ClipboardList, Scale, Contact,
 } from 'lucide-react'
 import { useFarmStore } from '@/stores/farm.store'
 import { ChickenLogo } from './ChickenLogo'
@@ -31,6 +31,8 @@ const ALL_NAV_ITEMS = [
   { label: 'الشركاء',        href: '/partners',                      icon: Users },
   { label: 'المحاسبون',        href: '/workers',                       icon: Users },
   { label: 'التقارير',       href: '/reports',                       icon: BarChart3 },
+  { label: 'مقارنة الأفواج', href: '/reports/flock-comparison',      icon: Scale },
+  { label: 'الموردون والتجار', href: '/accounting/contacts',          icon: Contact },
 
   // الوردية (صفحة قديمة — لا يظهر لأي دور حالياً)
   { label: 'الوردية',        href: '/worker',                        icon: ClipboardList },

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AlertTriangle, Package, ArrowLeftRight, XCircle, Ban, ExternalLink } from 'lucide-react'
+import { AlertTriangle, Package, ArrowLeftRight, Ban, ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { Dialog } from '@/components/ui/Dialog'
@@ -34,7 +34,6 @@ interface Props {
 
 export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
   const [serverError, setServerError] = useState<string | null>(null)
-  const [stockAction, setStockAction] = useState<'transfer' | 'settle' | null>(null)
 
   // ── Blocking records count ────────────────────────────────────────────────
   const { data: reviewData, isLoading: reviewLoading } = useQuery({
@@ -55,8 +54,8 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
   const remainingStock = (overviewData?.stock ?? []).filter((i) => i.total_quantity > 0)
   const hasStock = remainingStock.length > 0
 
-  // Submit is blocked when: debts exist OR stock exists but no action chosen
-  const canClose = !reviewLoading && !stockLoading && blockingCount === 0 && (!hasStock || stockAction !== null)
+  // الإغلاق ممنوع ما دام هناك سجل غير مسدد أو غير مسعَّر
+  const canClose = !reviewLoading && !stockLoading && blockingCount === 0
 
   const {
     register,
@@ -73,7 +72,6 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
   const handleClose = () => {
     reset({ close_date: getTodayLocalISO() })
     setServerError(null)
-    setStockAction(null)
     onClose()
   }
 
@@ -85,7 +83,7 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
         status: 'closed',
         close_date: data.close_date,
         notes: data.notes || undefined,
-        stock_action: hasStock ? (stockAction ?? 'transfer') : undefined,
+        stock_action: hasStock ? 'transfer' : undefined,
       })
       onSuccess(res.data)
       handleClose()
@@ -150,13 +148,10 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
         {stockLoading ? (
           <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
         ) : hasStock ? (
-          <div className={`rounded-xl border p-4 space-y-3 ${stockAction === null ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <Package className="h-4 w-4 text-slate-500" />
               مخزون متبقٍّ ({remainingStock.length} صنف)
-              {stockAction === null && (
-                <span className="text-xs font-medium text-emerald-600 bg-emerald-100 rounded-full px-2 py-0.5">مطلوب اختيار</span>
-              )}
             </div>
             <div className="space-y-1.5 max-h-32 overflow-y-auto">
               {remainingStock.map((item) => (
@@ -168,45 +163,10 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-slate-500 border-t border-slate-200 pt-2">
-              يجب اختيار ما يحدث بالمخزون المتبقي قبل الإغلاق:
+            <p className="flex items-center gap-2 rounded-lg bg-primary-50 px-3 py-2 text-[11px] text-primary-700">
+              <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
+              يبقى هذا المخزون في المستودع بقيمته ويُرحَّل تلقائياً للفوج التالي. لبيعه، سجّل البيع قبل الإغلاق.
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setStockAction('transfer')}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition-colors ${
-                  stockAction === 'transfer'
-                    ? 'border-primary-500 bg-primary-50 text-primary-700 ring-2 ring-primary-200'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
-                }`}
-              >
-                <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
-                ترحيل للفوج التالي
-              </button>
-              <button
-                type="button"
-                onClick={() => setStockAction('settle')}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition-colors ${
-                  stockAction === 'settle'
-                    ? 'border-rose-400 bg-rose-50 text-rose-700 ring-2 ring-rose-200'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300'
-                }`}
-              >
-                <XCircle className="h-3.5 w-3.5 shrink-0" />
-                تسوية وشطب
-              </button>
-            </div>
-            {stockAction === 'transfer' && (
-              <p className="text-[11px] text-primary-600 bg-primary-50 rounded-lg px-3 py-2">
-                سيبقى المخزون في المستودع ومتاح تلقائياً للفوج التالي.
-              </p>
-            )}
-            {stockAction === 'settle' && (
-              <p className="text-[11px] text-rose-600 bg-rose-50 rounded-lg px-3 py-2">
-                سيُسجَّل المخزون المتبقي كخسارة ضمن تقرير الفوج.
-              </p>
-            )}
           </div>
         ) : (
           <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
@@ -269,7 +229,6 @@ export function CloseFlockDialog({ flock, isOpen, onClose, onSuccess }: Props) {
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700 space-y-1">
             <p className="font-semibold">يجب استيفاء الشروط التالية قبل الإغلاق:</p>
             {blockingCount > 0 && <p>• تسوية {blockingCount} سجل مالي مانع</p>}
-            {hasStock && stockAction === null && <p>• اختيار قرار المخزون المتبقي (ترحيل أو تسوية)</p>}
           </div>
         )}
 

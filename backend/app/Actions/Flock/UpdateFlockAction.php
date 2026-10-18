@@ -39,49 +39,54 @@ class UpdateFlockAction
                 }
             }
 
-            // Recalculate total chick cost if price or count is changed
-            $initialCount = $data['initial_count'] ?? $flock->initial_count;
-            $unitPrice    = array_key_exists('chick_unit_price', $data) ? $data['chick_unit_price'] : $flock->chick_unit_price;
-            
-            if (isset($data['chick_unit_price']) || isset($data['initial_count'])) {
-                $data['total_chick_cost'] = ($unitPrice !== null && $initialCount !== null) ? ($unitPrice * $initialCount) : null;
-                
-                // Sync the "شراء كتاكيت" expense record
+            // مزامنة مصروف «شراء كتاكيت» فقط عند تغيّر العدد أو السعر فعلاً.
+            // السعر يضعه المحاسب على المصروف نفسه (سعر الفوج يبقى فارغاً عادةً)، فلا يُحذف المصروف ولا دفعاته أبداً هنا.
+            $countChanged = isset($data['initial_count']) && (int) $data['initial_count'] !== (int) $flock->initial_count;
+            $priceGiven = array_key_exists('chick_unit_price', $data) && $data['chick_unit_price'] !== null;
+
+            if ($countChanged || $priceGiven) {
                 $category = \App\Models\ExpenseCategory::firstOrCreate(
                     ['name' => 'شراء كتاكيت', 'farm_id' => null],
                     ['is_system' => true, 'is_active' => true, 'created_by' => $userId, 'updated_by' => $userId]
                 );
-                
                 $expense = \App\Models\Expense::where('flock_id', $flock->id)->where('expense_category_id', $category->id)->first();
-                
-                if ($data['total_chick_cost'] > 0) {
-                    if ($expense) {
-                        $expense->update([
-                            'quantity'         => $initialCount,
-                            'unit_price'       => $unitPrice,
-                            'total_amount'     => $data['total_chick_cost'],
-                            'remaining_amount' => max(0, $data['total_chick_cost'] - $expense->paid_amount),
-                            'updated_by'       => $userId,
-                        ]);
-                    } else {
-                        \App\Models\Expense::create([
-                            'farm_id'             => $flock->farm_id,
-                            'flock_id'            => $flock->id,
-                            'expense_category_id' => $category->id,
-                            'entry_date'          => $flock->start_date,
-                            'description'         => 'تكلفة شراء كتاكيت — ' . $flock->name,
-                            'quantity'            => $initialCount,
-                            'unit_price'          => $unitPrice,
-                            'total_amount'        => $data['total_chick_cost'],
-                            'paid_amount'         => 0,
-                            'remaining_amount'    => $data['total_chick_cost'],
-                            'payment_status'      => 'unpaid',
-                            'created_by'          => $userId,
-                            'updated_by'          => $userId,
-                        ]);
+
+                $initialCount = (int) ($data['initial_count'] ?? $flock->initial_count);
+                $unitPrice = $priceGiven ? (float) $data['chick_unit_price']
+                    : (($expense && $expense->unit_price > 0) ? (float) $expense->unit_price
+                    : ($flock->chick_unit_price !== null ? (float) $flock->chick_unit_price : null));
+                $total = $unitPrice !== null ? round($unitPrice * $initialCount, 2) : null;
+                $data['total_chick_cost'] = $total;
+
+                if ($expense) {
+                    $paid = (float) $expense->paid_amount;
+                    if ($total !== null && $paid > $total + 0.001) {
+                        throw new \Exception('المدفوع لمصروف الكتاكيت ('.$paid.') أكبر من التكلفة الجديدة ('.$total.')', 422);
                     }
-                } elseif ($expense) {
-                    $expense->delete();
+                    $expense->update([
+                        'quantity'         => $initialCount,
+                        'unit_price'       => $unitPrice,
+                        'total_amount'     => $total ?? 0,
+                        'remaining_amount' => $total !== null ? max(0, $total - $paid) : 0,
+                        'payment_status'   => $total > 0 && $paid >= $total ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'),
+                        'updated_by'       => $userId,
+                    ]);
+                } else {
+                    \App\Models\Expense::create([
+                        'farm_id'             => $flock->farm_id,
+                        'flock_id'            => $flock->id,
+                        'expense_category_id' => $category->id,
+                        'entry_date'          => $flock->start_date,
+                        'description'         => 'تكلفة شراء كتاكيت — ' . $flock->name,
+                        'quantity'            => $initialCount,
+                        'unit_price'          => $unitPrice,
+                        'total_amount'        => $total ?? 0,
+                        'paid_amount'         => 0,
+                        'remaining_amount'    => $total ?? 0,
+                        'payment_status'      => 'unpaid',
+                        'created_by'          => $userId,
+                        'updated_by'          => $userId,
+                    ]);
                 }
             }
 
@@ -248,7 +253,17 @@ class UpdateFlockAction
             })
             ->count();
 
-        $blockingCount = $unpaidExpenses + $unpaidSales + $missingPriceExpenses + $missingPriceSales + $missingPriceInventory;
+        // الماء يدخل في الربح، فبلا سعر أو بلا تسديد يمنع الإغلاق مثل المصاريف
+        $blockingWater = $flock->waterLogs()
+            ->where(function ($q): void {
+                $q->whereNull('total_amount')
+                  ->orWhere('total_amount', '<=', 0)
+                  ->orWhereNull('payment_status')
+                  ->orWhereIn('payment_status', ['unpaid', 'partial']);
+            })
+            ->count();
+
+        $blockingCount = $unpaidExpenses + $unpaidSales + $missingPriceExpenses + $missingPriceSales + $missingPriceInventory + $blockingWater;
 
         if ($blockingCount > 0) {
             throw new \Exception(

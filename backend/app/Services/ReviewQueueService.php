@@ -247,12 +247,18 @@ class ReviewQueueService
     }
 
     /**
-     * لا يُقبل مدفوع أكبر من الإجمالي المسعَّر (السجل غير المسعَّر بعد يقبل دفعة مسبقة، ويظهر كتناقض حتى يُسعَّر).
+     * لا يُقبل مدفوع أكبر من الإجمالي المسعَّر، لا بدفعة جديدة ولا بخفض السعر (السجل غير المسعَّر بعد يقبل دفعة مسبقة، ويظهر كتناقض حتى يُسعَّر).
      */
     private function assertPaymentWithinTotal(array $data, float $total, float $paid): void
     {
-        if (array_key_exists('paid_amount', $data) && $total > 0 && $paid - $total > 0.005) {
-            abort(422, 'المبلغ المدفوع أكبر من إجمالي السجل — لا يمكن أن تتجاوز الدفعة المبلغ المستحق');
+        if ($total > 0 && $paid - $total > 0.005) {
+            if (array_key_exists('paid_amount', $data)) {
+                abort(422, 'المبلغ المدفوع أكبر من إجمالي السجل — لا يمكن أن تتجاوز الدفعة المبلغ المستحق');
+            }
+            // خفض السعر تحت ما دُفع فعلاً يجعل السجل «مسدداً» بأكثر من قيمته
+            if (array_key_exists('unit_price', $data)) {
+                abort(422, 'السعر الجديد يجعل الإجمالي أقل من المبلغ المدفوع ('.round($paid, 2).') — عدّل الدفعة أولاً');
+            }
         }
     }
 
@@ -341,7 +347,8 @@ class ReviewQueueService
     private function normalizeSale(Sale $s): array
     {
         $totalWeight = $s->saleItems->sum('total_weight_kg');
-        $avgPrice = $totalWeight > 0 ? round((float) $s->gross_amount / $totalWeight, 2) : null;
+        // 4 منازل: الواجهة تعرض السعر للطن (×1000)، ومنزلتان كانتا تحرّفان سعر الطن (1855 تظهر 1860)
+        $avgPrice = $totalWeight > 0 ? round((float) $s->gross_amount / $totalWeight, 4) : null;
 
         return [
             'id' => 'sale-'.$s->id,

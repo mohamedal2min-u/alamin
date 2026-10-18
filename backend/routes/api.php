@@ -125,12 +125,14 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     // ── V1-I: Today Summary ───────────────────────────────────────────────────
     Route::get('flocks/{flock}/today-summary',  [FlockController::class, 'todaySummary']);
     Route::get('flocks/{flock}/history',        [FlockController::class, 'history']);
+    Route::get('flocks/{flock}/kpis',           [\App\Http\Controllers\Api\Report\FlockKpiController::class, 'show']);
 
 
     // ── V1-I: Reports ────────────────────────────────────────────────────────
     Route::prefix('reports')->group(function (): void {
         Route::get('summary-kpis',      [\App\Http\Controllers\Api\Report\ReportsController::class, 'summaryKpis']);
         Route::get('flock-report',     [\App\Http\Controllers\Api\Report\ReportsController::class, 'flockReport']);
+        Route::get('flock-comparison', [\App\Http\Controllers\Api\Report\FlockKpiController::class, 'comparison'])->middleware('farm.role:farm_admin,accountant,partner');
         Route::get('accounting-summary', [\App\Http\Controllers\Api\Report\ReportsController::class, 'accountingSummary']);
         Route::get('flock-profit', [\App\Http\Controllers\Api\Report\ReportsController::class, 'flockProfit'])->middleware('farm.role:farm_admin,accountant');
         Route::get('inventory-report', [\App\Http\Controllers\Api\Report\ReportsController::class, 'inventoryReport']);

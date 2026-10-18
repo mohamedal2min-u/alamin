@@ -24,6 +24,7 @@ class ResolveFlockZeroDateAction
 
         $mortalityTotals = DB::table('flock_mortalities')
             ->where('flock_id', $flock->id)
+            ->whereNull('deleted_at') // النفوق الملغى لا يُحسب
             ->selectRaw('entry_date as event_date, SUM(quantity) as event_count')
             ->groupBy('entry_date')
             ->get();

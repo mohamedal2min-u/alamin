@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Concerns\HasContact;
 use App\Models\Concerns\IsPayable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FlockWaterLog extends Model
 {
-    use HasFactory, HasContact, IsPayable;
+    use HasFactory, SoftDeletes, HasContact, IsPayable;
 
     protected $table = 'flock_water_logs';
 
@@ -29,6 +30,8 @@ class FlockWaterLog extends Model
         'editable_until',
         'created_by',
         'updated_by',
+        'void_reason',
+        'voided_by',
     ];
 
     protected function casts(): array

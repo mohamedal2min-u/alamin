@@ -19,11 +19,17 @@ class EditNotifier
 
     public function __construct(private readonly PushNotificationService $push) {}
 
-    public function notify(int $farmId, User $actor, string $what): void
+    public const DAILY_ENTRY = 'daily_entry';
+
+    public function notify(int $farmId, User $actor, string $what, ?string $entryKind = null): void
     {
         $isAccountant = $actor->hasRole('accountant') && ! $actor->hasRole('farm_admin');
         $kind = $isAccountant ? self::ACCOUNTANT : self::MANAGER;
         $targetRoles = $isAccountant ? ['farm_admin', 'supervisor'] : ['accountant'];
+        if ($entryKind === self::DAILY_ENTRY) {
+            // تصحيح إدخال يومي (تعديل/إلغاء): يُبلَّغ كل الأعضاء الآخرين بالنغمة نفسها
+            $targetRoles = ['farm_admin', 'supervisor', 'accountant', 'partner'];
+        }
 
         $farm = Farm::find($farmId);
         if (! $farm) {
@@ -51,6 +57,7 @@ class EditNotifier
             ]);
         }
 
-        $this->push->sendNotification($recipients, $title, $body, ['type' => $kind], $kind, $kind);
+        $data = ['type' => $kind] + ($entryKind ? ['entry' => $entryKind] : []);
+        $this->push->sendNotification($recipients, $title, $body, $data, $kind, $kind);
     }
 }

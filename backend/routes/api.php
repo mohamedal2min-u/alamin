@@ -193,6 +193,11 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::post('/', [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
     });
 
+    // ── تصحيح الإدخالات اليومية (تعديل/إلغاء) + سجل النشاطات ──────────────────
+    Route::patch('daily-entries/{type}/{id}', [\App\Http\Controllers\Api\DailyEntry\DailyEntryController::class, 'update'])->whereNumber('id')->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice', 'farm.notify:عدّل سجلاً يومياً,daily_entry']);
+    Route::post('daily-entries/{type}/{id}/void', [\App\Http\Controllers\Api\DailyEntry\DailyEntryController::class, 'void'])->whereNumber('id')->middleware(['farm.role:farm_admin,supervisor', 'farm.notify:ألغى سجلاً يومياً,daily_entry']);
+    Route::get('activity-logs', [\App\Http\Controllers\Api\DailyEntry\DailyEntryController::class, 'activity'])->middleware('farm.role:farm_admin');
+
     // ── V1-L: Sales ───────────────────────────────────────────────────────────
     Route::get('flocks/{flock}/sales',  [\App\Http\Controllers\Api\Sale\SaleController::class, 'index']);
     Route::post('flocks/{flock}/sales', [\App\Http\Controllers\Api\Sale\SaleController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice'])->middleware('farm.notify:سجّل عملية بيع');

@@ -235,6 +235,7 @@ class AdminFarmController extends Controller
 
         DB::transaction(function () use ($farmId) {
             // ── 1. Flock-level operational logs ──────────────────────────────
+            DB::table('activity_logs')->where('farm_id', $farmId)->delete();
             DB::table('flock_mortalities')->where('farm_id', $farmId)->delete();
             DB::table('flock_feed_logs')->where('farm_id', $farmId)->delete();
             DB::table('flock_medicines')->where('farm_id', $farmId)->delete();

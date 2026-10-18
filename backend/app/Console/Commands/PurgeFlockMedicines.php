@@ -51,7 +51,7 @@ class PurgeFlockMedicines extends Command
             ->whereHas('itemType', fn ($q) => $q->where('code', 'medicine'))
             ->pluck('id');
 
-        $logs = FlockMedicine::where('flock_id', $flock->id)->with('item')->get();
+        $logs = FlockMedicine::withTrashed()->where('flock_id', $flock->id)->with('item')->get();
 
         $purchases = InventoryTransaction::where('flock_id', $flock->id)
             ->whereIn('item_id', $medItemIds)
@@ -170,7 +170,8 @@ class PurgeFlockMedicines extends Command
 
         DB::transaction(function () use ($logs, $expenses, $purchases, $consumptions, $stock, $zero, $medStock): void {
             // الترتيب يحترم المفاتيح الأجنبية: السجلات والديون قبل حركات المخزون
-            FlockMedicine::whereIn('id', $logs->pluck('id'))->delete();
+            // حذف نهائي (التطهير يشمل السجلات الملغاة أيضاً)
+            FlockMedicine::withTrashed()->whereIn('id', $logs->pluck('id'))->forceDelete();
             Expense::whereIn('id', $expenses->pluck('id'))->delete();
             InventoryTransaction::whereIn('id', $purchases->pluck('id')->merge($consumptions->pluck('id')))->delete();
 

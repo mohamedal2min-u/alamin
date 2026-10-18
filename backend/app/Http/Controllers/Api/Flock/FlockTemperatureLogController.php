@@ -61,19 +61,43 @@ class FlockTemperatureLogController extends Controller
             'temperature.between'  => 'درجة الحرارة يجب أن تكون بين -50 و100',
         ]);
 
-        $log = FlockTemperatureLog::updateOrCreate(
-            [
-                'flock_id'    => $flock->id,
-                'log_date'    => $validated['log_date'],
-                'time_of_day' => $validated['time_of_day'],
-            ],
-            [
-                'farm_id'     => $flock->farm_id,
-                'temperature' => $validated['temperature'],
-                'notes'       => $validated['notes'] ?? null,
-                'created_by'  => $request->user()->id,
-            ]
-        );
+        if ($flock->status !== 'active') {
+            return response()->json(['message' => 'لا يمكن تسجيل حرارة على فوج غير نشط'], 422);
+        }
+
+        $key = [
+            'flock_id'    => $flock->id,
+            'log_date'    => $validated['log_date'],
+            'time_of_day' => $validated['time_of_day'],
+        ];
+        $values = [
+            'farm_id'     => $flock->farm_id,
+            'temperature' => $validated['temperature'],
+            'notes'       => $validated['notes'] ?? null,
+            'created_by'  => $request->user()->id,
+        ];
+
+        // قراءة واحدة لكل فترة (فهرس فريد يشمل الملغاة): الموجودة تُحدَّث، والملغاة تُستعاد بالقيمة الجديدة
+        $logger = app(\App\Services\ActivityLogger::class);
+        $log = FlockTemperatureLog::withTrashed()
+            ->where('flock_id', $flock->id)
+            ->whereDate('log_date', $validated['log_date'])
+            ->where('time_of_day', $validated['time_of_day'])
+            ->first();
+        if (! $log) {
+            $log = FlockTemperatureLog::create($key + $values);
+        } elseif ($log->trashed()) {
+            $log->fill($values + ['void_reason' => null, 'voided_by' => null]);
+            $log->deleted_at = null;
+            $log->save();
+            $logger->log($log, \App\Services\ActivityLogger::CREATED, $request->user()->id, null, $logger->snapshot($log));
+        } else {
+            $before = $logger->snapshot($log);
+            $log->fill($values)->save();
+            if ($before != $logger->snapshot($log)) {
+                $logger->log($log, \App\Services\ActivityLogger::UPDATED, $request->user()->id, $before, $logger->snapshot($log));
+            }
+        }
 
         return response()->json([
             'message' => 'تم حفظ درجة الحرارة بنجاح',

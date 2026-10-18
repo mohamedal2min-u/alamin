@@ -176,6 +176,15 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
         Route::post('/', [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
     });
 
+    // ── Vaccinations: برنامج اللقاحات وفترة السحب ──────────────────────────
+    Route::get('vaccine-template',               [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'template']);
+    Route::put('vaccine-template',               [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'updateTemplate'])->middleware('farm.role:farm_admin');
+    Route::post('vaccine-template/apply-active', [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'applyToActive'])->middleware('farm.role:farm_admin');
+    Route::get('vaccinations/active',            [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'active']);
+    Route::get('flocks/{flock}/vaccinations',    [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'index']);
+    Route::patch('flocks/{flock}/vaccinations/{vaccination}', [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'update'])->middleware('farm.role:farm_admin,supervisor');
+    Route::get('flocks/{flock}/withdrawal',      [\App\Http\Controllers\Api\Vaccination\VaccinationController::class, 'withdrawal']);
+
     // ── V1-L: Sales ───────────────────────────────────────────────────────────
     Route::get('flocks/{flock}/sales',  [\App\Http\Controllers\Api\Sale\SaleController::class, 'index']);
     Route::post('flocks/{flock}/sales', [\App\Http\Controllers\Api\Sale\SaleController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice'])->middleware('farm.notify:سجّل عملية بيع');

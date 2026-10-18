@@ -63,6 +63,10 @@ class FlockResource extends JsonResource
             'total_expenses'   => $totalExpenses,
             'net_profit'       => $totalSales - $totalExpenses,
             'notes'            => $this->notes,
+            // تاريخ «لا بيع قبل» (فترة سحب الأدوية/اللقاحات) — للأفواج النشطة فقط
+            'no_sale_before'   => $this->status === 'active'
+                ? app(\App\Services\VaccinationService::class)->withdrawal($this->resource)['no_sale_before']
+                : null,
             'created_at'       => $this->created_at->toISOString(),
             'updated_at'       => $this->updated_at->toISOString(),
         ];

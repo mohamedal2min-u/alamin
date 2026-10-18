@@ -21,11 +21,17 @@ class Item extends Model
         'content_unit',
         'minimum_stock',
         'default_cost',
+        'withdrawal_days',
         'status',
         'notes',
         'created_by',
         'updated_by',
     ];
+
+    protected function casts(): array
+    {
+        return ['withdrawal_days' => 'integer'];
+    }
 
     // ─── Relations ────────────────────────────────────────────────────────────
 

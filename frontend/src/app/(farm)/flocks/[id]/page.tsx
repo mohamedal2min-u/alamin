@@ -18,6 +18,7 @@ import { WaterTab } from '@/components/flocks/tabs/WaterTab'
 import { NotesTab } from '@/components/flocks/tabs/NotesTab'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import { EditFlockModal } from '@/components/flocks/EditFlockModal'
+import { FlockKpiSection } from '@/components/flocks/FlockKpiSection'
 import { formatDate, formatNumber, cn, formatCurrency } from '@/lib/utils'
 import { useIsReadOnly } from '@/lib/roles'
 import type { Flock } from '@/types/flock'
@@ -261,6 +262,9 @@ export default function FlockDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* KPIs */}
+      {flock.status !== 'draft' && <FlockKpiSection flockId={flockId} />}
 
       {/* Notes banner */}
       {flock.notes && (

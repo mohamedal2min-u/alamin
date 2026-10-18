@@ -35,6 +35,7 @@ export function SalesTab({ flockId, flockStatus }: Props) {
   const handleCreated = () => {
     setShowCreate(false)
     queryClient.invalidateQueries({ queryKey: ['sales', flockId] })
+    queryClient.invalidateQueries({ queryKey: ['flock', flockId, 'kpis'] })
   }
 
   const handlePaymentUpdated = () => {

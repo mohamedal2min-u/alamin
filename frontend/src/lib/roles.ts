@@ -13,14 +13,14 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
   super_admin: ['/admin/farms', '/admin/registration-requests'],
 
   // farm_admin: كامل الصلاحيات على مزرعته
-  farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting', '/prayer'],
+  farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/reports/flock-comparison', '/accounting', '/prayer'],
 
   // supervisor (مشرف): تشغيل المزرعة بلا أسعار ولا دفعات ولا إدارة حسابات أو شركاء؛ يرى الأسعار التي يضعها المحاسب
   supervisor: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/accounting', '/prayer'],
 
   // accountant: يحدد الأسعار فقط — صفحة المحاسبة وحدها
-  accountant: ['/accounting', '/prayer'],
-  partner: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/my-wallet', '/prayer'],
+  accountant: ['/accounting', '/reports/flock-comparison', '/prayer'],
+  partner: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/reports/flock-comparison', '/my-wallet', '/prayer'],
 }
 
 // ── Route access guard ────────────────────────────────────────────────────────
@@ -52,12 +52,13 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
   if (role === 'farm_admin') return true
 
   if (role === 'supervisor') {
-    // لا شركاء ولا إدارة حسابات ولا محفظة
+    // لا شركاء ولا إدارة حسابات ولا محفظة ولا مقارنة الأفواج (تقرير مالي)
+    if (pathname === '/reports/flock-comparison') return false
     return !(pathname.startsWith('/partners') || pathname.startsWith('/workers') || pathname.startsWith('/my-wallet') || pathname.startsWith('/admin'))
   }
 
   if (role === 'accountant') {
-    return pathname === '/accounting' || pathname.startsWith('/accounting/')
+    return pathname === '/accounting' || pathname.startsWith('/accounting/') || pathname === '/reports/flock-comparison'
   }
 
   if (role === 'partner') {

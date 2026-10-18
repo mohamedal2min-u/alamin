@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/Input'
 import { salesApi } from '@/lib/api/sales'
 import { formatCurrency, getTodayLocalISO } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
+import { useFlockKpis } from '@/components/flocks/FlockKpiSection'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 const optionalNumber = (fieldSchema: z.ZodNumber) => z.preprocess(
@@ -137,6 +138,16 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
   }, 0)
   const net       = Math.max(gross - watchDiscount, 0)
   const remaining = Math.max(net - watchReceived, 0)
+
+  // ── سعر التعادل (للعلم فقط): ما لم يُسترَد من التكلفة ÷ الوزن المتوقع للطيور الباقية ──
+  // يُقدَّر الوزن من متوسط هذه البيعة إن أُدخل، وإلا من آخر بيع مسجّل
+  const { data: kpis } = useFlockKpis(flockId, isOpen)
+  const typedBirds = watchedItems.reduce((s, it) => s + (Number(it.birds_count) || 0), 0)
+  const typedKg    = watchedItems.reduce((s, it) => s + (netWeightOf(it) || 0), 0)
+  const typedAvg   = typedBirds > 0 && typedKg > 0 ? typedKg / typedBirds : null
+  const breakEven  = kpis && kpis.total_cost > 0 && kpis.birds_remaining > 0
+    ? (typedAvg ? kpis.unrecovered_cost / (kpis.birds_remaining * typedAvg) : kpis.break_even_price_per_kg)
+    : null
 
   const handleClose = () => {
     reset()
@@ -385,6 +396,21 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
             })}
           </div>
         </div>
+
+        {/* Break-even hint (read-only) */}
+        {breakEven !== null && (
+          <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-800/60 dark:bg-sky-900/20 dark:text-sky-300">
+            {breakEven > 0 ? (
+              <>
+                <span className="font-bold">سعر التعادل ≈ <span className="tabular-nums" dir="ltr">${breakEven.toFixed(3)}</span>/كغ</span>
+                {' '}(<span className="tabular-nums" dir="ltr">${Math.round(breakEven * 1000)}</span>/طن)
+                <span className="block text-[11px] text-sky-700/80 dark:text-sky-400/80">أقل سعر يغطي تكاليف الفوج حتى اليوم{typedAvg ? '، بحسب متوسط وزن هذه البيعة' : '، بحسب وزن آخر بيع'} — للعلم فقط</span>
+              </>
+            ) : (
+              <span className="font-bold">تكاليف الفوج حتى اليوم مغطاة بالمبيعات السابقة</span>
+            )}
+          </div>
+        )}
 
         {/* Financial fields */}
         <div className="grid grid-cols-2 gap-3">

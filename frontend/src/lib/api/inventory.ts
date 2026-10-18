@@ -11,6 +11,8 @@ export interface StockItem {
   content_unit: string
   unit_value: number
   minimum_stock: number
+  /** فترة سحب الدواء بالأيام (للأدوية فقط) */
+  withdrawal_days?: number | null
   total_quantity: number
   total_received?: number
   shipment_count?: number
@@ -105,6 +107,7 @@ export interface CreateItemPayload {
   content_unit: string
   minimum_stock?: number | null
   default_cost?: number | null
+  withdrawal_days?: number | null
   notes?: string | null
 }
 

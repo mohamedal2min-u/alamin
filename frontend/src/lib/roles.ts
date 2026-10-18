@@ -13,7 +13,7 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
   super_admin: ['/admin/farms', '/admin/registration-requests'],
 
   // farm_admin: كامل الصلاحيات على مزرعته
-  farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting', '/prayer'],
+  farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting', '/prayer', '/vaccines'],
 
   // supervisor (مشرف): تشغيل المزرعة بلا أسعار ولا دفعات ولا إدارة حسابات أو شركاء؛ يرى الأسعار التي يضعها المحاسب
   supervisor: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/accounting', '/prayer'],

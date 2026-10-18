@@ -13,6 +13,7 @@ import { WorkerTaskChecklist } from '@/components/worker/WorkerTaskChecklist'
 import { WorkerHistoryList } from '@/components/worker/WorkerHistoryList'
 import { WorkerEntryDialog } from '@/components/worker/WorkerEntryDialog'
 import { FlockDaySelector } from '@/components/dashboard/FlockDaySelector'
+import { VaccineReminderCard } from '@/components/vaccinations/VaccineReminderCard'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
@@ -163,6 +164,9 @@ export default function WorkerPage() {
       {/* Active View */}
       {isActive && activeFlock && (
         <div className="space-y-4">
+          {/* تذكير اللقاحات المستحقة */}
+          <VaccineReminderCard />
+
           {/* Date Selector */}
           <FlockDaySelector
             startDate={activeFlock.start_date.slice(0, 10)}

@@ -5,12 +5,15 @@ import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, AlertTriangle } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { vaccinationsApi, vaccineKeys } from '@/lib/api/vaccinations'
+import { useFarmStore } from '@/stores/farm.store'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { salesApi } from '@/lib/api/sales'
-import { formatCurrency, getTodayLocalISO } from '@/lib/utils'
+import { formatCurrency, formatDate, getTodayLocalISO } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -99,6 +102,17 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
 
+  // فترة السحب: تحذير (لا منع) إن كان تاريخ البيع قبل «لا بيع قبل»
+  const farmId = useFarmStore((st) => st.currentFarm?.id)
+  const { data: withdrawal } = useQuery({
+    queryKey: vaccineKeys.withdrawal(farmId, flockId),
+    queryFn: () => vaccinationsApi.withdrawal(flockId),
+    enabled: isOpen && !!farmId,
+    staleTime: 0,
+  })
+  const watchSaleDate = watch('sale_date')
+  const withdrawalWarning = !!withdrawal?.no_sale_before && !!watchSaleDate && watchSaleDate < withdrawal.no_sale_before
+
   // ── Live calculations ──────────────────────────────────────────────────────
   const watchedItems   = watch('items') ?? []
   const watchDiscount  = Number(watch('discount_amount') || 0)
@@ -183,6 +197,16 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
   return (
     <Dialog isOpen={isOpen} onClose={handleClose} title="تسجيل بيعة جديدة" className="max-w-2xl">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pt-4" noValidate>
+
+        {withdrawalWarning && (
+          <div role="alert" className="flex items-start gap-2 rounded-xl border-2 border-red-300 bg-red-50 px-3 py-2.5 text-[13px] font-bold text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              تحذير: تاريخ البيع ضمن فترة السحب — لا بيع قبل {formatDate(withdrawal!.no_sale_before!)}
+              {withdrawal?.source ? ` (${withdrawal.source})` : ''}
+            </span>
+          </div>
+        )}
 
         {/* Main info */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

@@ -42,7 +42,6 @@ export function MortalitySheet({
       await mortalitiesApi.create(flockId, {
         entry_date: getTodayLocalISO(),
         quantity: qtyNum,
-        reason: 'تسجيل الوردية - الياسين',
       })
       onSaved(qtyNum)
       setQuantity('')

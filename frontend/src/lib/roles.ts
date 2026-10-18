@@ -13,7 +13,7 @@ export const NAV_HREFS_BY_ROLE: Record<FarmRole, readonly string[]> = {
   super_admin: ['/admin/farms', '/admin/registration-requests'],
 
   // farm_admin: كامل الصلاحيات على مزرعته
-  farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting', '/prayer'],
+  farm_admin: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/partners', '/workers', '/workers/new', '/reports', '/accounting', '/activity', '/prayer'],
 
   // supervisor (مشرف): تشغيل المزرعة بلا أسعار ولا دفعات ولا إدارة حسابات أو شركاء؛ يرى الأسعار التي يضعها المحاسب
   supervisor: ['/dashboard', '/flocks', '/inventory', '/sales', '/expenses', '/reports', '/accounting', '/prayer'],
@@ -52,8 +52,8 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
   if (role === 'farm_admin') return true
 
   if (role === 'supervisor') {
-    // لا شركاء ولا إدارة حسابات ولا محفظة
-    return !(pathname.startsWith('/partners') || pathname.startsWith('/workers') || pathname.startsWith('/my-wallet') || pathname.startsWith('/admin'))
+    // لا شركاء ولا إدارة حسابات ولا محفظة ولا سجل النشاطات (لمدير المزرعة)
+    return !(pathname.startsWith('/partners') || pathname.startsWith('/workers') || pathname.startsWith('/my-wallet') || pathname.startsWith('/admin') || pathname.startsWith('/activity'))
   }
 
   if (role === 'accountant') {

@@ -8,14 +8,16 @@ export interface InventoryItem {
   total_quantity: number
 }
 
-export interface TodayMortalityEntry {
+import type { EntryCorrectionMeta } from '@/lib/api/dailyEntries'
+
+export interface TodayMortalityEntry extends EntryCorrectionMeta {
   quantity: number
   reason: string | null
   worker_name?: string
   time?: string
 }
 
-export interface TodayFeedEntry {
+export interface TodayFeedEntry extends EntryCorrectionMeta {
   item_name: string | null
   quantity: number
   unit_label: string | null
@@ -23,7 +25,7 @@ export interface TodayFeedEntry {
   time?: string
 }
 
-export interface TodayWaterEntry {
+export interface TodayWaterEntry extends EntryCorrectionMeta {
   quantity: number
   unit_label: string
   worker_name?: string

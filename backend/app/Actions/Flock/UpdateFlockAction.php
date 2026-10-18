@@ -174,12 +174,8 @@ class UpdateFlockAction
                         ]);
                     }
                 }
-                // ======= Stock Carry-Over / Settlement on Closure =======
-                if ($data['status'] === 'closed' && ($data['stock_action'] ?? 'transfer') === 'settle') {
-                    $this->settleRemainingStock($flock, $userId, $data['close_date'] ?? now()->toDateString());
-                }
-                // If stock_action = 'transfer' (default): do nothing — stock stays in warehouse for next flock.
-                // ===================================================
+                // المخزون المتبقي يبقى في المستودع للفوج التالي بقيمته (أو يُباع). لا شطب بلا تكلفة:
+                // الشطب كان يُخرج قيمة المخزون من الحسابات بعد توزيع الربح.
             }
 
             // ── الفوج المغلق/الملغى: لا يُعدَّل إلا الملاحظات ──────────────
@@ -274,41 +270,6 @@ class UpdateFlockAction
                 ]),
                 422
             );
-        }
-    }
-
-    /**
-     * Write off remaining farm stock as a loss expense on flock closure.
-     * Creates one "adjustment" inventory transaction per item with remaining stock.
-     */
-    private function settleRemainingStock(Flock $flock, int $userId, string $closeDate): void
-    {
-        $warehouseItems = \App\Models\WarehouseItem::with('item')
-            ->whereHas('warehouse', fn ($q) => $q->where('farm_id', $flock->farm_id))
-            ->where('current_quantity', '>', 0)
-            ->get();
-
-        foreach ($warehouseItems as $wi) {
-            if ((float) $wi->current_quantity <= 0) continue;
-
-            \App\Models\InventoryTransaction::create([
-                'farm_id'          => $flock->farm_id,
-                'flock_id'         => $flock->id,
-                'item_id'          => $wi->item_id,
-                'warehouse_id'     => $wi->warehouse_id,
-                'transaction_date' => $closeDate,
-                'transaction_type' => 'adjustment',
-                'direction'        => 'out',
-                'original_quantity'=> (float) $wi->current_quantity,
-                'computed_quantity'=> (float) $wi->current_quantity,
-                'unit_price'       => null,
-                'total_amount'     => null,
-                'notes'            => 'تسوية مخزون عند إغلاق الفوج: ' . $flock->name,
-                'created_by'       => $userId,
-            ]);
-
-            // Zero out warehouse item stock
-            $wi->update(['current_quantity' => 0]);
         }
     }
 }

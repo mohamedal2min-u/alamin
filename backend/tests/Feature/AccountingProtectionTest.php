@@ -207,4 +207,22 @@ class AccountingProtectionTest extends TestCase
         $this->as($accountant)->getJson('/api/auth/notifications/feed?after_id=0')->assertOk()->assertJsonPath('data.0.kind', 'manager_edit');
         $this->assertGreaterThan(0, $first);
     }
+
+    public function test_daily_entries_notify_everyone_else_with_the_simple_tone(): void
+    {
+        $manager = $this->member('farm_admin');
+        $accountant = $this->member('accountant');
+        $supervisor = $this->member('supervisor');
+        $this->farm->update(['admin_user_id' => $manager->id]);
+        $flock = Flock::factory()->create(['farm_id' => $this->farm->id, 'status' => 'active', 'initial_count' => 1000, 'name' => 'فوج الربيع']);
+
+        $this->as($manager)->postJson("/api/flocks/{$flock->id}/mortalities", ['quantity' => 3, 'entry_date' => now()->toDateString()])->assertCreated();
+
+        foreach ([$accountant, $supervisor] as $u) {
+            $n = \App\Models\UserNotification::where('user_id', $u->id)->sole();
+            $this->assertSame('daily_entry', $n->kind);
+            $this->assertStringContainsString('فوج الربيع', $n->body);
+        }
+        $this->assertSame(0, \App\Models\UserNotification::where('user_id', $manager->id)->count());
+    }
 }

@@ -78,7 +78,7 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     // ── V1-C: Mortalities ────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/mortalities')->group(function (): void {
         Route::get('/',  [MortalityController::class, 'index']);
-        Route::post('/', [MortalityController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
+        Route::post('/', [MortalityController::class, 'store'])->middleware('farm.role:farm_admin,supervisor')->middleware('farm.notify:سجّل نفوقاً,daily_entry');
     });
 
     // ── V1-D: Inventory ───────────────────────────────────────────────────────
@@ -106,13 +106,13 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     // ── V1-E: Feed Logs ───────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/feed-logs')->group(function (): void {
         Route::get('/',  [FeedLogController::class, 'index']);
-        Route::post('/', [FeedLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
+        Route::post('/', [FeedLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor')->middleware('farm.notify:سجّل استهلاك علف,daily_entry');
     });
 
     // ── V1-F: Medicine Logs ───────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/medicine-logs')->group(function (): void {
         Route::get('/',  [MedicineLogController::class, 'index']);
-        Route::post('/', [MedicineLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
+        Route::post('/', [MedicineLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor')->middleware('farm.notify:سجّل دواء,daily_entry');
     });
 
     // ── V1-G: Flock Expenses ──────────────────────────────────────────────────
@@ -120,7 +120,7 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
 
     // ── V1-H: Temperature Logs ────────────────────────────────────────────────
     Route::get('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'index']);
-    Route::post('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
+    Route::post('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'store'])->middleware('farm.role:farm_admin,supervisor')->middleware('farm.notify:سجّل الحرارة,daily_entry');
 
     // ── V1-I: Today Summary ───────────────────────────────────────────────────
     Route::get('flocks/{flock}/today-summary',  [FlockController::class, 'todaySummary']);
@@ -167,13 +167,13 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     // ── V1-M: Water Logs ─────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/water-logs')->group(function (): void {
         Route::get('/',  [\App\Http\Controllers\Api\WaterLog\WaterLogController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\Api\WaterLog\WaterLogController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice'])->middleware('farm.notify:سجّل استهلاك ماء');
+        Route::post('/', [\App\Http\Controllers\Api\WaterLog\WaterLogController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice'])->middleware('farm.notify:سجّل استهلاك ماء,daily_entry');
     });
 
     // ── V1-N: Flock Notes ─────────────────────────────────────────────────────
     Route::prefix('flocks/{flock}/notes')->group(function (): void {
         Route::get('/',  [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'store'])->middleware('farm.role:farm_admin,supervisor');
+        Route::post('/', [\App\Http\Controllers\Api\FlockNote\FlockNoteController::class, 'store'])->middleware('farm.role:farm_admin,supervisor')->middleware('farm.notify:أضاف ملاحظة,daily_entry');
     });
 
     // ── V1-L: Sales ───────────────────────────────────────────────────────────
@@ -181,5 +181,5 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::post('flocks/{flock}/sales', [\App\Http\Controllers\Api\Sale\SaleController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice'])->middleware('farm.notify:سجّل عملية بيع');
     Route::get('sales',                 [\App\Http\Controllers\Api\Sale\SaleController::class, 'indexAll']);
     Route::get('sales/{sale}',          [\App\Http\Controllers\Api\Sale\SaleController::class, 'show']);
-    Route::patch('sales/{sale}/payment',[\App\Http\Controllers\Api\Sale\SaleController::class, 'updatePayment'])->middleware('farm.role:accountant');
+    Route::patch('sales/{sale}/payment',[\App\Http\Controllers\Api\Sale\SaleController::class, 'updatePayment'])->middleware('farm.role:accountant')->middleware('farm.notify:سجّل دفعة بيع');
 });

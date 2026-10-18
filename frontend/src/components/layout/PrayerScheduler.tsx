@@ -13,6 +13,7 @@ import { isNativeApp, syncNativeSchedule } from '@/lib/prayer/native'
  */
 export function PrayerScheduler() {
   const voice = usePrayerStore((s) => s.voice)
+  const length = usePrayerStore((s) => s.length)
   const volume = usePrayerStore((s) => s.volume)
 
   const [ringing, setRinging] = useState<{ label: string } | null>(null)
@@ -21,12 +22,12 @@ export function PrayerScheduler() {
   const lastFired = useRef(0)
 
   const fire = useCallback(async (label: string) => {
-    const ok = await playAdhan({ voice, volume })
+    const ok = await playAdhan({ voice, length, volume })
     if (ok) { setBlocked(null); setRinging({ label }) } else { setBlocked({ label }) }
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try { new Notification(`حان الآن وقت صلاة ${label}`, { body: `حسب توقيت ${REGION_NAME}`, tag: 'prayer' }) } catch { /* بعض الأجهزة تمنعه */ }
     }
-  }, [voice, volume])
+  }, [voice, length, volume])
 
   // فتح قفل الصوت بأول لمسة في التطبيق
   useEffect(() => {
@@ -38,8 +39,8 @@ export function PrayerScheduler() {
   // جدولة الإشعارات الأصلية (أندرويد)
   useEffect(() => {
     if (!isNativeApp()) return
-    void syncNativeSchedule(FIXED_CALC).then((r) => { nativeOk.current = r === 'ok' })
-  }, [])
+    void syncNativeSchedule(FIXED_CALC, voice, length).then((r) => { nativeOk.current = r === 'ok' })
+  }, [voice, length])
 
   // مؤقّت داخل التطبيق: الصلاة القادمة المفعّلة
   useEffect(() => {

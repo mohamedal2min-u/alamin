@@ -204,4 +204,18 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::get('sales',                 [\App\Http\Controllers\Api\Sale\SaleController::class, 'indexAll']);
     Route::get('sales/{sale}',          [\App\Http\Controllers\Api\Sale\SaleController::class, 'show']);
     Route::patch('sales/{sale}/payment',[\App\Http\Controllers\Api\Sale\SaleController::class, 'updatePayment'])->middleware('farm.role:accountant');
+
+    // ── كشوف PDF قابلة للمشاركة: تعيد رابطاً موقّعاً لمدة 30 دقيقة ──────────────
+    Route::prefix('statements')->middleware('throttle:30,1')->group(function (): void {
+        Route::get('flock/{flock}',     [\App\Http\Controllers\Api\Statement\StatementController::class, 'flock'])->whereNumber('flock')->middleware('farm.role:farm_admin,accountant,partner');
+        Route::get('partner/{partner}', [\App\Http\Controllers\Api\Statement\StatementController::class, 'partner'])->whereNumber('partner')->middleware('farm.role:farm_admin,accountant,partner');
+        Route::get('sale/{sale}',       [\App\Http\Controllers\Api\Statement\StatementController::class, 'sale'])->whereNumber('sale')->middleware('farm.role:farm_admin,supervisor,accountant');
+    });
 });
+
+// تنزيل الكشف بالرابط الموقّع — بلا مصادقة (يُفتح من المتصفح أو واتساب)
+Route::get('statements/download/{type}/{id}', [\App\Http\Controllers\Api\Statement\StatementController::class, 'download'])
+    ->whereIn('type', ['flock', 'partner', 'sale'])
+    ->whereNumber('id')
+    ->middleware(['signed:relative', 'throttle:30,1'])
+    ->name('statements.download');

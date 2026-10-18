@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications, type Token } from '@capacitor/push-notifications';
+import { toast } from 'sonner';
 import { apiClient } from '@/lib/api/client';
 import { useAuthStore } from '@/stores/auth.store';
 import { EDIT_KINDS, playEditTone, type EditKind } from '@/lib/prayer/audio';
@@ -57,7 +58,10 @@ export const usePushNotifications = () => {
       await PushNotifications.addListener('pushNotificationReceived', (notification) => {
         // والتطبيق مفتوح لا يعرض النظام الإشعار، فنُصدر النغمة هنا
         const kind = notification.data?.type as EditKind | undefined;
-        if (kind && EDIT_KINDS.includes(kind)) playEditTone(kind);
+        if (kind && EDIT_KINDS.includes(kind)) {
+          playEditTone(kind);
+          toast(notification.title ?? 'إشعار', { description: notification.body });
+        }
       });
 
       await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {

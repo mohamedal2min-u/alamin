@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '@/stores/auth.store'
 import { apiClient } from '@/lib/api/client'
 import { playEditTone, type EditKind } from '@/lib/prayer/audio'
@@ -19,6 +20,8 @@ export function EditNotificationListener() {
 
   useEffect(() => {
     if (!isAuthenticated) { lastId.current = null; return }
+    // تطبيق الأندرويد يستقبل الإشعارات دفعاً (FCM) دون أي استعلام دوري، فلا نستهلك البطارية بالاستعلام
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('PushNotifications')) return
     let timer: ReturnType<typeof setInterval> | undefined
     let cancelled = false
 

@@ -6,6 +6,7 @@ import { RoleGuard } from '@/components/layout/RoleGuard'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { MoreMenu } from '@/components/layout/MoreMenu'
 import { FlockGlobalHeader } from '@/components/layout/FlockGlobalHeader'
+import { OutboxSync } from '@/components/offline/Outbox'
 import { useFarmStore } from '@/stores/farm.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { profileApi } from '@/lib/api/profile'
@@ -49,6 +50,7 @@ export default function FarmLayout({ children }: { children: React.ReactNode }) 
     return (
       <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-900">
         <Sidebar />
+        <OutboxSync />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header />
           <main className="flex-1 overflow-y-auto p-5 thin-scrollbar">
@@ -65,6 +67,7 @@ export default function FarmLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-[72px]">
       {!isUnauthorized && role && <FlockGlobalHeader />}
+      <OutboxSync />
 
       {/* ─── Main Content ─── */}
       <div className="mx-auto max-w-2xl px-3 sm:px-4">

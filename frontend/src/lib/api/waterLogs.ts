@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { withIdempotencyKey } from '@/lib/offline/outbox'
 import type { WaterLog, CreateWaterLogPayload } from '@/types/waterLog'
 
 export const waterLogsApi = {
@@ -9,6 +10,6 @@ export const waterLogsApi = {
 
   create: (flockId: number, payload: CreateWaterLogPayload) =>
     apiClient
-      .post<{ message: string; data: WaterLog }>(`/flocks/${flockId}/water-logs`, payload)
+      .post<{ message: string; data: WaterLog }>(`/flocks/${flockId}/water-logs`, payload, withIdempotencyKey())
       .then((r) => r.data),
 }

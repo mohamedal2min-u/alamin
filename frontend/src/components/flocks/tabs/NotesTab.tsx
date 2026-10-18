@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { Plus, StickyNote, AlertCircle } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { flockNotesApi } from '@/lib/api/flockNotes'
+import { submitDailyEntry } from '@/lib/offline/dailyEntries'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { formatDate, cn, getTodayLocalISO } from '@/lib/utils'
 import type { FlockNote, NoteType } from '@/types/flockNote'
@@ -76,11 +78,13 @@ export function NotesTab({ flockId, flockStatus }: Props) {
   const onSubmit = async (data: FormData) => {
     setServerError(null)
     try {
-      await flockNotesApi.create(flockId, {
+      const { queued } = await submitDailyEntry('note', flockId, {
         note_text:  data.note_text,
         note_type:  data.note_type,
         entry_date: data.entry_date || undefined,
-      })
+      }, `ملاحظة: ${data.note_text.slice(0, 40)}`)
+      // ضعف الشبكة: حُفظت في صندوق الانتظار
+      if (queued) toast.warning('بانتظار الإرسال — ستُرسَل تلقائياً عند عودة الاتصال')
       handleCancel()
       queryClient.invalidateQueries({ queryKey: ['flock-notes', flockId] })
     } catch (err: unknown) {

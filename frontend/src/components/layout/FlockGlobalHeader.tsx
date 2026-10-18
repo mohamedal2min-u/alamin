@@ -14,6 +14,7 @@ import type { Flock } from '@/types/flock'
 
 import { useScrollDirection } from '@/hooks/useScrollDirection'
 import { ThemeToggle } from './ThemeToggle'
+import { OutboxBadge } from '@/components/offline/Outbox'
 
 export function FlockGlobalHeader() {
   const { user, setUser } = useAuthStore()
@@ -149,6 +150,7 @@ export function FlockGlobalHeader() {
           {/* Status (Left visually in RTL) */}
           <div className="w-[35%] flex justify-end items-center gap-1.5">
              <ThemeToggle className="h-7 w-7" />
+             <OutboxBadge />
              <button
                 onClick={handleGlobalRefresh}
                 disabled={isRefreshing}

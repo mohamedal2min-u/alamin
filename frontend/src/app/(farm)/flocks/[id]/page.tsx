@@ -19,7 +19,8 @@ import { NotesTab } from '@/components/flocks/tabs/NotesTab'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import { EditFlockModal } from '@/components/flocks/EditFlockModal'
 import { formatDate, formatNumber, cn, formatCurrency } from '@/lib/utils'
-import { useIsReadOnly } from '@/lib/roles'
+import { useCurrentRole, useIsReadOnly } from '@/lib/roles'
+import { ShareStatementButtons } from '@/components/statements/ShareStatementButtons'
 import type { Flock } from '@/types/flock'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -91,6 +92,9 @@ export default function FlockDetailPage({
 
   const queryClient = useQueryClient()
   const isReadOnly = useIsReadOnly()
+  const role = useCurrentRole()
+  // كشف الفوج: للمدير والمحاسب والشريك (المشرف لا يرى حصص الشركاء)
+  const canShareStatement = role === 'farm_admin' || role === 'accountant' || role === 'partner' || role === 'super_admin'
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -182,6 +186,15 @@ export default function FlockDetailPage({
           )}
         </div>
       </div>
+
+      {canShareStatement && (
+        <ShareStatementButtons
+          kind="flock"
+          id={flock.id}
+          label="مشاركة كشف الفوج"
+          message={`كشف حساب الفوج «${flock.name}»`}
+        />
+      )}
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">

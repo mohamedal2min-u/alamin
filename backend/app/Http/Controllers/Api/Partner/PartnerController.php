@@ -104,7 +104,12 @@ class PartnerController extends Controller
             }
 
             // 2. Check or Create User (using whatsapp as identifier)
+            // حساب موجود يُربط فقط إن كان عضواً في هذه المزرعة أصلاً، ولا تُغيَّر حالته العامة أبداً:
+            // وإلا كان مدير أي مزرعة يستطيع ضم حساب مزرعة أخرى (أو المدير العام) وتعطيله أو تغيير كلمة مروره
             $user = User::firstWhere('whatsapp', $validated['whatsapp']);
+            if ($user && ! FarmUser::where('farm_id', $farmId)->where('user_id', $user->id)->exists()) {
+                abort(422, 'رقم الواتساب مستخدم لحساب آخر — استخدم رقماً مختلفاً للشريك');
+            }
             if (!$user) {
                 $user = clone User::create([
                     'name'     => $validated['name'],
@@ -113,9 +118,6 @@ class PartnerController extends Controller
                     'password' => Hash::make($validated['password']),
                     'status'   => $validated['status'],
                 ]);
-            } else {
-                // Sync status if user already exists
-                $user->update(['status' => $validated['status']]);
             }
 
             // 3. Link user to farm
@@ -207,8 +209,9 @@ class PartnerController extends Controller
                 $validated['status'] = floatval($validated['share_percent']) <= 0 ? 'inactive' : 'active';
             }
 
-            // Update Partner User
-            if ($partner->user_id) {
+            // حساب الشريك يُعدَّل فقط إن كان خاصاً بهذه المزرعة وحدها وبدور شريك فقط؛
+            // غير ذلك (عضو في مزرعة أخرى، مدير، محاسب، مدير عام) يُعدَّل سجل الشريك وحده
+            if ($partner->user_id && $this->ownsAccountOnlyHere($partner->user_id, $farmId)) {
                 $userUpdate = [
                     'name' => $validated['name'],
                     'whatsapp' => $validated['whatsapp'],
@@ -329,5 +332,22 @@ class PartnerController extends Controller
     private function ensureAdminPartnerExists($farmId)
     {
         return app(\App\Services\Partner\PartnerService::class)->ensureManagerPartnerExists($farmId);
+    }
+
+    private function ownsAccountOnlyHere(int $userId, int $farmId): bool
+    {
+        if (FarmUser::where('user_id', $userId)->where('farm_id', '!=', $farmId)->exists()) {
+            return false;
+        }
+
+        // الأدوار في كل الفرق (المزارع) وخارجها: يجب أن تكون «شريك» فقط
+        $roles = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_id', $userId)
+            ->where('model_has_roles.model_type', User::class)
+            ->pluck('roles.name')
+            ->unique();
+
+        return $roles->isNotEmpty() && $roles->every(fn ($r) => $r === 'partner');
     }
 }

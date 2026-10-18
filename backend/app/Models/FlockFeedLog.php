@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FlockFeedLog extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'flock_feed_logs';
 
@@ -22,9 +23,12 @@ class FlockFeedLog extends Model
         'notes',
         'worker_id',
         'inventory_transaction_id',
+        'auto_purchase_transaction_id',
         'editable_until',
         'created_by',
         'updated_by',
+        'void_reason',
+        'voided_by',
     ];
 
     protected function casts(): array

@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FlockNote extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'flock_notes';
 
@@ -21,6 +22,8 @@ class FlockNote extends Model
         'worker_id',
         'created_by',
         'updated_by',
+        'void_reason',
+        'voided_by',
     ];
 
     protected function casts(): array

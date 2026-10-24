@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, BellRing, Check, Clock, Lock, MapPin, Play, Square, Volume2 } from 'lucide-react'
 import { MIN_VOLUME, usePrayerStore } from '@/lib/prayer/store'
 import { FIXED_CALC, PRAYERS, REGION_NAME, formatRegionTime, prayerTimesFor, regionDate, upcomingPrayers } from '@/lib/prayer/times'
-import { VOICES } from '@/lib/prayer/voices'
+import { VOICES, type AdhanLength } from '@/lib/prayer/voices'
 import { playAdhan, stopAdhan, unlockAudio } from '@/lib/prayer/audio'
 import { isNativeApp } from '@/lib/prayer/native'
 import { useTick } from '@/hooks/useTick'
@@ -35,6 +35,7 @@ export default function PrayerPage() {
 function PrayerContent() {
   const router = useRouter()
   const voice = usePrayerStore((s) => s.voice)
+  const length = usePrayerStore((s) => s.length)
   const volume = usePrayerStore((s) => s.volume)
   const setPrefs = usePrayerStore((s) => s.set)
   const now = useTick(1000) // ثانية واحدة، وتتوقف تلقائياً عند إخفاء الشاشة
@@ -45,10 +46,10 @@ function PrayerContent() {
   const dateText = new Intl.DateTimeFormat('ar-SY-u-nu-latn', { timeZone: 'Asia/Damascus', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now)
   const clockText = new Intl.DateTimeFormat('ar-EG-u-nu-latn', { timeZone: 'Asia/Damascus', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).format(now)
 
-  const preview = async (id: string) => {
+  const preview = async (id: string, len: AdhanLength = length) => {
     unlockAudio()
-    setPrefs({ voice: id })
-    const ok = await playAdhan({ voice: id, volume })
+    setPrefs({ voice: id, length: len })
+    const ok = await playAdhan({ voice: id, length: len, volume })
     setPlaying(ok)
   }
   const stop = () => { stopAdhan(); setPlaying(false) }
@@ -119,6 +120,19 @@ function PrayerContent() {
       </Section>
 
       <Section title="صوت المؤذن">
+        {/* كامل أو قصير (المقطع الأول فقط) */}
+        <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-700/50">
+          {([['long', 'أذان كامل'], ['short', 'أذان قصير']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => preview(voice, key)}
+              className={cn('rounded-lg py-2 text-sm font-bold transition-all', length === key ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-600 dark:text-slate-100' : 'text-slate-500')}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <ul className="space-y-2">
           {VOICES.map((v) => (
             <li key={v.id}>
@@ -154,6 +168,11 @@ function PrayerContent() {
           />
           <p className="mt-1 text-[11px] text-slate-400">أقل مستوى {Math.round(MIN_VOLUME * 100)}% — لا يمكن كتم الأذان.</p>
         </div>
+
+        <p className="mt-3 text-[10px] leading-relaxed text-slate-400" dir="ltr">
+          Recordings: Wikimedia Commons — {VOICES.map((v) => v.license.replace(' (Wikimedia Commons)', '')).join(' · ')}.{' '}
+          <a href="/adhan/CREDITS.md" target="_blank" rel="noopener" className="underline">Sources &amp; licenses</a>
+        </p>
 
         {playing && (
           <button onClick={stop} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-600 dark:border-slate-600 dark:text-slate-200">

@@ -1,7 +1,7 @@
 'use client'
 
 import { MIN_VOLUME } from './store'
-import { voiceById } from './voices'
+import { voiceById, voiceFile, type AdhanLength } from './voices'
 
 // ── التشغيل ──────────────────────────────────────────────────────────────────
 let current: { stop: () => void } | null = null
@@ -63,6 +63,7 @@ function playTone(volume: number): { stop: () => void; done: Promise<void> } {
 
 export interface PlayOptions {
   voice: string
+  length: AdhanLength
   volume: number
 }
 
@@ -71,7 +72,7 @@ export async function playAdhan(opts: PlayOptions): Promise<boolean> {
   stopAdhan()
   const volume = Math.max(MIN_VOLUME, Math.min(1, opts.volume))
   try {
-    const audio = new Audio(voiceById(opts.voice).file)
+    const audio = new Audio(voiceFile(voiceById(opts.voice), opts.length))
     audio.volume = volume
     current = { stop: () => audio.pause() }
     audio.addEventListener('ended', () => { current = null })
@@ -92,8 +93,9 @@ export async function playAdhan(opts: PlayOptions): Promise<boolean> {
   }
 }
 
-// ── نغمات التعديلات: لكل طرف نغمة مختلفة ───────────────────────────────────
-export type EditKind = 'accountant_edit' | 'manager_edit'
+// ── نغمات التعديلات: لكل نوع نغمة (السجلات اليومية نغمة بسيطة قصيرة) ──────────
+export type EditKind = 'accountant_edit' | 'manager_edit' | 'daily_entry'
+export const EDIT_KINDS: EditKind[] = ['accountant_edit', 'manager_edit', 'daily_entry']
 
 /** نغمة قصيرة عند وصول إشعار تعديل والتطبيق مفتوح */
 export function playEditTone(kind: EditKind) {

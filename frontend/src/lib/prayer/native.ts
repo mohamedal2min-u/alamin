@@ -2,6 +2,7 @@
 
 import { Capacitor } from '@capacitor/core'
 import { PRAYERS, REGION_NAME, upcomingPrayers, type PrayerCalcSettings, type PrayerKey } from './times'
+import { voiceById, type AdhanLength } from './voices'
 
 export const isNativeApp = () => typeof window !== 'undefined' && Capacitor.isNativePlatform()
 
@@ -13,7 +14,7 @@ export type NativeResult = 'ok' | 'denied' | 'unavailable'
  * على تطبيق الأندرويد: يجدول إشعارات الأذان لأسبوع قادم فتصل حتى لو كان التطبيق مغلقاً.
  * يُعاد استدعاؤه عند فتح التطبيق وعند تغيير الإعدادات. يحتاج APK يحتوي إضافة الإشعارات المحلية.
  */
-export async function syncNativeSchedule(calc: PrayerCalcSettings): Promise<NativeResult> {
+export async function syncNativeSchedule(calc: PrayerCalcSettings, voiceId: string, length: AdhanLength): Promise<NativeResult> {
   if (!isNativeApp()) return 'unavailable'
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications')
@@ -36,15 +37,19 @@ export async function syncNativeSchedule(calc: PrayerCalcSettings): Promise<Nati
       }
     } catch { /* نسخ أندرويد القديمة لا تحتاجه */ }
 
-    // قناة جديدة بصوت الأذان المضمّن (res/raw/adhan.mp3)؛ القناة القديمة بلا صوت أذان تُترك كما هي
+    // قناة لكل صوت: res/raw/adhan_<صوت>_<طول>.mp3. التطبيق (MainActivity) ينشئها مسبقاً على صوت المنبّه،
+    // وهذا الإنشاء احتياط فقط (أندرويد لا يغيّر صوت قناة موجودة)
+    const v = voiceById(voiceId)
+    const raw = `adhan_${v.raw}_${length}`
+    const channelId = raw
     await LocalNotifications.createChannel({
-      id: 'adhan',
-      name: 'الأذان',
+      id: channelId,
+      name: `الأذان — ${v.name} (${length === 'short' ? 'قصير' : 'كامل'})`,
       description: `تنبيه الأذان حسب توقيت ${REGION_NAME}`,
       importance: 5,
       visibility: 1,
       vibration: true,
-      sound: 'adhan.mp3',
+      sound: `${raw}.mp3`,
     })
 
     const now = new Date()
@@ -53,8 +58,8 @@ export async function syncNativeSchedule(calc: PrayerCalcSettings): Promise<Nati
       id: BASE_ID + i,
       title: `حان الآن وقت صلاة ${p.label}`,
       body: `حسب توقيت ${REGION_NAME}`,
-      channelId: 'adhan',
-      sound: 'adhan.mp3',
+      channelId,
+      sound: `${raw}.mp3`,
       schedule: { at: p.at, allowWhileIdle: true },
     }))
     if (notifications.length) await LocalNotifications.schedule({ notifications })

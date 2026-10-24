@@ -6,6 +6,7 @@ import { RoleGuard } from '@/components/layout/RoleGuard'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { MoreMenu } from '@/components/layout/MoreMenu'
 import { FlockGlobalHeader } from '@/components/layout/FlockGlobalHeader'
+import { NotificationPermissionBanner } from '@/components/layout/NotificationPermissionBanner'
 import { OutboxSync } from '@/components/offline/Outbox'
 import { VaccineNotificationScheduler } from '@/components/vaccinations/VaccineNotificationScheduler'
 import { useFarmStore } from '@/stores/farm.store'
@@ -68,6 +69,7 @@ export default function FarmLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-[72px]">
       {!isUnauthorized && role && <FlockGlobalHeader />}
+      <div className="px-3 sm:px-4"><NotificationPermissionBanner /></div>
       <OutboxSync />
       {/* إشعارات اللقاحات المحلية (أندرويد) لمن ينفّذها */}
       {(role === 'farm_admin' || role === 'supervisor') && <VaccineNotificationScheduler />}

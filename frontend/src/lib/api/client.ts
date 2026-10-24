@@ -20,7 +20,8 @@ apiClient.interceptors.request.use((config) => {
     }
 
     const farmId = localStorage.getItem('current_farm_id')
-    if (farmId) {
+    // صندوق الانتظار يرسل مزرعة العنصر نفسه صراحةً
+    if (farmId && !config.headers['X-Farm-Id']) {
       config.headers['X-Farm-Id'] = farmId
     }
   }

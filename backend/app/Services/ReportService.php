@@ -438,12 +438,14 @@ class ReportService
         $mortality = DB::table('flock_mortalities')
             ->where('farm_id', $farmId)
             ->where('entry_date', $date)
+            ->whereNull('deleted_at') // السجلات الملغاة لا تدخل المجاميع
             ->sum('quantity');
 
         // Feed Consumption
         $feed = DB::table('flock_feed_logs')
             ->where('farm_id', $farmId)
             ->where('entry_date', $date)
+            ->whereNull('deleted_at')
             ->sum('quantity');
 
         // Expenses

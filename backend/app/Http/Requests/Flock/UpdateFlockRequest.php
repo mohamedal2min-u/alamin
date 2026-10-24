@@ -22,7 +22,7 @@ class UpdateFlockRequest extends FormRequest
             'notes'            => ['nullable', 'string', 'max:5000'],
             'status'        => ['sometimes', Rule::in(['draft', 'active', 'closed', 'cancelled'])],
             'close_date'    => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'stock_action'  => ['nullable', Rule::in(['transfer', 'settle'])],
+            'stock_action'  => ['nullable', Rule::in(['transfer'])], // المتبقي يُرحَّل للفوج التالي؛ لا شطب بلا تكلفة
         ];
     }
 

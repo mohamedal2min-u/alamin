@@ -10,8 +10,7 @@ import {
 } from 'lucide-react'
 import { inventoryApi } from '@/lib/api/inventory'
 import { quickEntryApi } from '@/lib/api/quick-entry'
-import { mortalitiesApi } from '@/lib/api/mortalities'
-import { workerApi } from '@/lib/api/worker'
+import { submitDailyEntry } from '@/lib/offline/dailyEntries'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -33,6 +32,8 @@ interface Props {
   onClose: () => void
   onSuccess?: () => void
 }
+
+const TEMP_TIME_LABELS = { morning: 'صباحاً', afternoon: 'ظهراً', evening: 'مساءً' } as const
 
 const TABS: Record<Tab, { label: string; icon: React.ElementType }> = {
   mortality: { label: 'نفوق',   icon: Skull },
@@ -121,6 +122,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
     if (!activeTab) return
     setError(null)
     setLoading(true)
+    let queued = false
     try {
       // Use provided entryDate or fallback to today YYYY-MM-DD
       let date = entryDate
@@ -133,7 +135,7 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
 
       if (activeTab === 'mortality') {
         if (!mQty || Number(mQty) < 1) { setError('أدخل كمية صحيحة'); setLoading(false); return }
-        await mortalitiesApi.create(flockId, { quantity: Number(mQty), reason: mReason || undefined, entry_date: date })
+        queued = (await submitDailyEntry('mortality', flockId, { quantity: Number(mQty), reason: mReason || undefined, entry_date: date }, mReason ? `نفوق: ${mReason}` : 'نفوق')).queued
       } else if (activeTab === 'feed') {
         if (!feedItemId) { setError('اختر صنف العلف'); setLoading(false); return }
         const item = feedItems.find(i => String(i.id) === feedItemId)
@@ -142,15 +144,15 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
           finalQty = Number(feedBags) + (Number(feedExtraKg) / item.unit_value)
         }
         if (!finalQty || finalQty <= 0) { setError('أدخل كمية صحيحة'); setLoading(false); return }
-        await quickEntryApi.logFeed(flockId, { item_id: Number(feedItemId), quantity: finalQty, entry_date: date })
+        queued = (await submitDailyEntry('feed', flockId, { item_id: Number(feedItemId), quantity: finalQty, entry_date: date }, `علف: ${item?.name ?? ''}`)).queued
       } else if (activeTab === 'medicine') {
         if (!medItemId) { setError('اختر صنف الدواء'); setLoading(false); return }
         if (!medQty || Number(medQty) <= 0) { setError('أدخل كمية صحيحة'); setLoading(false); return }
         if (selectedMedItem && Number(medQty) > medAvailableQty) { setError('الكمية المدخلة أكبر من المتوفر بالمخزون'); setLoading(false); return }
-        await quickEntryApi.logMedicine(flockId, { item_id: Number(medItemId), quantity: Number(medQty), entry_date: date })
+        queued = (await submitDailyEntry('medicine', flockId, { item_id: Number(medItemId), quantity: Number(medQty), entry_date: date }, `دواء: ${selectedMedItem?.name ?? ''}`)).queued
       } else if (activeTab === 'temp') {
         if (!tempVal || isNaN(Number(tempVal))) { setError('أدخل قيمة حرارة صحيحة'); setLoading(false); return }
-        await workerApi.logTemperature(flockId, { log_date: date, time_of_day: tempTime, temperature: Number(tempVal) })
+        queued = (await submitDailyEntry('temperature', flockId, { log_date: date, time_of_day: tempTime, temperature: Number(tempVal) }, `حرارة ${TEMP_TIME_LABELS[tempTime]}`)).queued
       } else if (activeTab === 'expense') {
         if (!expQty || Number(expQty) <= 0) { setError('العدد مطلوب'); setLoading(false); return }
         if (expType === 'other' && !expDescription.trim()) { setError('وصف المصروف مطلوب'); setLoading(false); return }
@@ -170,16 +172,18 @@ export function WorkerEntryDialog({ flockId, activeTab, initialExtra, entryDate,
         if (!waterQty || Number(waterQty) <= 0) { setError('العدد مطلوب'); setLoading(false); return }
         const price = Number(waterPrice)
         const hasPrice = !isNaN(price) && price > 0
-        await quickEntryApi.logWater(flockId, {
+        queued = (await submitDailyEntry('water', flockId, {
           quantity: Number(waterQty),
           total_amount: hasPrice ? price * Number(waterQty) : 0,
           notes: waterDriver || undefined,
           entry_date: date
-        })
+        }, waterDriver ? `مياه: ${waterDriver}` : 'مياه')).queued
       }
 
       resetFields()
-      toast.success('تم الحفظ بنجاح')
+      // ضعف الشبكة: حُفظ في صندوق الانتظار ويُرسَل تلقائياً عند عودة الاتصال
+      if (queued) toast.warning('بانتظار الإرسال — سيُرسَل تلقائياً عند عودة الاتصال')
+      else toast.success('تم الحفظ بنجاح')
       onSuccess?.()
       onClose()
     } catch (err: any) {

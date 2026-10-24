@@ -235,6 +235,7 @@ class AdminFarmController extends Controller
 
         DB::transaction(function () use ($farmId) {
             // ── 1. Flock-level operational logs ──────────────────────────────
+            DB::table('activity_logs')->where('farm_id', $farmId)->delete();
             DB::table('flock_mortalities')->where('farm_id', $farmId)->delete();
             DB::table('flock_feed_logs')->where('farm_id', $farmId)->delete();
             DB::table('flock_medicines')->where('farm_id', $farmId)->delete();
@@ -379,6 +380,8 @@ class AdminFarmController extends Controller
         ]);
 
         $user->update(['password' => Hash::make($data['password'])]);
+        // كلمة مرور جديدة = خروج من كل الأجهزة (الجلسات القديمة لا تبقى صالحة)
+        $user->tokens()->delete();
 
         return response()->json(['message' => 'تم تغيير كلمة المرور بنجاح'], 200);
     }
@@ -394,6 +397,9 @@ class AdminFarmController extends Controller
         ]);
 
         $user->update(['status' => $data['status']]);
+        if ($data['status'] === 'suspended') {
+            $user->tokens()->delete();
+        }
 
         return response()->json([
             'message' => $data['status'] === 'suspended' ? 'تم توقيف الحساب' : 'تم تفعيل الحساب',

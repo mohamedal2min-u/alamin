@@ -19,6 +19,8 @@ export interface Flock {
   /** تاريخ بيع/نفوق آخر دجاجة (YYYY-MM-DD) — يتوقف عنده عمر الفوج، وإلا null */
   last_bird_date?: string | null
   notes: string | null
+  /** «لا بيع قبل» (YYYY-MM-DD): نهاية أطول فترة سحب لدواء/لقاح — للفوج النشط فقط */
+  no_sale_before?: string | null
   created_at: string
   updated_at: string
 }

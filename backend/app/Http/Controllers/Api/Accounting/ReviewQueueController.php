@@ -50,12 +50,10 @@ class ReviewQueueController extends Controller
             return response()->json(['message' => 'تحديد الأسعار وتسجيل الدفعات من صلاحية المحاسب'], 403);
         }
 
-        // المحاسب لا يعدّل شيئاً على فوج مغلق (يرى فقط)
-        $accountantOnly = $request->attributes->get('is_super_admin') !== true
-            && $request->user()->hasRole('accountant')
-            && ! $request->user()->hasRole('farm_admin');
-
-        if ($accountantOnly && in_array($this->service->flockStatusOf($farmId, $type, $id), ['closed', 'cancelled'], true)) {
+        // لا أحد يعدّل سعراً أو دفعة على فوج مغلق: ربحه وُزِّع على الشركاء ويجب أن يبقى مطابقاً لما وُزِّع
+        // (ربط السجل بمورد/تاجر فقط لا يغيّر أي مبلغ، فيُسمح به)
+        $touchesMoney = array_key_exists('unit_price', $data) || array_key_exists('paid_amount', $data);
+        if ($touchesMoney && in_array($this->service->flockStatusOf($farmId, $type, $id), ['closed', 'cancelled'], true)) {
             return response()->json(['message' => 'الفوج مغلق: لا يمكن التعديل عليه'], 403);
         }
 

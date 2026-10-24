@@ -18,7 +18,9 @@ class FlockTemperatureLog extends Model
         'time_of_day',
         'temperature',
         'notes',
-        'created_by'
+        'created_by',
+        'void_reason',
+        'voided_by',
     ];
 
     protected $casts = [

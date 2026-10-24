@@ -16,19 +16,23 @@ import { MedicineTab } from '@/components/flocks/tabs/MedicineTab'
 import { ExpensesTab } from '@/components/flocks/tabs/ExpensesTab'
 import { WaterTab } from '@/components/flocks/tabs/WaterTab'
 import { NotesTab } from '@/components/flocks/tabs/NotesTab'
+import { VaccinationsTab } from '@/components/flocks/tabs/VaccinationsTab'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import { EditFlockModal } from '@/components/flocks/EditFlockModal'
-import { formatDate, formatNumber, cn, formatCurrency } from '@/lib/utils'
-import { useIsReadOnly } from '@/lib/roles'
+import { FlockKpiSection } from '@/components/flocks/FlockKpiSection'
+import { formatDate, formatNumber, cn, formatCurrency, getTodayLocalISO } from '@/lib/utils'
+import { useCurrentRole, useIsReadOnly } from '@/lib/roles'
+import { ShareStatementButtons } from '@/components/statements/ShareStatementButtons'
 import type { Flock } from '@/types/flock'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-type TabKey = 'overview' | 'feed' | 'medicine' | 'water' | 'expenses' | 'notes' | 'sales'
+type TabKey = 'overview' | 'feed' | 'medicine' | 'vaccines' | 'water' | 'expenses' | 'notes' | 'sales'
 
 const TABS: { key: TabKey; label: string; labelEn: string }[] = [
   { key: 'overview',    label: 'نظرة عامة',  labelEn: 'Overview' },
   { key: 'feed',        label: 'العلف',      labelEn: 'Feed' },
   { key: 'medicine',    label: 'الدواء',     labelEn: 'Medicine' },
+  { key: 'vaccines',    label: 'اللقاحات',   labelEn: 'Vaccines' },
   { key: 'water',       label: 'المياه',     labelEn: 'Water' },
   { key: 'expenses',    label: 'المصروفات',  labelEn: 'Expenses' },
   { key: 'notes',       label: 'الملاحظات', labelEn: 'Notes' },
@@ -66,6 +70,7 @@ function TabPlaceholder({ tab }: { tab: TabKey }) {
     overview:    'النظرة العامة',
     feed:        'سجلات العلف',
     medicine:    'سجلات الدواء',
+    vaccines:    'اللقاحات',
     water:       'سجلات المياه',
     expenses:    'المصروفات',
     notes:       'الملاحظات',
@@ -91,6 +96,9 @@ export default function FlockDetailPage({
 
   const queryClient = useQueryClient()
   const isReadOnly = useIsReadOnly()
+  const role = useCurrentRole()
+  // كشف الفوج: للمدير والمحاسب والشريك (المشرف لا يرى حصص الشركاء)
+  const canShareStatement = role === 'farm_admin' || role === 'accountant' || role === 'partner' || role === 'super_admin'
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -183,6 +191,15 @@ export default function FlockDetailPage({
         </div>
       </div>
 
+      {canShareStatement && (
+        <ShareStatementButtons
+          kind="flock"
+          id={flock.id}
+          label="مشاركة كشف الفوج"
+          message={`كشف حساب الفوج «${flock.name}»`}
+        />
+      )}
+
       {/* Stats cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Card>
@@ -262,6 +279,16 @@ export default function FlockDetailPage({
         </Card>
       </div>
 
+      {/* KPIs */}
+      {flock.status !== 'draft' && <FlockKpiSection flockId={flockId} />}
+      {/* فترة السحب: لا بيع قبل */}
+      {flock.status === 'active' && flock.no_sale_before && flock.no_sale_before > getTodayLocalISO() && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          لا بيع قبل {formatDate(flock.no_sale_before)} (فترة سحب دواء/لقاح)
+        </div>
+      )}
+
       {/* Notes banner */}
       {flock.notes && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -339,6 +366,8 @@ export default function FlockDetailPage({
             <FeedTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'medicine' ? (
             <MedicineTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'vaccines' ? (
+            <VaccinationsTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'water' ? (
             <WaterTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'expenses' ? (

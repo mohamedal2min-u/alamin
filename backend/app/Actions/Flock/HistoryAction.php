@@ -7,14 +7,21 @@ use App\Models\FlockFeedLog;
 use App\Models\FlockMedicine;
 use App\Models\FlockMortality;
 use App\Models\FlockTemperatureLog;
+use App\Models\FlockNote;
 use App\Models\FlockWaterLog;
+use App\Models\User;
+use App\Services\DailyEntryCorrectionService;
 use Carbon\Carbon;
 
 class HistoryAction
 {
-    public function execute(Flock $flock): array
+    public function execute(Flock $flock, ?User $viewer = null, bool $isSuperAdmin = false): array
     {
         $days = [];
+        // بيانات تصحيح السجل (المعرّف، القيم القابلة للتعديل، وأعلام الصلاحية للمستخدم الحالي)
+        $corrections = app(DailyEntryCorrectionService::class);
+        $meta = fn (string $type, $m, array $values) => ['entry_type' => $type, 'id' => $m->id, 'values' => $values]
+            + $corrections->flags($viewer, $isSuperAdmin, $m, $flock);
         $today = Carbon::today();
         
         // Fetch logs for the last 7 days in one go to be efficient
@@ -46,6 +53,11 @@ class HistoryAction
             ->with('worker:id,name')
             ->get();
 
+        $notes = FlockNote::where('flock_id', $flock->id)
+            ->whereBetween('entry_date', [$startDate, $endDate])
+            ->with('worker:id,name')
+            ->get();
+
         // Build the structure for each day, starting from Today and going backwards
         for ($i = 0; $i < 7; $i++) {
             $currentDate = $today->copy()->subDays($i);
@@ -56,6 +68,7 @@ class HistoryAction
             $dayMedicines = $medicines->filter(fn($m) => Carbon::parse($m->entry_date)->toDateString() === $dateStr);
             $dayTemps = $temperatures->filter(fn($t) => Carbon::parse($t->log_date)->toDateString() === $dateStr);
             $dayWater = $waterLogs->filter(fn($w) => Carbon::parse($w->entry_date)->toDateString() === $dateStr);
+            $dayNotes = $notes->filter(fn($n) => Carbon::parse($n->entry_date)->toDateString() === $dateStr);
 
             // Calculate completion rate based on core tasks (Mortality, Feed, Medicine/Water)
             $tasksCount = 3;
@@ -69,7 +82,7 @@ class HistoryAction
             // Generate Timeline
             $timeline = collect();
 
-            $dayMortalities->each(fn($m) => $timeline->push([
+            $dayMortalities->each(fn($m) => $timeline->push($meta('mortality', $m, ['quantity' => (int) $m->quantity, 'reason' => $m->reason, 'notes' => $m->notes]) + [
                 'type' => 'mortality',
                 'title' => 'تسجيل نافق',
                 'detail' => "العدد: {$m->quantity} طيور - السبب: " . ($m->reason ?: 'غير محدد'),
@@ -77,7 +90,7 @@ class HistoryAction
                 'worker' => $m->worker?->name ?? 'غير معروف'
             ]));
 
-            $dayFeed->each(fn($f) => $timeline->push([
+            $dayFeed->each(fn($f) => $timeline->push($meta('feed_log', $f, ['quantity' => (float) $f->quantity, 'notes' => $f->notes]) + [
                 'type' => 'feed',
                 'title' => 'إضافة علف',
                 'detail' => "تمت إضافة {$f->quantity} " . ($f->unit_label ?: $f->item?->content_unit ?: 'كجم') . " من {$f->item?->name}",
@@ -85,7 +98,7 @@ class HistoryAction
                 'worker' => $f->worker?->name ?? 'غير معروف'
             ]));
 
-            $dayMedicines->each(fn($m) => $timeline->push([
+            $dayMedicines->each(fn($m) => $timeline->push($meta('medicine_log', $m, ['quantity' => (float) $m->quantity, 'notes' => $m->notes]) + [
                 'type' => 'medicine',
                 'title' => 'تسجيل دواء/إضافات',
                 'detail' => "تم صرف {$m->quantity} " . ($m->unit_label ?: $m->item?->content_unit ?: 'وحدة') . " من {$m->item?->name}",
@@ -93,7 +106,7 @@ class HistoryAction
                 'worker' => $m->worker?->name ?? 'غير معروف'
             ]));
 
-            $dayTemps->each(fn($t) => $timeline->push([
+            $dayTemps->each(fn($t) => $timeline->push($meta('temperature_log', $t, ['temperature' => (float) $t->temperature, 'notes' => $t->notes]) + [
                 'type' => 'temp',
                 'title' => 'قياس حرارة',
                 'detail' => "درجة الحرارة: {$t->temperature}° مئوية",
@@ -101,12 +114,20 @@ class HistoryAction
                 'worker' => $t->creator?->name ?? 'غير معروف'
             ]));
 
-            $dayWater->each(fn($w) => $timeline->push([
+            $dayWater->each(fn($w) => $timeline->push($meta('water_log', $w, ['quantity' => (float) $w->quantity, 'notes' => $w->notes]) + [
                 'type' => 'medicine', // Water is often grouped with medicine/additives in summary
                 'title' => 'تسجيل استهلاك مياه',
                 'detail' => "الكمية: {$w->quantity} " . ($w->unit_label ?: 'صهريج'),
                 'time' => $w->created_at?->format('H:i') ?? '--:--',
                 'worker' => $w->worker?->name ?? 'غير معروف'
+            ]));
+
+            $dayNotes->each(fn($n) => $timeline->push($meta('note', $n, ['note_text' => $n->note_text]) + [
+                'type' => 'note',
+                'title' => 'ملاحظة',
+                'detail' => (string) $n->note_text,
+                'time' => $n->created_at?->format('H:i') ?? '--:--',
+                'worker' => $n->worker?->name ?? 'غير معروف'
             ]));
 
             $ageDays = Carbon::parse($flock->start_date)->startOfDay()->diffInDays($currentDate->startOfDay(), false) + 1;

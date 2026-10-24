@@ -1,5 +1,6 @@
 'use client'
 
+import { ContactPicker } from '@/components/common/ContactPicker'
 import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -391,6 +392,7 @@ function EditItemModal({
     unit_value:     item.unit_value.toString(),
     content_unit:   item.content_unit,
     minimum_stock:  item.minimum_stock.toString(),
+    withdrawal_days: item.withdrawal_days != null ? item.withdrawal_days.toString() : '',
     notes:          item.notes || '',
     stock_quantity: item.total_quantity.toString(),
   })
@@ -425,6 +427,8 @@ function EditItemModal({
         content_unit:  form.content_unit,
         minimum_stock: parseFloat(form.minimum_stock || '0'),
         notes:         form.notes,
+        // فترة السحب للأدوية فقط (فارغ = بلا فترة سحب)
+        ...(isMedicine ? { withdrawal_days: form.withdrawal_days === '' ? null : parseInt(form.withdrawal_days, 10) } : {}),
       })
       const newStockQty = parseFloat(form.stock_quantity)
       if (Math.abs(newStockQty - item.total_quantity) > 0.0001) {
@@ -540,6 +544,11 @@ function EditItemModal({
             <Field label="ملاحظات">
               <input value={form.notes} onChange={set('notes')} className={inputCls} />
             </Field>
+            {isMedicine && (
+              <Field label="فترة السحب (أيام) — لا بيع قبل انتهائها">
+                <input type="number" min="0" max="365" step="1" value={form.withdrawal_days} onChange={set('withdrawal_days')} placeholder="فارغ = بلا فترة سحب" className={inputCls} />
+              </Field>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-5 mt-6">
@@ -593,6 +602,8 @@ function AddShipmentForm({
     attachment:        null as File | null,
   })
   const [bags, setBags] = useState('')
+  // المورد المختار (اختياري) — اسمه يبقى في supplier_name
+  const [contactId, setContactId] = useState<number | null>(null)
   const [extraKg, setExtraKg] = useState('')
   const [lastEdited, setLastEdited] = useState<'price' | 'total'>('price')
   const [saving,  setSaving]  = useState(false)
@@ -662,6 +673,7 @@ function AddShipmentForm({
         paid_amount:       paidAmt,
         payment_status:    form.payment_status as 'paid' | 'unpaid',
         supplier_name:     form.supplier_name || null,
+        contact_id:        contactId,
         invoice_no:        form.invoice_no    || null,
         notes:             form.notes         || null,
         attachment:        form.attachment,
@@ -671,6 +683,7 @@ function AddShipmentForm({
       setSuccess(true)
       setBags('')
       setExtraKg('')
+      setContactId(null)
       setForm({
         item_id: '',
         warehouse_id: warehouses.length === 1 ? String(warehouses[0].id) : '',
@@ -900,9 +913,14 @@ function AddShipmentForm({
 
           {/* Section: Supplier */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="اسم المورد">
-              <input value={form.supplier_name} onChange={set('supplier_name')} placeholder="اختياري" className={inputCls} />
-            </Field>
+            <ContactPicker
+              id="shipment_supplier"
+              label="المورد"
+              kind="supplier"
+              text={form.supplier_name}
+              contactId={contactId}
+              onChange={(text, id) => { setForm((f) => ({ ...f, supplier_name: text })); setContactId(id) }}
+            />
 
             <Field label="رقم الفاتورة">
               <input value={form.invoice_no} onChange={set('invoice_no')} placeholder="اختياري" className={inputCls} />

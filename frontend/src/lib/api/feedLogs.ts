@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { withIdempotencyKey } from '@/lib/offline/outbox'
 import type { FeedLog, CreateFeedLogPayload } from '@/types/feedLog'
 
 export const feedLogsApi = {
@@ -9,6 +10,6 @@ export const feedLogsApi = {
 
   create: (flockId: number, payload: CreateFeedLogPayload) =>
     apiClient
-      .post<{ message: string; data: FeedLog }>(`/flocks/${flockId}/feed-logs`, payload)
+      .post<{ message: string; data: FeedLog }>(`/flocks/${flockId}/feed-logs`, payload, withIdempotencyKey())
       .then((r) => r.data),
 }

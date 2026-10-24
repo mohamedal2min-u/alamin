@@ -19,4 +19,5 @@ export interface CreateWaterLogPayload {
   paid_amount?: number
   payment_status?: 'paid' | 'partial' | 'unpaid'
   notes?: string
+  contact_id?: number
 }

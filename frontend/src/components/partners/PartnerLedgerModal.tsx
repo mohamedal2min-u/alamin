@@ -14,6 +14,7 @@ import {
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { getTodayLocalISO, formatCurrency } from '@/lib/utils'
+import { ShareStatementButtons } from '@/components/statements/ShareStatementButtons'
 
 interface PartnerLedgerModalProps {
   isOpen: boolean
@@ -195,6 +196,15 @@ export const PartnerLedgerModal = ({ isOpen, onClose, partner }: PartnerLedgerMo
           
           {activeTab === 'ledger' && (
             <div className="space-y-5">
+
+              {/* كشف حساب PDF للمشاركة (window.print لا يعمل داخل تطبيق الأندرويد) */}
+              <ShareStatementButtons
+                kind="partner"
+                id={partner.id}
+                label="كشف حساب"
+                message={`كشف حساب الشريك ${partner.name}`}
+                className="no-print"
+              />
 
               {/* Balance Cards */}
               <div className="grid grid-cols-3 gap-3 no-print">

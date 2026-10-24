@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FlockMortality extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'flock_mortalities';
 
@@ -23,6 +24,8 @@ class FlockMortality extends Model
         'editable_until',
         'created_by',
         'updated_by',
+        'void_reason',
+        'voided_by',
     ];
 
     protected function casts(): array

@@ -36,3 +36,6 @@ Schedule::call(function () {
         $flock->update(['current_age_days' => $age]);
     }
 })->dailyAt('00:00');
+
+// تذكير لقاحات الفوج النشط المستحقة اليوم — 07:30 بتوقيت دمشق
+Schedule::command('vaccines:remind')->dailyAt('07:30')->timezone('Asia/Damascus');

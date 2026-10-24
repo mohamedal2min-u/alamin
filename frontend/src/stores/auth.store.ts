@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { User } from '@/types/auth'
 import { apiClient } from '@/lib/api/client'
+import { clearAllOutboxes } from '@/lib/offline/outbox'
 
 interface AuthState {
   token: string | null
@@ -45,6 +46,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('current_farm_id')
+        clearAllOutboxes(localStorage) // صندوق الانتظار لكل مستخدم+مزرعة يُحذف عند الخروج
         clearAuthCookie()
         set({ token: null, user: null, isAuthenticated: false })
       },

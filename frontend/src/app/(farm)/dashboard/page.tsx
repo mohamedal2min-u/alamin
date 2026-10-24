@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AlertCircle, Zap, Bird, Calendar, PackageCheck } from 'lucide-react'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { flocksApi } from '@/lib/api/flocks'
 import { useFarmStore } from '@/stores/farm.store'
 import { useLayoutStore } from '@/stores/layout.store'
@@ -16,6 +16,7 @@ import { DayEntriesModal, type DayEntryType } from '@/components/dashboard/DayEn
 import { FlockDaySelector } from '@/components/dashboard/FlockDaySelector'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import { PrayerChip } from '@/components/dashboard/PrayerChip'
+import { VaccineReminderCard } from '@/components/vaccinations/VaccineReminderCard'
 import type { TodaySummary } from '@/types/dashboard'
 import type { Flock } from '@/types/flock'
 
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const { currentFarm, activeFlock: cachedFlock, setActiveFlock } = useFarmStore()
   const { setPageTitle, setPageSubtitle } = useLayoutStore()
   const isReadOnly = useIsReadOnly()
+  const queryClient = useQueryClient()
   const [activating, setActivating] = useState(false)
   const [activateError, setActivateError] = useState<string | null>(null)
 
@@ -124,6 +126,8 @@ export default function DashboardPage() {
     try {
       await flocksApi.update(draftFlock.id, { status: 'active' })
       refetchFlocks()
+      // التفعيل يولّد برنامج اللقاحات للفوج
+      queryClient.invalidateQueries({ queryKey: ['vaccinations', currentFarm?.id] })
     } catch {
       setActivateError('تعذّر تفعيل الفوج، حاول مجدداً')
     } finally {
@@ -240,6 +244,9 @@ export default function DashboardPage() {
           {/* Active Flock Tools */}
           {isActive && (
             <div className="space-y-4">
+              {/* تذكير اللقاحات المستحقة اليوم والمتأخرة */}
+              <VaccineReminderCard />
+
               {/* Date Selector */}
               <FlockDaySelector
                 startDate={currentFlock.start_date.slice(0, 10)}

@@ -3,9 +3,9 @@
 import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, ChevronLeft, ChevronRight, Droplets, Layers, Loader2, Lock, Pill, ShoppingCart, Wheat } from 'lucide-react'
-import { accountingApi } from '@/lib/api/accounting'
-import type { CategoryBreakdown, ReviewItem } from '@/lib/api/accounting'
-import { cn, formatNumber } from '@/lib/utils'
+import { accountingApi, PAYMENT_METHOD_LABELS } from '@/lib/api/accounting'
+import type { CategoryBreakdown, PaymentMethod, ReviewItem } from '@/lib/api/accounting'
+import { cn, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import { PriceWithHistory } from './PriceWithHistory'
 import { ItemGroups, groupByItem } from './ItemGroups'
 import { WaterTotal } from './WaterTotal'
@@ -37,6 +37,9 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   const [mode, setMode] = useState<'price' | 'payment'>('price')
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // الدفعة: تاريخها وطريقتها
+  const [paidAt, setPaidAt] = useState(getTodayLocalISO())
+  const [method, setMethod] = useState<PaymentMethod>('cash')
 
   const flock_id = flockId || undefined
 
@@ -77,13 +80,23 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
     .filter((i) => !onlyPending || isUnpriced(i))
     .sort((a, b) => Number(isUnpriced(b)) - Number(isUnpriced(a)))
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['accounting', 'review-queue'] })
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['accounting', 'review-queue'] })
+    // أرصدة الموردين والتجار تتغير مع كل دفعة
+    qc.invalidateQueries({ queryKey: ['contacts'] })
+  }
 
   const save = useMutation({
     mutationFn: ({ item, price }: { item: ReviewItem; price: number }) =>
       mode === 'payment'
-        // الدفعة: إجمالي المدفوع/المستلم حتى الآن
-        ? accountingApi.updateReviewItem(item.type, item.record_id, { paid_amount: price })
+        // دفعة جديدة مؤرَّخة تُضاف إلى المدفوع (لا تعديل للإجمالي التراكمي)
+        ? accountingApi.recordPayment({
+            payable_type: item.type,
+            payable_id: item.record_id,
+            amount: price,
+            paid_at: paidAt,
+            method,
+          })
         // سعر البيع يُدخَل للطن ويُخزَّن للكيلو
         : accountingApi.updateReviewItem(item.type, item.record_id, {
             unit_price: item.type === 'sale' ? price / 1000 : price,
@@ -106,7 +119,9 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
     setMode('payment')
     setEditingId(item.id)
     setError(null)
-    setValue(String(item.paid_amount ?? 0))
+    setValue(String(Number(item.remaining_amount ?? 0)))
+    setPaidAt(getTodayLocalISO())
+    setMethod('cash')
   }
 
   const startEdit = (item: ReviewItem) => {
@@ -119,8 +134,12 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
 
   const submit = (item: ReviewItem) => {
     const price = parseFloat(value)
-    if (!Number.isFinite(price) || price < 0) {
+    if (!Number.isFinite(price) || price < 0 || (mode === 'payment' && price <= 0)) {
       setError(mode === 'payment' ? 'أدخل مبلغاً صحيحاً' : 'أدخل سعراً صحيحاً')
+      return
+    }
+    if (mode === 'payment' && price - Number(item.remaining_amount ?? 0) > 0.005) {
+      setError(`الدفعة أكبر من المتبقي (${formatNumber(Number(item.remaining_amount ?? 0))})`)
       return
     }
     save.mutate({ item, price })
@@ -190,6 +209,10 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
               error={editingId === item.id ? error : null}
               isSaving={save.isPending && editingId === item.id}
               onValue={setValue}
+              paidAt={paidAt}
+              onPaidAt={setPaidAt}
+              method={method}
+              onMethod={setMethod}
               onEdit={() => startEdit(item)}
               onPay={() => startPayment(item)}
               onCancel={() => { setEditingId(null); setError(null) }}
@@ -336,15 +359,19 @@ interface CardProps {
   error: string | null
   isSaving: boolean
   onValue: (v: string) => void
+  paidAt: string
+  onPaidAt: (v: string) => void
+  method: PaymentMethod
+  onMethod: (v: PaymentMethod) => void
   onEdit: () => void
   onPay: () => void
   onCancel: () => void
   onSave: () => void
 }
 
-function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, isSaving, onValue, onEdit, onPay, onCancel, onSave }: CardProps) {
+function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, isSaving, onValue, paidAt, onPaidAt, method, onMethod, onEdit, onPay, onCancel, onSave }: CardProps) {
   const unpriced = item.unit_price == null
-  const unitLabel = mode === 'payment' ? 'إجمالي المدفوع حتى الآن' : item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'
+  const unitLabel = mode === 'payment' ? (item.type === 'sale' ? 'المبلغ المقبوض الآن' : 'مبلغ الدفعة') : item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'
   const remaining = Number(item.remaining_amount ?? 0)
 
   return (
@@ -363,6 +390,7 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
       <p className="mt-1 text-xs text-slate-400">
         {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
         {item.quantity != null && <> • الكمية {formatNumber(item.quantity)} {item.quantity_unit ?? ''}</>}
+        {item.contact_name && <> • {item.contact_name}</>}
       </p>
 
       {isEditing ? (
@@ -391,7 +419,36 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
             </button>
           </div>
           {mode === 'payment' && (
-            <p className="text-[11px] text-slate-400">الإجمالي {formatNumber(item.total_amount)} — يُسجَّل كل تعديل على الدفعات باسمك ولا يُحذف.</p>
+            <>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={paidAt}
+                  max={getTodayLocalISO()}
+                  onChange={(e) => onPaidAt(e.target.value)}
+                  aria-label="تاريخ الدفعة"
+                  className="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                />
+                <div className="flex shrink-0 overflow-hidden rounded-xl border border-slate-300 dark:border-slate-600">
+                  {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => onMethod(m)}
+                      className={cn(
+                        'h-11 px-3 text-xs font-bold',
+                        method === m ? 'bg-primary-600 text-white' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      )}
+                    >
+                      {PAYMENT_METHOD_LABELS[m]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                الإجمالي {formatNumber(item.total_amount)} • مدفوع {formatNumber(Number(item.paid_amount ?? 0))} • المتبقي {formatNumber(Number(item.remaining_amount ?? 0))} — تُسجَّل الدفعة باسمك ولا تُحذف.
+              </p>
+            </>
           )}
           {mode === 'price' && item.unit_price != null && (
             <p className="text-[11px] text-slate-400">السعر القديم سيبقى ظاهراً مشطوباً ويُسجَّل التعديل باسمك.</p>
@@ -434,6 +491,35 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
           )}
         </div>
       )}
+
+      {(item.payments?.length ?? 0) > 0 && <PaymentHistory item={item} />}
     </li>
+  )
+}
+
+/** سجل الدفعات المؤرَّخ تحت البطاقة (الأقدم أولاً) */
+function PaymentHistory({ item }: { item: ReviewItem }) {
+  const payments = item.payments ?? []
+  return (
+    <details className="mt-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+      <summary className="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300">
+        {item.type === 'sale' ? 'سجل المقبوضات' : 'سجل الدفعات'} ({payments.length})
+      </summary>
+      <ul className="mt-2 space-y-1.5">
+        {payments.map((p) => (
+          <li key={p.id} className="flex items-center justify-between gap-2 text-xs">
+            <span className="text-slate-500 dark:text-slate-400">
+              <span className="tabular-nums">{p.paid_at ?? '—'}</span>
+              {' • '}{p.is_opening ? 'رصيد افتتاحي' : PAYMENT_METHOD_LABELS[p.method] ?? p.method}
+              {p.created_by_name && <> • {p.created_by_name}</>}
+              {p.note && !p.is_opening && <> • {p.note}</>}
+            </span>
+            <span className={cn('shrink-0 font-bold tabular-nums', p.amount < 0 ? 'text-red-600' : 'text-emerald-700 dark:text-emerald-400')}>
+              {formatNumber(p.amount)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
   )
 }

@@ -1,17 +1,22 @@
 'use client'
 
+import { ContactPicker } from '@/components/common/ContactPicker'
 import { PriceOnly, PaymentOnly } from '@/components/common/PriceOnly'
 import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, AlertTriangle } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { vaccinationsApi, vaccineKeys } from '@/lib/api/vaccinations'
+import { useFarmStore } from '@/stores/farm.store'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { salesApi } from '@/lib/api/sales'
-import { formatCurrency, getTodayLocalISO } from '@/lib/utils'
+import { formatCurrency, formatDate, getTodayLocalISO } from '@/lib/utils'
 import type { Sale } from '@/types/sale'
+import { useFlockKpis } from '@/components/flocks/FlockKpiSection'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 const optionalNumber = (fieldSchema: z.ZodNumber) => z.preprocess(
@@ -69,6 +74,8 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props) {
   const [serverError, setServerError] = useState<string | null>(null)
+  // التاجر المختار (اختياري) — اسمه يبقى في buyer_name للتوافق
+  const [contactId, setContactId] = useState<number | null>(null)
 
   const {
     register,
@@ -98,6 +105,17 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
+
+  // فترة السحب: تحذير (لا منع) إن كان تاريخ البيع قبل «لا بيع قبل»
+  const farmId = useFarmStore((st) => st.currentFarm?.id)
+  const { data: withdrawal } = useQuery({
+    queryKey: vaccineKeys.withdrawal(farmId, flockId),
+    queryFn: () => vaccinationsApi.withdrawal(flockId),
+    enabled: isOpen && !!farmId,
+    staleTime: 0,
+  })
+  const watchSaleDate = watch('sale_date')
+  const withdrawalWarning = !!withdrawal?.no_sale_before && !!watchSaleDate && watchSaleDate < withdrawal.no_sale_before
 
   // ── Live calculations ──────────────────────────────────────────────────────
   const watchedItems   = watch('items') ?? []
@@ -138,8 +156,19 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
   const net       = Math.max(gross - watchDiscount, 0)
   const remaining = Math.max(net - watchReceived, 0)
 
+  // ── سعر التعادل (للعلم فقط): ما لم يُسترَد من التكلفة ÷ الوزن المتوقع للطيور الباقية ──
+  // يُقدَّر الوزن من متوسط هذه البيعة إن أُدخل، وإلا من آخر بيع مسجّل
+  const { data: kpis } = useFlockKpis(flockId, isOpen)
+  const typedBirds = watchedItems.reduce((s, it) => s + (Number(it.birds_count) || 0), 0)
+  const typedKg    = watchedItems.reduce((s, it) => s + (netWeightOf(it) || 0), 0)
+  const typedAvg   = typedBirds > 0 && typedKg > 0 ? typedKg / typedBirds : null
+  const breakEven  = kpis && kpis.total_cost > 0 && kpis.birds_remaining > 0
+    ? (typedAvg ? kpis.unrecovered_cost / (kpis.birds_remaining * typedAvg) : kpis.break_even_price_per_kg)
+    : null
+
   const handleClose = () => {
     reset()
+    setContactId(null)
     setServerError(null)
     onClose()
   }
@@ -150,6 +179,7 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
       const res = await salesApi.create(flockId, {
         sale_date:       data.sale_date,
         buyer_name:      data.buyer_name || undefined,
+        contact_id:      contactId ?? undefined,
         reference_no:    data.reference_no || undefined,
         vehicle_weight_before_kg: data.vehicle_weight_before_kg ?? undefined,
         vehicle_weight_after_kg:  data.vehicle_weight_after_kg ?? undefined,
@@ -184,6 +214,16 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
     <Dialog isOpen={isOpen} onClose={handleClose} title="تسجيل بيعة جديدة" className="max-w-2xl">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pt-4" noValidate>
 
+        {withdrawalWarning && (
+          <div role="alert" className="flex items-start gap-2 rounded-xl border-2 border-red-300 bg-red-50 px-3 py-2.5 text-[13px] font-bold text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              تحذير: تاريخ البيع ضمن فترة السحب — لا بيع قبل {formatDate(withdrawal!.no_sale_before!)}
+              {withdrawal?.source ? ` (${withdrawal.source})` : ''}
+            </span>
+          </div>
+        )}
+
         {/* Main info */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Input
@@ -194,11 +234,13 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
             error={errors.sale_date?.message}
             required
           />
-          <Input
-            {...register('buyer_name')}
+          <ContactPicker
             id="buyer_name"
-            label="اسم المشتري"
-            placeholder="اختياري"
+            label="المشتري (التاجر)"
+            kind="buyer"
+            text={watch('buyer_name') ?? ''}
+            contactId={contactId}
+            onChange={(text, id) => { setValue('buyer_name', text); setContactId(id) }}
             error={errors.buyer_name?.message}
           />
           <Input
@@ -385,6 +427,21 @@ export function CreateSaleDialog({ flockId, isOpen, onClose, onSuccess }: Props)
             })}
           </div>
         </div>
+
+        {/* Break-even hint (read-only) */}
+        {breakEven !== null && (
+          <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-800/60 dark:bg-sky-900/20 dark:text-sky-300">
+            {breakEven > 0 ? (
+              <>
+                <span className="font-bold">سعر التعادل ≈ <span className="tabular-nums" dir="ltr">${breakEven.toFixed(3)}</span>/كغ</span>
+                {' '}(<span className="tabular-nums" dir="ltr">${Math.round(breakEven * 1000)}</span>/طن)
+                <span className="block text-[11px] text-sky-700/80 dark:text-sky-400/80">أقل سعر يغطي تكاليف الفوج حتى اليوم{typedAvg ? '، بحسب متوسط وزن هذه البيعة' : '، بحسب وزن آخر بيع'} — للعلم فقط</span>
+              </>
+            ) : (
+              <span className="font-bold">تكاليف الفوج حتى اليوم مغطاة بالمبيعات السابقة</span>
+            )}
+          </div>
+        )}
 
         {/* Financial fields */}
         <div className="grid grid-cols-2 gap-3">

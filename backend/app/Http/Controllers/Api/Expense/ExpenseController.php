@@ -47,15 +47,20 @@ class ExpenseController extends Controller
             'description'         => 'nullable|string|max:255',
             'notes'               => 'nullable|string|max:5000',
             'expense_type'        => 'nullable|string|max:50',
+            'contact_id'          => ['nullable', 'integer', \App\Http\Requests\Contact\ContactRule::exists($request)],
         ]);
 
         // Validate flock belongs to farm
         if (!empty($validated['flock_id'])) {
-            $flockExists = Flock::where('id', $validated['flock_id'])
+            $flockStatus = Flock::where('id', $validated['flock_id'])
                 ->where('farm_id', $farmId)
-                ->exists();
-            if (!$flockExists) {
+                ->value('status');
+            if ($flockStatus === null) {
                 return response()->json(['message' => 'الفوج غير موجود أو لا ينتمي لهذه المزرعة'], 422);
+            }
+            // فوج مغلق: ربحه وُزِّع، فأي مصروف جديد عليه يُخرج الحسابات عن التطابق
+            if (in_array($flockStatus, ['closed', 'cancelled'], true)) {
+                return response()->json(['message' => 'الفوج مغلق: لا يمكن إضافة مصروف عليه'], 422);
             }
         }
 
@@ -91,6 +96,7 @@ class ExpenseController extends Controller
             'payment_status'      => $paymentStatus,
             'description'         => $validated['description'] ?? null,
             'notes'               => $validated['notes'] ?? null,
+            'contact_id'          => $validated['contact_id'] ?? null,
             'created_by'          => $userId,
             'updated_by'          => $userId,
         ]);

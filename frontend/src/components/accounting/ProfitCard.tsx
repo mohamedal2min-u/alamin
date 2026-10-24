@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, Lock, TrendingDown, TrendingUp, Users } from 'lucide-react'
 import { reportsApi } from '@/lib/api/reports'
 import { cn, formatNumber } from '@/lib/utils'
+import { ShareStatementButtons } from '@/components/statements/ShareStatementButtons'
 
 /** الربح والخسارة للفوج وحصة كل شريك — بنفس المعادلة التي تُسجَّل في حسابات الشركاء عند الإغلاق. */
 export function ProfitCard({ flockId }: { flockId: string }) {
@@ -97,6 +98,13 @@ export function ProfitCard({ flockId }: { flockId: string }) {
             ? 'سُجّلت هذه المبالغ في حساب كل شريك عند إغلاق الفوج.'
             : 'يتحدّث مباشرة مع كل سعر، ويُسجَّل في حساب كل شريك تلقائياً عند إغلاق الفوج.'}
         </p>
+        <ShareStatementButtons
+          kind="flock"
+          id={data.flock.id}
+          label="مشاركة كشف الفوج"
+          message={`كشف حساب الفوج «${data.flock.name}» — صافي ${isProfit ? 'الربح' : 'الخسارة'}: ${formatNumber(Math.abs(net))} $`}
+          className="mt-3"
+        />
       </div>
     </section>
   )

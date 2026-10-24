@@ -10,13 +10,19 @@ use App\Models\FlockMortality;
 use App\Models\FlockTemperatureLog;
 use App\Models\FlockWaterLog;
 use App\Models\SaleItem;
+use App\Models\User;
+use App\Services\DailyEntryCorrectionService;
 use Carbon\Carbon;
 
 class TodaySummaryAction
 {
-    public function execute(Flock $flock, ?string $date = null): array
+    public function execute(Flock $flock, ?string $date = null, ?User $viewer = null, bool $isSuperAdmin = false): array
     {
         $today = $date ?: now()->toDateString();
+        // أعلام التعديل/الإلغاء لكل سجل حسب صلاحية المستخدم الحالي
+        $corrections = app(DailyEntryCorrectionService::class);
+        $entryMeta = fn (string $type, $m) => ['id' => $m->id, 'entry_type' => $type, 'notes' => $m->notes ?? null]
+            + $corrections->flags($viewer, $isSuperAdmin, $m, $flock);
 
         // ── Flock Stats — use preloaded aggregates from ShowFlockAction to avoid duplicate queries ──
         $totalMortalityAcrossTime = (int) ($flock->mortalities_sum_quantity ?? FlockMortality::where('flock_id', $flock->id)->sum('quantity'));
@@ -44,18 +50,18 @@ class TodaySummaryAction
         // ── Today's Logs ──────────────────────────────────────────────────────────
         $mortalities = FlockMortality::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)
-            ->get(['quantity', 'reason', 'created_at']);
+            ->get(['id', 'farm_id', 'flock_id', 'quantity', 'reason', 'notes', 'created_by', 'created_at']);
 
         $feedLogs = FlockFeedLog::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)
             ->with('item:id,name,content_unit')
-            ->get(['item_id', 'quantity', 'unit_label', 'created_at']);
+            ->get(['id', 'farm_id', 'flock_id', 'item_id', 'quantity', 'unit_label', 'notes', 'created_by', 'created_at']);
 
         // Fetch ALL medicines, including what might be water
         $allMedicines = FlockMedicine::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)
             ->with(['item:id,name,content_unit,item_type_id', 'item.itemType:id,code'])
-            ->get(['item_id', 'quantity', 'unit_label', 'created_at']);
+            ->get(['id', 'farm_id', 'flock_id', 'item_id', 'quantity', 'unit_label', 'notes', 'created_by', 'created_at']);
 
         // Split medicines into "Water" and "Actual Medicines" — use itemType.code
         $waterEntries = $allMedicines->filter(
@@ -68,7 +74,7 @@ class TodaySummaryAction
 
         $waterLogs = FlockWaterLog::where('flock_id', $flock->id)
             ->whereDate('entry_date', $today)
-            ->get(['quantity', 'unit_label', 'created_at']);
+            ->get(['id', 'farm_id', 'flock_id', 'quantity', 'unit_label', 'notes', 'created_by', 'created_at']);
 
         // Exclude the two one-off capital categories (chick purchase, inventory purchase) —
         // they're the only categories with no code, so that's what identifies them here — and
@@ -83,13 +89,13 @@ class TodaySummaryAction
 
         $temperatures = FlockTemperatureLog::where('flock_id', $flock->id)
             ->whereDate('log_date', $today)
-            ->get(['time_of_day', 'temperature', 'created_at']);
+            ->get(['id', 'farm_id', 'flock_id', 'time_of_day', 'temperature', 'notes', 'created_by', 'created_at']);
 
         return [
             'date' => $today,
             'flock_info' => $flockInfo,
             'mortalities' => [
-                'entries' => $mortalities->map(fn ($m) => [
+                'entries' => $mortalities->map(fn ($m) => $entryMeta('mortality', $m) + [
                     'quantity' => (int) $m->quantity,
                     'reason' => $m->reason,
                     'time' => $m->created_at?->format('H:i') ?? '--:--',
@@ -97,7 +103,7 @@ class TodaySummaryAction
                 'total' => (int) $mortalities->sum('quantity'),
             ],
             'feed' => [
-                'entries' => $feedLogs->map(fn ($f) => [
+                'entries' => $feedLogs->map(fn ($f) => $entryMeta('feed_log', $f) + [
                     'item_name' => $f->item?->name,
                     'quantity' => (float) $f->quantity,
                     'unit_label' => $f->unit_label ?? $f->item?->content_unit,
@@ -106,7 +112,7 @@ class TodaySummaryAction
                 'total' => (float) $feedLogs->sum('quantity'),
             ],
             'medicines' => [
-                'entries' => $medicineEntries->map(fn ($m) => [
+                'entries' => $medicineEntries->map(fn ($m) => $entryMeta('medicine_log', $m) + [
                     'item_name' => $m->item?->name,
                     'quantity' => (float) $m->quantity,
                     'unit_label' => $m->unit_label ?? $m->item?->content_unit,
@@ -115,7 +121,7 @@ class TodaySummaryAction
                 'total' => (float) $medicineEntries->sum('quantity'),
             ],
             'water' => [
-                'entries' => $waterLogs->map(fn ($w) => [
+                'entries' => $waterLogs->map(fn ($w) => $entryMeta('water_log', $w) + [
                     'quantity' => (float) $w->quantity,
                     'unit_label' => $w->unit_label ?? 'صهريج',
                     'time' => $w->created_at?->format('H:i') ?? '--:--',
@@ -131,7 +137,7 @@ class TodaySummaryAction
                 'total' => (float) $expenses->sum('total_amount'),
             ],
             'temperatures' => [
-                'entries' => $temperatures->map(fn ($t) => [
+                'entries' => $temperatures->map(fn ($t) => $entryMeta('temperature_log', $t) + [
                     'time_of_day' => $t->time_of_day,
                     'temperature' => (float) $t->temperature,
                     'time' => $t->created_at?->format('H:i') ?? '--:--',

@@ -43,6 +43,9 @@ class UpdateSalePaymentAction
 
             $this->audit->recordPayment($sale->farm_id, $userId, 'sale', $sale->id, $oldReceived, $receivedAmount);
 
+            // الفرق يُسجَّل دفعةً مؤرَّخة في سجل الدفعات
+            app(\App\Services\PaymentLedgerService::class)->sync($sale, now()->toDateString(), 'cash', 'تعديل المبلغ المستلم', $userId);
+
             return $sale->fresh('saleItems');
         });
     }

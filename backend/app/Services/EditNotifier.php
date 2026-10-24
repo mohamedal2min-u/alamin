@@ -18,11 +18,13 @@ class EditNotifier
     public const ACCOUNTANT = 'accountant_edit';
     public const MANAGER = 'manager_edit';
     public const DAILY = 'daily_entry';
+    public const DAILY_ENTRY = self::DAILY;
 
     public function __construct(private readonly PushNotificationService $push) {}
 
     public function notify(int $farmId, User $actor, string $what, ?string $kind = null): void
     {
+        $entry = $kind;
         $isAccountant = $actor->hasRole('accountant') && ! $actor->hasRole('farm_admin');
         $kind = $kind === self::DAILY ? self::DAILY : ($isAccountant ? self::ACCOUNTANT : self::MANAGER);
 
@@ -51,6 +53,7 @@ class EditNotifier
             ]);
         }
 
-        $this->push->sendNotification($recipients, $title, $body, ['type' => $kind], $kind, $kind);
+        $data = ['type' => $kind] + ($entry ? ['entry' => $entry] : []);
+        $this->push->sendNotification($recipients, $title, $body, $data, $kind, $kind);
     }
 }

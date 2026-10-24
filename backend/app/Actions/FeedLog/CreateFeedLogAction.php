@@ -26,6 +26,7 @@ class CreateFeedLogAction
 
             $warehouse = \App\Models\Warehouse::where('farm_id', $flock->farm_id)->where('is_active', true)->first();
             $txnId = null;
+            $autoPurchaseId = null; // شراء النقص التلقائي (يُعكس عند تعديل/إلغاء السجل)
 
             if ($warehouse) {
                 // Find or create WarehouseItem, then re-fetch under a row lock so concurrent
@@ -90,6 +91,7 @@ class CreateFeedLogAction
                     ]);
 
                     $warehouseItem->increment('current_quantity', $shortage);
+                    $autoPurchaseId = $purchaseTxn->id;
                 }
 
                 $avgCost         = (float) ($warehouseItem->average_cost ?? 0);
@@ -128,6 +130,7 @@ class CreateFeedLogAction
                 'notes'                    => $data['notes'] ?? null,
                 'worker_id'                => $userId,
                 'inventory_transaction_id' => $txnId,
+                'auto_purchase_transaction_id' => $autoPurchaseId,
                 'editable_until'           => now()->addMinutes(15),
                 'created_by'               => $userId,
                 'updated_by'               => $userId,

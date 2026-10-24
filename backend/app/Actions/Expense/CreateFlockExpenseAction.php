@@ -55,6 +55,7 @@ class CreateFlockExpenseAction
             'payment_status'      => $paymentStatus,
             'description'         => $data['description'] ?? null,
             'notes'               => $data['notes'] ?? null,
+            'contact_id'          => $data['contact_id'] ?? null,
             'worker_id'           => $userId,
             'created_by'          => $userId,
             'updated_by'          => $userId,

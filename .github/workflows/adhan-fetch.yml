@@ -39,9 +39,17 @@ jobs:
             src14.webm https://upload.wikimedia.org/wikipedia/commons/f/ff/Tour_guide_recite_Adhan_in_the_Shah_mosque_in_Isfahan%2C_Iran.webm
             src15.webm https://upload.wikimedia.org/wikipedia/commons/4/40/%D8%A7%D8%B0%D8%A7%D9%86_%D8%AD%D8%B3%DB%8C%D9%86_%D8%B5%D8%A8%D8%AD%D8%AF%D9%84.webm
           LIST
+      - name: Audio only (mono mp3, 96 kbps)
+        run: |
+          sudo apt-get install -y -qq ffmpeg >/dev/null 2>&1 || true
+          mkdir -p audio
+          for f in sources/*; do
+            n=$(basename "${f%.*}")
+            ffmpeg -hide_banner -loglevel error -y -i "$f" -vn -ac 1 -ar 44100 -b:a 96k "audio/$n.mp3" && echo "$n $(stat -c %s audio/$n.mp3) $(ffprobe -v error -show_entries format=duration -of csv=p=0 audio/$n.mp3)"
+          done
       - name: Push to claude/adhan-sources
         run: |
-          cd sources
+          cd audio
           git init -q -b claude/adhan-sources
           git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
           git add -A && git commit -qm "Adhan source recordings from Wikimedia Commons"

@@ -1,0 +1,48 @@
+name: Fetch adhan sources
+
+# مؤقت: ينزّل تسجيلات الأذان الحرة من Wikimedia Commons إلى الفرع claude/adhan-sources
+on:
+  push:
+    branches: [claude/adhan-fetch]
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download
+        run: |
+          mkdir -p sources && cd sources
+          while read -r name url; do
+            [ -z "$name" ] && continue
+            for t in 1 2 3 4 5; do
+              code=$(curl -sL -A "YMD-app/1.0 (https://ch.alamin.se; webart@alamin.se)" -o "$name" -w "%{http_code}" "$url")
+              [ "$code" = "200" ] && break
+              echo "$name -> $code, retry $t"; sleep $((t*20))
+            done
+            echo "$name $code $(stat -c %s "$name")"
+            sleep 3
+          done <<'LIST'
+            src1.webm https://upload.wikimedia.org/wikipedia/commons/3/3d/Adhan_in_Istanbul.webm
+            src2.webm https://upload.wikimedia.org/wikipedia/commons/4/4f/Adhan_in_Shalqar_mosque.webm
+            src3.webm https://upload.wikimedia.org/wikipedia/commons/a/a7/Adhan%2C_Great_Mosque_of_Mecca_-_Jan_21%2C_2013.webm
+            src4.mp3 https://upload.wikimedia.org/wikipedia/commons/2/27/Call_to_prayer_by_Sabah_Fakhry.mp3
+            src5.webm https://upload.wikimedia.org/wikipedia/commons/b/b1/Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm
+            src6.webm https://upload.wikimedia.org/wikipedia/commons/2/2e/Hminsec150_Konya.webm
+            src7.oga https://upload.wikimedia.org/wikipedia/commons/d/d2/Islamic_call_to_worship.oga
+            src8.wav https://upload.wikimedia.org/wikipedia/commons/9/9c/Llamada_a_oraci%C3%B3n_Mezquita_Hassan_II.wav
+            src9.webm https://upload.wikimedia.org/wikipedia/commons/6/6d/Maghrib_Adhan_at_the_Masjid_al_Haram%2C_Mecca_-_25_Feb%2C_2012.webm
+            src11.ogg https://upload.wikimedia.org/wikipedia/commons/1/1f/Oraci%C3%B3n_Al-Azzan.ogg
+            src12.mp3 https://upload.wikimedia.org/wikipedia/commons/7/7d/The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3
+            src14.webm https://upload.wikimedia.org/wikipedia/commons/f/ff/Tour_guide_recite_Adhan_in_the_Shah_mosque_in_Isfahan%2C_Iran.webm
+            src15.webm https://upload.wikimedia.org/wikipedia/commons/4/40/%D8%A7%D8%B0%D8%A7%D9%86_%D8%AD%D8%B3%DB%8C%D9%86_%D8%B5%D8%A8%D8%AD%D8%AF%D9%84.webm
+          LIST
+      - name: Push to claude/adhan-sources
+        run: |
+          cd sources
+          git init -q -b claude/adhan-sources
+          git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
+          git add -A && git commit -qm "Adhan source recordings from Wikimedia Commons"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" claude/adhan-sources

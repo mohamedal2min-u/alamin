@@ -169,6 +169,11 @@ function PrayerContent() {
           <p className="mt-1 text-[11px] text-slate-400">أقل مستوى {Math.round(MIN_VOLUME * 100)}% — لا يمكن كتم الأذان.</p>
         </div>
 
+        <p className="mt-3 text-[10px] leading-relaxed text-slate-400" dir="ltr">
+          Recordings: Wikimedia Commons — {VOICES.map((v) => v.license.replace(' (Wikimedia Commons)', '')).join(' · ')}.{' '}
+          <a href="/adhan/CREDITS.md" target="_blank" rel="noopener" className="underline">Sources &amp; licenses</a>
+        </p>
+
         {playing && (
           <button onClick={stop} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-600 dark:border-slate-600 dark:text-slate-200">
             <Square className="h-4 w-4 fill-current" /> إيقاف التجربة

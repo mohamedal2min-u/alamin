@@ -96,7 +96,6 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
     unpriced: smallRows.filter(isUnpriced).length,
     amount: smallRows.reduce((n, i) => n + Number(i.total_amount ?? 0), 0),
   }
-  const pendingTotal = breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
 
   // العلف (مراحل) والدواء (أصناف): قائمة الأصناف مع سعر موحّد لكل نقلاتها
   const groupsEnabled = category === 'feed' || category === 'medicine'
@@ -178,10 +177,9 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   return (
     <div className="space-y-4" dir="rtl">
       {/* ١) ما المطلوب منك الآن */}
-      <TodoBanner loading={overview.isLoading} pending={pendingTotal} total={breakdown.reduce((n, c) => n + c.count, 0)} />
 
       {/* ٢) الفئات: البطاقة نفسها هي زر الاختيار، وفيها العدد والكمية والسعر */}
-      <CategoryCards breakdown={breakdown} small={small} selected={category} onSelect={pickCategory} />
+      <CategoryList loading={overview.isLoading} breakdown={breakdown} small={small} selected={category} onSelect={pickCategory} />
 
       {/* ٣) العلف والدواء: الأصناف مع سعر موحّد */}
       {groupsEnabled && (
@@ -253,129 +251,140 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   )
 }
 
-function TodoBanner({ loading, pending, total }: { loading: boolean; pending: number; total: number }) {
-  if (loading) return <div className="h-11 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-  // إنجاز المحاسبة كلها: نسبة السجلات المسعّرة من كل السجلات
-  const done = total > 0 ? Math.floor(((total - pending) / total) * 100) : 100
-  return (
-    <div className="space-y-2">
-      <div className={cn('flex h-11 items-center gap-2 rounded-2xl px-4 text-sm font-extrabold text-white', pending > 0 ? 'bg-amber-500' : 'bg-emerald-600')}>
-        {pending > 0 ? <>المطلوب منك: تسعير {pending} سجل</> : <><CheckCircle2 className="h-5 w-5" /> كل الأسعار محدّدة</>}
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-          <span
-            className={cn('block h-full rounded-full transition-all', done === 100 ? 'bg-emerald-500' : 'bg-red-500')}
-            style={{ width: `${done}%` }}
-          />
-        </span>
-        <span className="text-xs font-extrabold tabular-nums text-slate-600 dark:text-slate-300">المحاسبة {done}%</span>
-      </div>
-    </div>
-  )
-}
-
 const CARD_TONE: Record<string, { icon: string; ring: string; tint: string }> = {
   all:      { icon: 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900', ring: 'ring-slate-700 dark:ring-slate-300', tint: 'bg-slate-50 dark:bg-slate-700/40' },
   feed:     { icon: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', ring: 'ring-amber-500', tint: 'bg-amber-50/70 dark:bg-amber-900/20' },
   medicine: { icon: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300', ring: 'ring-teal-500', tint: 'bg-teal-50/70 dark:bg-teal-900/20' },
   water:    { icon: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300', ring: 'ring-sky-500', tint: 'bg-sky-50/70 dark:bg-sky-900/20' },
   sales:    { icon: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', ring: 'ring-emerald-500', tint: 'bg-emerald-50/70 dark:bg-emerald-900/20' },
+  small:    { icon: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', ring: 'ring-violet-500', tint: 'bg-violet-50/70 dark:bg-violet-900/20' },
 }
 
-function CategoryCards({ breakdown, small, selected, onSelect }: {
+function ProgressBar({ done, className }: { done: number; className?: string }) {
+  return (
+    <span className={cn('block w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700', className)}>
+      <span
+        className={cn('block h-full rounded-full transition-all', done === 100 ? 'bg-emerald-500' : 'bg-red-500')}
+        style={{ width: `${done}%` }}
+      />
+    </span>
+  )
+}
+
+// قائمة الفئات: ملخص المحاسبة كلها فوق، ثم سطر لكل صنف بانتظار السعر، والمكتمل ملخّص صغير تحت
+function CategoryList({ loading, breakdown, small, selected, onSelect }: {
+  loading: boolean
   breakdown: CategoryBreakdown[]
   small: { count: number; unpriced: number; amount: number }
   selected: string | undefined
   onSelect: (code: string | undefined) => void
 }) {
+  if (loading) return <div className="h-32 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+
   const costs = breakdown.filter((c) => c.code !== 'sales')
-  const all = {
-    count: breakdown.reduce((n, c) => n + c.count, 0),
-    unpriced: breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0),
-    amount: costs.reduce((n, c) => n + (c.total_amount ?? 0), 0),
-  }
-  // بطاقة لكل صنف: الأصناف الأساسية أولاً، ثم أي فئة أخرى فيها سجلات، ثم المصروفات الناعمة
+  const total = breakdown.reduce((n, c) => n + c.count, 0)
+  const pending = breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
+  const amount = costs.reduce((n, c) => n + (c.total_amount ?? 0), 0)
+  const allDone = total > 0 ? Math.floor(((total - pending) / total) * 100) : 100
+
+  // الأصناف الأساسية أولاً، ثم أي فئة أخرى فيها سجلات، ثم المصروفات الناعمة
   const known = CATEGORIES.filter((x) => x.code).map((x) => x.code as string)
-  const cards = [
-    { key: 'all', code: undefined as string | undefined, name: 'الكل', c: null as CategoryBreakdown | null },
-    ...CATEGORIES.filter((x) => x.code).map((x) => ({ key: x.code as string, code: x.code, name: x.label, c: breakdown.find((b) => b.code === x.code) ?? null })),
-    ...breakdown.filter((b) => !known.includes(b.code)).map((b) => ({ key: b.code, code: b.code as string | undefined, name: b.name, c: b })),
-    { key: SMALL, code: SMALL as string | undefined, name: 'مصروفات ناعمة', c: null as CategoryBreakdown | null },
+  const rows = [
+    ...CATEGORIES.filter((x) => x.code).map((x) => ({ key: x.code as string, name: x.label, c: breakdown.find((b) => b.code === x.code) })),
+    ...breakdown.filter((b) => !known.includes(b.code)).map((b) => ({ key: b.code, name: b.name, c: b as CategoryBreakdown | undefined })),
   ]
+    .filter((r) => r.c && r.c.count > 0)
+    .map(({ key, name, c }) => {
+      const kg = c!.computed_quantity ?? 0
+      const sub = (c!.quantity ?? 0) > 0
+        ? (kg > 0 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(c!.quantity ?? 0)} ${c!.quantity_unit ?? ''}`.trim())
+        : `${c!.count} سجل`
+      return { key, name, count: c!.count, unpriced: c!.unpriced_count ?? 0, amount: c!.total_amount ?? 0, sub }
+    })
+  if (small.count > 0) {
+    rows.push({ key: SMALL, name: 'مصروفات ناعمة', count: small.count, unpriced: small.unpriced, amount: small.amount, sub: `أقل من ${SMALL_LIMIT}$` })
+  }
+  const todo = rows.filter((r) => r.unpriced > 0)
+  const done = rows.filter((r) => r.unpriced === 0)
+  const iconOf = (key: string) => CATEGORIES.find((x) => x.code === key)?.icon ?? EXTRA_ICONS[key] ?? Package
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-      {cards.map(({ key, code, name, c }) => {
-        const Icon = CATEGORIES.find((x) => x.code === code)?.icon ?? EXTRA_ICONS[key] ?? Package
-        const tone = CARD_TONE[key] ?? CARD_TONE.all
-        const active = selected === code
-        const isAll = key === 'all'
-        const isSmall = key === SMALL
-        const count = isAll ? all.count : isSmall ? small.count : c?.count ?? 0
-        const unpriced = isAll ? all.unpriced : isSmall ? small.unpriced : c?.unpriced_count ?? 0
-        const priced = count - unpriced > 0
-        const amount = isAll ? all.amount : isSmall ? small.amount : c?.total_amount ?? 0
-        const kg = c?.computed_quantity ?? 0
-        const qty = !isAll && c && (c.quantity ?? 0) > 0
-          ? (kg > 0 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim())
-          : null
-        const empty = count === 0
-        const done = count > 0 ? Math.floor(((count - unpriced) / count) * 100) : 0
+    <div className="space-y-3">
+      {/* ملخص المحاسبة كلها (والضغط عليه يعرض كل السجلات) */}
+      <button
+        type="button"
+        onClick={() => onSelect(undefined)}
+        className={cn(
+          'block w-full rounded-2xl border bg-white p-4 text-right transition-all dark:bg-slate-800',
+          selected === undefined ? 'border-transparent ring-2 ring-slate-700 dark:ring-slate-300' : 'border-slate-200 dark:border-slate-700'
+        )}
+      >
+        <span className="block text-sm font-bold text-slate-500 dark:text-slate-400">إجمالي التكاليف</span>
+        <span className="block text-3xl font-black tabular-nums text-slate-900 dark:text-slate-100">{formatNumber(amount)} $</span>
+        <span className="mt-2 flex items-center justify-between text-sm font-extrabold">
+          <span className="text-slate-700 dark:text-slate-200">المحاسبة {allDone}%</span>
+          {pending > 0
+            ? <span className="text-amber-700 dark:text-amber-400">باقي {pending} سجل</span>
+            : <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> كل الأسعار محدّدة</span>}
+        </span>
+        <ProgressBar done={allDone} className="mt-2 h-3" />
+      </button>
 
+      {/* بانتظار السعر: سطر لكل صنف */}
+      {todo.map((r) => {
+        const Icon = iconOf(r.key)
+        const tone = CARD_TONE[r.key] ?? CARD_TONE.all
+        const pct = Math.floor(((r.count - r.unpriced) / r.count) * 100)
         return (
           <button
-            key={key}
+            key={r.key}
             type="button"
-            onClick={() => onSelect(code)}
+            onClick={() => onSelect(r.key)}
             className={cn(
-              'flex min-w-0 flex-col items-center rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98]',
-              active ? cn('border-transparent ring-2', tone.ring, tone.tint) : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800',
-              empty && !active && 'opacity-60'
+              'flex w-full items-center gap-3 rounded-2xl border bg-white p-3.5 text-right transition-all active:scale-[0.99] dark:bg-slate-800',
+              selected === r.key ? cn('border-transparent ring-2', tone.ring, tone.tint) : 'border-slate-200 dark:border-slate-700'
             )}
           >
-            <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl', tone.icon)}><Icon className="h-5 w-5" /></span>
-            <span className="mt-1.5 text-[13px] font-extrabold leading-tight text-slate-800 dark:text-slate-100">{name}</span>
-            {isSmall && <span className="text-[10px] font-semibold text-slate-400">أقل من {SMALL_LIMIT}$</span>}
-
-            <span className="mt-1.5 flex min-h-[2.5rem] flex-col items-center justify-center">
-              {empty ? (
-                <span className="text-xs font-semibold text-slate-400">لا سجلات</span>
-              ) : priced ? (
-                <>
-                  <span className="text-sm font-black tabular-nums leading-tight text-slate-800 sm:text-lg dark:text-slate-100">{formatNumber(amount)}</span>
-                  <span className="text-[10px] font-semibold text-slate-400">{key === 'sales' ? 'مبيعات' : isAll ? 'إجمالي التكاليف' : 'تكلفة'}</span>
-                </>
-              ) : (
-                <span className="text-xs font-bold text-amber-600">بانتظار السعر</span>
-              )}
+            <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', tone.icon)}><Icon className="h-6 w-6" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center justify-between gap-2">
+                <span className="truncate text-base font-extrabold text-slate-900 dark:text-slate-100">{r.name}</span>
+                <span className="shrink-0 text-lg font-black tabular-nums text-slate-900 dark:text-slate-100">{formatNumber(r.amount)} $</span>
+              </span>
+              <span className="mt-0.5 flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">{r.sub}</span>
+                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{r.unpriced} بلا سعر</span>
+              </span>
+              <ProgressBar done={pct} className="mt-2 h-2" />
             </span>
-
-            {!empty && (
-              <span className="mt-1 flex flex-col text-[11px] font-semibold leading-snug text-slate-500 dark:text-slate-400">
-                <span className="whitespace-nowrap">{count} سجل</span>
-                {qty && <span className="whitespace-nowrap">{qty}</span>}
-              </span>
-            )}
-            {unpriced > 0 && (
-              <span className="mt-1.5 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{unpriced} بلا سعر</span>
-            )}
-
-            {/* شريط الإنجاز: نسبة السجلات المسعّرة، يمتلئ بالأحمر حتى 100% */}
-            {!empty && (
-              <span className="mt-2 w-full">
-                <span className="block h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                  <span
-                    className={cn('block h-full rounded-full transition-all', done === 100 ? 'bg-emerald-500' : 'bg-red-500')}
-                    style={{ width: `${done}%` }}
-                  />
-                </span>
-                <span className="mt-0.5 block text-[10px] font-bold tabular-nums text-slate-500 dark:text-slate-400">{done}%</span>
-              </span>
-            )}
           </button>
         )
       })}
+
+      {/* المكتمل: ملخص صغير */}
+      {done.length > 0 && (
+        <div>
+          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-extrabold text-slate-700 dark:text-slate-200">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" /> خلصت
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {done.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => onSelect(r.key)}
+                className={cn(
+                  'rounded-xl bg-emerald-50 px-3 py-2 text-right text-xs font-bold text-emerald-800 transition-all dark:bg-emerald-900/20 dark:text-emerald-300',
+                  selected === r.key && 'ring-2 ring-emerald-500'
+                )}
+              >
+                {r.name}
+                <span className="block text-base font-black tabular-nums text-slate-900 dark:text-slate-100">{formatNumber(r.amount)} $</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

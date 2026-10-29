@@ -101,6 +101,7 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     // ── Expenses ──────────────────────────────────────────────────────────────
     Route::get('/expenses',            [ExpenseController::class, 'index']);
     Route::post('/expenses',           [ExpenseController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice'])->middleware('farm.notify:أضاف مصروفاً');
+    Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->whereNumber('expense')->middleware('farm.role:farm_admin,accountant')->middleware('farm.notify:حذف مصروفاً'); // مؤقت
     Route::get('/expense-categories',  [ExpenseController::class, 'categories']);
 
     // ── V1-E: Feed Logs ───────────────────────────────────────────────────────

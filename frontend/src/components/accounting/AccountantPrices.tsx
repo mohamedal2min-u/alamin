@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, ChevronLeft, ChevronRight, Droplets, Layers, Loader2, Lock, Pill, ShoppingCart, Wheat } from 'lucide-react'
+import { CheckCircle2, Coins, Droplets, Egg, FlaskConical, Layers, Loader2, Lock, Package, Pill, ShoppingCart, SprayCan, Wheat } from 'lucide-react'
 import { accountingApi, PAYMENT_METHOD_LABELS } from '@/lib/api/accounting'
 import type { CategoryBreakdown, PaymentMethod, ReviewItem } from '@/lib/api/accounting'
 import { cn, formatNumber, getTodayLocalISO } from '@/lib/utils'
@@ -19,6 +19,20 @@ const CATEGORIES: { code: string | undefined; label: string; icon: React.Element
   { code: 'water',     label: 'ماء',     icon: Droplets },
   { code: 'sales',     label: 'مبيعات',  icon: ShoppingCart },
 ]
+
+// أيقونات الفئات الأخرى (الفئة غير المعروفة تأخذ أيقونة عامة)
+const EXTRA_ICONS: Record<string, React.ElementType> = {
+  uncategorized: Egg,
+  farm_wash:     SprayCan,
+  disinfectant:  FlaskConical,
+  small:         Coins,
+}
+
+// «مصروفات ناعمة»: مصاريف متفرقة قيمتها أقل من 100$ (أو بلا سعر بعد)، خارج العلف والدواء والماء والمبيعات
+const SMALL = 'small'
+const SMALL_LIMIT = 100
+const isSmallExpense = (i: ReviewItem) =>
+  i.type === 'expense' && !['feed', 'medicine'].includes(i.category_code ?? '') && Number(i.total_amount ?? 0) < SMALL_LIMIT
 
 const CATEGORY_TONE: Record<string, string> = {
   feed:     'bg-amber-50 text-amber-700',
@@ -50,24 +64,38 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
     staleTime: 15_000,
   })
 
-  // كل سجلات الفئة المختارة (لتجميعها حسب الصنف وعرضها)
+  // كل سجلات فئة (لتجميعها حسب الصنف وعرضها)
+  const fetchRows = async (cat: string | undefined) => {
+    const out: ReviewItem[] = []
+    for (let page = 1; page <= 20; page++) {
+      const r = await accountingApi.getReviewQueue({ scope: 'all', category: cat, flock_id, per_page: 100, page })
+      out.push(...r.data)
+      if (r.data.length === 0 || out.length >= r.meta.total) break
+    }
+    return out
+  }
+  // المصروفات الناعمة تُحسب من كل السجلات، فنفس استعلام «الكل»
+  const apiCategory = category === SMALL ? undefined : category
   const rowsQuery = useQuery({
-    queryKey: ['accounting', 'review-queue', 'rows', category, flock_id],
-    queryFn: async () => {
-      const out: ReviewItem[] = []
-      for (let page = 1; page <= 20; page++) {
-        const r = await accountingApi.getReviewQueue({ scope: 'all', category, flock_id, per_page: 100, page })
-        out.push(...r.data)
-        if (r.data.length === 0 || out.length >= r.meta.total) break
-      }
-      return out
-    },
+    queryKey: ['accounting', 'review-queue', 'rows', apiCategory, flock_id],
+    queryFn: () => fetchRows(apiCategory),
+    staleTime: 15_000,
+  })
+  const everyRow = useQuery({
+    queryKey: ['accounting', 'review-queue', 'rows', undefined, flock_id],
+    queryFn: () => fetchRows(undefined),
     staleTime: 15_000,
   })
 
   const breakdown = overview.data?.summary.category_breakdown ?? []
-  const allRows = rowsQuery.data ?? []
   const isUnpriced = (i: ReviewItem) => i.unit_price == null || i.unit_price <= 0
+  const smallRows = (everyRow.data ?? []).filter(isSmallExpense)
+  const allRows = category === SMALL ? smallRows : rowsQuery.data ?? []
+  const small = {
+    count: smallRows.length,
+    unpriced: smallRows.filter(isUnpriced).length,
+    amount: smallRows.reduce((n, i) => n + Number(i.total_amount ?? 0), 0),
+  }
   const pendingTotal = breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
 
   // العلف (مراحل) والدواء (أصناف): قائمة الأصناف مع سعر موحّد لكل نقلاتها
@@ -150,10 +178,10 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   return (
     <div className="space-y-4" dir="rtl">
       {/* ١) ما المطلوب منك الآن */}
-      <TodoBanner loading={overview.isLoading} pending={pendingTotal} />
+      <TodoBanner loading={overview.isLoading} pending={pendingTotal} total={breakdown.reduce((n, c) => n + c.count, 0)} />
 
       {/* ٢) الفئات: البطاقة نفسها هي زر الاختيار، وفيها العدد والكمية والسعر */}
-      <CategoryCards breakdown={breakdown} selected={category} onSelect={pickCategory} />
+      <CategoryCards breakdown={breakdown} small={small} selected={category} onSelect={pickCategory} />
 
       {/* ٣) العلف والدواء: الأصناف مع سعر موحّد */}
       {groupsEnabled && (
@@ -225,11 +253,24 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
   )
 }
 
-function TodoBanner({ loading, pending }: { loading: boolean; pending: number }) {
+function TodoBanner({ loading, pending, total }: { loading: boolean; pending: number; total: number }) {
   if (loading) return <div className="h-11 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+  // إنجاز المحاسبة كلها: نسبة السجلات المسعّرة من كل السجلات
+  const done = total > 0 ? Math.floor(((total - pending) / total) * 100) : 100
   return (
-    <div className={cn('flex h-11 items-center gap-2 rounded-2xl px-4 text-sm font-extrabold text-white', pending > 0 ? 'bg-amber-500' : 'bg-emerald-600')}>
-      {pending > 0 ? <>المطلوب منك: تسعير {pending} سجل</> : <><CheckCircle2 className="h-5 w-5" /> كل الأسعار محدّدة</>}
+    <div className="space-y-2">
+      <div className={cn('flex h-11 items-center gap-2 rounded-2xl px-4 text-sm font-extrabold text-white', pending > 0 ? 'bg-amber-500' : 'bg-emerald-600')}>
+        {pending > 0 ? <>المطلوب منك: تسعير {pending} سجل</> : <><CheckCircle2 className="h-5 w-5" /> كل الأسعار محدّدة</>}
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+          <span
+            className={cn('block h-full rounded-full transition-all', done === 100 ? 'bg-emerald-500' : 'bg-red-500')}
+            style={{ width: `${done}%` }}
+          />
+        </span>
+        <span className="text-xs font-extrabold tabular-nums text-slate-600 dark:text-slate-300">المحاسبة {done}%</span>
+      </div>
     </div>
   )
 }
@@ -242,109 +283,99 @@ const CARD_TONE: Record<string, { icon: string; ring: string; tint: string }> = 
   sales:    { icon: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', ring: 'ring-emerald-500', tint: 'bg-emerald-50/70 dark:bg-emerald-900/20' },
 }
 
-function CategoryCards({ breakdown, selected, onSelect }: { breakdown: CategoryBreakdown[]; selected: string | undefined; onSelect: (code: string | undefined) => void }) {
+function CategoryCards({ breakdown, small, selected, onSelect }: {
+  breakdown: CategoryBreakdown[]
+  small: { count: number; unpriced: number; amount: number }
+  selected: string | undefined
+  onSelect: (code: string | undefined) => void
+}) {
   const costs = breakdown.filter((c) => c.code !== 'sales')
   const all = {
     count: breakdown.reduce((n, c) => n + c.count, 0),
     unpriced: breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0),
     amount: costs.reduce((n, c) => n + (c.total_amount ?? 0), 0),
   }
+  // بطاقة لكل صنف: الأصناف الأساسية أولاً، ثم أي فئة أخرى فيها سجلات، ثم المصروفات الناعمة
+  const known = CATEGORIES.filter((x) => x.code).map((x) => x.code as string)
   const cards = [
     { key: 'all', code: undefined as string | undefined, name: 'الكل', c: null as CategoryBreakdown | null },
     ...CATEGORIES.filter((x) => x.code).map((x) => ({ key: x.code as string, code: x.code, name: x.label, c: breakdown.find((b) => b.code === x.code) ?? null })),
+    ...breakdown.filter((b) => !known.includes(b.code)).map((b) => ({ key: b.code, code: b.code as string | undefined, name: b.name, c: b })),
+    { key: SMALL, code: SMALL as string | undefined, name: 'مصروفات ناعمة', c: null as CategoryBreakdown | null },
   ]
-  const stripRef = useRef<HTMLDivElement>(null)
-  const [edges, setEdges] = useState({ start: true, end: cards.length <= 4 })
-
-  // شريط أفقي: أربع بطاقات ظاهرة، وسهمان للتنقل (والسحب باللمس)
-  const scroll = (dir: 1 | -1) => {
-    const el = stripRef.current
-    if (!el) return
-    // الصفحة RTL: «التالي» يعني التمرير نحو اليسار
-    el.scrollBy({ left: -dir * (el.clientWidth / 4), behavior: 'smooth' })
-  }
-  const updateEdges = () => {
-    const el = stripRef.current
-    if (!el) return
-    const pos = Math.abs(el.scrollLeft)
-    setEdges({ start: pos < 4, end: pos + el.clientWidth >= el.scrollWidth - 4 })
-  }
 
   return (
-    <div className="relative">
-      <div
-        ref={stripRef}
-        onScroll={updateEdges}
-        className="no-scrollbar flex snap-x snap-mandatory scroll-px-1 gap-2 overflow-x-auto scroll-smooth p-1"
-      >
-        {cards.map(({ key, code, name, c }) => {
-          const Icon = CATEGORIES.find((x) => x.code === code)?.icon ?? Layers
-          const tone = CARD_TONE[key] ?? CARD_TONE.all
-          const active = selected === code
-          const isAll = key === 'all'
-          const count = isAll ? all.count : c?.count ?? 0
-          const unpriced = isAll ? all.unpriced : c?.unpriced_count ?? 0
-          const priced = count - unpriced > 0
-          const amount = isAll ? all.amount : c?.total_amount ?? 0
-          const kg = c?.computed_quantity ?? 0
-          const qty = !isAll && c && (c.quantity ?? 0) > 0
-            ? (kg > 0 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim())
-            : null
-          const empty = count === 0
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {cards.map(({ key, code, name, c }) => {
+        const Icon = CATEGORIES.find((x) => x.code === code)?.icon ?? EXTRA_ICONS[key] ?? Package
+        const tone = CARD_TONE[key] ?? CARD_TONE.all
+        const active = selected === code
+        const isAll = key === 'all'
+        const isSmall = key === SMALL
+        const count = isAll ? all.count : isSmall ? small.count : c?.count ?? 0
+        const unpriced = isAll ? all.unpriced : isSmall ? small.unpriced : c?.unpriced_count ?? 0
+        const priced = count - unpriced > 0
+        const amount = isAll ? all.amount : isSmall ? small.amount : c?.total_amount ?? 0
+        const kg = c?.computed_quantity ?? 0
+        const qty = !isAll && c && (c.quantity ?? 0) > 0
+          ? (kg > 0 ? `${formatNumber(kg / 1000)} طن` : `${formatNumber(c.quantity ?? 0)} ${c.quantity_unit ?? ''}`.trim())
+          : null
+        const empty = count === 0
+        const done = count > 0 ? Math.floor(((count - unpriced) / count) * 100) : 0
 
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onSelect(code)}
-              className={cn(
-                'flex w-[calc((100%-1.5rem)/4)] shrink-0 snap-start flex-col items-center rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98]',
-                active ? cn('border-transparent ring-2', tone.ring, tone.tint) : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800',
-                empty && !active && 'opacity-60'
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSelect(code)}
+            className={cn(
+              'flex min-w-0 flex-col items-center rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98]',
+              active ? cn('border-transparent ring-2', tone.ring, tone.tint) : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800',
+              empty && !active && 'opacity-60'
+            )}
+          >
+            <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl', tone.icon)}><Icon className="h-5 w-5" /></span>
+            <span className="mt-1.5 text-[13px] font-extrabold leading-tight text-slate-800 dark:text-slate-100">{name}</span>
+            {isSmall && <span className="text-[10px] font-semibold text-slate-400">أقل من {SMALL_LIMIT}$</span>}
+
+            <span className="mt-1.5 flex min-h-[2.5rem] flex-col items-center justify-center">
+              {empty ? (
+                <span className="text-xs font-semibold text-slate-400">لا سجلات</span>
+              ) : priced ? (
+                <>
+                  <span className="text-sm font-black tabular-nums leading-tight text-slate-800 sm:text-lg dark:text-slate-100">{formatNumber(amount)}</span>
+                  <span className="text-[10px] font-semibold text-slate-400">{key === 'sales' ? 'مبيعات' : isAll ? 'إجمالي التكاليف' : 'تكلفة'}</span>
+                </>
+              ) : (
+                <span className="text-xs font-bold text-amber-600">بانتظار السعر</span>
               )}
-            >
-              <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl', tone.icon)}><Icon className="h-5 w-5" /></span>
-              <span className="mt-1.5 text-[13px] font-extrabold text-slate-800 dark:text-slate-100">{name}</span>
+            </span>
 
-              <span className="mt-1.5 flex min-h-[2.5rem] flex-col items-center justify-center">
-                {empty ? (
-                  <span className="text-xs font-semibold text-slate-400">لا سجلات</span>
-                ) : priced ? (
-                  <>
-                    <span className="text-sm font-black tabular-nums leading-tight text-slate-800 sm:text-lg dark:text-slate-100">{formatNumber(amount)}</span>
-                    <span className="text-[10px] font-semibold text-slate-400">{key === 'sales' ? 'مبيعات' : isAll ? 'إجمالي التكاليف' : 'تكلفة'}</span>
-                  </>
-                ) : (
-                  <span className="text-xs font-bold text-amber-600">بانتظار السعر</span>
-                )}
+            {!empty && (
+              <span className="mt-1 flex flex-col text-[11px] font-semibold leading-snug text-slate-500 dark:text-slate-400">
+                <span className="whitespace-nowrap">{count} سجل</span>
+                {qty && <span className="whitespace-nowrap">{qty}</span>}
               </span>
+            )}
+            {unpriced > 0 && (
+              <span className="mt-1.5 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{unpriced} بلا سعر</span>
+            )}
 
-              {!empty && (
-                <span className="mt-1 flex flex-col text-[11px] font-semibold leading-snug text-slate-500 dark:text-slate-400">
-                  <span className="whitespace-nowrap">{count} سجل</span>
-                  {qty && <span className="whitespace-nowrap">{qty}</span>}
+            {/* شريط الإنجاز: نسبة السجلات المسعّرة، يمتلئ بالأحمر حتى 100% */}
+            {!empty && (
+              <span className="mt-2 w-full">
+                <span className="block h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                  <span
+                    className={cn('block h-full rounded-full transition-all', done === 100 ? 'bg-emerald-500' : 'bg-red-500')}
+                    style={{ width: `${done}%` }}
+                  />
                 </span>
-              )}
-              {unpriced > 0 && (
-                <span className="mt-1.5 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{unpriced} بلا سعر</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {!edges.start && (
-        <button type="button" aria-label="السابق" onClick={() => scroll(-1)}
-          className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 translate-x-1/3 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      )}
-      {!edges.end && (
-        <button type="button" aria-label="التالي" onClick={() => scroll(1)}
-          className="absolute left-0 top-1/2 flex h-7 w-7 -translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-      )}
+                <span className="mt-0.5 block text-[10px] font-bold tabular-nums text-slate-500 dark:text-slate-400">{done}%</span>
+              </span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }

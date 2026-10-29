@@ -124,9 +124,9 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
             paid_at: paidAt,
             method,
           })
-        // سعر البيع يُدخَل للطن ويُخزَّن للكيلو
+        // المبيعات والعلف تُسعَّر بالطن وتُخزَّن للكيلو/للكيس
         : accountingApi.updateReviewItem(item.type, item.record_id, {
-            unit_price: item.type === 'sale' ? price / 1000 : price,
+            unit_price: price * priceBasis(item).factor,
           }),
     onSuccess: () => {
       refresh()
@@ -155,7 +155,7 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
     setMode('price')
     setEditingId(item.id)
     setError(null)
-    const shown = item.unit_price != null ? (item.type === 'sale' ? item.unit_price * 1000 : item.unit_price) : null
+    const shown = item.unit_price != null ? Math.round((item.unit_price / priceBasis(item).factor) * 1000) / 1000 : null
     setValue(shown != null ? String(shown) : '')
   }
 
@@ -409,9 +409,26 @@ interface CardProps {
   onSave: () => void
 }
 
+// أساس السعر الذي يكتبه المحاسب: الطن للمبيعات والعلف، والوحدة الواحدة لغيرها.
+// factor يحوّل السعر المكتوب إلى السعر المخزَّن (للكيلو في البيع، وللكيس في العلف).
+function priceBasis(i: ReviewItem): { label: string; qty: number; qtyText: string; factor: number } {
+  const q = Number(i.quantity ?? 0)
+  if (i.type === 'sale') {
+    return { label: 'سعر الطن الواحد', qty: q / 1000, qtyText: `${formatNumber(q / 1000)} طن`, factor: 1 / 1000 }
+  }
+  const kg = Number(i.computed_quantity ?? 0)
+  if (i.item_type === 'feed' && kg > 0 && q > 0) {
+    return { label: 'سعر الطن الواحد', qty: kg / 1000, qtyText: `${formatNumber(kg / 1000)} طن`, factor: kg / 1000 / q }
+  }
+  const unit = i.quantity_unit || 'وحدة'
+  return { label: `سعر الوحدة الواحدة (${unit})`, qty: q, qtyText: `${formatNumber(q)} ${unit}`, factor: 1 }
+}
+
 function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, isSaving, onValue, paidAt, onPaidAt, method, onMethod, onEdit, onPay, onCancel, onSave }: CardProps) {
   const unpriced = item.unit_price == null
-  const unitLabel = mode === 'payment' ? (item.type === 'sale' ? 'المبلغ المقبوض الآن' : 'مبلغ الدفعة') : item.type === 'sale' ? 'سعر الطن' : 'سعر الوحدة'
+  const basis = priceBasis(item)
+  const unitLabel = mode === 'payment' ? (item.type === 'sale' ? 'المبلغ المقبوض الآن' : 'مبلغ الدفعة') : basis.label
+  const entered = parseFloat(value)
   const remaining = Number(item.remaining_amount ?? 0)
 
   return (
@@ -489,6 +506,12 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
                 الإجمالي {formatNumber(item.total_amount)} • مدفوع {formatNumber(Number(item.paid_amount ?? 0))} • المتبقي {formatNumber(Number(item.remaining_amount ?? 0))} — تُسجَّل الدفعة باسمك ولا تُحذف.
               </p>
             </>
+          )}
+          {mode === 'price' && basis.qty > 0 && (
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">
+              {basis.qtyText} × {Number.isFinite(entered) ? formatNumber(entered) : 'السعر'} ={' '}
+              <span className="font-bold text-primary-700">{Number.isFinite(entered) ? formatNumber(basis.qty * entered) : '؟'} $</span>
+            </p>
           )}
           {mode === 'price' && item.unit_price != null && (
             <p className="text-[11px] text-slate-400">السعر القديم سيبقى ظاهراً مشطوباً ويُسجَّل التعديل باسمك.</p>

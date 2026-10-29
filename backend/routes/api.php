@@ -119,6 +119,10 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
     Route::post('flocks/{flock}/expenses',      [FlockExpenseController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'farm.noprice'])->middleware('farm.notify:أضاف مصروفاً');
 
     // ── V1-H: Temperature Logs ────────────────────────────────────────────────
+    // ── مستندات الفوج (صور الأوراق والفواتير) ─────────────────────────────────
+    Route::get('flocks/{flock}/documents',  [\App\Http\Controllers\Api\Flock\FlockDocumentController::class, 'index']);
+    Route::post('flocks/{flock}/documents', [\App\Http\Controllers\Api\Flock\FlockDocumentController::class, 'store'])->middleware('farm.role:farm_admin,supervisor,accountant')->middleware('farm.notify:رفع مستنداً للفوج');
+
     Route::get('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'index']);
     Route::post('flocks/{flock}/temperature-logs', [\App\Http\Controllers\Api\Flock\FlockTemperatureLogController::class, 'store'])->middleware(['farm.role:farm_admin,supervisor', 'idempotent']);
 

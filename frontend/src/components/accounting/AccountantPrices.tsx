@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Coins, Droplets, Egg, FlaskConical, Layers, Loader2, Lock, Package, Pill, ShoppingCart, SprayCan, Wheat } from 'lucide-react'
 import { accountingApi, PAYMENT_METHOD_LABELS } from '@/lib/api/accounting'
@@ -233,7 +234,18 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
           <p className="text-sm font-semibold">{onlyPending ? 'كل الأسعار محدّدة' : 'لا توجد سجلات'}</p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-50 text-[11px] font-extrabold text-slate-500 dark:bg-slate-700/50 dark:text-slate-300">
+              <th className="px-2 py-2.5 text-right">التاريخ</th>
+              <th className="px-2 py-2.5 text-right">البيان</th>
+              <th className="px-2 py-2.5 text-right">الكمية</th>
+              <th className="px-2 py-2.5 text-right">السعر</th>
+              <th className="px-2 py-2.5 text-left">الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
           {items.map((item) => (
             <PriceCard
               key={item.id}
@@ -256,9 +268,36 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
               onSave={() => submit(item)}
             />
           ))}
-        </ul>
+          </tbody>
+          <TableTotals items={items} />
+        </table>
+        </div>
       )}
+      {items.length > 0 && <p className="text-xs text-slate-400">اضغط على أي سطر لتحديد السعر أو تعديله</p>}
     </div>
+  )
+}
+
+// سطر المجموع تحت الجدول: الكمية تُجمع فقط إن كانت كل السطور بنفس الوحدة
+function TableTotals({ items }: { items: ReviewItem[] }) {
+  const bases = items.map(priceBasis)
+  const unit = (b: ReturnType<typeof priceBasis>) => b.qtyText.replace(/^[\d.,\s]+/, '')
+  const sameUnit = bases.every((b) => unit(b) === unit(bases[0]))
+  const qty = bases.reduce((n, b) => n + b.qty, 0)
+  const total = items.reduce((n, i) => n + Number(i.total_amount ?? 0), 0)
+  const remaining = items.reduce((n, i) => n + (i.unit_price != null ? Number(i.remaining_amount ?? 0) : 0), 0)
+  return (
+    <tfoot>
+      <tr className="border-t border-slate-200 bg-slate-100 font-black text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100">
+        <td className="px-2 py-3" colSpan={2}>المجموع</td>
+        <td className="whitespace-nowrap px-2 py-3 tabular-nums">{sameUnit && qty > 0 ? `${formatNumber(qty)} ${unit(bases[0])}` : ''}</td>
+        <td />
+        <td className="px-2 py-3 text-left tabular-nums">
+          {formatNumber(total)}
+          {remaining > 0 && <div className="text-[11px] font-bold text-red-600">متبقي {formatNumber(remaining)}</div>}
+        </td>
+      </tr>
+    </tfoot>
   )
 }
 
@@ -420,6 +459,9 @@ interface CardProps {
   onSave: () => void
 }
 
+// في الجدول: نحذف بادئة «دين شراء:» التلقائية ليقصر السطر
+const shortDescription = (d: string | null) => (d ?? '').replace(/^دين شراء(?: تلقائي)?:\s*/, '')
+
 // أساس السعر الذي يكتبه المحاسب: الطن للمبيعات والعلف، والوحدة الواحدة لغيرها.
 // factor يحوّل السعر المكتوب إلى السعر المخزَّن (للكيلو في البيع، وللكيس في العلف).
 function priceBasis(i: ReviewItem): { label: string; qty: number; qtyText: string; factor: number } {
@@ -445,28 +487,58 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
   const entered = parseFloat(value)
   const remaining = Number(item.remaining_amount ?? 0)
 
+  const shownPrice = item.unit_price != null ? item.unit_price / basis.factor : null
+  const canOpen = !locked
+
   return (
-    <li className={cn('rounded-2xl border bg-white p-4 shadow-sm', unpriced ? 'border-amber-200' : 'border-slate-200')}>
-      {/* العنوان + التصنيف */}
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[15px] font-bold leading-snug text-slate-800">{item.description}</h3>
-        {showCategory && item.category_name && (
-          <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold', CATEGORY_TONE[item.category_code ?? ''] ?? 'bg-slate-100 text-slate-600')}>
-            {displayCategory(item.category_name)}
+    <tr
+      onClick={canOpen ? onEdit : undefined}
+      className={cn(
+        'border-t border-slate-100 align-top dark:border-slate-700',
+        canOpen && 'cursor-pointer hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-700/40',
+        unpriced && 'bg-amber-50/60 dark:bg-amber-900/10'
+      )}
+    >
+      <td className="whitespace-nowrap px-2 py-3 text-xs text-slate-400">{item.entry_date?.slice(5).split('-').reverse().join('-') ?? '—'}</td>
+      <td className="px-2 py-3">
+        <span className="block font-bold leading-snug text-slate-800 dark:text-slate-100">{shortDescription(item.description)}</span>
+        {(showCategory && item.category_name) || item.contact_name ? (
+          <span className="mt-0.5 block text-[11px] text-slate-400">
+            {showCategory && item.category_name && (
+              <span className={cn('ml-1 rounded-full px-1.5 py-0.5 font-bold', CATEGORY_TONE[item.category_code ?? ''] ?? 'bg-slate-100 text-slate-600')}>
+                {displayCategory(item.category_name)}
+              </span>
+            )}
+            {item.contact_name}
           </span>
-        )}
-      </div>
-
-      {/* معلومات ثانوية */}
-      <p className="mt-1 text-xs text-slate-400">
-        {item.flock_name ?? '—'} • {item.entry_date ?? '—'}
-        {item.quantity != null && <> • الكمية {formatNumber(item.quantity)} {item.quantity_unit ?? ''}</>}
-        {item.contact_name && <> • {item.contact_name}</>}
-      </p>
-
-      {isEditing && (
+        ) : null}
+      </td>
+      <td className="whitespace-nowrap px-2 py-3 font-bold tabular-nums text-slate-700 dark:text-slate-200">{basis.qty > 0 ? basis.qtyText : '—'}</td>
+      <td className="whitespace-nowrap px-2 py-3 font-bold tabular-nums text-slate-800 dark:text-slate-100">
+        {shownPrice != null ? formatNumber(shownPrice) : <span className="rounded-lg bg-primary-600 px-2 py-1 text-[11px] font-extrabold text-white">حدّد</span>}
+      </td>
+      <td className="whitespace-nowrap px-2 py-3 text-left">
+        <span className="font-black tabular-nums text-slate-900 dark:text-slate-100">{unpriced ? '—' : formatNumber(item.total_amount)}</span>
+        {!unpriced && (remaining > 0 ? (
+          locked ? (
+            <span className="block text-[11px] font-bold text-red-600">متبقي {formatNumber(remaining)}</span>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onPay() }}
+              className="mt-0.5 block rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-600 dark:bg-red-900/30"
+            >
+              متبقي {formatNumber(remaining)} • دفعة
+            </button>
+          )
+        ) : (
+          <span className="block text-[11px] font-bold text-emerald-600">مدفوع ✓</span>
+        ))}
+        {locked && <Lock className="mt-0.5 inline h-3 w-3 text-slate-400" />}
+      </td>
+      {isEditing && createPortal(
         // نافذة منبثقة: السعر بخانة كبيرة، والمجموع يُحسب فوراً، و«حفظ» ينقل للسجل التالي
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onCancel}>
+        <div dir="rtl" className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={(e) => { e.stopPropagation(); onCancel() }}>
         <div
           className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-slate-800 sm:rounded-3xl"
           onClick={(e) => e.stopPropagation()}
@@ -547,46 +619,15 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
           <button type="button" onClick={onCancel} className="h-11 w-full rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 dark:border-slate-600 dark:text-slate-300">
             إلغاء
           </button>
-        </div>
-        </div>
-      )}
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-          <div className="text-sm text-slate-500">
-            <PriceWithHistory item={item} />
-            {!unpriced && (
-              <div className="mt-0.5 text-xs text-slate-400">
-                الإجمالي: {formatNumber(item.total_amount)}
-                {Number(item.paid_amount ?? 0) > 0 && <> • مدفوع {formatNumber(Number(item.paid_amount))}</>}
-                {remaining > 0 && <> • <span className="font-bold text-red-600">متبقي {formatNumber(remaining)}</span></>}
-              </div>
-            )}
-          </div>
-          {locked ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
-              <Lock className="h-3.5 w-3.5" /> فوج مغلق
-            </span>
-          ) : (
-            <div className="flex shrink-0 gap-2">
-              {!unpriced && remaining > 0 && (
-                <button onClick={onPay} className="rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 active:scale-95 dark:bg-emerald-900/30 dark:text-emerald-300">
-                  تسجيل دفعة
-                </button>
-              )}
-              <button
-                onClick={onEdit}
-                className={cn(
-                  'rounded-xl px-5 py-2.5 text-sm font-bold active:scale-95',
-                  unpriced ? 'bg-primary-600 text-white' : 'border border-slate-200 bg-white text-slate-700'
-                )}
-              >
-                {unpriced ? 'تحديد السعر' : 'تعديل'}
-              </button>
-            </div>
+          {(item.payments?.length ?? 0) > 0 && <PaymentHistory item={item} />}
+          {(item.price_history ?? []).some((h) => h.old_price != null) && (
+            <div className="text-xs text-slate-500"><PriceWithHistory item={item} /></div>
           )}
         </div>
-
-      {(item.payments?.length ?? 0) > 0 && <PaymentHistory item={item} />}
-    </li>
+        </div>,
+        document.body
+      )}
+    </tr>
   )
 }
 

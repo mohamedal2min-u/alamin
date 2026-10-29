@@ -137,7 +137,7 @@ export default function CreateFlockPage() {
               <Input
                 {...register('initial_count', { valueAsNumber: true })}
                 id="initial_count"
-                label="العدد الأولي (عدد الكتاكيت)"
+                label="العدد الأولي (عدد الصوص)"
                 type="number"
                 min={1}
                 placeholder="مثال: 5000"
@@ -176,7 +176,7 @@ export default function CreateFlockPage() {
               </p>
             ) : (
               <p className="text-[11px] text-slate-500 font-medium">
-                سعر الكتاكيت يحدده المحاسب لاحقاً من صفحة المحاسبة.
+                سعر الصوص يحدده المحاسب لاحقاً من صفحة المحاسبة.
               </p>
             )}
 

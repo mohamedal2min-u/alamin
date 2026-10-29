@@ -34,6 +34,9 @@ const SMALL_LIMIT = 100
 const isSmallExpense = (i: ReviewItem) =>
   i.type === 'expense' && !['feed', 'medicine'].includes(i.category_code ?? '') && Number(i.total_amount ?? 0) < SMALL_LIMIT
 
+// اسم الفئة كما يقرؤه المستخدم («شراء كتاكيت» في القاعدة ← «صوص»)
+const displayCategory = (name: string | null | undefined) => (name === 'شراء كتاكيت' ? 'صوص' : name)
+
 const CATEGORY_TONE: Record<string, string> = {
   feed:     'bg-amber-50 text-amber-700',
   medicine: 'bg-teal-50 text-teal-700',
@@ -128,11 +131,19 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
         : accountingApi.updateReviewItem(item.type, item.record_id, {
             unit_price: price * priceBasis(item).factor,
           }),
-    onSuccess: () => {
+    onSuccess: (_, { item }) => {
       refresh()
-      setEditingId(null)
-      setValue('')
       setError(null)
+      // تسجيل سريع: بعد حفظ السعر تفتح النافذة على السجل التالي بلا سعر
+      const at = items.findIndex((i) => i.id === item.id)
+      const next = [...items.slice(at + 1), ...items.slice(0, Math.max(at, 0))]
+        .find((i) => i.id !== item.id && isUnpriced(i) && i.flock_status !== 'closed' && i.flock_status !== 'cancelled')
+      if (mode === 'price' && next) {
+        startEdit(next)
+      } else {
+        setEditingId(null)
+        setValue('')
+      }
     },
     onError: (e: unknown) => {
       setError(
@@ -291,7 +302,7 @@ function CategoryList({ loading, breakdown, small, selected, onSelect }: {
   const known = CATEGORIES.filter((x) => x.code).map((x) => x.code as string)
   const rows = [
     ...CATEGORIES.filter((x) => x.code).map((x) => ({ key: x.code as string, name: x.label, c: breakdown.find((b) => b.code === x.code) })),
-    ...breakdown.filter((b) => !known.includes(b.code)).map((b) => ({ key: b.code, name: b.name, c: b as CategoryBreakdown | undefined })),
+    ...breakdown.filter((b) => !known.includes(b.code)).map((b) => ({ key: b.code, name: displayCategory(b.name) ?? b.name, c: b as CategoryBreakdown | undefined })),
   ]
     .filter((r) => r.c && r.c.count > 0)
     .map(({ key, name, c }) => {
@@ -420,6 +431,9 @@ function priceBasis(i: ReviewItem): { label: string; qty: number; qtyText: strin
   if (i.item_type === 'feed' && kg > 0 && q > 0) {
     return { label: 'سعر الطن الواحد', qty: kg / 1000, qtyText: `${formatNumber(kg / 1000)} طن`, factor: kg / 1000 / q }
   }
+  if (i.category_name === 'شراء كتاكيت') {
+    return { label: 'سعر الصوص الواحد', qty: q, qtyText: `${formatNumber(q)} صوص`, factor: 1 }
+  }
   const unit = i.quantity_unit || 'وحدة'
   return { label: `سعر الوحدة الواحدة (${unit})`, qty: q, qtyText: `${formatNumber(q)} ${unit}`, factor: 1 }
 }
@@ -438,7 +452,7 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
         <h3 className="text-[15px] font-bold leading-snug text-slate-800">{item.description}</h3>
         {showCategory && item.category_name && (
           <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold', CATEGORY_TONE[item.category_code ?? ''] ?? 'bg-slate-100 text-slate-600')}>
-            {item.category_name}
+            {displayCategory(item.category_name)}
           </span>
         )}
       </div>
@@ -450,31 +464,44 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
         {item.contact_name && <> • {item.contact_name}</>}
       </p>
 
-      {isEditing ? (
-        <div className="mt-3 space-y-2">
-          <label className="text-xs font-semibold text-slate-500">{unitLabel}</label>
-          <div className="flex gap-2">
+      {isEditing && (
+        // نافذة منبثقة: السعر بخانة كبيرة، والمجموع يُحسب فوراً، و«حفظ» ينقل للسجل التالي
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onCancel}>
+        <div
+          className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-slate-800 sm:rounded-3xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">{item.description}</h3>
+            <p className="mt-0.5 text-xs text-slate-400">
+              {displayCategory(item.category_name) ?? ''}{item.entry_date ? ` • ${item.entry_date}` : ''}
+              {basis.qty > 0 && <> • {basis.qtyText}</>}
+            </p>
+          </div>
+          <label className="block text-sm font-bold text-slate-600 dark:text-slate-300">{unitLabel}</label>
+          <form
+            onSubmit={(e) => { e.preventDefault(); onSave() }}
+            className="flex gap-2"
+          >
             <input
               autoFocus
               type="number"
               inputMode="decimal"
+              step="any"
               min={0}
               value={value}
               onChange={(e) => onValue(e.target.value)}
-              className="h-12 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 text-lg font-bold text-slate-800 outline-none focus:border-primary-500"
+              className="h-14 min-w-0 flex-1 rounded-2xl border-2 border-slate-200 px-4 text-2xl font-black tabular-nums text-slate-900 outline-none focus:border-primary-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
               placeholder="0"
             />
             <button
-              onClick={onSave}
+              type="submit"
               disabled={isSaving}
-              className="h-12 rounded-xl bg-primary-600 px-5 text-sm font-bold text-white active:scale-95 disabled:opacity-60"
+              className="h-14 rounded-2xl bg-primary-600 px-6 text-base font-extrabold text-white active:scale-95 disabled:opacity-60"
             >
               {isSaving ? '...' : 'حفظ'}
             </button>
-            <button onClick={onCancel} className="h-12 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-500">
-              إلغاء
-            </button>
-          </div>
+          </form>
           {mode === 'payment' && (
             <>
               <div className="flex gap-2">
@@ -508,7 +535,7 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
             </>
           )}
           {mode === 'price' && basis.qty > 0 && (
-            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">
+            <p className="rounded-xl bg-primary-50 px-3 py-2.5 text-base font-bold text-slate-700 dark:bg-primary-900/20 dark:text-slate-200">
               {basis.qtyText} × {Number.isFinite(entered) ? formatNumber(entered) : 'السعر'} ={' '}
               <span className="font-bold text-primary-700">{Number.isFinite(entered) ? formatNumber(basis.qty * entered) : '؟'} $</span>
             </p>
@@ -517,8 +544,12 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
             <p className="text-[11px] text-slate-400">السعر القديم سيبقى ظاهراً مشطوباً ويُسجَّل التعديل باسمك.</p>
           )}
           {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+          <button type="button" onClick={onCancel} className="h-11 w-full rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 dark:border-slate-600 dark:text-slate-300">
+            إلغاء
+          </button>
         </div>
-      ) : (
+        </div>
+      )}
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
           <div className="text-sm text-slate-500">
             <PriceWithHistory item={item} />
@@ -553,7 +584,6 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
             </div>
           )}
         </div>
-      )}
 
       {(item.payments?.length ?? 0) > 0 && <PaymentHistory item={item} />}
     </li>

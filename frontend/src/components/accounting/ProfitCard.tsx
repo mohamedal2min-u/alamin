@@ -63,7 +63,7 @@ export function ProfitCard({ flockId }: { flockId: string }) {
         {details && (
           <div className="space-y-1 rounded-xl bg-slate-50 px-3 py-2 text-xs dark:bg-slate-900/40">
             <Row label="علف ودواء مستهلك" value={data.inventory ?? 0} small />
-            <Row label="مصاريف (كتاكيت وغيرها)" value={data.operations ?? 0} small />
+            <Row label="مصاريف (صوص وغيرها)" value={data.operations ?? 0} small />
             <Row label="ماء" value={data.water ?? 0} small />
           </div>
         )}

@@ -149,4 +149,28 @@ class ExpenseController extends Controller
             ],
         ]);
     }
+
+    // ── DELETE /api/expenses/{expense} (مؤقت) ────────────────────────────────
+    // حذف مصروف خاطئ قيمته صفر ولا دفعات عليه. يُزال بعد تنظيف البيانات.
+
+    public function destroy(Request $request, int $expense): JsonResponse
+    {
+        $farmId = $request->attributes->get('farm_id');
+
+        $model = Expense::where('id', $expense)->where('farm_id', $farmId)->firstOrFail();
+
+        $hasPayments = \Illuminate\Support\Facades\DB::table('payments')
+            ->where('farm_id', $farmId)
+            ->where('payable_id', $model->id)
+            ->where('payable_type', 'expense')
+            ->exists();
+
+        if ((float) $model->total_amount != 0.0 || (float) $model->paid_amount != 0.0 || $hasPayments) {
+            return response()->json(['message' => 'لا يُحذف إلا مصروف قيمته صفر وبدون دفعات'], 422);
+        }
+
+        $model->delete();
+
+        return response()->json(['message' => 'تم الحذف']);
+    }
 }

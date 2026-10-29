@@ -87,7 +87,7 @@ const CONFIG: Record<DayEntryType, {
 const EXPENSE_TYPE_LABELS: Record<string, string> = {
   feed:         'علف',
   medicine:     'دواء',
-  chick:        'كتاكيت',
+  chick:        'صوص',
   labor:        'عمالة',
   utilities:    'مرافق',
   bedding:      'نشارة',

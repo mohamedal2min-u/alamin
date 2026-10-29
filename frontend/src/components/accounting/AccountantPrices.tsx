@@ -476,8 +476,10 @@ function priceBasis(i: ReviewItem): { label: string; qty: number; qtyText: strin
   if (i.category_name === 'شراء كتاكيت') {
     return { label: 'سعر الصوص الواحد', qty: q, qtyText: `${formatNumber(q)} صوص`, factor: 1 }
   }
-  const unit = i.quantity_unit || 'وحدة'
-  return { label: `سعر الوحدة الواحدة (${unit})`, qty: q, qtyText: `${formatNumber(q)} ${unit}`, factor: 1 }
+  // الماء بالصهريج؛ وغير ذلك بوحدة الصنف إن وُجدت، وإلا الرقم وحده (بلا «وحدة»)
+  const unit = i.quantity_unit || (i.type === 'water_log' ? 'صهريج' : '')
+  if (!unit) return { label: 'سعر الواحد', qty: q, qtyText: formatNumber(q), factor: 1 }
+  return { label: `سعر ال${unit}`, qty: q, qtyText: `${formatNumber(q)} ${unit}`, factor: 1 }
 }
 
 function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, isSaving, onValue, paidAt, onPaidAt, method, onMethod, onEdit, onPay, onCancel, onSave }: CardProps) {

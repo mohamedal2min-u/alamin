@@ -17,6 +17,7 @@ import { ExpensesTab } from '@/components/flocks/tabs/ExpensesTab'
 import { WaterTab } from '@/components/flocks/tabs/WaterTab'
 import { NotesTab } from '@/components/flocks/tabs/NotesTab'
 import { VaccinationsTab } from '@/components/flocks/tabs/VaccinationsTab'
+import { DocumentsTab } from '@/components/flocks/tabs/DocumentsTab'
 import { CloseFlockDialog } from '@/components/flocks/CloseFlockDialog'
 import { EditFlockModal } from '@/components/flocks/EditFlockModal'
 import { FlockKpiSection } from '@/components/flocks/FlockKpiSection'
@@ -26,7 +27,7 @@ import { ShareStatementButtons } from '@/components/statements/ShareStatementBut
 import type { Flock } from '@/types/flock'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-type TabKey = 'overview' | 'feed' | 'medicine' | 'vaccines' | 'water' | 'expenses' | 'notes' | 'sales'
+type TabKey = 'overview' | 'feed' | 'medicine' | 'vaccines' | 'water' | 'expenses' | 'notes' | 'sales' | 'documents'
 
 const TABS: { key: TabKey; label: string; labelEn: string }[] = [
   { key: 'overview',    label: 'نظرة عامة',  labelEn: 'Overview' },
@@ -37,6 +38,7 @@ const TABS: { key: TabKey; label: string; labelEn: string }[] = [
   { key: 'expenses',    label: 'المصروفات',  labelEn: 'Expenses' },
   { key: 'notes',       label: 'الملاحظات', labelEn: 'Notes' },
   { key: 'sales',       label: 'المبيعات',  labelEn: 'Sales' },
+  { key: 'documents',   label: 'المستندات', labelEn: 'Documents' },
 ]
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
@@ -75,6 +77,7 @@ function TabPlaceholder({ tab }: { tab: TabKey }) {
     expenses:    'المصروفات',
     notes:       'الملاحظات',
     sales:       'المبيعات',
+    documents:   'المستندات',
   }
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400">
@@ -376,6 +379,8 @@ export default function FlockDetailPage({
             <NotesTab flockId={flockId} flockStatus={flock.status} />
           ) : activeTab === 'sales' ? (
             <SalesTab flockId={flockId} flockStatus={flock.status} />
+          ) : activeTab === 'documents' ? (
+            <DocumentsTab flockId={flockId} />
           ) : (
             <TabPlaceholder tab={activeTab} />
           )}

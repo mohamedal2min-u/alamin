@@ -34,7 +34,9 @@ class StoreSaleRequest extends FormRequest
             'notes'                  => ['nullable', 'string', 'max:5000'],
 
             'items'                  => ['required', 'array', 'min:1'],
-            'items.*.birds_count'    => ['required', 'integer', 'min:1'],
+            // قيد تصحيح خطأ: وزن إضافي بدون طيور (لمطابقة ورقة الحساب)
+            'is_correction'          => ['nullable', 'boolean'],
+            'items.*.birds_count'    => ['required', 'integer', $this->boolean('is_correction') ? 'min:0' : 'min:1'],
             'items.*.total_weight_kg' => ['required', 'numeric', 'min:0.001'],
             'items.*.crates_count'   => ['nullable', 'integer', 'min:0'],
             'items.*.crate_weight_kg' => ['nullable', 'numeric', 'min:0'],

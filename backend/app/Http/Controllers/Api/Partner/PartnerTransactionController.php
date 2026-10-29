@@ -51,7 +51,7 @@ class PartnerTransactionController extends Controller
 
         $validated = $request->validate([
             'transaction_date' => 'required|date',
-            'transaction_type' => 'required|string|in:deposit,withdraw,adjustment,settlement',
+            'transaction_type' => 'required|string|in:deposit,withdraw,adjustment,settlement,loss', // loss: خسارة سابقة (مثل فوج قبل التطبيق)
             'amount' => 'required|numeric|min:0.01',
             'description' => 'nullable|string|max:255',
             'reference_no' => 'nullable|string|max:100',

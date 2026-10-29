@@ -57,4 +57,58 @@ class NotificationController extends Controller
 
         return response()->json(['data' => $items, 'last_id' => max($last, (int) $request->query('after_id'))]);
     }
+
+    /** GET /auth/notifications — آخر الإشعارات المحفوظة مع حالة القراءة */
+    public function index(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $items = UserNotification::with(['actor:id,name', 'farm:id,name'])
+            ->where('user_id', $userId)
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->map(fn (UserNotification $n) => $this->present($n, false));
+
+        return response()->json([
+            'data' => $items,
+            'unread' => UserNotification::where('user_id', $userId)->whereNull('read_at')->count(),
+        ]);
+    }
+
+    /** GET /auth/notifications/{id} — تفاصيل التعديل، ويُعلَّم مقروءاً */
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $n = UserNotification::with(['actor:id,name', 'farm:id,name'])
+            ->where('user_id', $request->user()->id)
+            ->findOrFail($id);
+
+        if (! $n->read_at) {
+            $n->forceFill(['read_at' => now()])->save();
+        }
+
+        return response()->json(['data' => $this->present($n, true)]);
+    }
+
+    /** POST /auth/notifications/read-all */
+    public function readAll(Request $request): JsonResponse
+    {
+        UserNotification::where('user_id', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'ok']);
+    }
+
+    private function present(UserNotification $n, bool $withDetails): array
+    {
+        return [
+            'id' => $n->id,
+            'kind' => $n->kind,
+            'title' => $n->title,
+            'body' => $n->body,
+            'actor' => $n->actor?->name,
+            'farm' => $n->farm?->name,
+            'link' => $n->link,
+            'read' => $n->read_at !== null,
+            'created_at' => $n->created_at?->toIso8601String(),
+        ] + ($withDetails ? ['details' => $n->details] : []);
+    }
 }

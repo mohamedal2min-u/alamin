@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth.store'
 import { apiClient } from '@/lib/api/client'
 import { playEditTone, type EditKind } from '@/lib/prayer/audio'
@@ -16,6 +18,8 @@ interface FeedItem { id: number; kind: EditKind; title: string; body: string }
 export function EditNotificationListener() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const lastId = useRef<number | null>(null)
+  const router = useRouter()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (!isAuthenticated) { lastId.current = null; return }
@@ -31,7 +35,10 @@ export function EditNotificationListener() {
         if (base != null && data.data.length > 0) {
           const latest = data.data[data.data.length - 1]
           playEditTone(latest.kind)
-          for (const n of data.data.slice(-3)) toast(n.title, { description: n.body })
+          for (const n of data.data.slice(-3)) {
+            toast(n.title, { description: n.body, action: { label: 'التفاصيل', onClick: () => router.push(`/notifications/${n.id}`) } })
+          }
+          void queryClient.invalidateQueries({ queryKey: ['notifications'], exact: true })
         }
       } catch {
         /* لا بأس: نعيد المحاولة في الدورة التالية */
@@ -49,7 +56,7 @@ export function EditNotificationListener() {
     if (document.visibilityState === 'visible') start()
     document.addEventListener('visibilitychange', onVisibility)
     return () => { cancelled = true; stop(); document.removeEventListener('visibilitychange', onVisibility) }
-  }, [isAuthenticated])
+  }, [isAuthenticated, router, queryClient])
 
   return null
 }

@@ -4,13 +4,14 @@ import { FarmSelector } from './FarmSelector'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogOut, User, RefreshCcw } from 'lucide-react'
+import { LogOut, User, RefreshCcw, Bell } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
 import { ChickenLogo } from './ChickenLogo'
 import { ThemeToggle } from './ThemeToggle'
 import { LiveStatus } from './LiveStatus'
 import { useLayoutStore } from '@/stores/layout.store'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { notificationsApi } from '@/lib/api/notifications'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +21,13 @@ export function Header() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const { data: notifications } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: notificationsApi.list,
+    enabled: !!user,
+    refetchInterval: 120_000,
+  })
+  const unread = notifications?.unread ?? 0
 
   const handleLogout = async () => {
     try {
@@ -85,6 +93,19 @@ export function Header() {
         <div className="hidden lg:block bg-primary-900/40 rounded-xl p-0.5 border border-primary-800/60">
            <FarmSelector />
         </div>
+
+        <Link
+          href="/notifications"
+          className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary-900/50 border border-primary-800/60 text-primary-300 hover:text-white"
+          title="الإشعارات"
+        >
+          <Bell className="h-4 w-4" />
+          {unread > 0 && (
+            <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-black leading-[18px] text-white">
+              {unread > 99 ? '99+' : unread}
+            </span>
+          )}
+        </Link>
 
         <ThemeToggle className="h-9 w-9 rounded-xl bg-primary-900/50 border border-primary-800/60 text-primary-300 dark:bg-primary-900/50 dark:text-amber-300" />
 

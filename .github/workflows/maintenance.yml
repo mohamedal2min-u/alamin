@@ -7,10 +7,14 @@ on:
       task:
         description: المهمة
         type: choice
-        options: [purge-medicines-preview, purge-medicines, purge-medicines-zero]
+        options: [purge-medicines-preview, purge-medicines, purge-medicines-zero, push-check]
         default: purge-medicines-preview
       flock_id:
         description: رقم الفوج (فارغ = عرض الأفواج المفتوحة)
+        type: string
+        required: false
+      user:
+        description: push-check - رقم المستخدم لإرسال إشعار تجريبي (فارغ = الحالة فقط)
         type: string
         required: false
       confirm:
@@ -38,11 +42,13 @@ jobs:
           TASK: ${{ inputs.task }}
           FLOCK: ${{ inputs.flock_id }}
           CONFIRM: ${{ inputs.confirm }}
+          PUSH_USER: ${{ inputs.user }}
           REF: ${{ github.ref }}
         run: |
           [ "$REF" = "refs/heads/main" ] || { echo "::error::مسموح من فرع main فقط"; exit 1; }
           if [ -n "$FLOCK" ] && ! [[ "$FLOCK" =~ ^[0-9]+$ ]]; then echo "::error::رقم الفوج غير صالح"; exit 1; fi
-          if [ "$TASK" != "purge-medicines-preview" ]; then
+          if [ -n "$PUSH_USER" ] && ! [[ "$PUSH_USER" =~ ^[0-9]+$ ]]; then echo "::error::رقم المستخدم غير صالح"; exit 1; fi
+          if [ "$TASK" != "purge-medicines-preview" ] && [ "$TASK" != "push-check" ]; then
             [ -n "$FLOCK" ] || { echo "::error::الحذف يحتاج رقم الفوج"; exit 1; }
             [ "$CONFIRM" = "DELETE" ] || { echo "::error::للحذف الفعلي اكتب DELETE في خانة التأكيد"; exit 1; }
           fi
@@ -53,6 +59,7 @@ jobs:
           HOST_KEY: ${{ secrets.SERVER_HOST_KEY }}
           TASK: ${{ inputs.task }}
           FLOCK: ${{ inputs.flock_id }}
+          PUSH_USER: ${{ inputs.user }}
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
@@ -60,9 +67,11 @@ jobs:
           FORCE=""
           [ "$TASK" = "purge-medicines" ] && FORCE="--force"
           [ "$TASK" = "purge-medicines-zero" ] && FORCE="--force --zero-stock"
+          CMD="flock:purge-medicines $FLOCK $FORCE"
+          [ "$TASK" = "push-check" ] && CMD="push:check $PUSH_USER"
           set +e
           out=$(ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
-              "alamin-api@$SERVER_HOST" "cd /home/alamin-api/app/backend && /usr/bin/php8.3 artisan flock:purge-medicines $FLOCK $FORCE --no-ansi" 2>&1)
+              "alamin-api@$SERVER_HOST" "cd /home/alamin-api/app/backend && /usr/bin/php8.3 artisan $CMD --no-ansi" 2>&1)
           rc=$?
           set -e
           rm -f ~/.ssh/id_deploy

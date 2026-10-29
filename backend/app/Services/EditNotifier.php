@@ -21,7 +21,10 @@ class EditNotifier
 
     public const DAILY_ENTRY = 'daily_entry';
 
-    public function notify(int $farmId, User $actor, string $what, ?string $entryKind = null): void
+    /**
+     * @param  array{rows?: array, flock?: ?string, link?: ?string}|null  $details  تفاصيل التعديل (EditDetails)
+     */
+    public function notify(int $farmId, User $actor, string $what, ?string $entryKind = null, ?array $details = null): void
     {
         $isAccountant = $actor->hasRole('accountant') && ! $actor->hasRole('farm_admin');
         $kind = $isAccountant ? self::ACCOUNTANT : self::MANAGER;
@@ -48,16 +51,24 @@ class EditNotifier
 
         $who = $isAccountant ? 'المحاسب' : 'المدير';
         $title = "تعديل من {$who}";
-        $body = "{$actor->name}: {$what}";
+        $flock = $details['flock'] ?? null;
+        // أول تغييرين يظهران في نص الإشعار نفسه، والباقي عند الضغط عليه
+        $summary = collect($details['rows'] ?? [])->take(2)
+            ->map(fn (array $r) => $r['label'].': '.(isset($r['from']) ? "{$r['from']} ← " : '').$r['to'])
+            ->implode('، ');
+        $body = mb_substr("{$actor->name}: {$what}".($flock ? " ({$flock})" : '').($summary !== '' ? "\n{$summary}" : ''), 0, 300);
 
+        // كل مستلم له إشعاره المحفوظ؛ الضغط على الإشعار يفتح تفاصيله (notification_id)
         foreach ($recipients as $r) {
-            UserNotification::create([
+            $n = UserNotification::create([
                 'farm_id' => $farmId, 'user_id' => $r->id, 'actor_id' => $actor->id,
                 'kind' => $kind, 'title' => $title, 'body' => $body,
+                'details' => $details ? ['what' => $what] + $details : ['what' => $what],
+                'link' => $details['link'] ?? null,
             ]);
-        }
 
-        $data = ['type' => $kind] + ($entryKind ? ['entry' => $entryKind] : []);
-        $this->push->sendNotification($recipients, $title, $body, $data, $kind, $kind);
+            $data = ['type' => $kind, 'notification_id' => $n->id] + ($entryKind ? ['entry' => $entryKind] : []);
+            $this->push->sendNotification($r, $title, $body, $data, $kind, $kind);
+        }
     }
 }

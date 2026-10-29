@@ -30,6 +30,9 @@ Route::prefix('auth')->group(function (): void {
         Route::put('password',  [AuthController::class, 'changePassword']);
         Route::post('avatar',           [AuthController::class, 'uploadAvatar']);
         Route::get('notifications/feed', [\App\Http\Controllers\Api\Auth\NotificationController::class, 'feed']);
+        Route::get('notifications', [\App\Http\Controllers\Api\Auth\NotificationController::class, 'index']);
+        Route::post('notifications/read-all', [\App\Http\Controllers\Api\Auth\NotificationController::class, 'readAll']);
+        Route::get('notifications/{id}', [\App\Http\Controllers\Api\Auth\NotificationController::class, 'show'])->whereNumber('id');
         Route::post('update-fcm-token', [\App\Http\Controllers\Api\Auth\NotificationController::class, 'updateToken']);
     });
 });

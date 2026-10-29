@@ -40,8 +40,9 @@ export function canAccessRoute(role: FarmRole | null, pathname: string): boolean
 
   if (pathname === '/unauthorized') return true
 
-  // إعدادات الحساب متاحة لجميع الأدوار
+  // إعدادات الحساب والإشعارات متاحة لجميع الأدوار
   if (pathname === '/settings' || pathname === '/prayer') return true
+  if (pathname === '/notifications' || pathname.startsWith('/notifications/')) return true
 
   if (role === 'super_admin') {
     if (pathname === '/dashboard') return true

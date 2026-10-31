@@ -114,6 +114,22 @@ class ContactStatementService
             }
         }
 
+        // علف بعناه من المخزن (بسعر الشراء): فاتورة بيع وقبضها في اليوم نفسه
+        $feedSales = InventoryTransaction::with(['item:id,name', 'flock:id,name'])
+            ->where('farm_id', $farmId)->where('contact_id', $contact->id)
+            ->where('source_module', 'feed_sale')->where('direction', 'out')
+            ->get();
+        foreach ($feedSales as $t) {
+            $kg = (float) ($t->computed_quantity ?? 0);
+            $tons = rtrim(rtrim(number_format($kg / 1000, 2, '.', ''), '0'), '.');
+            $entries->push($this->invoice('feed_sale', $t->id, $t->transaction_date, 'receivable',
+                'بيع علف '.$tons.' طن'.($t->item?->name ? ' ('.$t->item->name.')' : ''), $t->flock?->name, (float) ($t->total_amount ?? 0)));
+            if ((float) $t->paid_amount > 0) {
+                $entries->push($this->paymentEntry('feed_sale', $t->id, $t->transaction_date, 'receivable',
+                    (float) $t->paid_amount, null, $t->notes, $t->id));
+            }
+        }
+
         $payments = Payment::where('farm_id', $farmId)
             ->where(function ($q) use ($expenses, $waterLogs, $sales): void {
                 $q->whereRaw('1 = 0');
@@ -200,7 +216,7 @@ class ContactStatementService
             'description' => $description,
             'flock_name' => $flock,
             'amount' => round($amount, 2),
-            'unpriced' => $amount <= 0,
+            'unpriced' => abs($amount) < 0.005, // السالب خصم/قيد دائن وليس سعراً ناقصاً
             'method' => null,
             'note' => null,
             'is_opening' => false,

@@ -385,6 +385,7 @@ class ReviewQueueService
             'description' => $e->description ?: ($e->expenseCategory?->name ?? $e->description),
             'category_name' => $e->expenseCategory?->name,
             'category_code' => $e->expenseCategory?->code,
+            'is_discount' => (bool) ($e->is_discount ?? false),
             'total_amount' => (float) $e->total_amount,
             'paid_amount' => (float) ($e->paid_amount ?? 0),
             'remaining_amount' => (float) ($e->remaining_amount ?? $e->total_amount),
@@ -506,7 +507,7 @@ class ReviewQueueService
         }
 
         // خصم من المورد: قيمته سالبة عمداً، ليس سعراً ناقصاً
-        if (($row['category_code'] ?? null) === 'supplier_discount') {
+        if (! empty($row['is_discount'])) {
             $missingPrice = false;
         }
 
@@ -582,7 +583,7 @@ class ReviewQueueService
             $c['paid_amount'] = ($c['paid_amount'] ?? 0) + $row['paid_amount'];
             $c['quantity'] = ($c['quantity'] ?? 0) + (float) ($row['quantity'] ?? 0);
             $c['quantity_units'] = array_values(array_unique(array_merge($c['quantity_units'] ?? [], array_filter([$row['quantity_unit'] ?? null]))));
-            $isPriced = ($code === 'supplier_discount')
+            $isPriced = ! empty($row['is_discount'])
                 || (($row['unit_price'] ?? null) !== null && (float) $row['unit_price'] > 0 && $row['total_amount'] > 0);
             $c['priced_count'] = ($c['priced_count'] ?? 0) + ($isPriced ? 1 : 0);
             $c['unpriced_count'] = ($c['unpriced_count'] ?? 0) + ($isPriced ? 0 : 1);

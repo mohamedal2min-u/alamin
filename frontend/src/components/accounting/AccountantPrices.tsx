@@ -35,8 +35,7 @@ const EXTRA_ICONS: Record<string, React.ElementType> = {
 const SMALL = 'small'
 const SMALL_LIMIT = 100
 // خصم من المورد: قيد مستقل بقيمة سالبة تُنقص التكلفة، لا يُسعَّر ولا يُدفع
-const DISCOUNT = 'supplier_discount'
-const isDiscount = (i: ReviewItem) => i.category_code === DISCOUNT
+const isDiscount = (i: ReviewItem) => !!i.is_discount
 const isSmallExpense = (i: ReviewItem) =>
   i.type === 'expense' && !isDiscount(i) && !['feed', 'medicine'].includes(i.category_code ?? '') && Number(i.total_amount ?? 0) < SMALL_LIMIT
 

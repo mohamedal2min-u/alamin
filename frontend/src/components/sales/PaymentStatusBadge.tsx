@@ -1,18 +1,16 @@
+import { paymentBadge } from '@/lib/moneyTone'
 import { cn } from '@/lib/utils'
 
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  paid:    { label: 'مدفوع',       className: 'bg-emerald-100 text-emerald-700' },
-  partial: { label: 'جزئي',        className: 'bg-emerald-100 text-emerald-700' },
-  debt:    { label: 'غير مدفوع',   className: 'bg-red-100 text-red-700' },
-}
 
 interface Props {
   status: string
   className?: string
+  /** المبيعات مقبوضة (أخضر) افتراضياً؛ المصاريف مدفوعة (أحمر) */
+  direction?: 'in' | 'out'
 }
 
-export function PaymentStatusBadge({ status, className }: Props) {
-  const cfg = STATUS_MAP[status] ?? { label: status, className: 'bg-slate-100 text-slate-600' }
+export function PaymentStatusBadge({ status, className, direction = 'in' }: Props) {
+  const cfg = paymentBadge(direction, status)
   return (
     <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', cfg.className, className)}>
       {cfg.label}

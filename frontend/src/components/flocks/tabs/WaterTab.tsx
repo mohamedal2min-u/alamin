@@ -1,5 +1,6 @@
 'use client'
 
+import { outBadges } from '@/lib/moneyTone'
 import { ContactPicker } from '@/components/common/ContactPicker'
 import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useState } from 'react'
@@ -288,11 +289,7 @@ export function WaterTab({ flockId, flockStatus }: Props) {
 function WaterLogRow({ log }: { log: WaterLog }) {
   const displayUnit = log.unit_label ?? 'صهريج'
 
-  const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
-    paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
-    partial: { label: 'جزئي',      color: 'bg-emerald-100 text-emerald-700' },
-    unpaid:  { label: 'دين',       color: 'bg-red-100 text-red-700' },
-  }
+  const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = outBadges()
 
   const statusObj = log.payment_status ? PAYMENT_STATUS_LABEL[log.payment_status] : null
 

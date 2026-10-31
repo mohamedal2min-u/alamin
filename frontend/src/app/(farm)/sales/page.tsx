@@ -102,7 +102,7 @@ export default function SalesPage() {
         <div className="grid grid-cols-3 gap-3">
           <SummaryCard label="إجمالي الصافي"   value={formatCurrency(totalNet)} />
           <SummaryCard label="إجمالي المستلم"  value={formatCurrency(totalReceived)} accent="emerald" />
-          <SummaryCard label="إجمالي المتبقي"  value={formatCurrency(totalRemaining)} accent={totalRemaining > 0 ? 'red' : 'slate'} />
+          <SummaryCard label="إجمالي المتبقي"  value={formatCurrency(totalRemaining)} accent={totalRemaining > 0 ? 'orange' : 'slate'} />
         </div>
       )}
 
@@ -146,13 +146,13 @@ export default function SalesPage() {
                       {Number(sale.received_amount) > 0 && Number(sale.remaining_amount) > 0 && (
                         <div>
                           <p className="text-[10px] font-bold text-slate-400">المستلم</p>
-                          <p className="text-sm font-bold tabular-nums text-primary-700">{formatCurrency(Number(sale.received_amount))}</p>
+                          <p className="text-sm font-bold tabular-nums text-emerald-700">{formatCurrency(Number(sale.received_amount))}</p>
                         </div>
                       )}
                       {Number(sale.remaining_amount) > 0 && (
                         <div>
                           <p className="text-[10px] font-bold text-slate-400">المتبقي</p>
-                          <p className="text-sm font-bold tabular-nums text-red-600">{formatCurrency(Number(sale.remaining_amount))}</p>
+                          <p className="text-sm font-bold tabular-nums text-orange-600">{formatCurrency(Number(sale.remaining_amount))}</p>
                         </div>
                       )}
                     </div>
@@ -203,8 +203,8 @@ export default function SalesPage() {
                       <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(totalBirds)}</td>
                       <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(Number(totalWeight.toFixed(1)))}</td>
                       <td className="px-5 py-3 tabular-nums font-semibold text-slate-900">{formatCurrency(Number(sale.net_amount))}</td>
-                      <td className="px-5 py-3 tabular-nums text-primary-700 font-medium">{formatCurrency(Number(sale.received_amount))}</td>
-                      <td className={`px-5 py-3 tabular-nums font-medium ${sale.remaining_amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                      <td className="px-5 py-3 tabular-nums text-emerald-700 font-medium">{formatCurrency(Number(sale.received_amount))}</td>
+                      <td className={`px-5 py-3 tabular-nums font-medium ${sale.remaining_amount > 0 ? 'text-orange-600' : 'text-slate-400'}`}>
                         {formatCurrency(Number(sale.remaining_amount))}
                       </td>
                       <td className="px-5 py-3">
@@ -255,12 +255,12 @@ function SummaryCard({
 }: {
   label: string
   value: string
-  accent?: 'slate' | 'emerald' | 'red'
+  accent?: 'slate' | 'emerald' | 'orange'
 }) {
   const valueColor = {
     slate:   'text-slate-900',
-    emerald: 'text-primary-700',
-    red:     'text-red-600',
+    emerald: 'text-emerald-700',
+    orange:  'text-orange-600',
   }[accent]
 
   return (

@@ -1,5 +1,6 @@
 'use client'
 
+import { outBadges } from '@/lib/moneyTone'
 import { ContactPicker } from '@/components/common/ContactPicker'
 import React, { useMemo, useState, useEffect } from 'react'
 import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
@@ -33,13 +34,7 @@ const QUICK_PRESETS: QuickPreset[] = [
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const PAYMENT_BADGE: Record<string, { label: string; color: string }> = {
-  paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
-  partial: { label: 'جزئي',      color: 'bg-emerald-100 text-emerald-700' },
-  unpaid:  { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
-  // Legacy value some old records may still carry — same treatment as 'unpaid'.
-  debt:    { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
-}
+const PAYMENT_BADGE: Record<string, { label: string; color: string }> = outBadges()
 
 const today = getTodayLocalISO()
 

@@ -341,14 +341,14 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                 </div>
                 {paid > 0 && remaining > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400">المدفوع</p>
-                    <p className="text-sm font-bold tabular-nums text-primary-700">{formatCurrency(paid)}</p>
+                    <p className="text-[10px] font-bold text-slate-400">{item.type === 'sale' ? 'المقبوض' : 'المدفوع'}</p>
+                    <p className={`text-sm font-bold tabular-nums ${item.type === 'sale' ? 'text-emerald-700' : 'text-rose-700'}`}>{formatCurrency(paid)}</p>
                   </div>
                 )}
                 {remaining > 0 && (
                   <div>
                     <p className="text-[10px] font-bold text-slate-400">المتبقي</p>
-                    <p className="text-sm font-bold tabular-nums text-red-600">{formatCurrency(remaining)}</p>
+                    <p className="text-sm font-bold tabular-nums text-orange-600">{formatCurrency(remaining)}</p>
                   </div>
                 )}
               </div>
@@ -428,7 +428,7 @@ function CategoryCard({
       </div>
       <div className={`text-sm font-bold ${colors.text}`}>{name}</div>
       {remainingAmount > 0 && (
-        <div className="text-[11px] text-red-500 mt-1 font-medium">
+        <div className="text-[11px] text-orange-600 mt-1 font-medium">
           متبقي: {formatCurrency(remainingAmount)}
         </div>
       )}

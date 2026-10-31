@@ -182,7 +182,7 @@ function Metric({ label, value, highlight, danger }: { label: string; value: str
   return (
     <div>
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={`tabular-nums font-semibold ${highlight ? 'text-slate-900' : danger ? 'text-red-600' : 'text-slate-700'}`}>
+      <p className={`tabular-nums font-semibold ${highlight ? 'text-slate-900' : danger ? 'text-orange-600' : 'text-slate-700'}`}>
         {value}
       </p>
     </div>

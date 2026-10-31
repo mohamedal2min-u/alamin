@@ -1,5 +1,6 @@
 'use client'
 
+import { outBadges } from '@/lib/moneyTone'
 import { ContactPicker } from '@/components/common/ContactPicker'
 import { PriceOnly, PriceByAccountantNote } from '@/components/common/PriceOnly'
 import { useEffect, useState } from 'react'
@@ -71,11 +72,7 @@ const DIRECTION_CONFIG: Record<string, { label: string; icon: typeof ArrowDownCi
   out: { label: 'صادر', icon: ArrowUpCircle,   color: 'text-red-600',    badgeCls: 'bg-red-50 text-red-600',        amountCls: 'text-red-600'     },
 }
 
-const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
-  partial: { label: 'جزئي',      color: 'bg-emerald-100 text-emerald-700' },
-  unpaid:  { label: 'غير مدفوع', color: 'bg-red-100 text-red-700'    },
-}
+const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = outBadges()
 
 const TX_TYPE_LABEL: Record<string, string> = {
   purchase:    'شراء',

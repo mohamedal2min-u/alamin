@@ -10,6 +10,7 @@ import { cn, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import { PriceWithHistory } from './PriceWithHistory'
 import { ItemGroups, groupByItem } from './ItemGroups'
 import { WaterTotal } from './WaterTotal'
+import { FeedOutflows } from './FeedOutflows'
 import { RecordAttachments } from '@/components/common/RecordAttachments'
 
 // ── لوحة المحاسب: ما المطلوب ← اختر الفئة ← سعّر السجلات (أو الصنف كاملاً) ─────
@@ -345,6 +346,11 @@ export function AccountantPrices({ flockId, view = 'prices' }: { flockId: string
         </div>
       )}
       {items.length > 0 && <p className="text-xs text-slate-400">اضغط على أي سطر لتحديد السعر أو تعديله</p>}
+
+      {/* العلف: ما خرج من المخزن لغير الفوج يُطرح من المشتريات */}
+      {category === 'feed' && flockId && !rowsQuery.isLoading && (
+        <FeedOutflows flockId={Number(flockId)} purchasesTotal={allRows.reduce((n, i) => n + Number(i.total_amount ?? 0), 0)} />
+      )}
     </div>
   )
 }

@@ -123,6 +123,7 @@ Route::middleware(['auth:sanctum', 'farm.scope', 'farm.active'])->group(function
 
     // ── V1-H: Temperature Logs ────────────────────────────────────────────────
     // ── مستندات الفوج (صور الأوراق والفواتير) ─────────────────────────────────
+    Route::get('flocks/{flock}/feed-outflows', [\App\Http\Controllers\Api\Flock\FlockFeedOutflowController::class, 'index']);
     Route::get('flocks/{flock}/documents',  [\App\Http\Controllers\Api\Flock\FlockDocumentController::class, 'index']);
     Route::post('flocks/{flock}/documents', [\App\Http\Controllers\Api\Flock\FlockDocumentController::class, 'store'])->middleware('farm.role:farm_admin,supervisor,accountant')->middleware('farm.notify:رفع مستنداً للفوج');
     Route::patch('flocks/{flock}/documents/{document}', [\App\Http\Controllers\Api\Flock\FlockDocumentController::class, 'update'])->middleware('farm.role:farm_admin,supervisor,accountant');

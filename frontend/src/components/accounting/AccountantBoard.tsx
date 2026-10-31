@@ -13,9 +13,9 @@ import { AccountantPartners } from './AccountantPartners'
 import { PartnerBalances, ProfitCard } from './ProfitCard'
 import type { Flock } from '@/types/flock'
 
-type Section = 'prices' | 'payments' | 'partners'
+type Section = 'prices' | 'partners'
 
-/** لوحة المحاسب: ثلاثة أقسام (الأسعار / الدفعات / الشركاء) واختيار الفوج. الأفواج المغلقة للعرض فقط. */
+/** لوحة المحاسب: قسمان (الأسعار / الشركاء) — الشركاء يُفتح من شريط التنقل السفلي. الأفواج المغلقة للعرض فقط. */
 export function AccountantBoard() {
   const qc = useQueryClient()
   const user = useAuthStore((s) => s.user)
@@ -24,8 +24,7 @@ export function AccountantBoard() {
   // القسم من الرابط (?section=) ليعمل اختصار «الشركاء» في قائمة المزيد حتى والصفحة مفتوحة
   const router = useRouter()
   const param = useSearchParams().get('section')
-  const section: Section = param === 'payments' || param === 'partners' ? param : 'prices'
-  const setSection = (s: Section) => router.replace(s === 'prices' ? '/accounting' : `/accounting?section=${s}`, { scroll: false })
+  const section: Section = param === 'partners' ? 'partners' : 'prices'
   const [flockId, setFlockId] = useState<string>('') // '' = كل الأفواج
   const [flockTouched, setFlockTouched] = useState(false)
 
@@ -61,21 +60,7 @@ export function AccountantBoard() {
         </button>
       </div>
 
-      {/* الأقسام الثلاثة */}
-      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
-        {([['prices', 'الأسعار'], ['payments', 'الدفعات'], ['partners', 'الشركاء']] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setSection(key)}
-            className={cn(
-              'rounded-xl py-2.5 text-sm font-bold transition-all',
-              section === key ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'text-slate-500'
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+
 
       {/* اختيار الفوج: أي فوج، والمغلق للعرض فقط */}
       <div>
@@ -101,17 +86,15 @@ export function AccountantBoard() {
 
       {waitForFlocks ? (
         <div className="h-11 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-      ) : section === 'prices' ? (
-        <AccountantPrices flockId={effectiveFlockId} view="prices" />
-      ) : section === 'payments' ? (
-        <AccountantPrices flockId={effectiveFlockId} view="payments" />
-      ) : (
+      ) : section === 'partners' ? (
         <div className="space-y-4">
           {/* الربح والخسارة ونصيب كل شريك — يظهر بعد تسعير كل السجلات */}
           <ProfitCard flockId={effectiveFlockId} />
           <PartnerBalances flockId={effectiveFlockId} />
           <AccountantPartners flock={selected} sharesLocked={!!activeFlock} />
         </div>
+      ) : (
+        <AccountantPrices flockId={effectiveFlockId} view="prices" />
       )}
     </div>
   )

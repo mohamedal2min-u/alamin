@@ -2,9 +2,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Bird, Warehouse, ClipboardCheck, LayoutGrid } from 'lucide-react'
+import { Bird, Warehouse, ClipboardCheck, LayoutGrid, HandCoins } from 'lucide-react'
 import { useCurrentRole, getDefaultRoute } from '@/lib/roles'
 import { NAV_HREFS_BY_ROLE } from '@/lib/roles'
 
@@ -68,6 +68,25 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     )
   }
 
+  const searchParams = useSearchParams()
+  const isPartnersActive = role === 'accountant' && pathname === '/accounting' && searchParams.get('section') === 'partners'
+
+  const renderPartnersItem = () => {
+    if (role !== 'accountant') return null
+    return (
+      <Link
+        href="/accounting?section=partners"
+        aria-current={isPartnersActive ? 'page' : undefined}
+        className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 py-1.5 transition-transform duration-200 active:scale-95"
+      >
+        {iconPill(HandCoins, isPartnersActive)}
+        <span className={cn('text-[11px] leading-none transition-colors duration-200', isPartnersActive ? 'font-extrabold text-primary-700 dark:text-primary-300' : 'font-semibold text-slate-500 dark:text-slate-400')}>
+          الشركاء
+        </span>
+      </Link>
+    )
+  }
+
   const renderMoreButton = () => (
     <button
       key="more-button"
@@ -121,6 +140,9 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
 
         {/* Regular Navigation Items */}
         {regularItems.map(renderItem)}
+
+        {/* Partners shortcut — accountant only */}
+        {renderPartnersItem()}
 
         {/* More Button */}
         {renderMoreButton()}

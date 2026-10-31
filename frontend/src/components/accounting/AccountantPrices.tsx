@@ -357,7 +357,7 @@ export function AccountantPrices({ flockId, view = 'prices' }: { flockId: string
 
       {/* العلف: ما خرج من المخزن لغير الفوج يُطرح من المشتريات */}
       {category === 'feed' && flockId && !rowsQuery.isLoading && (
-        <FeedOutflows flockId={Number(flockId)} purchasesTotal={allRows.reduce((n, i) => n + Number(i.total_amount ?? 0), 0)} />
+        <FeedOutflows flockId={Number(flockId)} purchasesTotal={allRows.filter((i) => !isDiscount(i)).reduce((n, i) => n + Number(i.total_amount ?? 0), 0)} />
       )}
     </div>
   )

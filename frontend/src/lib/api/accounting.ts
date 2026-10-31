@@ -38,6 +38,8 @@ export interface ReviewItem {
   id: string
   type: 'expense' | 'sale' | 'water_log'
   record_id: number
+  /** خصم من المورد: قيمة سالبة تُنقص تكلفة فئتها */
+  is_discount?: boolean
   flock_id: number | null
   flock_name: string | null
   flock_status: string | null

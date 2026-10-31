@@ -12,6 +12,7 @@ import { ItemGroups, groupByItem } from './ItemGroups'
 import { WaterTotal } from './WaterTotal'
 import { FeedOutflows } from './FeedOutflows'
 import { RecordAttachments } from '@/components/common/RecordAttachments'
+import { MONEY_TONE, directionOf } from '@/lib/moneyTone'
 
 // ── لوحة المحاسب: ما المطلوب ← اختر الفئة ← سعّر السجلات (أو الصنف كاملاً) ─────
 
@@ -242,8 +243,13 @@ export function AccountantPrices({ flockId, view = 'prices' }: { flockId: string
         <>
           <div className="grid grid-cols-3 gap-2">
             <StatCard label="بلا سعر" value={String(pendingTotal)} tone={pendingTotal > 0 ? 'text-amber-600' : 'text-emerald-600'} />
-            <StatCard label="متبقي للدفع" value={`${formatNumber(owed)} $`} tone={owed > 0 ? 'text-rose-600' : 'text-emerald-600'} />
+            <StatCard label="متبقي للدفع" value={`${formatNumber(owed)} $`} tone={owed > 0 ? MONEY_TONE.due.text : 'text-emerald-600'} />
             <StatCard label="إجمالي التكاليف" value={`${formatNumber(costTotal)} $`} tone="text-slate-900 dark:text-slate-100" />
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] font-bold">
+            <span className={cn('rounded-full px-2 py-0.5', MONEY_TONE.in.badge)}>مقبوض • داخل</span>
+            <span className={cn('rounded-full px-2 py-0.5', MONEY_TONE.out.badge)}>مدفوع • طالع</span>
+            <span className={cn('rounded-full px-2 py-0.5', MONEY_TONE.due.badge)}>متبقي • دين</span>
           </div>
           {firstPending ? (
             <button
@@ -373,7 +379,7 @@ function TableTotals({ items }: { items: ReviewItem[] }) {
         <td />
         <td className="px-2 py-3 text-left tabular-nums">
           {formatNumber(total)}
-          {remaining > 0 && <div className="text-[11px] font-bold text-red-600">متبقي {formatNumber(remaining)}</div>}
+          {remaining > 0 && <div className={cn('text-[11px] font-bold', MONEY_TONE.due.text)}>متبقي {formatNumber(remaining)}</div>}
         </td>
       </tr>
     </tfoot>
@@ -589,18 +595,18 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
         <span className={cn('font-black tabular-nums', discount ? 'text-emerald-700' : 'text-slate-900 dark:text-slate-100')}>{unpriced ? '—' : formatNumber(item.total_amount)}</span>
         {!unpriced && !discount && (remaining > 0 ? (
           locked ? (
-            <span className="block text-[11px] font-bold text-red-600">متبقي {formatNumber(remaining)}</span>
+            <span className={cn('block text-[11px] font-bold', MONEY_TONE.due.text)}>متبقي {formatNumber(remaining)}</span>
           ) : (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onPay() }}
-              className="mt-0.5 block rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-600 dark:bg-red-900/30"
+              className={cn('mt-0.5 block rounded-md px-1.5 py-0.5 text-[11px] font-bold', MONEY_TONE.due.badge)}
             >
               متبقي {formatNumber(remaining)} • دفعة
             </button>
           )
         ) : (
-          <span className="block text-[11px] font-bold text-emerald-600">مدفوع ✓</span>
+          <span className={cn('block text-[11px] font-bold', MONEY_TONE[directionOf(item.type)].text)}>{item.type === 'sale' ? 'مقبوض ✓' : 'مدفوع ✓'}</span>
         ))}
         {locked && <Lock className="mt-0.5 inline h-3 w-3 text-slate-400" />}
       </td>
@@ -726,7 +732,9 @@ function EntryModal({ item, mode, value, error, isSaving, onValue, paidAt, onPai
                 </div>
               </div>
               <p className="text-[11px] text-slate-400">
-                الإجمالي {formatNumber(item.total_amount)} • مدفوع {formatNumber(Number(item.paid_amount ?? 0))} • المتبقي {formatNumber(Number(item.remaining_amount ?? 0))} — تُسجَّل الدفعة باسمك ولا تُحذف.
+                الإجمالي {formatNumber(item.total_amount)} •{' '}
+                <span className={cn('font-bold', MONEY_TONE[directionOf(item.type)].text)}>{item.type === 'sale' ? 'مقبوض' : 'مدفوع'} {formatNumber(Number(item.paid_amount ?? 0))}</span> •{' '}
+                <span className={cn('font-bold', MONEY_TONE.due.text)}>المتبقي {formatNumber(Number(item.remaining_amount ?? 0))}</span> — تُسجَّل الدفعة باسمك ولا تُحذف.
               </p>
             </>
           )}
@@ -811,11 +819,12 @@ function PaymentsList({ rows, loading, editingId, modal, onPay }: {
                 </div>
                 <div className="shrink-0 text-left">
                   <div className="text-[11px] font-bold text-slate-400">المتبقي</div>
-                  <div className={cn('text-lg font-black tabular-nums', i.type === 'sale' ? 'text-emerald-700' : 'text-rose-600')}>{formatNumber(remainingOf(i))}</div>
+                  <div className={cn('text-lg font-black tabular-nums', MONEY_TONE.due.text)}>{formatNumber(remainingOf(i))}</div>
                 </div>
               </div>
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                الإجمالي {formatNumber(i.total_amount)} • {i.type === 'sale' ? 'مقبوض' : 'مدفوع'} {formatNumber(Number(i.paid_amount ?? 0))}
+                الإجمالي {formatNumber(i.total_amount)} •{' '}
+                <span className={cn('font-bold', MONEY_TONE[directionOf(i.type)].text)}>{i.type === 'sale' ? 'مقبوض' : 'مدفوع'} {formatNumber(Number(i.paid_amount ?? 0))}</span>
               </p>
               {locked(i) ? (
                 <p className="mt-3 flex items-center gap-1 text-xs font-bold text-slate-400"><Lock className="h-3.5 w-3.5" /> الفوج مغلق — للعرض فقط</p>
@@ -838,14 +847,14 @@ function PaymentsList({ rows, loading, editingId, modal, onPay }: {
   return (
     <div className="space-y-4" dir="rtl">
       {debts.length > 0 && (
-        <section className="rounded-2xl bg-rose-600 p-4 text-white">
-          <p className="text-sm font-bold opacity-90">إجمالي المتبقي للموردين</p>
+        <section className="rounded-2xl bg-orange-500 p-4 text-white">
+          <p className="text-sm font-bold opacity-90">إجمالي المتبقي للموردين (علينا)</p>
           <p className="mt-1 text-3xl font-black tabular-nums">{formatNumber(sum(debts))} $</p>
         </section>
       )}
       {receivables.length > 0 && (
-        <section className="rounded-2xl bg-emerald-600 p-4 text-white">
-          <p className="text-sm font-bold opacity-90">إجمالي المتبقي من العملاء</p>
+        <section className="rounded-2xl bg-orange-500 p-4 text-white">
+          <p className="text-sm font-bold opacity-90">إجمالي المتبقي من العملاء (لنا)</p>
           <p className="mt-1 text-3xl font-black tabular-nums">{formatNumber(sum(receivables))} $</p>
         </section>
       )}
@@ -872,7 +881,7 @@ function PaymentHistory({ item }: { item: ReviewItem }) {
               {p.created_by_name && <> • {p.created_by_name}</>}
               {p.note && !p.is_opening && <> • {p.note}</>}
             </span>
-            <span className={cn('shrink-0 font-bold tabular-nums', p.amount < 0 ? 'text-red-600' : 'text-emerald-700 dark:text-emerald-400')}>
+            <span className={cn('shrink-0 font-bold tabular-nums', p.amount < 0 ? 'text-slate-500' : MONEY_TONE[directionOf(item.type)].text)}>
               {formatNumber(p.amount)}
             </span>
           </li>

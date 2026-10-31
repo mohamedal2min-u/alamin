@@ -1,5 +1,6 @@
 'use client'
 
+import { outBadges } from '@/lib/moneyTone'
 import { ContactPicker } from '@/components/common/ContactPicker'
 import { useState } from 'react'
 import { Receipt, AlertCircle, Plus, X, ClipboardList } from 'lucide-react'
@@ -35,11 +36,7 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  paid:    { label: 'مدفوع',     color: 'bg-emerald-100 text-emerald-700' },
-  partial: { label: 'جزئي',      color: 'bg-emerald-100 text-emerald-700' },
-  unpaid:  { label: 'ذمم',       color: 'bg-red-100 text-red-700' },
-}
+const PAYMENT_STATUS_LABEL: Record<string, { label: string; color: string }> = outBadges()
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ExpensesPage() {

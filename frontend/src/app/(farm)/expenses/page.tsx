@@ -296,7 +296,7 @@ export default function ExpensesPage() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-2 text-sm font-black tabular-nums text-slate-800">{formatNumber(expense.total_amount)} USD</p>
+                  <p className="mt-2 text-sm font-black tabular-nums text-rose-700">{formatNumber(expense.total_amount)} USD</p>
                 </div>
               )
             })}
@@ -324,7 +324,7 @@ export default function ExpensesPage() {
                         {expense.category_name ?? expense.expense_type ?? '—'}
                       </td>
                       <td className="px-5 py-3 text-slate-500">{expense.flock_name ?? '—'}</td>
-                      <td className="px-5 py-3 tabular-nums font-semibold text-slate-800">
+                      <td className="px-5 py-3 tabular-nums font-semibold text-rose-700">
                         {formatNumber(expense.total_amount)} USD
                       </td>
                       <td className="px-5 py-3">

@@ -636,7 +636,7 @@ function ExpenseRow({ expense }: { expense: ExpenseItem }) {
       </div>
       <div className="text-left shrink-0">
         {expense.total_amount > 0 ? (
-          <p className="text-base font-black text-slate-900 tabular-nums">
+          <p className="text-base font-black text-rose-700 tabular-nums">
             {formatNumber(expense.total_amount)} <span className="text-[10px] text-slate-400">$</span>
           </p>
         ) : (

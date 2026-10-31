@@ -307,7 +307,7 @@ function WaterLogRow({ log }: { log: WaterLog }) {
         
         {log.total_amount !== null && (
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-sm font-bold text-slate-700">{formatNumber(log.total_amount)} USD</span>
+            <span className="text-sm font-bold text-rose-700">{formatNumber(log.total_amount)} USD</span>
             {statusObj && (
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusObj.color}`}>
                 {statusObj.label}

@@ -14,6 +14,7 @@ import type { Sale } from '@/types/sale'
 import type { FlockStatus } from '@/types/flock'
 import { useCurrentRole } from '@/lib/roles'
 import { ShareStatementButtons } from '@/components/statements/ShareStatementButtons'
+import { RecordAttachments } from '@/components/common/RecordAttachments'
 
 interface Props {
   flockId: number
@@ -142,6 +143,9 @@ function SaleRow({ sale, onUpdatePayment }: { sale: Sale; onUpdatePayment: () =>
         <Metric label="الصافي" value={formatNumber(Number(sale.net_amount))} highlight />
         <Metric label="المتبقي" value={formatNumber(Number(sale.remaining_amount))} danger={sale.remaining_amount > 0} />
       </div>
+
+      {/* صورة فاتورة القبان المحفوظة مع البيع */}
+      <RecordAttachments flockId={sale.flock_id} recordType="sale" recordId={sale.id} />
 
       {/* Payment row */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs text-slate-500">

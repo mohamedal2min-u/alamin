@@ -468,8 +468,9 @@ function EntryRow({ entry }: { entry: StatementEntry }) {
           {entry.unpriced ? (
             <span className="text-xs font-bold text-amber-600">بانتظار السعر</span>
           ) : (
-            <p className={cn('text-sm font-black tabular-nums', isInvoice ? 'text-slate-800 dark:text-slate-100' : 'text-emerald-700 dark:text-emerald-400')}>
-              {isInvoice ? '' : entry.amount < 0 ? '+' : '−'}{formatCurrency(Math.abs(entry.amount))}
+            <p className={cn('text-sm font-black tabular-nums', isInvoice && entry.amount >= 0 ? 'text-slate-800 dark:text-slate-100' : 'text-emerald-700 dark:text-emerald-400')}>
+              {formatCurrency(Math.abs(entry.amount))}
+              {isInvoice && entry.amount < 0 && <span className="ms-1 text-[10px] font-bold">خصم</span>}
             </p>
           )}
           <p className="text-[10px] tabular-nums text-slate-400">الرصيد {formatCurrency(running)}</p>

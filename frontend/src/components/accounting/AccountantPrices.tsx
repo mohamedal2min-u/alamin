@@ -10,6 +10,7 @@ import { cn, formatNumber, getTodayLocalISO } from '@/lib/utils'
 import { PriceWithHistory } from './PriceWithHistory'
 import { ItemGroups, groupByItem } from './ItemGroups'
 import { WaterTotal } from './WaterTotal'
+import { RecordAttachments } from '@/components/common/RecordAttachments'
 
 // ── لوحة المحاسب: ما المطلوب ← اختر الفئة ← سعّر السجلات (أو الصنف كاملاً) ─────
 
@@ -621,6 +622,9 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
           <button type="button" onClick={onCancel} className="h-11 w-full rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 dark:border-slate-600 dark:text-slate-300">
             إلغاء
           </button>
+          {item.flock_id != null && (
+            <RecordAttachments flockId={item.flock_id} recordType={item.type} recordId={item.record_id} />
+          )}
           {(item.payments?.length ?? 0) > 0 && <PaymentHistory item={item} />}
           {(item.price_history ?? []).some((h) => h.old_price != null) && (
             <div className="text-xs text-slate-500"><PriceWithHistory item={item} /></div>

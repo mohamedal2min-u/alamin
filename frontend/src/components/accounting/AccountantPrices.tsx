@@ -247,8 +247,8 @@ export function AccountantPrices({ flockId, view = 'prices' }: { flockId: string
             <StatCard label="إجمالي التكاليف" value={`${formatNumber(costTotal)} $`} tone="text-slate-900 dark:text-slate-100" />
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] font-bold">
-            <span className={cn('rounded-full px-2 py-0.5', MONEY_TONE.in.badge)}>مقبوض • داخل</span>
-            <span className={cn('rounded-full px-2 py-0.5', MONEY_TONE.out.badge)}>مدفوع • طالع</span>
+            <span className={cn('rounded-full px-2 py-0.5', MONEY_TONE.in.badge)}>رقم أخضر • داخل</span>
+            <span className={cn('rounded-full px-2 py-0.5', MONEY_TONE.out.badge)}>رقم أحمر • طالع</span>
             <span className={cn('rounded-full px-2 py-0.5', MONEY_TONE.due.badge)}>متبقي • دين</span>
           </div>
           {firstPending ? (
@@ -377,7 +377,7 @@ function TableTotals({ items }: { items: ReviewItem[] }) {
         <td className="px-2 py-3" colSpan={2}>المجموع</td>
         <td className="whitespace-nowrap px-2 py-3 tabular-nums">{sameUnit && qty > 0 ? `${formatNumber(qty)} ${unit(bases[0])}` : ''}</td>
         <td />
-        <td className="px-2 py-3 text-left tabular-nums">
+        <td className={cn('px-2 py-3 text-left tabular-nums', MONEY_TONE[items.every((i) => i.type === 'sale') ? 'in' : 'out'].text)}>
           {formatNumber(total)}
           {remaining > 0 && <div className={cn('text-[11px] font-bold', MONEY_TONE.due.text)}>متبقي {formatNumber(remaining)}</div>}
         </td>
@@ -592,7 +592,7 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
         {discount ? <span className="text-xs font-bold text-emerald-700">خصم</span> : shownPrice != null ? formatNumber(shownPrice) : <span className="rounded-lg bg-primary-600 px-2 py-1 text-[11px] font-extrabold text-white">حدّد</span>}
       </td>
       <td className="whitespace-nowrap px-2 py-3 text-left">
-        <span className={cn('font-black tabular-nums', discount ? 'text-emerald-700' : 'text-slate-900 dark:text-slate-100')}>{unpriced ? '—' : formatNumber(item.total_amount)}</span>
+        <span className={cn('font-black tabular-nums', unpriced ? 'text-slate-400' : discount ? MONEY_TONE.in.text : MONEY_TONE[directionOf(item.type)].text)}>{unpriced ? '—' : formatNumber(Math.abs(Number(item.total_amount)))}</span>
         {!unpriced && !discount && (remaining > 0 ? (
           locked ? (
             <span className={cn('block text-[11px] font-bold', MONEY_TONE.due.text)}>متبقي {formatNumber(remaining)}</span>
@@ -606,7 +606,7 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
             </button>
           )
         ) : (
-          <span className={cn('block text-[11px] font-bold', MONEY_TONE[directionOf(item.type)].text)}>{item.type === 'sale' ? 'مقبوض ✓' : 'مدفوع ✓'}</span>
+          <span className={cn('block text-[11px] font-bold', MONEY_TONE.in.text)}>{item.type === 'sale' ? 'مقبوض ✓' : 'مدفوع ✓'}</span>
         ))}
         {locked && <Lock className="mt-0.5 inline h-3 w-3 text-slate-400" />}
       </td>
@@ -660,7 +660,7 @@ function EntryModal({ item, mode, value, error, isSaving, onValue, paidAt, onPai
           </div>
           {discount && (
             <p className="rounded-xl bg-emerald-50 px-3 py-2.5 text-base font-bold text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
-              خصم من المورد: {formatNumber(item.total_amount)} $ — يُنقص تكلفة الفوج
+              خصم من المورد: {formatNumber(Math.abs(Number(item.total_amount)))} $ — يُنقص تكلفة الفوج
             </p>
           )}
           {!discount && <>
@@ -733,7 +733,7 @@ function EntryModal({ item, mode, value, error, isSaving, onValue, paidAt, onPai
               </div>
               <p className="text-[11px] text-slate-400">
                 الإجمالي {formatNumber(item.total_amount)} •{' '}
-                <span className={cn('font-bold', MONEY_TONE[directionOf(item.type)].text)}>{item.type === 'sale' ? 'مقبوض' : 'مدفوع'} {formatNumber(Number(item.paid_amount ?? 0))}</span> •{' '}
+                <span className={cn('font-bold', MONEY_TONE.in.text)}>{item.type === 'sale' ? 'مقبوض' : 'مدفوع'} {formatNumber(Number(item.paid_amount ?? 0))}</span> •{' '}
                 <span className={cn('font-bold', MONEY_TONE.due.text)}>المتبقي {formatNumber(Number(item.remaining_amount ?? 0))}</span> — تُسجَّل الدفعة باسمك ولا تُحذف.
               </p>
             </>
@@ -824,7 +824,7 @@ function PaymentsList({ rows, loading, editingId, modal, onPay }: {
               </div>
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 الإجمالي {formatNumber(i.total_amount)} •{' '}
-                <span className={cn('font-bold', MONEY_TONE[directionOf(i.type)].text)}>{i.type === 'sale' ? 'مقبوض' : 'مدفوع'} {formatNumber(Number(i.paid_amount ?? 0))}</span>
+                <span className={cn('font-bold', MONEY_TONE.in.text)}>{i.type === 'sale' ? 'مقبوض' : 'مدفوع'} {formatNumber(Number(i.paid_amount ?? 0))}</span>
               </p>
               {locked(i) ? (
                 <p className="mt-3 flex items-center gap-1 text-xs font-bold text-slate-400"><Lock className="h-3.5 w-3.5" /> الفوج مغلق — للعرض فقط</p>

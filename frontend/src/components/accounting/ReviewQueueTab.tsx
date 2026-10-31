@@ -342,7 +342,7 @@ function ReviewRow({ item, isEditing, isUpdating, editValues, error, onEdit, onC
                 {paid > 0 && remaining > 0 && (
                   <div>
                     <p className="text-[10px] font-bold text-slate-400">{item.type === 'sale' ? 'المقبوض' : 'المدفوع'}</p>
-                    <p className={`text-sm font-bold tabular-nums ${item.type === 'sale' ? 'text-emerald-700' : 'text-rose-700'}`}>{formatCurrency(paid)}</p>
+                    <p className={`text-sm font-bold tabular-nums text-emerald-700`}>{formatCurrency(paid)}</p>
                   </div>
                 )}
                 {remaining > 0 && (

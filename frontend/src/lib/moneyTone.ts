@@ -1,6 +1,6 @@
 // ألوان المال الموحّدة في كل التطبيق:
-//   مقبوض (مصاري داخلة: مبيعات)   ← أخضر
-//   مدفوع (مصاري طالعة: مصاريف)   ← أحمر
+//   أرقام المبالغ: داخلة (مبيعات) أخضر، طالعة (مصاريف) أحمر
+//   كلمة «مدفوع/مقبوض» (تمّ السداد) ← أخضر
 //   متبقي (دين لم يُسدَّد بعد)      ← برتقالي
 export type MoneyDirection = 'in' | 'out'
 
@@ -30,7 +30,7 @@ export function paymentBadge(direction: MoneyDirection, status: string): { label
   const done = direction === 'in' ? 'مقبوض' : 'مدفوع'
   switch (status) {
     case 'paid':
-      return { label: done, className: MONEY_TONE[direction].badge }
+      return { label: done, className: MONEY_TONE.in.badge } // «مدفوع/مقبوض» = تمّ: أخضر دائماً
     case 'partial':
       return { label: `${done} جزئياً`, className: MONEY_TONE.due.badge }
     case 'unpaid':

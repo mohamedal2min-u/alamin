@@ -141,7 +141,7 @@ export default function SalesPage() {
                     <div className="flex items-baseline gap-4">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400">الصافي</p>
-                        <p className="text-base font-black tabular-nums text-slate-900">{formatCurrency(Number(sale.net_amount))}</p>
+                        <p className="text-base font-black tabular-nums text-emerald-700">{formatCurrency(Number(sale.net_amount))}</p>
                       </div>
                       {Number(sale.received_amount) > 0 && Number(sale.remaining_amount) > 0 && (
                         <div>
@@ -202,7 +202,7 @@ export default function SalesPage() {
                       <td className="px-5 py-3 font-medium text-slate-800">{sale.buyer_name ?? '—'}</td>
                       <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(totalBirds)}</td>
                       <td className="px-5 py-3 tabular-nums text-slate-700">{formatNumber(Number(totalWeight.toFixed(1)))}</td>
-                      <td className="px-5 py-3 tabular-nums font-semibold text-slate-900">{formatCurrency(Number(sale.net_amount))}</td>
+                      <td className="px-5 py-3 tabular-nums font-semibold text-emerald-700">{formatCurrency(Number(sale.net_amount))}</td>
                       <td className="px-5 py-3 tabular-nums text-emerald-700 font-medium">{formatCurrency(Number(sale.received_amount))}</td>
                       <td className={`px-5 py-3 tabular-nums font-medium ${sale.remaining_amount > 0 ? 'text-orange-600' : 'text-slate-400'}`}>
                         {formatCurrency(Number(sale.remaining_amount))}

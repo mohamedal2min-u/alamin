@@ -400,7 +400,7 @@ function StatementView({ contactId, onBack }: { contactId: number; onBack: () =>
                 <div className="rounded-xl bg-red-50 p-2.5 dark:bg-red-900/20">
                   <p className="text-xs text-slate-500 dark:text-slate-400">علينا له</p>
                   <p className="font-black tabular-nums text-red-600 dark:text-red-400">{formatCurrency(s.closing.payable)}</p>
-                  <p className="text-[10px] text-slate-400">فواتير {formatCurrency(s.totals.payable.invoiced)} • <span className="font-bold text-rose-700 dark:text-rose-400">مدفوع {formatCurrency(s.totals.payable.paid)}</span></p>
+                  <p className="text-[10px] text-slate-400">فواتير {formatCurrency(s.totals.payable.invoiced)} • <span className="font-bold text-emerald-700 dark:text-emerald-400">مدفوع {formatCurrency(s.totals.payable.paid)}</span></p>
                 </div>
               )}
               {hasReceivable && (

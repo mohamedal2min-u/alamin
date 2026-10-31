@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import { flocksApi } from '@/lib/api/flocks'
@@ -12,15 +13,19 @@ import { AccountantPartners } from './AccountantPartners'
 import { PartnerBalances, ProfitCard } from './ProfitCard'
 import type { Flock } from '@/types/flock'
 
-type Section = 'prices' | 'partners'
+type Section = 'prices' | 'payments' | 'partners'
 
-/** لوحة المحاسب: قسمان (الأسعار / الشركاء) واختيار الفوج. الأفواج المغلقة للعرض فقط. */
+/** لوحة المحاسب: ثلاثة أقسام (الأسعار / الدفعات / الشركاء) واختيار الفوج. الأفواج المغلقة للعرض فقط. */
 export function AccountantBoard() {
   const qc = useQueryClient()
   const user = useAuthStore((s) => s.user)
   const farmId = useFarmStore((s) => s.currentFarm?.id)
 
-  const [section, setSection] = useState<Section>('prices')
+  // القسم من الرابط (?section=) ليعمل اختصار «الشركاء» في قائمة المزيد حتى والصفحة مفتوحة
+  const router = useRouter()
+  const param = useSearchParams().get('section')
+  const section: Section = param === 'payments' || param === 'partners' ? param : 'prices'
+  const setSection = (s: Section) => router.replace(s === 'prices' ? '/accounting' : `/accounting?section=${s}`, { scroll: false })
   const [flockId, setFlockId] = useState<string>('') // '' = كل الأفواج
   const [flockTouched, setFlockTouched] = useState(false)
 
@@ -56,9 +61,9 @@ export function AccountantBoard() {
         </button>
       </div>
 
-      {/* القسمان */}
-      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
-        {([['prices', 'الأسعار'], ['partners', 'الشركاء']] as const).map(([key, label]) => (
+      {/* الأقسام الثلاثة */}
+      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
+        {([['prices', 'الأسعار'], ['payments', 'الدفعات'], ['partners', 'الشركاء']] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setSection(key)}
@@ -97,7 +102,9 @@ export function AccountantBoard() {
       {waitForFlocks ? (
         <div className="h-11 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
       ) : section === 'prices' ? (
-        <AccountantPrices flockId={effectiveFlockId} />
+        <AccountantPrices flockId={effectiveFlockId} view="prices" />
+      ) : section === 'payments' ? (
+        <AccountantPrices flockId={effectiveFlockId} view="payments" />
       ) : (
         <div className="space-y-4">
           {/* الربح والخسارة ونصيب كل شريك — يظهر بعد تسعير كل السجلات */}

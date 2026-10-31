@@ -96,7 +96,13 @@ export default function AccountingPage() {
   const role = useCurrentRole()
 
   // المحاسب: لوحة أسعار بسيطة فقط
-  if (role === 'accountant') return <AccountantBoard />
+  if (role === 'accountant') {
+    return (
+      <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
+        <AccountantBoard />
+      </Suspense>
+    )
+  }
 
   return (
     <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>

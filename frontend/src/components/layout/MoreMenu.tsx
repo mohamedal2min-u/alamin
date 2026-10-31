@@ -46,6 +46,8 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     { label: 'الشركاء',   desc: 'الحصص والحركات',        href: '/partners',   icon: Users,        color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/30' },
     { label: 'المحاسبون', desc: 'حسابات الفريق',         href: '/workers',    icon: UserCog,      color: 'text-slate-600',   bg: 'bg-slate-100 dark:bg-slate-700' },
     { label: 'المحاسبة',  desc: 'الذمم والمراجعة',       href: '/accounting', icon: Calculator,   color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/30' },
+    // المحاسب: قسم الشركاء داخل صفحة المحاسبة (لا يفتح صفحة /partners الكاملة)
+    { label: 'الشركاء',   desc: 'الحصص والأرباح',        href: '/accounting?section=partners', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/30', roles: ['accountant'] },
     { label: 'حسابات الموردين والتجار', desc: 'الأرصدة وكشوف الحساب', href: '/accounting/contacts', icon: Contact, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/30' },
     { label: 'التقارير',  desc: 'ملخصات الأداء',         href: '/reports',    icon: BarChart3,    color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-900/30' },
     { label: 'مقارنة الأفواج', desc: 'التحويل والتكلفة لكل فوج', href: '/reports/flock-comparison', icon: Scale, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/30' },
@@ -53,7 +55,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     { label: 'برنامج اللقاحات', desc: 'مواعيد اللقاحات بالعمر', href: '/vaccines', icon: Syringe, color: 'text-sky-600', bg: 'bg-sky-50 dark:bg-sky-900/30' },
     { label: 'الأذان',    desc: 'أوقات الصلاة والتنبيه', href: '/prayer',    icon: BellRing,     color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/30' },
     { label: 'محفظتي',    desc: 'رصيدك وحصتك',          href: '/my-wallet',  icon: Wallet,       color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
-  ].filter(item => allowedHrefs.includes(item.href))
+  ].filter(item => (item.roles ? item.roles.includes(role) : allowedHrefs.includes(item.href)))
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center">

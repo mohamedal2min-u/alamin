@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Coins, Droplets, Egg, FlaskConical, Layers, Loader2, Lock, Package, Pill, ShoppingCart, SprayCan, Wheat } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Coins, Droplets, Egg, FlaskConical, Layers, Loader2, Lock, Package, Pill, ShoppingCart, SprayCan, Wheat } from 'lucide-react'
 import { accountingApi, PAYMENT_METHOD_LABELS } from '@/lib/api/accounting'
 import type { CategoryBreakdown, PaymentMethod, ReviewItem } from '@/lib/api/accounting'
 import { cn, formatNumber, getTodayLocalISO } from '@/lib/utils'
@@ -46,7 +46,7 @@ const CATEGORY_TONE: Record<string, string> = {
   sales:    'bg-emerald-50 text-emerald-700',
 }
 
-export function AccountantPrices({ flockId }: { flockId: string }) {
+export function AccountantPrices({ flockId, view = 'prices' }: { flockId: string; view?: 'prices' | 'payments' }) {
   const qc = useQueryClient()
 
   const [onlyPending, setOnlyPending] = useState(false)
@@ -187,9 +187,77 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
 
   const pickCategory = (code: string | undefined) => { setCategory(code); setItemFilter(null) }
 
+  const isLocked = (i: ReviewItem) => i.flock_status === 'closed' || i.flock_status === 'cancelled'
+  const pendingTotal = breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
+  const costTotal = breakdown.filter((c) => c.code !== 'sales').reduce((n, c) => n + (c.total_amount ?? 0), 0)
+  // المسعَّر وله متبقٍّ: مصدر قسم الدفعات ورقم «متبقي للدفع»
+  const payRows = (everyRow.data ?? []).filter((i) => i.unit_price != null && Number(i.remaining_amount ?? 0) > 0.005)
+  const owed = payRows.filter((i) => i.type !== 'sale').reduce((n, i) => n + Number(i.remaining_amount ?? 0), 0)
+  const firstPending = (everyRow.data ?? []).find((i) => isUnpriced(i) && !isLocked(i))
+
+  // آخر سعر لنفس الصنف وبنفس أساس التسعير: اقتراح فقط، ولا يُحفظ إلا بضغط «حفظ»
+  const suggestFor = (item: ReviewItem): number | null => {
+    if (!item.item_name) return null
+    const basis = priceBasis(item)
+    const prev = (everyRow.data ?? [])
+      .filter((r) => r.id !== item.id && r.type === item.type && r.item_name === item.item_name && r.unit_price != null && r.unit_price > 0 && priceBasis(r).label === basis.label)
+      .sort((a, b) => (b.entry_date ?? '').localeCompare(a.entry_date ?? ''))[0]
+    if (!prev || prev.unit_price == null) return null
+    return Math.round((prev.unit_price / priceBasis(prev).factor) * 1000) / 1000
+  }
+
+  // «ابدأ التسعير»: يفتح أول سجل بلا سعر، وبعد كل حفظ تنتقل النافذة للتالي (نفس التسجيل السريع الحالي)
+  const startPricing = () => {
+    if (!firstPending) return
+    setCategory(undefined)
+    setItemFilter(null)
+    setOnlyPending(false)
+    startEdit(firstPending)
+  }
+
+  if (view === 'payments') {
+    return (
+      <PaymentsList
+        rows={payRows}
+        loading={everyRow.isLoading}
+        editingId={editingId}
+        onPay={startPayment}
+        modal={{
+          mode, value, error, isSaving: save.isPending, onValue: setValue,
+          paidAt, onPaidAt: setPaidAt, method, onMethod: setMethod,
+          onCancel: () => { setEditingId(null); setError(null) },
+          onSave: submit,
+        }}
+      />
+    )
+  }
+
   return (
     <div className="space-y-4" dir="rtl">
-      {/* ١) ما المطلوب منك الآن */}
+      {/* ١) ملخص سريع: ثلاثة أرقام وزر البدء */}
+      {!overview.isLoading && (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <StatCard label="بلا سعر" value={String(pendingTotal)} tone={pendingTotal > 0 ? 'text-amber-600' : 'text-emerald-600'} />
+            <StatCard label="متبقي للدفع" value={`${formatNumber(owed)} $`} tone={owed > 0 ? 'text-rose-600' : 'text-emerald-600'} />
+            <StatCard label="إجمالي التكاليف" value={`${formatNumber(costTotal)} $`} tone="text-slate-900 dark:text-slate-100" />
+          </div>
+          {firstPending ? (
+            <button
+              type="button"
+              onClick={startPricing}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 text-base font-extrabold text-white shadow-sm active:scale-[0.98]"
+            >
+              ابدأ التسعير ({pendingTotal} سجل)
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          ) : pendingTotal === 0 && breakdown.length > 0 ? (
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 py-3 text-sm font-extrabold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+              <CheckCircle2 className="h-5 w-5" /> كل الأسعار محدّدة
+            </div>
+          ) : null}
+        </>
+      )}
 
       {/* ٢) الفئات: البطاقة نفسها هي زر الاختيار، وفيها العدد والكمية والسعر */}
       <CategoryList loading={overview.isLoading} breakdown={breakdown} small={small} selected={category} onSelect={pickCategory} />
@@ -253,6 +321,8 @@ export function AccountantPrices({ flockId }: { flockId: string }) {
               item={item}
               showCategory={!category}
               locked={item.flock_status === 'closed' || item.flock_status === 'cancelled'}
+              suggestion={editingId === item.id ? suggestFor(item) : null}
+              pending={pendingTotal}
               isEditing={editingId === item.id}
               mode={mode}
               value={value}
@@ -308,7 +378,7 @@ const CARD_TONE: Record<string, { icon: string; ring: string; tint: string }> = 
   medicine: { icon: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300', ring: 'ring-teal-500', tint: 'bg-teal-50/70 dark:bg-teal-900/20' },
   water:    { icon: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300', ring: 'ring-sky-500', tint: 'bg-sky-50/70 dark:bg-sky-900/20' },
   sales:    { icon: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', ring: 'ring-emerald-500', tint: 'bg-emerald-50/70 dark:bg-emerald-900/20' },
-  small:    { icon: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', ring: 'ring-violet-500', tint: 'bg-violet-50/70 dark:bg-violet-900/20' },
+  small:    { icon: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300', ring: 'ring-orange-500', tint: 'bg-orange-50/70 dark:bg-orange-900/20' },
 }
 
 function ProgressBar({ done, className }: { done: number; className?: string }) {
@@ -332,12 +402,6 @@ function CategoryList({ loading, breakdown, small, selected, onSelect }: {
 }) {
   if (loading) return <div className="h-32 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
 
-  const costs = breakdown.filter((c) => c.code !== 'sales')
-  const total = breakdown.reduce((n, c) => n + c.count, 0)
-  const pending = breakdown.reduce((n, c) => n + (c.unpriced_count ?? 0), 0)
-  const amount = costs.reduce((n, c) => n + (c.total_amount ?? 0), 0)
-  const allDone = total > 0 ? Math.floor(((total - pending) / total) * 100) : 100
-
   // الأصناف الأساسية أولاً، ثم أي فئة أخرى فيها سجلات، ثم المصروفات الناعمة
   const known = CATEGORIES.filter((x) => x.code).map((x) => x.code as string)
   const rows = [
@@ -353,7 +417,7 @@ function CategoryList({ loading, breakdown, small, selected, onSelect }: {
       return { key, name, count: c!.count, unpriced: c!.unpriced_count ?? 0, amount: c!.total_amount ?? 0, sub }
     })
   if (small.count > 0) {
-    rows.push({ key: SMALL, name: 'مصروفات ناعمة', count: small.count, unpriced: small.unpriced, amount: small.amount, sub: `أقل من ${SMALL_LIMIT}$` })
+    rows.push({ key: SMALL, name: 'مصاريف صغيرة', count: small.count, unpriced: small.unpriced, amount: small.amount, sub: `أقل من ${SMALL_LIMIT}$` })
   }
   const todo = rows.filter((r) => r.unpriced > 0)
   const done = rows.filter((r) => r.unpriced === 0)
@@ -361,24 +425,16 @@ function CategoryList({ loading, breakdown, small, selected, onSelect }: {
 
   return (
     <div className="space-y-3">
-      {/* ملخص المحاسبة كلها (والضغط عليه يعرض كل السجلات) */}
+      {/* عرض كل السجلات */}
       <button
         type="button"
         onClick={() => onSelect(undefined)}
         className={cn(
-          'block w-full rounded-2xl border bg-white p-4 text-right transition-all dark:bg-slate-800',
+          'block w-full rounded-xl border bg-white px-3 py-2.5 text-center text-sm font-extrabold text-slate-700 transition-all dark:bg-slate-800 dark:text-slate-200',
           selected === undefined ? 'border-transparent ring-2 ring-slate-700 dark:ring-slate-300' : 'border-slate-200 dark:border-slate-700'
         )}
       >
-        <span className="block text-sm font-bold text-slate-500 dark:text-slate-400">إجمالي التكاليف</span>
-        <span className="block text-3xl font-black tabular-nums text-slate-900 dark:text-slate-100">{formatNumber(amount)} $</span>
-        <span className="mt-2 flex items-center justify-between text-sm font-extrabold">
-          <span className="text-slate-700 dark:text-slate-200">المحاسبة {allDone}%</span>
-          {pending > 0
-            ? <span className="text-amber-700 dark:text-amber-400">باقي {pending} سجل</span>
-            : <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> كل الأسعار محدّدة</span>}
-        </span>
-        <ProgressBar done={allDone} className="mt-2 h-3" />
+        كل السجلات
       </button>
 
       {/* بانتظار السعر: سطر لكل صنف */}
@@ -458,6 +514,8 @@ interface CardProps {
   onPay: () => void
   onCancel: () => void
   onSave: () => void
+  suggestion?: number | null
+  pending?: number
 }
 
 // في الجدول: نحذف بادئة «دين شراء:» التلقائية ليقصر السطر
@@ -483,11 +541,9 @@ function priceBasis(i: ReviewItem): { label: string; qty: number; qtyText: strin
   return { label: `سعر ال${unit}`, qty: q, qtyText: `${formatNumber(q)} ${unit}`, factor: 1 }
 }
 
-function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, isSaving, onValue, paidAt, onPaidAt, method, onMethod, onEdit, onPay, onCancel, onSave }: CardProps) {
+function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, isSaving, onValue, paidAt, onPaidAt, method, onMethod, onEdit, onPay, onCancel, onSave, suggestion, pending }: CardProps) {
   const unpriced = item.unit_price == null
   const basis = priceBasis(item)
-  const unitLabel = mode === 'payment' ? (item.type === 'sale' ? 'المبلغ المقبوض الآن' : 'مبلغ الدفعة') : basis.label
-  const entered = parseFloat(value)
   const remaining = Number(item.remaining_amount ?? 0)
 
   const shownPrice = item.unit_price != null ? item.unit_price / basis.factor : null
@@ -539,7 +595,40 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
         ))}
         {locked && <Lock className="mt-0.5 inline h-3 w-3 text-slate-400" />}
       </td>
-      {isEditing && createPortal(
+      {isEditing && (
+        <EntryModal
+          item={item} mode={mode} value={value} error={error} isSaving={isSaving} onValue={onValue}
+          paidAt={paidAt} onPaidAt={onPaidAt} method={method} onMethod={onMethod}
+          onCancel={onCancel} onSave={onSave} suggestion={suggestion} pending={pending}
+        />
+      )}
+    </tr>
+  )
+}
+
+interface ModalProps {
+  item: ReviewItem
+  mode: 'price' | 'payment'
+  value: string
+  error: string | null
+  isSaving: boolean
+  onValue: (v: string) => void
+  paidAt: string
+  onPaidAt: (v: string) => void
+  method: PaymentMethod
+  onMethod: (v: PaymentMethod) => void
+  onCancel: () => void
+  onSave: () => void
+  suggestion?: number | null
+  pending?: number
+}
+
+/** نافذة تحديد السعر أو تسجيل الدفعة: مشتركة بين قسمي الأسعار والدفعات */
+function EntryModal({ item, mode, value, error, isSaving, onValue, paidAt, onPaidAt, method, onMethod, onCancel, onSave, suggestion, pending }: ModalProps) {
+  const basis = priceBasis(item)
+  const unitLabel = mode === 'payment' ? (item.type === 'sale' ? 'المبلغ المقبوض الآن' : 'مبلغ الدفعة') : basis.label
+  const entered = parseFloat(value)
+  return createPortal(
         // نافذة منبثقة: السعر بخانة كبيرة، والمجموع يُحسب فوراً، و«حفظ» ينقل للسجل التالي
         <div dir="rtl" className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={(e) => { e.stopPropagation(); onCancel() }}>
         <div
@@ -554,6 +643,22 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
             </p>
           </div>
           <label className="block text-sm font-bold text-slate-600 dark:text-slate-300">{unitLabel}</label>
+          {mode === 'price' && (suggestion != null || (item.unit_price == null && (pending ?? 0) > 0)) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {suggestion != null && (
+                <button
+                  type="button"
+                  onClick={() => onValue(String(suggestion))}
+                  className="rounded-full bg-primary-50 px-3 py-1.5 text-xs font-extrabold text-primary-700 active:scale-95 dark:bg-primary-900/30 dark:text-primary-300"
+                >
+                  نفس سعر آخر مرة ({formatNumber(suggestion)} $)
+                </button>
+              )}
+              {item.unit_price == null && (pending ?? 0) > 0 && (
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">بقي {pending} سجل بلا سعر</span>
+              )}
+            </div>
+          )}
           <form
             onSubmit={(e) => { e.preventDefault(); onSave() }}
             className="flex gap-2"
@@ -632,8 +737,104 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
         </div>
         </div>,
         document.body
+  )
+}
+
+function StatCard({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center dark:border-slate-700 dark:bg-slate-800">
+      <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{label}</div>
+      <div className={cn('mt-1 text-lg font-black tabular-nums', tone)}>{value}</div>
+    </div>
+  )
+}
+
+type ModalShared = Omit<ModalProps, 'item' | 'onSave' | 'suggestion' | 'pending'> & { onSave: (item: ReviewItem) => void }
+
+/** قسم الدفعات: ما بقي على الموردين، وما بقي من العملاء؛ الدفع يفتح نفس نافذة التسجيل ونفس التحقق */
+function PaymentsList({ rows, loading, editingId, modal, onPay }: {
+  rows: ReviewItem[]
+  loading: boolean
+  editingId: string | null
+  modal: ModalShared
+  onPay: (item: ReviewItem) => void
+}) {
+  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+
+  const { onSave, ...shared } = modal
+  const remainingOf = (i: ReviewItem) => Number(i.remaining_amount ?? 0)
+  const locked = (i: ReviewItem) => i.flock_status === 'closed' || i.flock_status === 'cancelled'
+  const byRemaining = (a: ReviewItem, b: ReviewItem) => remainingOf(b) - remainingOf(a)
+  const debts = rows.filter((i) => i.type !== 'sale').sort(byRemaining)
+  const receivables = rows.filter((i) => i.type === 'sale').sort(byRemaining)
+  const sum = (list: ReviewItem[]) => list.reduce((n, i) => n + remainingOf(i), 0)
+
+  if (rows.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-16 text-slate-400" dir="rtl">
+        <CheckCircle2 className="h-12 w-12 text-primary-400" />
+        <p className="text-sm font-semibold">لا يوجد متبقٍّ للدفع</p>
+      </div>
+    )
+  }
+
+  const group = (title: string, list: ReviewItem[]) =>
+    list.length > 0 && (
+      <div className="space-y-2.5">
+        <h2 className="text-sm font-extrabold text-slate-700 dark:text-slate-200">{title} <span className="text-slate-400">({list.length})</span></h2>
+        <ul className="space-y-2.5">
+          {list.map((i) => (
+            <li key={i.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-base font-extrabold text-slate-900 dark:text-slate-100">{shortDescription(i.description)}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-400">
+                    {[i.contact_name, displayCategory(i.category_name), i.entry_date].filter(Boolean).join(' • ')}
+                  </p>
+                </div>
+                <div className="shrink-0 text-left">
+                  <div className="text-[11px] font-bold text-slate-400">المتبقي</div>
+                  <div className={cn('text-lg font-black tabular-nums', i.type === 'sale' ? 'text-emerald-700' : 'text-rose-600')}>{formatNumber(remainingOf(i))}</div>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                الإجمالي {formatNumber(i.total_amount)} • {i.type === 'sale' ? 'مقبوض' : 'مدفوع'} {formatNumber(Number(i.paid_amount ?? 0))}
+              </p>
+              {locked(i) ? (
+                <p className="mt-3 flex items-center gap-1 text-xs font-bold text-slate-400"><Lock className="h-3.5 w-3.5" /> الفوج مغلق — للعرض فقط</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onPay(i)}
+                  className="mt-3 h-12 w-full rounded-xl bg-primary-600 text-base font-extrabold text-white active:scale-[0.98]"
+                >
+                  {i.type === 'sale' ? 'سجّل مقبوضات' : 'ادفع'}
+                </button>
+              )}
+              {editingId === i.id && <EntryModal item={i} {...shared} onSave={() => onSave(i)} />}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+
+  return (
+    <div className="space-y-4" dir="rtl">
+      {debts.length > 0 && (
+        <section className="rounded-2xl bg-rose-600 p-4 text-white">
+          <p className="text-sm font-bold opacity-90">إجمالي المتبقي للموردين</p>
+          <p className="mt-1 text-3xl font-black tabular-nums">{formatNumber(sum(debts))} $</p>
+        </section>
       )}
-    </tr>
+      {receivables.length > 0 && (
+        <section className="rounded-2xl bg-emerald-600 p-4 text-white">
+          <p className="text-sm font-bold opacity-90">إجمالي المتبقي من العملاء</p>
+          <p className="mt-1 text-3xl font-black tabular-nums">{formatNumber(sum(receivables))} $</p>
+        </section>
+      )}
+      {group('للموردين', debts)}
+      {group('من العملاء', receivables)}
+    </div>
   )
 }
 

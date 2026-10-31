@@ -133,6 +133,10 @@ class ReviewQueueService
                 if ($record->quantity !== null && $data['unit_price'] !== null) {
                     $record->total_amount = $record->quantity * $data['unit_price'];
                 }
+                // تسعير = دفع: بمجرد تسجيل السعر يُعدّ مدفوعاً بالكامل تلقائياً
+                if (! array_key_exists('paid_amount', $data)) {
+                    $record->paid_amount = (float) $record->total_amount;
+                }
             }
 
             if (array_key_exists('paid_amount', $data)) {
@@ -174,6 +178,10 @@ class ReviewQueueService
                 if ($record->quantity !== null && $data['unit_price'] !== null) {
                     $record->total_amount = $record->quantity * $data['unit_price'];
                 }
+                // تسعير = دفع: بمجرد تسجيل السعر يُعدّ مدفوعاً بالكامل تلقائياً
+                if (! array_key_exists('paid_amount', $data)) {
+                    $record->paid_amount = (float) ($record->total_amount ?? 0);
+                }
             }
 
             if (array_key_exists('paid_amount', $data)) {
@@ -210,6 +218,11 @@ class ReviewQueueService
                 $record->net_amount = max(0, round($record->gross_amount - $record->discount_amount, 2));
             }
 
+            // تسعير = دفع: بمجرد تسجيل السعر يُعدّ مدفوعاً بالكامل تلقائياً
+            if (array_key_exists('unit_price', $data) && ! array_key_exists('paid_amount', $data)) {
+                $record->received_amount = (float) $record->net_amount;
+            }
+
             if (array_key_exists('paid_amount', $data)) {
                 $record->received_amount = $data['paid_amount'];
             }
@@ -237,15 +250,20 @@ class ReviewQueueService
             abort(400, 'Invalid type');
         }
 
-        if (array_key_exists('paid_amount', $data) && $data['paid_amount'] !== null) {
-            $this->priceAudit->recordPayment($farmId, $userId, $type, $recordId, $paidBefore, (float) $data['paid_amount']);
+        // دفعة صريحة أو دفعة تلقائية عند التسعير: كلاهما يُسجَّل في سجل الدفعات
+        $autoPaid = array_key_exists('unit_price', $data) && ! array_key_exists('paid_amount', $data);
+        if ((array_key_exists('paid_amount', $data) && $data['paid_amount'] !== null) || $autoPaid) {
+            $newPaid = $autoPaid
+                ? (float) ($type === 'sale' ? $record->net_amount : $record->total_amount)
+                : (float) $data['paid_amount'];
+            $this->priceAudit->recordPayment($farmId, $userId, $type, $recordId, $paidBefore, $newPaid);
 
             // الفرق عن مجموع الدفعات يُسجَّل صفاً في سجل الدفعات (تعديل المدفوع التراكمي القديم يبقى يعمل)
             $this->ledger->sync(
                 $record,
                 $paymentMeta['paid_at'] ?? now()->toDateString(),
                 $paymentMeta['method'] ?? 'cash',
-                $paymentMeta ? ($paymentMeta['note'] ?? null) : 'تعديل المدفوع من قائمة المراجعة',
+                $autoPaid ? 'دفع تلقائي عند التسعير' : ($paymentMeta ? ($paymentMeta['note'] ?? null) : 'تعديل المدفوع من قائمة المراجعة'),
                 $userId
             );
         }

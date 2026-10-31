@@ -505,6 +505,11 @@ class ReviewQueueService
             $missingPrice = true;
         }
 
+        // خصم من المورد: قيمته سالبة عمداً، ليس سعراً ناقصاً
+        if (($row['category_code'] ?? null) === 'supplier_discount') {
+            $missingPrice = false;
+        }
+
         // Always flag missing_price so the user knows they need to enter the cost, even if they marked it as paid
         if ($missingPrice) {
             $reasons[] = 'missing_price';
@@ -577,7 +582,8 @@ class ReviewQueueService
             $c['paid_amount'] = ($c['paid_amount'] ?? 0) + $row['paid_amount'];
             $c['quantity'] = ($c['quantity'] ?? 0) + (float) ($row['quantity'] ?? 0);
             $c['quantity_units'] = array_values(array_unique(array_merge($c['quantity_units'] ?? [], array_filter([$row['quantity_unit'] ?? null]))));
-            $isPriced = ($row['unit_price'] ?? null) !== null && (float) $row['unit_price'] > 0 && $row['total_amount'] > 0;
+            $isPriced = ($code === 'supplier_discount')
+                || (($row['unit_price'] ?? null) !== null && (float) $row['unit_price'] > 0 && $row['total_amount'] > 0);
             $c['priced_count'] = ($c['priced_count'] ?? 0) + ($isPriced ? 1 : 0);
             $c['unpriced_count'] = ($c['unpriced_count'] ?? 0) + ($isPriced ? 0 : 1);
             $c['priced_quantity'] = ($c['priced_quantity'] ?? 0) + ($isPriced ? (float) ($row['quantity'] ?? 0) : 0);

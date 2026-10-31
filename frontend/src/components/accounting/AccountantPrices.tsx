@@ -34,8 +34,11 @@ const EXTRA_ICONS: Record<string, React.ElementType> = {
 // «مصروفات ناعمة»: مصاريف متفرقة قيمتها أقل من 100$ (أو بلا سعر بعد)، خارج العلف والدواء والماء والمبيعات
 const SMALL = 'small'
 const SMALL_LIMIT = 100
+// خصم من المورد: قيد مستقل بقيمة سالبة تُنقص التكلفة، لا يُسعَّر ولا يُدفع
+const DISCOUNT = 'supplier_discount'
+const isDiscount = (i: ReviewItem) => i.category_code === DISCOUNT
 const isSmallExpense = (i: ReviewItem) =>
-  i.type === 'expense' && !['feed', 'medicine'].includes(i.category_code ?? '') && Number(i.total_amount ?? 0) < SMALL_LIMIT
+  i.type === 'expense' && !isDiscount(i) && !['feed', 'medicine'].includes(i.category_code ?? '') && Number(i.total_amount ?? 0) < SMALL_LIMIT
 
 // اسم الفئة كما يقرؤه المستخدم («شراء كتاكيت» في القاعدة ← «صوص»)
 const displayCategory = (name: string | null | undefined) => (name === 'شراء كتاكيت' ? 'صوص' : name)
@@ -94,7 +97,7 @@ export function AccountantPrices({ flockId, view = 'prices' }: { flockId: string
   })
 
   const breakdown = overview.data?.summary.category_breakdown ?? []
-  const isUnpriced = (i: ReviewItem) => i.unit_price == null || i.unit_price <= 0
+  const isUnpriced = (i: ReviewItem) => !isDiscount(i) && (i.unit_price == null || i.unit_price <= 0)
   const smallRows = (everyRow.data ?? []).filter(isSmallExpense)
   const allRows = category === SMALL ? smallRows : rowsQuery.data ?? []
   const small = {
@@ -548,7 +551,8 @@ function priceBasis(i: ReviewItem): { label: string; qty: number; qtyText: strin
 }
 
 function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, isSaving, onValue, paidAt, onPaidAt, method, onMethod, onEdit, onPay, onCancel, onSave, suggestion, pending }: CardProps) {
-  const unpriced = item.unit_price == null
+  const discount = isDiscount(item)
+  const unpriced = !discount && item.unit_price == null
   const basis = priceBasis(item)
   const remaining = Number(item.remaining_amount ?? 0)
 
@@ -580,11 +584,11 @@ function PriceCard({ item, showCategory, locked, isEditing, mode, value, error, 
       </td>
       <td className="whitespace-nowrap px-2 py-3 font-bold tabular-nums text-slate-700 dark:text-slate-200">{basis.qty > 0 ? basis.qtyText : '—'}</td>
       <td className="whitespace-nowrap px-2 py-3 font-bold tabular-nums text-slate-800 dark:text-slate-100">
-        {shownPrice != null ? formatNumber(shownPrice) : <span className="rounded-lg bg-primary-600 px-2 py-1 text-[11px] font-extrabold text-white">حدّد</span>}
+        {discount ? <span className="text-xs font-bold text-emerald-700">خصم</span> : shownPrice != null ? formatNumber(shownPrice) : <span className="rounded-lg bg-primary-600 px-2 py-1 text-[11px] font-extrabold text-white">حدّد</span>}
       </td>
       <td className="whitespace-nowrap px-2 py-3 text-left">
-        <span className="font-black tabular-nums text-slate-900 dark:text-slate-100">{unpriced ? '—' : formatNumber(item.total_amount)}</span>
-        {!unpriced && (remaining > 0 ? (
+        <span className={cn('font-black tabular-nums', discount ? 'text-emerald-700' : 'text-slate-900 dark:text-slate-100')}>{unpriced ? '—' : formatNumber(item.total_amount)}</span>
+        {!unpriced && !discount && (remaining > 0 ? (
           locked ? (
             <span className="block text-[11px] font-bold text-red-600">متبقي {formatNumber(remaining)}</span>
           ) : (
@@ -634,6 +638,7 @@ function EntryModal({ item, mode, value, error, isSaving, onValue, paidAt, onPai
   const basis = priceBasis(item)
   const unitLabel = mode === 'payment' ? (item.type === 'sale' ? 'المبلغ المقبوض الآن' : 'مبلغ الدفعة') : basis.label
   const entered = parseFloat(value)
+  const discount = isDiscount(item)
   return createPortal(
         // نافذة منبثقة: السعر بخانة كبيرة، والمجموع يُحسب فوراً، و«حفظ» ينقل للسجل التالي
         <div dir="rtl" className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={(e) => { e.stopPropagation(); onCancel() }}>
@@ -648,6 +653,12 @@ function EntryModal({ item, mode, value, error, isSaving, onValue, paidAt, onPai
               {basis.qty > 0 && <> • {basis.qtyText}</>}
             </p>
           </div>
+          {discount && (
+            <p className="rounded-xl bg-emerald-50 px-3 py-2.5 text-base font-bold text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
+              خصم من المورد: {formatNumber(item.total_amount)} $ — يُنقص تكلفة الفوج
+            </p>
+          )}
+          {!discount && <>
           <label className="block text-sm font-bold text-slate-600 dark:text-slate-300">{unitLabel}</label>
           {mode === 'price' && (suggestion != null || (item.unit_price == null && (pending ?? 0) > 0)) && (
             <div className="flex flex-wrap items-center gap-2">
@@ -729,6 +740,7 @@ function EntryModal({ item, mode, value, error, isSaving, onValue, paidAt, onPai
           {mode === 'price' && item.unit_price != null && (
             <p className="text-[11px] text-slate-400">السعر القديم سيبقى ظاهراً مشطوباً ويُسجَّل التعديل باسمك.</p>
           )}
+          </>}
           {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
           <button type="button" onClick={onCancel} className="h-11 w-full rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 dark:border-slate-600 dark:text-slate-300">
             إلغاء
